@@ -86,6 +86,27 @@ test.describe('app shell', () => {
     await expect(page.locator('#layoutNote')).toHaveText(`Auto: showing ${size}.`);
   });
 
+  test('re-runs Auto on resize and orientation change', async ({ page }, info) => {
+    test.skip(!info.project.name.endsWith('desktop'), 'One resize sweep per browser is enough.');
+    await openGame(page);
+    const steps: [number, number, Size][] = [
+      [1440, 900, 'desktop'],
+      [834, 1194, 'tablet'],
+      [390, 844, 'phone'],
+      [844, 390, 'phone'],
+      [1194, 834, 'desktop'],
+      [1099, 700, 'tablet'],
+      [1100, 700, 'desktop'],
+      [519, 900, 'phone']
+    ];
+    for (const [width, height, layout] of steps) {
+      await page.setViewportSize({ width, height });
+      await expect(page.locator('html'), `${width}x${height}`).toHaveAttribute('data-layout', layout);
+      await expectOnlyNav(page, layout);
+      await expectNoHorizontalOverflow(page);
+    }
+  });
+
   test('keeps the manual layout after a reload', async ({ page }) => {
     await openGame(page, { layout: 'tablet' });
     await expect(page.locator('html')).toHaveAttribute('data-layout', 'tablet');
@@ -96,14 +117,12 @@ test.describe('app shell', () => {
   test('navigates every destination and marks it current', async ({ page }, info) => {
     const size = sizeOf(info);
     await openGame(page);
-    const routes = await page
-      .locator('.sidebar [data-nav]')
-      .evaluateAll(links =>
-        links.map(link => ({
-          route: (link as HTMLElement).dataset.nav as string,
-          label: link.textContent ?? ''
-        }))
-      );
+    const routes = await page.locator('.sidebar [data-nav]').evaluateAll(links =>
+      links.map(link => ({
+        route: (link as HTMLElement).dataset.nav as string,
+        label: link.textContent ?? ''
+      }))
+    );
     expect(routes.length).toBe(12);
     for (const { route } of routes) {
       const nav = page.locator(NAV[size]);

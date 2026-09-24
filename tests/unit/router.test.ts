@@ -14,6 +14,8 @@ describe('hash router', () => {
     expect(parseHash('#/nowhere').name).toBe('home');
     expect(parseHash('#/player/<script>').name).toBe('home');
     expect(parseHash('#main').name).toBe('home');
+    expect(parseHash('#/player/%').name).toBe('home');
+    expect(parseHash('#/team/%E0%A4%A/roster').name).toBe('home');
   });
 
   it('round-trips hrefs', () => {

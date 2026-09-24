@@ -133,6 +133,25 @@ describe('weighted seed and fixed mode', () => {
     expect(run()).toEqual(run());
   });
 
+  it('pins the fixed-mode advance chain so replays survive refactors', () => {
+    let random = createLeagueRandom(2026, true);
+    const seeds: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      random = advanceLeagueRandom(random, { actions: 0, entropy: 0 });
+      seeds.push(random.advanceSeed);
+    }
+    seeds.push(...draws(leagueStream(random, 'game', 1), 2));
+    expect(seeds).toMatchInlineSnapshot(`
+      [
+        686686858,
+        1154166063,
+        2215373749,
+        3214868794,
+        1447697775,
+      ]
+    `);
+  });
+
   it('varies with the nonce in weighted mode', () => {
     const a = advanceTwice(false, 1, []);
     const b = advanceTwice(false, 2, []);

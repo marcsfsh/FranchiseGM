@@ -47,6 +47,15 @@ const ROUTES: readonly RouteDef[] = [
 
 const PARAM = /^[A-Za-z0-9_-]{1,64}$/;
 
+/** Decodes a path segment. A malformed escape becomes a value no route accepts. */
+function safeDecode(part: string): string {
+  try {
+    return decodeURIComponent(part);
+  } catch {
+    return '\u0000';
+  }
+}
+
 /** Parses a location hash. Unknown or malformed routes go home. */
 export function parseHash(hash: string): Route {
   const parts = hash
@@ -59,7 +68,7 @@ export function parseHash(hash: string): Route {
     const params: Record<string, string> = {};
     let matched = true;
     pattern.forEach((segment, i) => {
-      const part = decodeURIComponent(parts[i] ?? '');
+      const part = safeDecode(parts[i] ?? '');
       if (segment.startsWith(':')) {
         if (PARAM.test(part)) params[segment.slice(1)] = part;
         else matched = false;

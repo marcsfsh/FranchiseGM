@@ -17,6 +17,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      - run: npx prettier --check . --log-level warn
       - run: npm test
       - run: npm run build
       - run: npx playwright install --with-deps chromium webkit

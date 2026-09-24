@@ -29,7 +29,8 @@
           const cached = JSON.parse(localStorage.getItem('gm.ui.tokens') || 'null');
           if (cached && cached.mode === root.dataset.theme && cached.tokens) {
             for (const [k, v] of Object.entries(cached.tokens)) {
-              if (/^--[a-z0-9-]+$/.test(k) && /^(#[0-9A-F]{6}|transparent)$/i.test(v)) root.style.setProperty(k, v);
+              if (/^--[a-z0-9-]+$/.test(k) && /^(#[0-9A-F]{6}|transparent)$/i.test(v))
+                root.style.setProperty(k, v);
             }
           }
         } catch {}
