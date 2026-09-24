@@ -1,5 +1,10 @@
 import { defineConfig, type Plugin } from 'vite';
+import { readFileSync } from 'node:fs';
 import { viteSingleFile } from 'vite-plugin-singlefile';
+
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
+  version: string;
+};
 
 // The shipped game makes zero network requests (spec 2.1). The policy also blocks accidental fetches.
 const CSP = [
@@ -53,9 +58,14 @@ export default defineConfig(({ mode }) => {
   return {
     base: './',
     define: {
-      __GM_DEBUG__: JSON.stringify(debug)
+      __GM_DEBUG__: JSON.stringify(debug),
+      __GM_VERSION__: JSON.stringify(pkg.version)
     },
-    plugins: [viteSingleFile({ removeViteModuleLoader: true }), shellHead(), outputName(debug ? 'game-debug.html' : 'game.html')],
+    plugins: [
+      viteSingleFile({ removeViteModuleLoader: true }),
+      shellHead(),
+      outputName(debug ? 'game-debug.html' : 'game.html')
+    ],
     worker: { format: 'iife' },
     build: {
       outDir: 'dist',
