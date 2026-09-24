@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en" data-theme="day" data-layout="phone" data-density="comfortable">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Franchise GM</title>
+    <script>
+      // Style guide 11 and 13: apply stored preferences and the cached team tokens before first paint.
+      // The app validates everything again when it starts.
+      (() => {
+        const root = document.documentElement;
+        let p = {};
+        try {
+          p = JSON.parse(localStorage.getItem('gm.ui.v2') || '{}') || {};
+        } catch {}
+        root.dataset.theme =
+          p.theme === 'day' || p.theme === 'night'
+            ? p.theme
+            : matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'night'
+              : 'day';
+        root.dataset.density = p.density === 'compact' ? 'compact' : 'comfortable';
+        const w = innerWidth,
+          h = innerHeight;
+        const auto = Math.min(w, h) < 520 ? 'phone' : w >= 1100 && w / h >= 1.2 ? 'desktop' : 'tablet';
+        root.dataset.layout = ['phone', 'tablet', 'desktop'].includes(p.layout) ? p.layout : auto;
+        try {
+          const cached = JSON.parse(localStorage.getItem('gm.ui.tokens') || 'null');
+          if (cached && cached.mode === root.dataset.theme && cached.tokens) {
+            for (const [k, v] of Object.entries(cached.tokens)) {
+              if (/^--[a-z0-9-]+$/.test(k) && /^(#[0-9A-F]{6}|transparent)$/i.test(v)) root.style.setProperty(k, v);
+            }
+          }
+        } catch {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/app/main.ts"></script>
+  </body>
+</html>

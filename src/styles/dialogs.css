@@ -1,0 +1,139 @@
+/* From style guide section 12.8. */
+/* 12.8 Dialogs and feedback */
+dialog {
+  width: min(36rem, calc(100% - 2rem));
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-dialog);
+}
+dialog::backdrop {
+  background: var(--backdrop);
+}
+.dialog-frame {
+  display: flex;
+  flex-direction: column;
+  max-height: inherit;
+}
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s4);
+}
+.dialog-title {
+  font: italic 800 var(--fs-section)/1.1 var(--font-display);
+  text-transform: uppercase;
+}
+.dialog-body {
+  padding: var(--s5);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+.dialog-actions {
+  padding: var(--s4);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  border-top: 1px solid var(--line);
+}
+.kv {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+[data-layout='phone'] dialog {
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100dvh - var(--s4));
+  margin: auto 0 0;
+  border-radius: var(--radius-seg) var(--radius-seg) 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+[data-layout='phone'] .dialog-actions {
+  flex-direction: column;
+}
+.toast-region {
+  position: fixed;
+  z-index: var(--z-toast);
+  right: var(--s4);
+  bottom: var(--s4);
+  width: min(24rem, calc(100% - 2rem));
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+[data-layout='phone'] .toast-region {
+  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + var(--s4));
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3);
+  border-radius: var(--radius);
+  background: var(--toast);
+  color: var(--toast-text);
+  box-shadow: var(--shadow-toast);
+  --focus: currentColor;
+}
+.empty {
+  padding: var(--s6);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+.skeleton {
+  min-height: var(--row-h);
+  background: var(--surface-2);
+}
+.tooltip {
+  max-width: 18rem;
+  padding: var(--s3);
+  border-radius: var(--radius-sm);
+  background: var(--toast);
+  color: var(--toast-text);
+  font-size: var(--fs-small);
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media (forced-colors: active) {
+  .btn,
+  .tier,
+  .nav-item[aria-current='page'],
+  .signbar-arrow {
+    border: 2px solid ButtonText;
+  }
+  .btn::before,
+  .nameplate-name::before {
+    clip-path: none;
+  }
+  .tier-elite {
+    clip-path: none;
+  }
+  .twill {
+    -webkit-text-stroke: 0;
+    color: CanvasText;
+  }
+  :focus-visible {
+    outline-color: Highlight;
+  }
+}

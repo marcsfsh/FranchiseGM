@@ -1,0 +1,214 @@
+/* From style guide section 12.5. */
+/* 12.5 Controls: the decorative layer can slant; the focusable element cannot */
+.btn {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: var(--s2) var(--s5);
+  border: 2px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font-weight: 800;
+  text-decoration: none;
+  text-align: center;
+  line-height: 1.35;
+}
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--radius-sm);
+  background: var(--btn-bg, transparent);
+  transition: box-shadow var(--motion-fast);
+}
+.btn-primary {
+  --btn-bg: var(--action-primary-bg);
+  color: var(--action-primary-text);
+}
+.btn-solid {
+  --btn-bg: var(--action-secondary-bg);
+  color: var(--action-secondary-text);
+}
+.btn-primary::before,
+.btn-solid::before {
+  clip-path: polygon(var(--slant) 0, 100% 0, calc(100% - var(--slant)) 100%, 0 100%);
+}
+.btn-outline {
+  border-color: var(--control-border);
+  border-radius: var(--radius-sm);
+}
+.btn-text {
+  padding-inline: var(--s2);
+  text-decoration: underline;
+}
+.btn-danger {
+  --btn-bg: var(--danger);
+  color: var(--on-danger);
+}
+@media (hover: hover) {
+  .btn:hover:not(:disabled)::before {
+    box-shadow: inset 0 0 0 2px currentColor;
+  }
+}
+.btn:active:not(:disabled)::before {
+  box-shadow: inset 0 0 0 3px currentColor;
+}
+.btn:disabled {
+  --btn-bg: var(--surface-2);
+  color: var(--text-2);
+  border-color: transparent;
+}
+.btn[aria-busy='true'] {
+  cursor: progress;
+}
+.btn-block {
+  width: 100%;
+}
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+}
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: var(--s2);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+}
+/* Context modifiers follow base controls. */
+.on-team .btn-outline,
+.on-team .icon-btn {
+  background: transparent;
+  color: var(--on-team);
+  border-color: var(--on-team);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.field > label,
+.field-label {
+  font-weight: 700;
+}
+.input,
+.select,
+textarea {
+  min-width: 0;
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--s2) var(--s3);
+  border: 2px solid var(--control-border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--fs-body);
+}
+.input.is-error,
+[aria-invalid='true'] {
+  border-color: var(--danger-text);
+}
+.field-error {
+  color: var(--danger-text);
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+.check-target {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  gap: var(--s2);
+}
+input[type='checkbox'],
+input[type='radio'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--selection-indicator);
+}
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4rem;
+  min-height: var(--tap);
+  border: 0;
+  background: transparent;
+  color: var(--text);
+}
+.switch::before {
+  content: '';
+  width: 3.5rem;
+  height: 2rem;
+  background: var(--surface-2);
+  border: 2px solid var(--control-border);
+  border-radius: 2rem;
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  left: 0.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  background: var(--text);
+  border-radius: 50%;
+}
+.switch[aria-checked='true']::before {
+  background: var(--team);
+  border-color: var(--selection-indicator);
+}
+.switch[aria-checked='true']::after {
+  left: 2rem;
+  background: var(--white);
+}
+.seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: var(--s1);
+  border: 0;
+  border-radius: var(--radius-seg);
+  background: var(--surface-2);
+}
+.seg label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: var(--tap);
+  padding: var(--s2) var(--s3);
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: var(--tap);
+  padding: var(--s2) var(--s4);
+  border: 2px solid var(--control-border);
+  border-radius: 999px;
+}
+.stepper {
+  display: flex;
+  gap: var(--s2);
+}
+.stepper input {
+  max-width: 7rem;
+}
+.range {
+  width: 100%;
+  min-height: var(--tap);
+  accent-color: var(--selection-indicator);
+}

@@ -1,0 +1,118 @@
+/* From style guide section 12.4. */
+/* 12.4 Cards and broadcast treatments */
+.card {
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.card-body {
+  padding: var(--card-pad);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.signbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  background: var(--bar);
+  color: var(--bar-text);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--radius) var(--radius) 0 0;
+  --focus: var(--white);
+}
+.signbar-title {
+  flex: 1;
+  font: 700 var(--fs-section)/1.15 var(--font-display);
+  text-transform: uppercase;
+}
+.signbar-meta {
+  font-size: var(--fs-small);
+}
+.signbar-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  background: var(--accent);
+  color: var(--on-accent);
+  padding: var(--s2);
+  font-weight: 800;
+}
+.nameplate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  min-width: 0;
+}
+.nameplate-tag {
+  padding: var(--s1) var(--s3);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 800;
+  font-size: var(--fs-label);
+}
+.nameplate-name {
+  position: relative;
+  isolation: isolate;
+  padding: var(--s2) var(--s6) var(--s2) var(--s3);
+  max-width: 100%;
+  color: var(--plate-text);
+  font: italic 800 var(--fs-name)/1.1 var(--font-display);
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.nameplate-name::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--plate);
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--slant)) 100%, 0 100%);
+}
+.nameplate-title {
+  font-size: var(--fs-title);
+}
+.nameplate-on-team {
+  --plate: var(--white);
+  --plate-text: var(--ink);
+}
+.twill {
+  font: italic 800 var(--fs-twill)/1.1 var(--font-display);
+  color: var(--accent);
+  -webkit-text-stroke: 2px var(--white);
+  paint-order: stroke fill;
+}
+.twill-sm {
+  font-size: var(--fs-big);
+}
+.stripes {
+  display: grid;
+  grid-template-rows: 6px 3px 6px;
+}
+.stripes i {
+  background: var(--accent);
+}
+.stripes i:nth-child(2) {
+  background: var(--white);
+}
+.player-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--card-pad);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.hero-title {
+  font: italic 800 var(--fs-name)/1.1 var(--font-display);
+  text-transform: uppercase;
+}
+.big-number {
+  font: italic 800 var(--fs-big)/1.1 var(--font-display);
+}

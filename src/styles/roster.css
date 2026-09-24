@@ -1,0 +1,165 @@
+/* From style guide section 12.7. */
+/* 12.7 Responsive roster */
+.roster-region {
+  container-type: inline-size;
+  container-name: roster;
+  min-width: 0;
+}
+.roster-table {
+  display: none;
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: var(--fs-small);
+}
+.roster-table th,
+.roster-table td {
+  padding: var(--row-pad) var(--s2);
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.roster-table thead {
+  background: var(--surface-2);
+}
+.roster-table .selection-col {
+  width: 4rem;
+}
+.roster-table .pos-col {
+  width: 3.5rem;
+}
+.roster-table .ovr-col {
+  width: 4.5rem;
+}
+.roster-table .status-col {
+  width: 8rem;
+}
+.roster-table .age-col {
+  width: 3.5rem;
+}
+.roster-table .dev-col {
+  width: 7rem;
+}
+.roster-table .cap-col {
+  width: 7rem;
+}
+.roster-table .wide {
+  display: none;
+}
+.roster-table .sort-btn {
+  min-height: var(--tap);
+  padding: var(--s1);
+  background: transparent;
+  color: inherit;
+  border: 0;
+  font-weight: 700;
+  text-decoration: underline;
+}
+.roster-table td .tier {
+  min-width: 0;
+}
+.roster-table tr.is-selected {
+  background: var(--selection-bg);
+  color: var(--selection-text);
+}
+.roster-table tr.is-selected > :first-child {
+  box-shadow: inset 3px 0 var(--selection-indicator);
+}
+.roster-table a {
+  font-weight: 700;
+}
+.roster-table a,
+.list-name,
+.preview-list a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+}
+.roster-table a:focus-visible,
+.roster-table input:focus-visible {
+  outline-offset: 1px;
+}
+.roster-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.list-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--s2);
+  align-items: center;
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-height: var(--row-h);
+  background: var(--surface);
+}
+.list-row.is-selected {
+  background: var(--selection-bg);
+  border-color: var(--selection-indicator);
+}
+.list-main {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.list-name {
+  font-weight: 700;
+}
+.list-sub {
+  color: var(--text-2);
+  font-size: var(--fs-small);
+}
+@container roster (min-width: 640px) {
+  .roster-table {
+    display: table;
+  }
+  .roster-list {
+    display: none;
+  }
+}
+@container roster (min-width: 960px) {
+  .roster-table .wide {
+    display: table-cell;
+  }
+}
+.preview-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.preview-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  align-items: center;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--line);
+}
+.preview-list a {
+  flex: 1;
+  min-width: 8rem;
+}
+.filterbar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--s4);
+}
+.table-scroll {
+  overflow-x: auto;
+  padding: var(--s1);
+}
+.compare-table {
+  border-collapse: collapse;
+  min-width: 32rem;
+  width: 100%;
+}
+.compare-table th,
+.compare-table td {
+  padding: var(--s3);
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}

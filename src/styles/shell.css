@@ -1,0 +1,174 @@
+/* From style guide section 12.3. */
+/* 12.3 Shell */
+.app {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  grid-template-areas: 'side top' 'side main';
+  grid-template-rows: auto 1fr;
+}
+.sidebar {
+  grid-area: side;
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow-y: auto;
+  padding: var(--s5);
+  background: var(--sidebar);
+  color: var(--white);
+  --focus: var(--white);
+}
+.sidebar-brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding-bottom: var(--s5);
+  border-bottom: 4px solid var(--accent);
+}
+.sidebar-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding-block: var(--s4);
+}
+.nav-item {
+  display: flex;
+  gap: var(--s3);
+  align-items: center;
+  min-height: var(--tap);
+  padding: var(--s2) var(--s3);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+}
+.nav-item[aria-current='page'] {
+  background: var(--nav-active-bg);
+  color: var(--nav-active-text);
+  font-weight: 800;
+}
+.nav-item[aria-current='page']::before {
+  content: '';
+  width: 4px;
+  align-self: stretch;
+  background: currentColor;
+}
+.topbar {
+  grid-area: top;
+  position: sticky;
+  top: 0;
+  z-index: var(--z-nav);
+  border-bottom: 4px solid var(--accent);
+  padding: var(--s2) var(--pad);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+}
+.topbar-title {
+  flex: 1;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-section);
+  text-transform: uppercase;
+}
+.main {
+  grid-area: main;
+  min-width: 0;
+  padding: var(--pad);
+}
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+.rail,
+.tabbar {
+  display: none;
+}
+[data-layout='tablet'] .app {
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  grid-template-areas: 'top top' 'rail main';
+}
+[data-layout='tablet'] .sidebar,
+[data-layout='phone'] .sidebar {
+  display: none;
+}
+[data-layout='tablet'] .rail {
+  grid-area: rail;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s2);
+  align-self: start;
+}
+.rail a {
+  min-height: var(--tap);
+  padding: var(--s2);
+  font-size: var(--fs-label);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.rail a[aria-current='page'] {
+  background: var(--nav-active-bg);
+  color: var(--nav-active-text);
+  font-weight: 800;
+}
+[data-layout='phone'] .app {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'top' 'main';
+}
+[data-layout='phone'] .main {
+  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + var(--pad));
+}
+[data-layout='phone'] .tabbar {
+  display: flex;
+  position: fixed;
+  z-index: var(--z-nav);
+  inset: auto 0 0;
+  min-height: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.tabbar > * {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  padding: var(--s2);
+  font-size: var(--fs-small);
+  text-decoration: none;
+}
+.tabbar [aria-current='page'] {
+  border-top: 4px solid var(--selection-indicator);
+  font-weight: 800;
+}
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s4);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.cards-host {
+  container-type: inline-size;
+  container-name: dashboard;
+}
+.cards {
+  display: grid;
+  gap: var(--gap);
+  align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+}
+@container dashboard (min-width: 680px) {
+  .cards .span-2 {
+    grid-column: span 2;
+  }
+}
