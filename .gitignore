@@ -1,0 +1,5 @@
+.claude/settings.local.json
+.claude/.last-verify
+CLAUDE.local.md
+node_modules/
+*.tsbuildinfo
