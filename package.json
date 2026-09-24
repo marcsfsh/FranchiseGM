@@ -1,0 +1,38 @@
+{
+  "name": "franchise-gm",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Offline single-file NFL franchise simulation",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node tools/embed-fonts.mjs dist/game.html",
+    "build:debug": "vite build --mode debug && node tools/embed-fonts.mjs dist/game-debug.html",
+    "test": "vitest run --reporter=dot",
+    "typecheck": "tsc --noEmit --incremental --pretty false",
+    "lint": "eslint . --quiet --format unix",
+    "check": "npm run typecheck && npm run lint && npm test",
+    "layout": "playwright test --reporter=line",
+    "calibrate": "node tools/calibrate.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@fontsource-variable/overpass": "5.3.0",
+    "@fontsource/barlow-condensed": "5.3.0",
+    "@playwright/test": "1.56.1",
+    "@types/node": "22.20.4",
+    "eslint": "10.11.0",
+    "eslint-formatter-unix": "9.0.1",
+    "fake-indexeddb": "6.2.5",
+    "globals": "17.12.0",
+    "prettier": "3.9.9",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.1",
+    "vite": "8.3.1",
+    "vite-plugin-singlefile": "2.3.3",
+    "vitest": "5.0.1"
+  }
+}

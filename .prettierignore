@@ -1,0 +1,6 @@
+dist/
+docs/
+data-raw/
+calibration/reports/
+node_modules/
+package-lock.json

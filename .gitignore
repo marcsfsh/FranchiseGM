@@ -3,3 +3,7 @@
 CLAUDE.local.md
 node_modules/
 *.tsbuildinfo
+dist/game-debug.html
+test-results/
+playwright-report/
+.vite/
