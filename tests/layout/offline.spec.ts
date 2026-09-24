@@ -10,7 +10,10 @@ test.describe('offline', () => {
     test.skip(!info.project.name.endsWith('desktop'), 'Once per browser is enough.');
     const requests: string[] = [];
     page.on('request', request => requests.push(request.url()));
-    await context.setOffline(true);
+    // Any network request fails and is recorded. WebKit's offline emulation also blocks file:// loads,
+    // so only Chromium turns the whole network off.
+    await context.route(/^(https?|wss?):/, route => route.abort());
+    if (info.project.name.startsWith('chromium')) await context.setOffline(true);
     await openGame(page, { theme: 'night' });
 
     for (const hash of ['#/roster', '#/settings', '#/league', '#/']) {
