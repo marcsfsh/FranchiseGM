@@ -1,6 +1,9 @@
 /** The worker's job table. Later milestones add season sims, calibration runs, and AI batches. */
 import { hashWords, stream } from '../engine/rng';
+import type { ClimateTable } from '../data/climate';
 import { createLeague, type NewLeagueInput } from '../engine/league/create';
+import type { League } from '../engine/league/types';
+import { simLeagueGame } from '../engine/sim';
 import type { JobHandler } from './protocol';
 
 interface SelfTestPayload {
@@ -18,6 +21,18 @@ export const JOBS: Record<string, JobHandler> = {
       ...input,
       onProgress: (done, total) => ctx.progress(done, total, 'Building teams')
     });
+  },
+
+  /** Simulates one scheduled game (spec 8) and reports how long the sim took. */
+  simGame: payload => {
+    const { league, gameId, climate } = payload as {
+      league: League;
+      gameId: string;
+      climate: ClimateTable | null;
+    };
+    const started = performance.now();
+    const result = simLeagueGame(league, gameId, climate);
+    return { result, ms: performance.now() - started };
   },
 
   /** Draws from a seeded stream in chunks, reporting progress. Proves the worker and the PRNG work. */

@@ -449,6 +449,310 @@ export const TUNING = {
   },
 
   /**
+   * Game simulation (spec 8). Base rates are 2021-2025 NFL averages (nflverse play-by-play); matchups move
+   * them on the log-odds scale by rating differences measured from typical players, so an average matchup
+   * plays at league rates. Calibration (M6) tunes these against calibration/targets.json.
+   */
+  sim: {
+    /** Log-odds per rating point of matchup difference, for each resolution. */
+    // prettier-ignore
+    edge: { pressure: 0.045, sack: 0.04, completion: 0.035, separation: 0.04, interception: 0.04, stuff: 0.04, breakaway: 0.045, fumble: 0.03, kick: 0.03 },
+    /** Rating points per point of fit (spec 7.3), per unit of cohesion execution, and for team form sd. */
+    fitPoints: 0.5,
+    formSd: 0.8,
+    /** Pass protection: pressure base rate, blitz and simulated pressure boosts (log-odds). */
+    pressureBase: 0.31,
+    blitzPressure: 0.45,
+    simPressure: 0.2,
+    sackGivenPressure: 0.18,
+    scrambleGivenPressure: 0.13,
+    scrambleTendency: 0.25,
+    throwAwayGivenPressure: 0.06,
+    throwAwayTrait: 0.07,
+    groundingGivenThrowAway: 0.05,
+    /** Completion by depth (short, intermediate, deep, screen), and the pressure penalty (log-odds). */
+    completion: { short: 0.745, intermediate: 0.585, deep: 0.37, screen: 0.86 },
+    pressureCompletion: -0.75,
+    dropShare: 0.075,
+    /** Interceptions per attempt by depth, and log-odds shifts. */
+    interception: { short: 0.013, intermediate: 0.022, deep: 0.04, screen: 0.003 },
+    interceptionPressure: 0.45,
+    interceptionAggressive: 0.25,
+    /** Air yards: short mean above 1, intermediate span, deep mean past 20. */
+    airShortMean: 4.2,
+    airDeepMean: 11,
+    screenAir: [-3, 1],
+    /** Yards after catch means by depth, and the broken-tackle chance and extra yards. */
+    yac: { short: 4.5, intermediate: 3, deep: 4.5, screen: 6 },
+    brokenTackle: 0.07,
+    brokenTackleYards: 11,
+    /** Runs: stuff rate, stuff depth, gain shape and mean, breakaway chance and extra yards. */
+    stuff: 0.17,
+    stuffYards: 3,
+    runGainMean: 4.4,
+    runGainShape: 1.6,
+    breakaway: 0.065,
+    breakawayYards: 14,
+    /** Rating points of run block edge worth one yard of mean gain; defenders in the box change it. */
+    blockYardsPerPoint: 0.06,
+    lightBox: 0.35,
+    /** Fumbles per carry and per catch, share lost, and rain or snow log-odds. */
+    fumbleCarry: 0.011,
+    fumbleCatch: 0.004,
+    fumbleLost: 0.5,
+    fumbleWet: 0.35,
+    /** Scrambles and designed quarterback runs. */
+    scrambleMean: 6.5,
+    /** Clock: seconds a play takes, the runoff between snaps (normal, hurry-up, and milking), and out of
+     * bounds shares. */
+    playSeconds: [4, 8],
+    runoff: { normal: 31, hurry: 14, milk: 39 },
+    outOfBoundsRun: 0.12,
+    outOfBoundsCatch: 0.25,
+    /** Fourth downs: go rates by yards to go (1, 2, 3 to 5, 6 or more) in plus territory, and at midfield. */
+    goRate: [0.62, 0.42, 0.22, 0.06],
+    goRateOwnHalf: [0.22, 0.1, 0.03, 0.005],
+    /** Two-point tries: base rate of touchdowns and success rate. */
+    twoPointBase: 0.04,
+    twoPointSuccess: 0.48,
+    /** Field goals: log-odds at 25 yards and per yard beyond, the longest try, and weather. */
+    fgLogit25: 4.2,
+    fgPerYard: -0.12,
+    fgMaxDistance: 62,
+    fgCold: -0.25,
+    fgWet: -0.35,
+    fgWindPerMph: -0.03,
+    fgAltitude: 0.35,
+    /** Kickoffs: shares of returnable kicks, touchbacks, and short kicks; landing depth; return yards. */
+    kickoffReturnable: 0.66,
+    kickoffShort: 0.015,
+    kickoffLandingRollTouchback: 0.03,
+    kickoffLanding: [1, 14],
+    kickReturnMean: 23,
+    kickReturnSd: 7,
+    returnTouchdown: 0.004,
+    onsideRecovery: 0.12,
+    /** Punts: gross mean and spread, fair catches, returns, and return yards. */
+    puntMean: 46.5,
+    puntSd: 6,
+    puntFairCatch: 0.28,
+    puntReturned: 0.44,
+    puntReturnMean: 9.5,
+    puntBlocked: 0.004,
+    /** Penalties per play (offense or defense snap), before discipline, crowd, and slider multipliers. */
+    // prettier-ignore
+    penaltyRates: {
+      falseStart: 0.0194, delayOfGame: 0.0049, illegalFormation: 0.0065, offensiveHoldingRun: 0.0179,
+      offensiveHoldingPass: 0.0259, offensivePassInterference: 0.0065, offside: 0.013, defensiveHolding: 0.0114,
+      illegalContact: 0.0049, defensivePassInterference: 0.0179, roughingThePasser: 0.013, unnecessaryRoughness: 0.0082,
+      facemask: 0.0056, illegalUseOfHands: 0.0065, unsportsmanlikeConduct: 0.0024, illegalBlockInBack: 0.06,
+      kickCatchInterference: 0.0049, runningIntoKicker: 0.0065
+    },
+    /** Discipline multipliers by penalty trait, and the crowd's effect on visiting false starts. */
+    discipline: { disciplined: 0.75, normal: 1, undisciplined: 1.45 },
+    crowdFalseStart: 0.6,
+    /** In-game injuries per involvement, and the severity mix (minor, 1-2 weeks, 3-6 weeks, season). */
+    injuryRate: 0.0018,
+    injurySeverity: [0.55, 0.25, 0.12, 0.08],
+    /** Fatigue: energy spent per snap by position group, recovery per snap off the field, the energy
+     * where ratings start to suffer, rating points lost per energy point, and substitution thresholds. */
+    fatigue: { QB: 0.5, RB: 2.6, WR: 1.4, TE: 1.7, OL: 0.9, DL: 3.1, LB: 2.1, DB: 1.5, ST: 0.3 },
+    recovery: 3.5,
+    tiredAt: 85,
+    tiredPoints: 0.15,
+    subAt: { QB: 20, RB: 62, WR: 52, TE: 58, OL: 35, DL: 68, LB: 58, DB: 52, ST: 10 },
+    /** Home field (spec 17.3): rating points for the home team from the crowd, travel per time zone, and
+     * rest; the combined effect is about 1.5 to 2.5 points a game. */
+    homeCrowd: 0.5,
+    travelPerZone: 0.2,
+    shortWeek: 0.6,
+    afterBye: 0.4,
+    /** Days between games that count as a short week, and as rest after a bye. */
+    shortWeekDays: 5,
+    byeWeekDays: 13,
+    /** Game weather draws (spec 17.2): retractable roofs close below roofClosesBelowF or in rain; game
+     * time sits gameTimeShare of the way from the day's low to its high; wet games follow monthly
+     * precipitation; wind draws around the monthly mean with occasional gusts. */
+    weather: {
+      roofClosesBelowF: 55,
+      gameTimeShare: 0.65,
+      tempSd: 7,
+      wetPerInch: 1 / 22,
+      wetMax: 0.35,
+      snowBelowF: 34,
+      snowFloor: 0.5,
+      snowPerPrecip: 3,
+      windLow: 0.45,
+      windSpread: 1.1,
+      gustChance: 0.08,
+      gustMph: 8,
+      /** "Bad weather" for abilities: precipitation, this much wind, or this cold. */
+      badWindMph: 15,
+      badColdF: 25
+    },
+    /** Play calling, decisions, and resolution details (spec 8.3, 8.6). */
+    calls: {
+      // Situations and play calling
+      goalLineYards: 3,
+      goalLineHeavy: 2.5,
+      passingDownHeavy: 0.5,
+      /** Defensive package weights (base, nickel, dime) by the offense's wide receivers (1 to 4). */
+      // prettier-ignore
+      packageByReceivers: { 1: [3, 0.5, 0.1], 2: [1.8, 0.8, 0.3], 3: [0.35, 1.35, 1.4], 4: [0.1, 1.2, 2.2] },
+      lateTrailingSeconds: 420,
+      lateTrailingPass: 0.82,
+      leadingRunShift: 0.62,
+      twoMinutePass: 0.8,
+      goalLinePass: 0.72,
+      wetPassShift: 0.9,
+      windyMph: 15,
+      windyPassShift: 0.95,
+      deepLateBoost: 1.35,
+      deepShortYardage: 0.5,
+      screenThirdLong: 0.5,
+      blitzThirdDown: 1.25,
+      hurrySeconds: 240,
+      hurryHalfSeconds: 120,
+      milkSeconds: 480,
+      // Decisions
+      desperationSeconds: 240,
+      endHalfFgSeconds: 30,
+      lastSecondsFg: 5,
+      leadingGoFactor: 0.6,
+      goalLineGo: 0.45,
+      minFgGoal: 2,
+      /** Field goal tries up to this distance are routine; longer ones fade by fgFadePerYard, helped by a
+       * strong leg (fgPowerShare per rating point of kick power). */
+      fgRoutine: 52,
+      fgFadePerYard: 0.08,
+      fgPowerShare: 0.02,
+      fgSnapYards: 17,
+      rangePerPoint: 0.15,
+      altitudeRange: 4,
+      windRangeLoss: 5,
+      kneelHalfSeconds: 40,
+      timeoutHalfSeconds: 90,
+      timeoutHalfFromBall: 35,
+      timeoutGameSeconds: 150,
+      defenseTimeoutSeconds: 180,
+      /** Leads after a late touchdown (before the try) where coaches go for two. */
+      goForTwoLate: [-2, -5, -10, 1, 5, -9, -12, -16],
+      twoPointPerPoint: 0.01,
+      defensiveTry: 0.01,
+      onsideSeconds: 180,
+      onsideMaxDeficit: 16,
+      onsideChance: 0.9,
+      onsideYards: 12,
+      // Protection and passing
+      blitzRushers: 5,
+      blitzPickup: 1.5,
+      cohesionLogit: 10,
+      sliderLogit: 1,
+      sliderPoints: 5,
+      screenPressure: 0.35,
+      playActionPressure: 1.1,
+      senseSack: { paranoid: -0.3, triggerHappy: -0.1, ideal: -0.2, average: 0, oblivious: 0.35 },
+      scramblerFactor: 1.8,
+      pocketFactor: 0.5,
+      paranoidThrowAway: 0.06,
+      creditSpread: 6,
+      sackYards: [4, 9],
+      stripSack: 0.11,
+      stripLost: 0.55,
+      scrambleMin: 3,
+      scrambleBurst: 0.08,
+      scrambleFloor: -1,
+      scrambleOutOfBounds: 0.35,
+      minTargetShare: 0.02,
+      uncovered: 12,
+      pressWeight: 0.5,
+      playActionSeparation: 2.5,
+      blitzSeparation: 2.5,
+      cohesionSeparation: 20,
+      /** How much target choice follows separation, per rating point. */
+      openness: 0.06,
+      // prettier-ignore
+      deepFavor: { X: 1.5, Z: 1.5, SLOT: 0.7, EXTRA: 0.8, TE1: 0.5, TE2: 0.3, RB1: 0.1, RB2: 0.1, FB: 0.05 },
+      // prettier-ignore
+      screenFavor: { X: 0.8, Z: 0.6, SLOT: 1.3, EXTRA: 0.6, TE1: 0.6, TE2: 0.3, RB1: 3, RB2: 3, FB: 0.5 },
+      poiseWeight: 0.4,
+      calmMph: 10,
+      playsBallLogit: 0.15,
+      intSeparation: 0.02,
+      contestedSep: -3,
+      handsWeight: 0.02,
+      playActionLogit: 0.15,
+      /** Inside the 20 the field compresses: harder completions and more stuffed runs near the goal. */
+      redZoneCompletion: -0.45,
+      goalLineStuff: 0.6,
+      dropsTrait: 2.5,
+      wetDrops: 1.5,
+      breakupShare: 0.35,
+      yacFloor: 1,
+      yacPerPoint: 0.025,
+      yacTrait: 1.12,
+      openFieldYards: 8,
+      stripsLogit: 0.35,
+      intReturnMean: 9,
+      // Running
+      leadWeight: 0.5,
+      teBlockWeight: 0.6,
+      safetyBoxWeight: 0.5,
+      penetrationLogit: 0.4,
+      runMeanFloor: 1.5,
+      carrierYardsPerPoint: 0.05,
+      efficiencyYards: 3,
+      breakawayStart: 6,
+      coversBall: { never: 0.55, onBigHits: 0, onMediumHits: -0.15, forAllHits: -0.3, always: -0.45 },
+      // Kicking
+      longKick: 40,
+      coldF: 35,
+      puntWind: 0.5,
+      puntPerPoint: 0.25,
+      puntAltitude: 3,
+      blockedPuntLoss: 8,
+      returnPerPoint: 0.25,
+      returnTdPunt: 0.004,
+      kickoffPowerShift: 0.004,
+      kickoffSliderShift: 0.3,
+      freeKickLanding: 45,
+      // Penalties and injuries
+      cohesionPenalty: 15,
+      linemenExposed: 2,
+      injuryWeeks: { minor: [0, 0], short: [1, 2], medium: [3, 6], season: [8, 17] },
+      minorOutPlays: [4, 20]
+    },
+    /** The game clock (spec 8.3 step 8): seconds for plays and between snaps, and limits. */
+    clock: {
+      twoMinute: 120,
+      fiveMinutes: 300,
+      playSeconds: [5, 8],
+      runoff: { normal: 34, hurry: 13, milk: 39 },
+      tempoSpread: 14,
+      clockWaste: 6,
+      kneelSeconds: 40,
+      kneelPlaySeconds: 2,
+      kickSeconds: 5,
+      returnSeconds: 6,
+      penaltySeconds: 0,
+      hurryDelay: 1.5,
+      hurryFatigue: 0.25,
+      heatAboveF: 80,
+      heatScale: 20,
+      altitudeFt: 5000,
+      subMargin: 8,
+      /** A safety valve against endless loops; a real game has about 160 snaps and kicks. */
+      maxPlays: 600
+    },
+    /** Weather (spec 17.2): wind, rain, snow, heat, and altitude effects. */
+    heatFatigue: 0.25,
+    altitudeFatigue: 0.2,
+    wetPassLogit: -0.15,
+    windDeepLogitPerMph: -0.02,
+    wetRunShift: 0.06
+  },
+
+  /**
    * Coordinator mismatch (spec 7.6): penalties per unit of scheme distance. Named schemes sit 0.1 to 0.36
    * apart, so the most different pair costs about 18% of play calling and development and 18 morale.
    */

@@ -55,3 +55,22 @@ function build(position: Position): PositionReference {
 export const REFERENCES: Record<Position, PositionReference> = Object.fromEntries(
   POSITIONS.map(p => [p, build(p)])
 ) as Record<Position, PositionReference>;
+
+/**
+ * The typical starter's ratings: the typical player lifted by the generator's starter quality (spec 10.2
+ * latent quality). The sim measures action edges from here, so an average starter plays at league rates.
+ */
+export function starterRatings(position: Position): Ratings {
+  const L = TUNING.league;
+  const special = position === 'K' || position === 'P' || position === 'LS';
+  const quality =
+    (special ? L.specialistQuality : L.starterQuality) + (position === 'QB' ? L.qbStarterBonus : 0);
+  const template = TEMPLATES[position];
+  const typical = REFERENCES[position].typical;
+  const ratings = {} as Ratings;
+  for (const key of RATING_KEYS) {
+    const [, sd, loading] = template.ratings[key];
+    ratings[key] = typical[key] + sd * loading * quality;
+  }
+  return ratings;
+}
