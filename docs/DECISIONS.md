@@ -11,3 +11,9 @@
 - Decision: The 2026 cap is $301,200,000 per club (NFL announcement, February 27, 2026). 2026 minimum salaries are $885K to $1.3M by credited seasons; practice squad pay is $13,750 a week, $18,350 to $22,850 for veterans.
 - Why: The build order's no-CSV path says to look up the real 2026 cap; the CBA sets the minimums.
 - Revisit if: the Madden CSV carries a different cap, or the user sets one at league creation.
+
+## D-3: The last opened league lives in IndexedDB
+- When: 2026-09-25, M2
+- Decision: The pointer to the last opened league is a record in the saves database's `app` store, written in an awaited transaction and cleared in the same transaction that deletes that league. Layout, theme, and density preferences stay in `localStorage`.
+- Why: Spec 2.3 lists the last opened league as a `localStorage` preference, but Chromium flushes `localStorage` to disk asynchronously, so a reload right after opening a league could forget it (the M2 reload test caught this).
+- Revisit if: n/a
