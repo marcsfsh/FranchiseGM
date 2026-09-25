@@ -196,12 +196,12 @@ export const TUNING = {
      * Cap parity (D-19): a roster's starters more than balanceFrom above or below typical (average latent
      * quality, the quarterback counting balanceQbWeight times) keep only balanceKeep of the excess.
      */
-    balanceFrom: 0.15,
-    balanceKeep: 0.3,
+    balanceFrom: 0.1,
+    balanceKeep: 0.2,
     balanceQbWeight: 4,
     starBonus: [0.8, 1.7],
     /** The sd of a uniform team strength offset. */
-    teamSpread: 0.15,
+    teamSpread: 0.2,
     /** Quality [mean, sd] for the first, second, and deeper backups at a position. */
     depthQuality: [
       [-0.15, 0.6],
@@ -543,7 +543,7 @@ export const TUNING = {
     kickoffShort: 0.015,
     kickoffLandingRollTouchback: 0.03,
     kickoffLanding: [0, 10],
-    kickReturnMean: 24.5,
+    kickReturnMean: 24,
     kickReturnSd: 7,
     returnTouchdown: 0.007,
     onsideRecovery: 0.12,
@@ -807,8 +807,8 @@ export const TUNING = {
       bootlegPerOutsideZone: 0.6,
       /** Inside the 20 the field compresses: harder completions, and more stuffed runs inside
        * goalLineStuffYards. */
-      redZoneCompletion: -1.25,
-      goalLineStuff: 0.75,
+      redZoneCompletion: -1.3,
+      goalLineStuff: 1.2,
       goalLineStuffYards: 5,
       dropsTrait: 2.5,
       wetDrops: 1.5,

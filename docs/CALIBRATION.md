@@ -37,3 +37,11 @@ Tuning changes, newest last. Each entry names the constants in `src/engine/tunin
 ## C-9: Home field, pace, penalties, and fit (M6, 2026-09-25)
 - Change: `homeCrowd` 0.5 to 0.65; `runGainMean` 4.52, `breakaway` 0.06, `brokenTackle` 0.065; penalty rates (pass interference 0.021, roughing the passer 0.0145, unnecessary roughness 0.0095); `fitPoints` 0.5 to 0.7; Air Raid pass rates 0.02 to 0.04 lower (`src/engine/schemes/catalog.ts`).
 - Effect: home field +1.3 to +1.7 points, penalty yards 44 to 47, fit effect 3.7% to 7.3%, passing yards leader 5,484 to about 5,300; 100-season run: every game-level and stat metric passes.
+
+## C-10: Touchdowns near the goal line and kick returns (M6, 2026-09-25)
+- Change: `goalLineStuff` 0.75 to 1.2, `kickReturnMean` 24.5 to 24, `redZoneCompletion` -1.25 to -1.3.
+- Effect: points per team 23.4 to 23.1 and blowouts 25% to 24% in the same leagues, with completions and yards per carry unchanged; moves scoring off the band's ceiling.
+
+## C-11: Tighter roster balance with a wider team offset (M6, 2026-09-25)
+- Change: `league.balanceFrom` 0.15 to 0.1, `balanceKeep` 0.3 to 0.2, `teamSpread` 0.15 to 0.2: fewer runaway rosters, and a little more spread among the rest.
+- Effect: in 48 seasons over 24 leagues, perfect or winless teams 6.3 to 2.1 per 100 seasons, win sd 2.79 to 2.92, favorites 65.4% to 66.2%, team rating sd 4.35 to 4.65; 100-season runs pass all 63 targets on seed 1 (5 perfect or winless per 100, down from 8) and seed 2 (3).

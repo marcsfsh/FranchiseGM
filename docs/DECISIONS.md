@@ -110,7 +110,7 @@
 
 ## D-19: Cap parity in generated rosters
 - When: 2026-09-25, M6
-- Decision: The fictional league generator draws every roster slot's quality, measures the starters against a typical starting lineup (the quarterback counting four times), and moves the whole roster so a team more than 0.15 quality units from typical keeps only 30% of the excess; the team strength offset is uniform with sd 0.15.
+- Decision: The fictional league generator draws every roster slot's quality, measures the starters against a typical starting lineup (the quarterback counting four times), and moves the whole roster so a team more than 0.1 quality units from typical keeps only 20% of the excess; the team strength offset is uniform with sd 0.2 (C-1, C-11).
 - Why: Spec 10.2 item 4 fits generated rosters under the cap, which keeps any team from stacking talent everywhere; normal-tailed rosters produced about 11 perfect or winless teams per 100 seasons against spec 23.2's "a handful at most".
 - Revisit if: M8's cap and M12's free agency shape rosters from real contracts.
 
