@@ -12,16 +12,14 @@
  */
 import type { ClimateTable } from '../../data/climate';
 import { TEAM_ABBRS, TEAM_COLORS, type TeamAbbr } from '../../data/team-colors';
-import { decideDepthChart } from '../ai/decisions/depth-chart';
 import { capCompliance, cutdown, freeAgencySignings, offseasonClaims } from '../ai/decisions/offseason';
 import { resignDecisions } from '../ai/decisions/resign';
 import { fillPracticeSquad, waiverClaims } from '../ai/decisions/roster-moves';
 import type { DecisionLog } from '../ai/framework';
-import { dressable } from '../ai/weekly';
 import type { NameData } from '../generate/player';
 import { draftOrder, rookieReserve, signUndrafted, standInDraft } from '../generate/rookies';
 import { windowDecisions } from '../contracts/resign';
-import { orderOf } from '../league/depth';
+import { depthChanges, startersByTeam, type DepthChange } from '../league/depth-changes';
 import { openLeagueYear } from '../league/league-year';
 import { capSheet, seasonSpace } from '../cap/sheet';
 import { activeRoster, freeAgents, type TransactionKind } from '../league/transactions';
@@ -32,14 +30,14 @@ import type { RatingChange } from '../progression/change';
 import { campDevelopment, coachTraining } from '../progression/develop';
 import { retirePlayers } from '../progression/retirement';
 import { programOf } from '../progression/training';
-import { advanceLeagueRandom, leagueStream, stream, type AdvanceInput, type Rng } from '../rng';
+import { advanceLeagueRandom, leagueStream, stream, type AdvanceInput } from '../rng';
 import { activeLimit } from '../roster/rules';
 import { processWaivers, waiverOrder, type WaiverResult } from '../roster/waivers';
 import type { GameResult } from '../sim/types';
 import type { GameMeta } from '../stats/record';
 import { dollars, plural } from '../text';
 import { TUNING } from '../tuning';
-import { campInjuries, playPreseasonWeek, positionBattles, preseasonSchedule } from './camp';
+import { campInjuries, playPreseasonWeek, positionBattles, preseasonSchedule, setDepthCharts } from './camp';
 import { generateSchedule } from './generate-schedule';
 import { addToInbox, pausing, type InboxItem, type PauseEvent } from './inbox';
 import { applyInjuries, healWeek } from './injuries';
@@ -109,6 +107,8 @@ export interface StepOutcome {
   ratings: RatingChange[];
   /** Preseason games played this step, for history. */
   games: { result: GameResult; meta: GameMeta }[];
+  /** Starting jobs that changed hands this step, with reasons (post-M42 section 1.1). */
+  depth: DepthChange[];
   /** What the user must do before the league can move on; null when the step happened. */
   blocked: string | null;
 }
@@ -126,25 +126,6 @@ const RESIGN_WORDS: Partial<Record<TransactionKind, string>> = {
 /** The teams the AI runs this step: all but the user's, unless the user's roster management is on auto. */
 const aiTeams = (league: League): TeamAbbr[] =>
   TEAM_ABBRS.filter(t => league.settings.auto.roster || t !== league.meta.start.userTeam);
-
-/**
- * Depth charts for the rosters as they stand (spec 4.1's OTAs): every chart on auto, set as the coming
- * season's first week would set it (the same per-team streams as the weekly management).
- */
-function setDepthCharts(league: League, season: number): DecisionLog[] {
-  const user = league.meta.start.userTeam;
-  const seasonRng = stream(league.random.baseSeed, 'ai', season);
-  const streams = new Map(TEAM_ABBRS.map(abbr => [abbr, seasonRng.fork(abbr)] as const));
-  const logs: DecisionLog[] = [];
-  for (const abbr of TEAM_ABBRS) {
-    const team = league.teams[abbr];
-    if (abbr === user && !team.depth.auto) continue;
-    const depth = decideDepthChart(league, abbr, dressable(league, abbr), streams.get(abbr) as Rng);
-    team.depth.order = orderOf(depth.starters);
-    logs.push(...depth.logs);
-  }
-  return logs;
-}
 
 /** A preseason result from the user's side: "You beat the Bears 24-17". */
 function preseasonWords(result: GameResult, user: TeamAbbr): string {
@@ -212,7 +193,7 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
   const step = offseasonStep(from);
   if (step === 0) throw new Error(`The ${from.phase} phase isn't part of the offseason.`);
   const blocked = offseasonBlock(league);
-  if (blocked) return { league, decisions: [], news: [], inbox: [], pauses: [], ratings: [], games: [], blocked }; // prettier-ignore
+  if (blocked) return { league, decisions: [], news: [], inbox: [], pauses: [], ratings: [], games: [], depth: [], blocked }; // prettier-ignore
   const to = nextStep(from);
   const user = league.meta.start.userTeam;
   const rng = (key: string) => leagueStream(league.random, 'offseason', step, key);
@@ -222,6 +203,7 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
   const decisions: DecisionLog[] = [];
   const ratings: RatingChange[] = [];
   const games: StepOutcome['games'] = [];
+  const depth: DepthChange[] = [];
   /** A step's week on the league's timeline, after the regular season and the playoffs. */
   const timeline = (date: GameDate) =>
     league.rules.season.weeks + PLAYOFF_PHASES.length + offseasonStep(date);
@@ -396,21 +378,27 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     league.date = { ...to };
     coachTraining(league);
     ratings.push(...campDevelopment(league, rng('camp')));
-    const battles = positionBattles(league, rng('battles'));
-    for (const b of battles) if (b.change) ratings.push(b.change);
     const hurt = campInjuries(league, rng('campInjuries'));
     ratings.push(...applyInjuries(league, hurt, to.season, timeline(to), rng('campCareer')));
-    decisions.push(...setDepthCharts(league, to.season + 1));
+    // The coaches chart the healthy rosters, and the battles decide the close jobs on those charts.
+    const before = startersByTeam(league);
+    decisions.push(...setDepthCharts(league, stream(league.random.baseSeed, 'ai', to.season + 1)));
+    const battles = positionBattles(league, rng('battles'));
+    for (const b of battles) if (b.change) ratings.push(b.change);
+    const upsets = new Set(battles.filter(b => b.upset).map(b => `${b.team} ${b.slot}`));
+    for (const c of depthChanges(league, before))
+      depth.push(upsets.has(`${c.team} ${c.slot}`) ? { ...c, reason: 'camp' } : c);
     const weeks = OFFSEASON_PHASES.find(([phase]) => phase === 'preseason')?.[1] ?? 0;
     league.preseason = { games: preseasonSchedule(to.season, weeks, rng('preseasonSchedule')), results: {} };
     const won = battles.filter(b => b.team === user);
+    const manual = !league.teams[user].depth.auto && won.some(b => b.upset);
     if (won.length)
-      messages.push({ kind: 'roster', title: `Camp battles decided at ${plural(won.length, 'position')}`, body: `${won.map(b => `${b.position}: ${named(b.winner)} ${b.upset ? 'won the job from' : 'held off'} ${fullName(b.loser)}`).join('. ')}.`, players: won.map(b => b.winner.id) }); // prettier-ignore
+      messages.push({ kind: 'roster', title: `${plural(won.length, 'camp battle')} for starting jobs`, body: `${won.map(b => `${b.winner.position}: ${named(b.winner)} ${b.upset ? 'won the job from' : 'held off'} ${fullName(b.loser)}`).join('. ')}.${manual ? ' Your depth chart is yours to set: start the winners on the Depth chart screen.' : ''}`, players: won.map(b => b.winner.id) }); // prettier-ignore
     const mine = hurt.filter(e => e.team === user).map(e => ({ e, p: league.players[e.playerId] })).filter((x): x is { e: (typeof hurt)[number]; p: Player } => !!x.p); // prettier-ignore
     if (mine.length)
       messages.push({ kind: 'injury', title: `${plural(mine.length, 'player')} hurt at camp`, body: `${mine.map(({ e, p }) => `${named(p)}: ${e.bodyPart}, out ${plural(e.weeks, 'week')}`).join('. ')}.`, players: mine.map(({ p }) => p.id) }); // prettier-ignore
     for (const b of battles)
-      if (b.upset && b.position === 'QB')
+      if (b.upset && b.winner.position === 'QB')
         headline('transaction', `${named(b.winner)} wins the ${nick(b.team)} quarterback job`, [b.team], [b.winner.id], b.winner.ovr); // prettier-ignore
     for (const e of hurt) {
       const p = league.players[e.playerId];
@@ -431,7 +419,9 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     // OTAs and minicamp (spec 4.1): the staffs set each auto plan and depth chart for the new rosters.
     league.date = { ...to };
     coachTraining(league);
-    decisions.push(...setDepthCharts(league, to.season + 1));
+    const before = startersByTeam(league);
+    decisions.push(...setDepthCharts(league, stream(league.random.baseSeed, 'ai', to.season + 1)));
+    depth.push(...depthChanges(league, before));
     const plan = league.teams[user].training;
     messages.push({
       kind: 'roster',
@@ -470,6 +460,7 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     pauses: pausing(inbox, league.settings.pause),
     ratings,
     games,
+    depth,
     blocked: null
   };
 }

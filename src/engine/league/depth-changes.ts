@@ -10,9 +10,9 @@ import type { League } from './types';
 
 /**
  * Why a starter changed: the old one was hurt, rested, or off the active roster; the new one is back from
- * an injury; or the coach chose him.
+ * an injury; he won a camp battle for the job; or the coach chose him.
  */
-export type DepthReason = 'injury' | 'rest' | 'roster' | 'return' | 'coach';
+export type DepthReason = 'injury' | 'rest' | 'roster' | 'return' | 'camp' | 'coach';
 
 export interface DepthChange {
   team: TeamAbbr;

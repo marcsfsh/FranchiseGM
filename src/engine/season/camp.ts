@@ -1,71 +1,121 @@
 /**
- * Training camp and the preseason (spec 4.1): position battles for the last starting spot at each
- * position, camp injuries, and three weeks of games that don't count, with each team's projected starters
- * resting. Camp's development comes from src/engine/progression/develop.ts (D-30).
+ * Training camp and the preseason (spec 4.1): the depth charts for the rosters as they stand, position
+ * battles for the starting jobs on them, camp injuries, and three weeks of games that don't count, with each
+ * team's starters resting. Camp's development comes from src/engine/progression/develop.ts (D-30).
  */
 import type { ClimateTable } from '../../data/climate';
 import type { ScheduledGame } from '../../data/schedule';
 import { homeStadium } from '../../data/teams';
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
+import { decideDepthChart } from '../ai/decisions/depth-chart';
+import type { DecisionLog } from '../ai/framework';
+import { dressable } from '../ai/weekly';
+import { recipeFor, roleRating } from '../fit/role-rating';
+import { orderOf } from '../league/depth';
+import { leagueFitContext } from '../league/fit';
 import type { League } from '../league/types';
 import { calendarDay } from '../model/calendar';
 import type { Player } from '../model/player';
-import type { Position } from '../model/positions';
 import { changeRatings, type RatingChange } from '../progression/change';
 import { keyRatings } from '../progression/training';
 import type { Rng } from '../rng';
+import { DEFENSE_SLOTS, OFFENSE_SLOTS, type Slot } from '../schemes/slots';
 import { BODY_PARTS } from '../sim/game';
 import { gameSetup, simulateGame } from '../sim';
+import { depthChart } from '../sim/setup';
 import type { GameResult, InjuryEvent } from '../sim/types';
 import type { GameMeta } from '../stats/record';
 import { TUNING } from '../tuning';
 
 const C = TUNING.camp;
+const SLOTS: readonly Slot[] = [...OFFENSE_SLOTS, ...DEFENSE_SLOTS];
 
-/** A team's healthy active players at each position, best first. */
-function byPosition(league: League, abbr: TeamAbbr): Map<Position, Player[]> {
-  const groups = new Map<Position, Player[]>();
-  for (const p of Object.values(league.players)) {
-    if (p.team !== abbr || p.status !== 'active' || (p.injury?.weeksOut ?? 0) > 0) continue;
-    groups.set(p.position, [...(groups.get(p.position) ?? []), p]);
+/**
+ * Sets every depth chart on auto for the rosters as they stand, as the coming season's first week would
+ * set it: pass that season's AI stream, so each team draws from the same fork as its weekly management
+ * (spec 12.2).
+ */
+export function setDepthCharts(league: League, seasonRng: Rng): DecisionLog[] {
+  const user = league.meta.start.userTeam;
+  const logs: DecisionLog[] = [];
+  for (const abbr of TEAM_ABBRS) {
+    const team = league.teams[abbr];
+    if (abbr === user && !team.depth.auto) continue;
+    const depth = decideDepthChart(league, abbr, dressable(league, abbr), seasonRng.fork(abbr));
+    team.depth.order = orderOf(depth.starters);
+    logs.push(...depth.logs);
   }
-  for (const list of groups.values()) list.sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
-  return groups;
+  return logs;
+}
+
+/** A team's starting offense and defense as a game would field them: its depth chart, filled out by role. */
+function fieldedStarters(
+  league: League,
+  abbr: TeamAbbr,
+  roster: readonly Player[]
+): Partial<Record<Slot, string>> {
+  const depth = depthChart(roster, leagueFitContext(league, abbr), {}, league.teams[abbr].depth.order);
+  const starters: Partial<Record<Slot, string>> = {};
+  for (const slot of SLOTS) {
+    const id = depth[slot]?.[0];
+    if (id) starters[slot] = id;
+  }
+  return starters;
 }
 
 export interface Battle {
   team: TeamAbbr;
-  position: Position;
+  slot: Slot;
   winner: Player;
   loser: Player;
-  /** The backup won the job. */
+  /** The challenger won the job. */
   upset: boolean;
   change: RatingChange | null;
 }
 
 /**
- * Position battles (spec 4.1): where the last starter at a position and the best backup are within
- * `battleGap` overall points, they compete through camp. The backup wins with `battleOdds` less
- * `battleEdge` for each point he trails by; the winner takes the first-team snaps, which add
- * `battleBump` to each of his position's `battleRatings` most important ratings.
+ * Position battles (spec 4.1) for the starting jobs on each depth chart: at every slot where the best
+ * player not starting anywhere is within `battleGap` role rating points of the starter, they compete
+ * through camp. The challenger wins at `battleOdds` less `battleEdge` for each point he trails by (more when
+ * he's ahead). The winner takes the first-team snaps, which add `battleBump` to his position's
+ * `battleRatings` most important ratings, and the job: an auto chart starts him from then on, and the
+ * weekly charts keep him for his incumbency. The user's own chart is theirs to change. `teams` narrows the
+ * camps held, for tests.
  */
-export function positionBattles(league: League, rng: Rng): Battle[] {
+export function positionBattles(league: League, rng: Rng, teams: readonly TeamAbbr[] = TEAM_ABBRS): Battle[] {
+  const user = league.meta.start.userTeam;
   const battles: Battle[] = [];
-  for (const abbr of TEAM_ABBRS) {
+  for (const abbr of teams) {
     const teamRng = rng.fork(abbr);
-    for (const [position, list] of byPosition(league, abbr)) {
-      const starters = C.starters[position];
-      const holder = list[starters - 1];
-      const challenger = list[starters];
-      if (!starters || !holder || !challenger || holder.ovr - challenger.ovr > C.battleGap) continue;
-      const upset = teamRng.chance(Math.max(0, C.battleOdds - C.battleEdge * (holder.ovr - challenger.ovr)));
+    const team = league.teams[abbr];
+    const roster = dressable(league, abbr);
+    const starters = fieldedStarters(league, abbr, roster);
+    const starting = new Set(Object.values(starters));
+    const ctx = leagueFitContext(league, abbr);
+    for (const slot of SLOTS) {
+      const holder = starters[slot] ? league.players[starters[slot] as string] : undefined;
+      if (!holder) continue;
+      const eligible = recipeFor(ctx, slot).eligible;
+      const rating = (p: Player) => roleRating(p, slot, ctx).rating;
+      const challenger = roster
+        .filter(p => !starting.has(p.id) && eligible.includes(p.position))
+        .sort((a, b) => rating(b) - rating(a) || (a.id < b.id ? -1 : 1))[0];
+      const gap = challenger ? rating(holder) - rating(challenger) : Infinity;
+      if (!challenger || gap > C.battleGap) continue;
+      const upset = teamRng.chance(Math.min(1, Math.max(0, C.battleOdds - C.battleEdge * gap)));
       const [winner, loser] = upset ? [challenger, holder] : [holder, challenger];
-      const deltas = Object.fromEntries(keyRatings(position).slice(0, C.battleRatings).map(k => [k, C.battleBump]));
+      const deltas = Object.fromEntries(keyRatings(winner.position).slice(0, C.battleRatings).map(k => [k, C.battleBump]));
       const before = winner.ovr;
-      const change = changeRatings(winner, deltas, 'camp', league.date, [{ id: 'battle', amount: 0 }]);
+      const change = changeRatings(winner, deltas, 'camp', league.date);
       if (change) change.drivers = [{ id: 'battle', amount: winner.ovr - before }];
-      battles.push({ team: abbr, position, winner, loser, upset, change });
+      if (upset) {
+        starters[slot] = challenger.id;
+        starting.delete(holder.id);
+        starting.add(challenger.id);
+      }
+      battles.push({ team: abbr, slot, winner, loser, upset, change });
     }
+    if (abbr !== user || team.depth.auto) team.depth.order = orderOf(starters);
   }
   return battles;
 } // prettier-ignore
@@ -154,16 +204,20 @@ function pairUp(order: TeamAbbr[], met: ReadonlySet<string>): [TeamAbbr, TeamAbb
 }
 
 /**
- * Each team's projected starters, who rest through the preseason: the best at each position up to its
- * starters, leaving at least that many to play it.
+ * Each team's starters, who rest through the preseason: every starter the team would field who has a
+ * healthy player at his position not starting, so the backups can field the lineup.
  */
 export function restingStarters(league: League): Set<string> {
   const resting = new Set<string>();
-  for (const abbr of TEAM_ABBRS)
-    for (const [position, list] of byPosition(league, abbr)) {
-      const n = Math.min(C.starters[position], list.length - C.starters[position]);
-      for (const p of list.slice(0, Math.max(0, n))) resting.add(p.id);
+  for (const abbr of TEAM_ABBRS) {
+    const roster = dressable(league, abbr);
+    const starting = new Set(Object.values(fieldedStarters(league, abbr, roster)));
+    for (const id of starting) {
+      const starter = league.players[id];
+      if (starter && roster.some(p => !starting.has(p.id) && p.position === starter.position))
+        resting.add(id);
     }
+  }
   return resting;
 }
 

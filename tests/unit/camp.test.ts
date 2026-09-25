@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TEAM_ABBRS } from '../../src/data/team-colors';
+import { startersOf } from '../../src/engine/league/depth';
+import type { DepthChange } from '../../src/engine/league/depth-changes';
 import type { League } from '../../src/engine/league/types';
 import type { GameDate } from '../../src/engine/model/calendar';
 import type { Player } from '../../src/engine/model/player';
@@ -9,10 +11,10 @@ import {
   playPreseasonWeek,
   positionBattles,
   preseasonSchedule,
-  restingStarters
+  restingStarters,
+  setDepthCharts
 } from '../../src/engine/season/camp';
 import { advanceOffseason } from '../../src/engine/season/offseason';
-import { TUNING } from '../../src/engine/tuning';
 import { nameData } from '../helpers/base-data';
 import { situationLeague } from '../helpers/situations';
 
@@ -29,39 +31,52 @@ const qbs = (league: League, abbr: string): Player[] =>
     .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
 
 describe('position battles (spec 4.1)', () => {
-  it('pits close starters against their backups, and the winner takes first-team snaps', () => {
+  /** Kansas City at camp with its two best quarterbacks even, and its chart set by its coach. */
+  const evenQbs = () => {
     const league = fresh('trainingCamp');
-    const [starter, backup] = qbs(league, 'MIN') as [Player, Player];
-    backup.ratings = { ...starter.ratings };
-    backup.ovr = starter.ovr;
-    const battles = positionBattles(league, stream(1, 'battles'));
-    const qb = battles.find(b => b.team === 'MIN' && b.position === 'QB');
+    const [starter, backup] = qbs(league, 'KC') as [Player, Player];
+    Object.assign(backup, { ratings: { ...starter.ratings }, ovr: starter.ovr });
+    setDepthCharts(league, stream(league.random.baseSeed, 'ai', 2027));
+    return { league, starter, backup };
+  };
+
+  it('pits a starter against the best player not starting, and the winner takes the job', () => {
+    const { league, starter, backup } = evenQbs();
+    const qb = positionBattles(league, stream(1, 'battles'), ['KC']).find(b => b.slot === 'QB');
     expect(qb).toBeDefined();
-    expect([starter.id, backup.id].sort()).toEqual([qb?.winner.id, qb?.loser.id].sort());
-    expect(qb?.change?.cause).toBe('camp');
-    expect(qb?.change?.drivers[0]?.id).toBe('battle');
-    // A starter far ahead has no battle.
-    const far = fresh('trainingCamp');
-    const [top, next] = qbs(far, 'MIN') as [Player, Player];
-    next.ovr = top.ovr - TUNING.camp.battleGap - 1;
-    expect(positionBattles(far, stream(1, 'battles')).some(b => b.team === 'MIN' && b.position === 'QB')).toBe(false);
+    expect([qb?.winner.id, qb?.loser.id].sort()).toEqual([starter.id, backup.id].sort());
+    expect(startersOf(league.teams.KC.depth.order).QB).toBe(qb?.winner.id);
+    expect(qb?.change).toMatchObject({ cause: 'camp', drivers: [{ id: 'battle' }] });
+    // A starter well ahead has no battle.
+    const far = evenQbs();
+    for (const k of Object.keys(far.backup.ratings) as (keyof Player['ratings'])[]) far.backup.ratings[k] = Math.max(0, far.backup.ratings[k] - 15);
+    expect(positionBattles(far.league, stream(1, 'battles'), ['KC']).some(b => b.slot === 'QB')).toBe(false);
   }); // prettier-ignore
 
-  it('lets the backup win about half the even battles', () => {
-    // One league: each time, the two quarterbacks start even again and the camp draws its own stream.
-    const league = fresh('trainingCamp');
-    const [starter, backup] = qbs(league, 'MIN') as [Player, Player];
+  it('lets the challenger win about half the even battles', () => {
+    // One league: each time, the quarterbacks start even and the chart as the coach set it.
+    const { league, starter, backup } = evenQbs();
     const even = { ...starter.ratings };
-    const ovr = starter.ovr;
+    const { ovr } = starter;
+    const order = structuredClone(league.teams.KC.depth.order);
     let upsets = 0;
     for (let i = 0; i < 200; i++) {
       for (const p of [starter, backup]) Object.assign(p, { ratings: { ...even }, ovr });
-      const qb = positionBattles(league, stream(i, 'battles')).find(b => b.team === 'MIN' && b.position === 'QB');
-      if (qb?.upset) upsets++;
+      league.teams.KC.depth.order = structuredClone(order);
+      if (positionBattles(league, stream(i, 'battles'), ['KC']).find(b => b.slot === 'QB')?.upset) upsets++;
     }
     expect(upsets).toBeGreaterThan(70);
     expect(upsets).toBeLessThan(130);
-  }); // prettier-ignore
+  });
+
+  it("leaves the user's own chart alone", () => {
+    const league = fresh('trainingCamp');
+    const user = league.meta.start.userTeam;
+    league.teams[user].depth.auto = false;
+    const order = structuredClone(league.teams[user].depth.order);
+    positionBattles(league, stream(2, 'battles'), [user]);
+    expect(league.teams[user].depth.order).toEqual(order);
+  });
 });
 
 describe('camp injuries (spec 4.1, 10.8)', () => {
@@ -115,10 +130,15 @@ describe('the preseason (spec 4.1)', () => {
     const league = fresh('otas');
     league.settings.auto.roster = true;
     const games: unknown[] = [];
+    const won: DepthChange[] = [];
     for (let i = 0; league.date.phase !== 'cutdown'; i++) {
       const step = advanceOffseason(league, { names: nameData(), climate: null }, { actions: 0, entropy: i });
       games.push(...step.games);
+      if (league.date.phase === 'trainingCamp') won.push(...step.depth.filter(c => c.reason === 'camp'));
     }
+    // Camp battles the challengers won are depth chart changes, and the winners start.
+    expect(won.length).toBeGreaterThan(0);
+    for (const c of won) expect(startersOf(league.teams[c.team].depth.order)[c.slot]).toBe(c.playerId);
     expect(games).toHaveLength(48);
     expect(Object.keys(league.preseason?.results ?? {})).toHaveLength(48);
     expect(league.inbox.some(m => m.title.startsWith('Preseason, week 1:'))).toBe(true);
