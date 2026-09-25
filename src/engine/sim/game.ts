@@ -1258,14 +1258,23 @@ class GameSim {
     ); // prettier-ignore
   }
 
+  /** The last two minutes of a half, when the plan's two-minute balance takes over. */
+  private get twoMinuteDrill(): boolean {
+    return (this.quarter === 2 || this.quarter === 4) && this.clock <= C.hurryHalfSeconds;
+  }
+
   private callPlay(): Call {
     const team = this.teams[this.offense];
     const t = team.tendencies.offense;
+    const bucket = DOWN_BUCKETS(this.down, this.distance);
+    // The plan's balance for the situation (spec 8.7): the red zone, then the two-minute drill, then the down.
+    const situation = this.inRedZone ? 'redZone' : this.twoMinuteDrill ? 'twoMinute' : bucket;
     let pass =
-      t.passRate[DOWN_BUCKETS(this.down, this.distance)] +
+      t.passRate[bucket] +
       S.passRateShift +
       team.lean +
       team.plan.passLean +
+      (team.plan.situations?.[situation] ?? 0) +
       this.adjust[this.offense];
     const goal = 100 - this.ball;
     const deficit = -this.margin;

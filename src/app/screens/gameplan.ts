@@ -9,7 +9,7 @@ import { scoutingReport, type ScoutedPlayer, type ScoutingReport } from '../../e
 import type { League } from '../../engine/league/types';
 import { fullName, type Player } from '../../engine/model/player';
 import type { Position } from '../../engine/model/positions';
-import { PLAN_LIMITS, type GamePlan } from '../../engine/sim/plan';
+import { PLAN_LIMITS, PLAN_SITUATIONS, type GamePlan, type PlanSituation } from '../../engine/sim/plan';
 import { h, mount } from '../dom';
 import { gameDay, kickoff } from '../format';
 import { pageHead } from './common';
@@ -28,19 +28,34 @@ const DIALS: readonly { key: Dial; legend: string; hint: string; labels: readonl
   { key: 'nickel', legend: 'Defensive packages', hint: 'Extra defensive backs in place of linebackers.', labels: ['Base', 'Lean base', 'Normal', 'Lean nickel', 'Nickel and dime'] }
 ]; // prettier-ignore
 
-const settingsOf = (key: Dial): number[] => {
+const settingsOf = (key: Dial | 'situation'): number[] => {
   const [lo, hi] = PLAN_LIMITS[key];
   return [0, 1, 2, 3, 4].map(i => lo + ((hi - lo) * i) / 4);
 };
 
 /** The setting closest to a value. */
-const nearest = (key: Dial, value: number): number => {
+const nearest = (key: Dial | 'situation', value: number): number => {
   const settings = settingsOf(key);
   return settings.reduce(
     (best, v, i) => (Math.abs(v - value) < Math.abs((settings[best] ?? 0) - value) ? i : best),
     0
   );
 };
+
+/** The run and pass balance by down and distance, and in the red zone and two-minute drill (spec 8.7). */
+const SITUATION_DIALS: Record<PlanSituation, { legend: string; hint: string }> = {
+  first: { legend: 'First down', hint: 'First and 10, or any first down.' },
+  secondShort: { legend: 'Second and short', hint: '3 yards or less to go.' },
+  secondLong: { legend: 'Second and long', hint: '4 yards or more to go.' },
+  thirdShort: { legend: 'Third or fourth and short', hint: '3 yards or less to go.' },
+  thirdLong: { legend: 'Third or fourth and long', hint: '4 yards or more to go.' },
+  redZone: { legend: 'In the red zone', hint: 'Inside their 20, whatever the down.' },
+  twoMinute: {
+    legend: 'Two-minute drill',
+    hint: 'The last two minutes of either half, outside the red zone.'
+  }
+};
+const SITUATION_LABELS = ['Run more', 'Lean run', 'As planned', 'Lean pass', 'Pass more'] as const;
 
 /** The next game for a team: this week's, or the first one still to play. */
 function nextGame(league: League, abbr: TeamAbbr): ScheduledGame | null {
@@ -208,6 +223,27 @@ export function gamePlanScreen(): Screen {
           );
         };
 
+        const situationField = (situation: PlanSituation) => {
+          const dial = SITUATION_DIALS[situation];
+          const current = nearest('situation', team.plan.plan.situations[situation]);
+          const settings = settingsOf('situation');
+          return h(
+            'fieldset',
+            { class: 'plan-dial', 'aria-describedby': `situation-${situation}-hint` },
+            h('legend', { class: 'field-label' }, dial.legend),
+            h('p', { class: 'muted', id: `situation-${situation}-hint` }, dial.hint),
+            h('div', { class: 'seg' }, ...SITUATION_LABELS.map((label, i) => {
+              const input = h('input', { type: 'radio', name: `situation-${situation}`, value: String(i), checked: i === current });
+              input.addEventListener('change', () =>
+                change(plan => {
+                  plan.situations[situation] = settings[i] ?? 0;
+                }, `${dial.legend}: ${label}.`)
+              );
+              return h('label', null, input, label);
+            }))
+          ); // prettier-ignore
+        };
+
         const roster = (abbrOf: TeamAbbr, positions: readonly Position[]) =>
           Object.values(league.players)
             .filter(p => p.team === abbrOf && p.status === 'active' && positions.includes(p.position))
@@ -271,6 +307,17 @@ export function gamePlanScreen(): Screen {
           { class: 'card' },
           h('div', { class: 'signbar' }, h('h2', { class: 'signbar-title' }, 'The plan')),
           h('div', { class: 'card-body plan-dials' }, ...DIALS.map(dialField))
+        ),
+        h(
+          'section',
+          { class: 'card' },
+          h('div', { class: 'signbar' }, h('h2', { class: 'signbar-title' }, 'Balance by situation')),
+          h(
+            'div',
+            { class: 'card-body' },
+            h('p', { class: 'muted' }, 'Leans on top of the run and pass balance above. In the red zone and the two-minute drill, their setting takes over from the down\'s.'),
+            h('details', { class: 'box-more' }, h('summary', null, 'Set the balance by down and situation'), h('div', { class: 'plan-dials' }, ...PLAN_SITUATIONS.map(situationField)))
+          )
         ),
         h(
           'section',

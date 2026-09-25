@@ -2,11 +2,21 @@
  * What a team brings to a game beyond its roster and schemes: the week's game plan (spec 8.7) and its
  * rotations and packages (spec 12.3). The coaching staff sets them each week, or the user does.
  */
+import { DOWN_DISTANCES } from '../schemes/tendencies';
 import { TUNING } from '../tuning';
+
+/**
+ * Situations with their own run and pass balance (spec 8.7): each down and distance, then the red zone and
+ * the two-minute drill, which take over from the down's setting.
+ */
+export const PLAN_SITUATIONS = [...DOWN_DISTANCES, 'redZone', 'twoMinute'] as const;
+export type PlanSituation = (typeof PLAN_SITUATIONS)[number];
 
 export interface GamePlan {
   /** Added to the pass rate on every down: the run and pass balance for this opponent. */
   passLean: number;
+  /** Added to the pass rate on top of passLean in each situation (the red zone and two-minute drill replace the down's). */
+  situations: Record<PlanSituation, number>;
   /** Multiplies the blitz rate. */
   blitz: number;
   /** Added to the man coverage share. */
@@ -62,6 +72,7 @@ export const PLAN_LIMITS = TUNING.gamePlan.limits;
 
 export const NEUTRAL_PLAN: GamePlan = {
   passLean: 0,
+  situations: Object.fromEntries(PLAN_SITUATIONS.map(s => [s, 0])) as Record<PlanSituation, number>,
   blitz: 1,
   man: 0,
   press: 0,

@@ -14,7 +14,7 @@
 - Calibration metrics that need several seasons (repeat rates, droughts, dynasties, title spread) wait for the offseason (M10); cohesion and coaching (M13), facilities (M16), and locker room (M12) effects show as not measured yet.
 - The red zone touchdown band is wide until a sourced league average is found (calibration/targets.json).
 - Calibration replays use each head coach's auto depth chart and rotation and an AI game plan per game, and hurt players sit out while their backups dress, but nobody goes on injured reserve or gets signed, so every game stays independent (D-17, D-20).
-- Game plans v1 (spec 8.7) set one run and pass balance for every down, with no down-and-distance or situation (red zone, two-minute) settings and no formation shares; M9 finishes the game plan screen and M14 brings the rest to the AI's plans.
+- Game plans (spec 8.7) set the run and pass balance overall and by down and distance, with red zone and two-minute overrides, but formation shares aren't modeled (the sim knows personnel groupings, not formations). AI coordinators plan one balance for every situation until M14.
 - The generated free agent pool (300 players) can run short at a position late in a season; M10's offseason and M12's free agency refill it.
 - The news feed v1 covers results, upsets, big games, season milestones, injuries, signings, and weekly awards; rumors, power rankings, the injury report roundup, records and streaks in headlines, and the news effects setting arrive with M18 (spec 18.1).
 - Weekly awards are the players of the week and the rookie of the week; players of the month and the season awards with their voting arrive with M17 (spec 18.4).

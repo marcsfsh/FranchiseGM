@@ -256,6 +256,8 @@ export const TUNING = {
   gamePlan: {
     limits: {
       passLean: [-0.15, 0.15],
+      /** A situation's lean on top of the overall balance (spec 8.7). */
+      situation: [-0.15, 0.15],
       blitz: [0.5, 1.5],
       man: [-0.3, 0.3],
       press: [-0.3, 0.3],

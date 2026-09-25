@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { NO_SUBS, type GamePlan, type Rotation } from '../../src/engine/sim/plan';
+import { NEUTRAL_PLAN, NO_SUBS, type GamePlan, type Rotation } from '../../src/engine/sim/plan';
 import { TUNING } from '../../src/engine/tuning';
+import type { GameState } from '../../src/engine/sim/game';
 import type { GameResult, GameSetup, TeamSetup } from '../../src/engine/sim/types';
 import { kickoffStart, runFrom } from '../helpers/situations';
 
@@ -35,6 +36,24 @@ describe('game plans in the sim (spec 8.7, 12.3)', { timeout: 60_000 }, () => {
     const pass = runFrom(kickoffStart, N, { adjust: withPlan({ passLean: 0.15 }), seed: 'lean' });
     expect(passShare(pass)).toBeGreaterThan(passShare(run) + 0.08);
   });
+
+  it('leans the balance by situation: in the red zone and in the two-minute drill', () => {
+    const passShare = (games: GameResult[]) =>
+      sum(games, g => home(g).totals.passAtt) /
+      sum(games, g => home(g).totals.passAtt + home(g).totals.rushAtt);
+    const lean = (situation: 'redZone' | 'twoMinute', value: number) =>
+      withPlan({ situations: { ...NEUTRAL_PLAN.situations, [situation]: value } });
+    // First and 10 at their 15, tied late in the fourth: nearly every home snap left is in the red zone.
+    const redZone: GameState = { quarter: 4, clock: 150, score: { home: 7, away: 7 }, offense: 'home', ball: 85 };
+    const runs = runFrom(redZone, 120, { adjust: lean('redZone', -0.15), seed: 'redZone' });
+    const passes = runFrom(redZone, 120, { adjust: lean('redZone', 0.15), seed: 'redZone' });
+    expect(passShare(passes)).toBeGreaterThan(passShare(runs) + 0.08);
+    // Tied at their own 30 with under two minutes to play: the two-minute setting takes over.
+    const late: GameState = { quarter: 4, clock: 110, score: { home: 14, away: 14 }, offense: 'home', ball: 30 };
+    const calm = runFrom(late, 120, { adjust: lean('twoMinute', -0.15), seed: 'twoMinute' });
+    const hurry = runFrom(late, 120, { adjust: lean('twoMinute', 0.15), seed: 'twoMinute' });
+    expect(passShare(hurry)).toBeGreaterThan(passShare(calm) + 0.1);
+  }); // prettier-ignore
 
   it('blitzes more, and pressures more, on a blitz-heavy plan', () => {
     // A defense that likes to blitz, so the plan's multiplier moves its blitz rate from 0.3 to 0.9.

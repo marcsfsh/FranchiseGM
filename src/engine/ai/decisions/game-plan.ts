@@ -100,6 +100,8 @@ export function decideGamePlan(league: League, abbr: TeamAbbr, opponent: TeamAbb
 
   const plan: GamePlan = {
     passLean: dial('passLean', offenseIdeal.passLean, offense, 'offensive coordinator'),
+    // Coordinators plan one balance for every situation until M14's AI tailors them.
+    situations: { ...NEUTRAL_PLAN.situations },
     blitz: dial('blitz', defenseIdeal.blitz, defense, 'defensive coordinator'),
     man: dial('man', defenseIdeal.man, defense, 'defensive coordinator'),
     press: dial('press', defenseIdeal.press, defense, 'defensive coordinator'),

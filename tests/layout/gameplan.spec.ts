@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { createLeague, expectNoHorizontalOverflow, expectTouchTargets, openGame } from './helpers';
 
-// M7: the game plan with the scouting report, dials, and player focus (spec 8.7).
+// M7 and M9: the game plan with the scouting report, dials, balance by situation, and player focus (spec 8.7).
 test('shows the scouting report and sets the plan by keyboard', async ({ page }, info) => {
   const phone = info.project.name.endsWith('phone');
   await openGame(page);
@@ -25,6 +25,14 @@ test('shows the scouting report and sets the plan by keyboard', async ({ page },
   await expect(status).toContainText('You now set the game plan');
   await expect(auto).toHaveAttribute('aria-checked', 'false');
 
+  // The balance by down and situation (spec 8.7), behind a disclosure.
+  await page.getByText('Set the balance by down and situation').click();
+  const thirdLong = page.getByRole('group', { name: 'Third or fourth and long' });
+  await expect(thirdLong.getByRole('radio', { name: 'As planned' })).toBeChecked();
+  await thirdLong.getByRole('radio', { name: 'Pass more' }).check();
+  await expect(status).toContainText('Third or fourth and long: Pass more.');
+  await expect(page.getByRole('group', { name: 'In the red zone' }).getByRole('radio')).toHaveCount(5);
+
   // Player focus.
   await page.locator('#focus-feature').selectOption({ index: 1 });
   await page.getByRole('button', { name: 'Apply player focus' }).click();
@@ -43,6 +51,10 @@ test('shows the scouting report and sets the plan by keyboard', async ({ page },
     page.getByRole('group', { name: 'Run and pass balance' }).getByRole('radio', { name: 'Lean pass' })
   ).toBeChecked();
   await expect(page.getByLabel('Spy their quarterback')).toBeChecked();
+  await page.getByText('Set the balance by down and situation').click();
+  await expect(
+    page.getByRole('group', { name: 'Third or fourth and long' }).getByRole('radio', { name: 'Pass more' })
+  ).toBeChecked();
 
   await page.evaluate(() => (document.documentElement.style.fontSize = '200%'));
   await expectNoHorizontalOverflow(page);
