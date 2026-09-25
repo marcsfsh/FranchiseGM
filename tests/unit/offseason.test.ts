@@ -184,6 +184,22 @@ describe('new league year (spec 11.1)', () => {
     expect(capHit(league.contracts.x3 as Contract, 2027, league.rules)).toBe(1_000_000);
     expect(change.expired.map(e => e.playerId)).toEqual(expect.arrayContaining([expiring.id, optioned.id]));
   }); // prettier-ignore
+
+  it('drops contracts with nothing left to charge, and keeps two league years of history', () => {
+    const league = fresh(at(2026, 'annualMeeting'));
+    const [held] = roster(league, 'MIN') as [Player];
+    const gone = deal('old1', held, { team: 'MIN', signed: at(2022, 'freeAgency'), years: [year(2023)], ended: { date: at(2023, 'regularSeason', 5), how: 'released', designated: false, injured: false, terminationPay: false } });
+    const tag = deal('old2', held, { type: 'franchiseTag', signed: at(2024, 'resign'), years: [year(2025)] });
+    const expired = deal('old3', held, { signed: at(2021, 'freeAgency'), years: [year(2022), year(2024)] });
+    for (const c of [gone, tag, expired]) league.contracts[c.id] = c;
+    const own = held.contractId as string;
+    openLeagueYear(league, at(2026, 'freeAgency'), stream(1, 'year'));
+    // The 2027 league year keeps 2025 on: the 2025 tag counts toward a third straight one.
+    expect(league.contracts.old1).toBeUndefined();
+    expect(league.contracts.old3).toBeUndefined();
+    expect(league.contracts.old2).toBeDefined();
+    expect(league.contracts[own]).toBeDefined();
+  }); // prettier-ignore
 });
 
 describe('retirement (spec 10.7)', () => {

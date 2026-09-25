@@ -327,11 +327,14 @@ export function waiverClaims(league: League, entry: WaiverEntry, player: Player)
   // The user's team claims for itself unless its roster management is on auto (spec 22.7).
   const user = league.settings.auto.roster ? null : league.meta.start.userTeam;
   const group = NEED_GROUP[player.position];
+  // One pass over the league finds every team's weakest healthy player at the group.
+  const weakest = new Map<TeamAbbr, number>();
+  for (const p of Object.values(league.players))
+    if (p.team && p.status === 'active' && NEED_GROUP[p.position] === group && healthy(p))
+      weakest.set(p.team, Math.min(weakest.get(p.team) ?? Infinity, p.ovr));
   return TEAM_ABBRS.filter(abbr => {
     if (abbr === user || abbr === entry.from) return false;
-    const inGroup = Object.values(league.players).filter(
-      p => p.team === abbr && p.status === 'active' && NEED_GROUP[p.position] === group && healthy(p)
-    );
-    return inGroup.length > 0 && player.ovr >= Math.min(...inGroup.map(p => p.ovr)) + S.claimMargin;
+    const low = weakest.get(abbr);
+    return low !== undefined && player.ovr >= low + S.claimMargin;
   });
 }

@@ -131,5 +131,29 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
     Object.assign(player, { team: null, status: 'freeAgent', contractId: null });
   }
   for (const abbr of TEAM_ABBRS) league.teams[abbr].resting = [];
+  dropSpentContracts(league, year);
   return { year, capBefore, cap: league.rules.cap.amount, carryover, expired };
+}
+
+/** League years a finished contract is kept after its last year or its end: a third straight tag looks back two. */
+const KEPT_YEARS = 2;
+
+/**
+ * Drops the contracts with nothing left to do (D-31): no player holds one or is due to take it over, none is
+ * on waivers, and its last year and any end are more than two league years back, so it charges no cap and
+ * counts toward no tag or June 1 limit. Cap figures are always computed from contracts (spec 6.5), and
+ * these compute to nothing now; keeping them would only slow every cap sheet as the seasons pass.
+ */
+function dropSpentContracts(league: League, year: number): void {
+  const held = new Set<string>(league.waivers.map(w => w.contractId));
+  for (const p of Object.values(league.players)) {
+    if (p.contractId) held.add(p.contractId);
+    if (p.nextContractId) held.add(p.nextContractId);
+  }
+  for (const c of Object.values(league.contracts)) {
+    if (held.has(c.id)) continue;
+    const last = Math.max(leagueYear(c.signed), ...c.years.map(y => y.year));
+    const ended = c.ended ? leagueYear(c.ended.date) : last;
+    if (Math.max(last, ended) < year - KEPT_YEARS) delete league.contracts[c.id];
+  }
 }
