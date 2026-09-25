@@ -1,0 +1,112 @@
+/**
+ * New leagues (spec 3.2). On the no-CSV path the only data source is the fictional league: the 32 real
+ * franchises with generated players, coaches, staff, and owners. The league starts at week 1 of the
+ * 2026 regular season with rosters set.
+ */
+import type { ScheduledGame } from '../../data/schedule';
+import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
+import { generateFictionalLeague } from '../generate/league';
+import type { NameData } from '../generate/player';
+import { createLeagueRandom } from '../rng';
+import { DEFAULT_RULES, type RuleSet } from '../rules/ruleset';
+import type { StaffRole } from '../model/staff';
+import { SAVE_SCHEMA_VERSION, type League, type StartOptions, type TeamState } from './types';
+
+export interface NewLeagueInput {
+  /** Unique save ID, supplied by the app. */
+  id: string;
+  name: string;
+  start: StartOptions;
+  gameVersion: string;
+  names: NameData;
+  schedule: readonly ScheduledGame[];
+  rules?: RuleSet;
+  /** Fixed mode for tests and the dev menu (spec 8.9). */
+  fixed?: boolean;
+  onProgress?: (done: number, total: number) => void;
+}
+
+export class LeagueCreationError extends Error {}
+
+const byId = <T extends { id: string }>(items: readonly T[]): Record<string, T> =>
+  Object.fromEntries(items.map(item => [item.id, item]));
+
+/** Next free number for each ID prefix, from IDs like p2508. */
+function idCounters(ids: readonly string[]): Record<string, number> {
+  const next: Record<string, number> = {};
+  for (const id of ids) {
+    const match = /^([a-z]+)(\d+)$/.exec(id);
+    if (!match) continue;
+    const prefix = match[1] as string;
+    next[prefix] = Math.max(next[prefix] ?? 1, Number(match[2]) + 1);
+  }
+  return next;
+}
+
+export function createLeague(input: NewLeagueInput): League {
+  const { start } = input;
+  if (start.dataSource !== 'fictional') {
+    throw new LeagueCreationError(
+      "Real-data leagues need the Madden roster file, which this build doesn't include."
+    );
+  }
+  if (start.startingRosters !== 'actual') {
+    throw new LeagueCreationError('Fantasy drafts arrive in a later build.');
+  }
+  if (!TEAM_ABBRS.includes(start.userTeam)) throw new LeagueCreationError(`Unknown team ${start.userTeam}.`);
+  const name = input.name.trim() || 'My league';
+  const rules = input.rules ?? DEFAULT_RULES;
+  const generated = generateFictionalLeague({
+    seed: start.seed,
+    season: start.startSeason,
+    names: input.names,
+    rules,
+    ...(input.onProgress ? { onTeam: input.onProgress } : {})
+  });
+
+  const teams = {} as Record<TeamAbbr, TeamState>;
+  for (const abbr of TEAM_ABBRS) {
+    const owner = generated.owners.find(o => o.team === abbr);
+    if (!owner) throw new LeagueCreationError(`No owner generated for ${abbr}.`);
+    const staff: Partial<Record<StaffRole, string[]>> = {};
+    for (const member of generated.staff.filter(s => s.team === abbr))
+      (staff[member.role] ??= []).push(member.id);
+    teams[abbr] = { abbr, ownerId: owner.id, staff };
+  }
+
+  return {
+    schema: SAVE_SCHEMA_VERSION,
+    meta: { id: input.id, name, start: { ...start }, edited: false, createdBy: input.gameVersion },
+    date: { season: start.startSeason, phase: 'regularSeason', week: 1 },
+    random: createLeagueRandom(start.seed, input.fixed ?? false),
+    rules,
+    settings: { version: 1 },
+    teams,
+    players: byId(generated.players),
+    contracts: byId(generated.contracts),
+    staff: byId(generated.staff),
+    owners: byId(generated.owners),
+    schedule: input.schedule.filter(g => g.season === start.startSeason).map(g => ({ ...g })),
+    nextId: idCounters([
+      ...generated.players.map(p => p.id),
+      ...generated.contracts.map(c => c.id),
+      ...generated.staff.map(s => s.id),
+      ...generated.owners.map(o => o.id)
+    ])
+  };
+}
+
+/** Defaults for the start-only choices (spec 3.2). */
+export function defaultStartOptions(userTeam: TeamAbbr, seed: number): StartOptions {
+  return {
+    dataSource: 'fictional',
+    startingRosters: 'actual',
+    userTeam,
+    startSeason: 2026,
+    seed,
+    relocation: 'user',
+    rebrand: 'user',
+    styleDrift: true,
+    aiOwnersProposeRules: true
+  };
+}

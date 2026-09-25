@@ -66,3 +66,34 @@ describe('worker job protocol', () => {
     expect(messages).toEqual([{ kind: 'result', id: 6, payload: { pong: 'hi' } }]);
   });
 });
+
+describe('createLeague job', () => {
+  it('builds a league and reports progress by team', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { parseSchedule } = await import('../../src/data/schedule');
+    const { defaultStartOptions } = await import('../../src/engine/league/create');
+    const { nameData } = await import('../helpers/base-data');
+    const { messages, post } = collect();
+    await createJobRunner(
+      JOBS,
+      post
+    )({
+      kind: 'run',
+      id: 9,
+      job: 'createLeague',
+      payload: {
+        id: 'l1',
+        name: 'Worker league',
+        start: defaultStartOptions('GB', 3),
+        gameVersion: 'test',
+        names: nameData(),
+        schedule: parseSchedule(readFileSync('data-raw/schedule-2026.csv', 'utf8'), 2026)
+      }
+    });
+    const progress = messages.filter(m => m.kind === 'progress');
+    expect(progress.at(-1)).toMatchObject({ done: 32, total: 32, label: 'Building teams' });
+    const result = messages.at(-1) as { kind: string; payload: { meta: { name: string } } };
+    expect(result.kind).toBe('result');
+    expect(result.payload.meta.name).toBe('Worker league');
+  });
+});

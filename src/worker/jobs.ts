@@ -1,5 +1,6 @@
 /** The worker's job table. Later milestones add season sims, calibration runs, and AI batches. */
 import { hashWords, stream } from '../engine/rng';
+import { createLeague, type NewLeagueInput } from '../engine/league/create';
 import type { JobHandler } from './protocol';
 
 interface SelfTestPayload {
@@ -9,6 +10,15 @@ interface SelfTestPayload {
 
 export const JOBS: Record<string, JobHandler> = {
   ping: payload => ({ pong: payload }),
+
+  /** Generates a new league (spec 3.2). Progress counts teams. */
+  createLeague: (payload, ctx) => {
+    const input = payload as Omit<NewLeagueInput, 'onProgress'>;
+    return createLeague({
+      ...input,
+      onProgress: (done, total) => ctx.progress(done, total, 'Building teams')
+    });
+  },
 
   /** Draws from a seeded stream in chunks, reporting progress. Proves the worker and the PRNG work. */
   selfTest: async (payload, ctx) => {

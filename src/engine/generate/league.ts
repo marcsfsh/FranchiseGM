@@ -43,6 +43,8 @@ export interface LeagueInput {
   season: number;
   names: NameData;
   rules: RuleSet;
+  /** Called after each team, for progress bars. */
+  onTeam?: (done: number, total: number) => void;
 }
 
 /** The standard 53-man roster by position (a 4-3 base with three safeties and a long snapper). */
@@ -328,6 +330,7 @@ export function generateFictionalLeague(input: LeagueInput): FictionalLeague {
     const staffCtx = context(stream(seed, 'fictional', 'staff', team), 's');
     staff.push(...generateTeamStaff(staffCtx, team));
     owners.push(generateOwner({ ...staffCtx, newId: () => ids.next('o') }, team));
+    input.onTeam?.(TEAM_ABBRS.indexOf(team) + 1, TEAM_ABBRS.length);
   }
 
   const faRng = stream(seed, 'fictional', 'freeAgents');
