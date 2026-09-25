@@ -6,7 +6,7 @@ import type { ImportedPlayer } from './madden-import';
 import type { ClimateTable, MonthClimate } from './climate';
 import type { Colleges, FirstNames, Hometowns, WeightedList } from './names';
 import type { ScheduledGame } from './schedule';
-import type { StaffMember } from '../engine/model/staff';
+import type { Owner, StaffMember } from '../engine/model/staff';
 import { RATING_KEYS, type Ratings } from '../engine/model/ratings';
 
 export const BASE_DB_VERSION = 1;
@@ -19,8 +19,9 @@ export interface BaseDb {
   schedule: ScheduledGame[];
   climate: ClimateTable;
   names: { first: FirstNames; surnames: WeightedList; hometowns: Hometowns; colleges: Colleges };
-  /** Default coaches and staff for real-data leagues (fictional leagues generate their own). */
+  /** Default coaches, staff, and owners for real-data leagues (fictional leagues generate their own). */
   staff: StaffMember[];
+  owners: Owner[];
   /** Imported Madden players; empty on the no-CSV path. */
   players: ImportedPlayer[];
 }
@@ -35,6 +36,7 @@ export interface BaseDbJson {
   climate: { keys: string[]; values: number[][] };
   names: BaseDb['names'];
   staff: Columns;
+  owners: Columns;
   players: Columns;
 }
 
@@ -71,6 +73,7 @@ export function encodeBaseDb(db: BaseDb): BaseDbJson {
     },
     names: db.names,
     staff: toColumns(db.staff),
+    owners: toColumns(db.owners),
     players: toColumns(
       db.players.map(({ ratings, ...rest }) => ({
         ...rest,
@@ -111,6 +114,7 @@ export function decodeBaseDb(json: BaseDbJson): BaseDb {
     climate,
     names: json.names,
     staff: fromColumns<StaffMember>(json.staff),
+    owners: fromColumns<Owner>(json.owners),
     players
   };
 }

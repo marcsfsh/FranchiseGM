@@ -65,6 +65,12 @@ export interface ColumnReport {
   transform: string;
 }
 
+export interface RosterCountIssue {
+  team: string;
+  count: number;
+  reason: string;
+}
+
 export interface ImportReport {
   status: typeof MAPPING_STATUS;
   source: string;
@@ -76,6 +82,8 @@ export interface ImportReport {
   rejected: ImportIssue[];
   fixed: ImportIssue[];
   teamCounts: Record<string, number>;
+  /** Teams whose player count falls outside the rule set's roster limits. */
+  rosterIssues: RosterCountIssue[];
 }
 
 export interface ImportOptions {
@@ -85,6 +93,9 @@ export interface ImportOptions {
   maxYears: number;
   /** League year the file describes, for deriving birth dates from ages. */
   season: number;
+  /** Roster limits from the rule set: the active roster and the offseason maximum (spec 12.1). */
+  rosterMin: number;
+  rosterMax: number;
 }
 
 export class ImportError extends Error {}
@@ -167,7 +178,8 @@ export function importMaddenCsv(text: string, source: string, options: ImportOpt
   const rejected: ImportIssue[] = [];
   const fixed: ImportIssue[] = [];
   const players: ImportedPlayer[] = [];
-  const seen = new Set<string>();
+  // One team per player (spec 6.9): the same player on two teams keeps his first listing.
+  const seen = new Map<string, TeamAbbr | null>();
 
   table.rows.forEach((row, index) => {
     const line = table.lines[index] as number;
@@ -307,16 +319,20 @@ export function importMaddenCsv(text: string, source: string, options: ImportOpt
       contract = { years, yearsLeft, salary, signingBonus };
     }
 
-    const identity = `${headerKey(firstName)}|${headerKey(lastName)}|${position}|${team ?? 'FA'}|${age ?? ''}`;
+    const identity = `${headerKey(firstName)}|${headerKey(lastName)}|${position}|${age ?? ''}`;
     if (seen.has(identity)) {
+      const earlier = seen.get(identity) ?? null;
       rejected.push({
         line,
         field: 'player',
-        reason: `Duplicate of an earlier row for ${firstName} ${lastName}.`
+        reason:
+          earlier !== team
+            ? `${firstName} ${lastName} is also listed on ${earlier ?? 'free agents'}; one team per player, so the first listing is kept.`
+            : `Duplicate of an earlier row for ${firstName} ${lastName}.`
       });
       return;
     }
-    seen.add(identity);
+    seen.set(identity, team);
 
     const extra: Record<string, string> = {};
     for (const header of table.headers)
@@ -387,6 +403,23 @@ export function importMaddenCsv(text: string, source: string, options: ImportOpt
   const teamCounts: Record<string, number> = {};
   for (const p of players)
     teamCounts[p.team ?? 'Free agents'] = (teamCounts[p.team ?? 'Free agents'] ?? 0) + 1;
+  const rosterIssues: RosterCountIssue[] = [];
+  for (const [team, count] of Object.entries(teamCounts).sort(([a], [b]) => a.localeCompare(b))) {
+    if (team === 'Free agents') continue;
+    if (count > options.rosterMax) {
+      rosterIssues.push({
+        team,
+        count,
+        reason: `More than the ${options.rosterMax}-player offseason limit; the lowest-rated players become free agents.`
+      });
+    } else if (count < options.rosterMin) {
+      rosterIssues.push({
+        team,
+        count,
+        reason: `Fewer than ${options.rosterMin} players; league creation fills the roster with generated players.`
+      });
+    }
+  }
 
   return {
     players,
@@ -399,7 +432,8 @@ export function importMaddenCsv(text: string, source: string, options: ImportOpt
       missing,
       rejected,
       fixed,
-      teamCounts
+      teamCounts,
+      rosterIssues
     }
   };
 }
@@ -461,6 +495,12 @@ export function renderMappingReport(report: ImportReport, extraSections: string[
     lines.push('| Line | Field | Fix |', '|---|---|---|');
     for (const f of report.fixed.slice(0, 300)) lines.push(`| ${f.line} | ${f.field} | ${esc(f.reason)} |`);
     if (report.fixed.length > 300) lines.push('', `${report.fixed.length - 300} more fixes are not listed.`);
+  }
+  lines.push('', '## Roster count checks', '');
+  if (report.rosterIssues.length === 0) lines.push('Every team is within the roster limits.');
+  else {
+    lines.push('| Team | Players | Problem |', '|---|---|---|');
+    for (const r of report.rosterIssues) lines.push(`| ${r.team} | ${r.count} | ${esc(r.reason)} |`);
   }
   lines.push('', '## Players per team', '', '| Team | Players |', '|---|---|');
   for (const [team, count] of Object.entries(report.teamCounts).sort(([a], [b]) => a.localeCompare(b))) {

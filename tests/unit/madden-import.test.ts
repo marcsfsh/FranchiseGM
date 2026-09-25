@@ -11,7 +11,7 @@ import { parseCsv } from '../../src/data/csv';
 import { HAND_SET_FORMULAS, fitFormula } from '../../src/engine/ratings/overall';
 import type { RatingKey } from '../../src/engine/model/ratings';
 
-const OPTIONS = { minimumSalary: 885_000, maxYears: 7, season: 2026 };
+const OPTIONS = { minimumSalary: 885_000, maxYears: 7, season: 2026, rosterMin: 53, rosterMax: 90 };
 const text = readFileSync('tests/fixtures/madden-fixture.csv', 'utf8');
 const { players, report } = importMaddenCsv(text, 'tests/fixtures/madden-fixture.csv', OPTIONS);
 
@@ -76,6 +76,22 @@ describe('Madden CSV import (spec 6.9)', () => {
     for (const p of players)
       if (p.team && p.jersey !== null) byTeam.set(p.team, [...(byTeam.get(p.team) ?? []), p.jersey]);
     for (const [team, numbers] of byTeam) expect(new Set(numbers).size, team).toBe(numbers.length);
+  });
+
+  it('keeps one team per player and flags roster counts outside the limits (spec 6.9)', () => {
+    const head = 'FirstName,LastName,Position,Team,Age,JerseyNum\n';
+    const rows = [
+      'Sam,Jones,QB,Arizona Cardinals,25,5',
+      'Sam,Jones,QB,Buffalo Bills,25,7',
+      ...Array.from({ length: 91 }, (_, i) => `Player,Number${i},WR,Denver Broncos,24,${i % 100}`)
+    ];
+    const { players: imported, report: r } = importMaddenCsv(head + rows.join('\n'), 'x.csv', OPTIONS);
+    expect(imported.filter(p => p.lastName === 'Jones').map(p => p.team)).toEqual(['ARI']);
+    expect(r.rejected.find(x => x.line === 3)?.reason).toMatch(/also listed on ARI; one team per player/);
+    expect(r.rosterIssues).toContainEqual(expect.objectContaining({ team: 'DEN', count: 91 }));
+    expect(r.rosterIssues.find(x => x.team === 'DEN')?.reason).toMatch(/90-player offseason limit/);
+    expect(r.rosterIssues.find(x => x.team === 'ARI')?.reason).toMatch(/Fewer than 53/);
+    expect(renderMappingReport(r)).toContain('## Roster count checks');
   });
 
   it('fails clearly when a required column is missing', () => {

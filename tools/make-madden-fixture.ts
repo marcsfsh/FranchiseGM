@@ -82,6 +82,18 @@ const HEADERS = [
 ]; // prettier-ignore
 
 const rng = new Rng(20260501);
+const usedNames = new Set<string>();
+
+/** A first and last name no other fixture row uses, so validation only rejects the deliberate bad rows. */
+function uniqueName(): [string, string] {
+  for (;;) {
+    const name: [string, string] = [rng.pick(FIRST), rng.pick(LAST)];
+    if (!usedNames.has(name.join(' '))) {
+      usedNames.add(name.join(' '));
+      return name;
+    }
+  }
+}
 const cell = (v: string | number) =>
   /[",]/.test(String(v)) ? `"${String(v).replaceAll('"', '""')}"` : String(v);
 
@@ -105,8 +117,8 @@ function row(
   const age = rng.int(22, 34);
   const heightIn = position === 'LT' || position === 'LE' ? rng.int(76, 80) : rng.int(70, 76);
   const values: Record<string, string | number> = {
-    FirstName: rng.pick(FIRST),
-    LastName: rng.pick(LAST),
+    FirstName: uniqueName()[0],
+    LastName: '',
     Position: position,
     Team: team,
     JerseyNum: jersey,
@@ -141,6 +153,7 @@ function row(
     Abilities: ''
   };
   values.ContractYearsLeft = rng.int(1, Number(values.ContractLength));
+  values.LastName = [...usedNames].at(-1)?.split(' ').slice(1).join(' ') ?? '';
   Object.assign(values, overrides);
   return HEADERS.map(h => cell(values[h] ?? ''));
 }

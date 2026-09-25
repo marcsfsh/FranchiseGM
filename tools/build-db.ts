@@ -11,7 +11,7 @@ import { parseClimate } from '../src/data/climate';
 import { parseColleges, parseFirstNames, parseHometowns, parseSurnames } from '../src/data/names';
 import { parseSchedule } from '../src/data/schedule';
 import { TEAM_ABBRS } from '../src/data/team-colors';
-import { generateTeamStaff } from '../src/engine/generate/staff';
+import { generateOwner, generateTeamStaff } from '../src/engine/generate/staff';
 import { stream } from '../src/engine/rng';
 import { importMaddenCsv, renderMappingReport, type ImportResult } from '../src/data/madden-import';
 import { POSITIONS } from '../src/engine/model/positions';
@@ -37,7 +37,9 @@ export function importRoster(root = ROOT): { result: ImportResult; realData: boo
   const result = importMaddenCsv(readFileSync(path.join(root, source), 'utf8'), source, {
     minimumSalary: minimumSalary(DEFAULT_RULES, 0),
     maxYears: 7,
-    season: 2026
+    season: 2026,
+    rosterMin: DEFAULT_RULES.roster.active,
+    rosterMax: DEFAULT_RULES.roster.offseason
   });
   return { result, realData };
 }
@@ -115,6 +117,7 @@ export function buildBaseDb(root = ROOT): { db: BaseDb; json: BaseDbJson; mappin
     climate: parseClimate(raw('climate.csv')),
     names,
     staff: TEAM_ABBRS.flatMap(team => generateTeamStaff(staffCtx, team)),
+    owners: TEAM_ABBRS.map((team, i) => generateOwner({ ...staffCtx, newId: () => `o${i + 1}` }, team)),
     // The fixture only tests the pipeline; fictional leagues generate their players at creation.
     players: realData ? result.players : []
   };
@@ -125,9 +128,9 @@ export function buildBaseDb(root = ROOT): { db: BaseDb; json: BaseDbJson; mappin
 export const GZIP_THRESHOLD = 2 * 1024 * 1024;
 
 /** The `<script>` element that carries the database in game.html. */
-export function baseDbScript(json: BaseDbJson): string {
+export function baseDbScript(json: BaseDbJson, threshold = GZIP_THRESHOLD): string {
   const text = JSON.stringify(json);
-  if (text.length > GZIP_THRESHOLD) {
+  if (text.length > threshold) {
     const packed = gzipSync(Buffer.from(text, 'utf8'), { level: 9 }).toString('base64');
     return `<script type="application/json" id="base-db" data-encoding="gzip-base64">${packed}</script>`;
   }

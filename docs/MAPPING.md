@@ -146,6 +146,43 @@ Rows read: 211. Imported: 208. Rejected: 3. Values fixed: 8.
 | 214 | position | Mapped "RB" to HB. |
 | 208 | jersey | #11 is taken or not allowed for a WR; assigned 0. |
 
+## Roster count checks
+
+| Team | Players | Problem |
+|---|---|---|
+| ARI | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| ATL | 7 | Fewer than 53 players; league creation fills the roster with generated players. |
+| BAL | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| BUF | 7 | Fewer than 53 players; league creation fills the roster with generated players. |
+| CAR | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| CHI | 7 | Fewer than 53 players; league creation fills the roster with generated players. |
+| CIN | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| CLE | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| DAL | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| DEN | 7 | Fewer than 53 players; league creation fills the roster with generated players. |
+| DET | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| GB | 7 | Fewer than 53 players; league creation fills the roster with generated players. |
+| HOU | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| IND | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| JAX | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| KC | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| LAC | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| LAR | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| LV | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| MIA | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| MIN | 7 | Fewer than 53 players; league creation fills the roster with generated players. |
+| NE | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| NO | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| NYG | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| NYJ | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| PHI | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| PIT | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| SEA | 7 | Fewer than 53 players; league creation fills the roster with generated players. |
+| SF | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| TB | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| TEN | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+| WAS | 6 | Fewer than 53 players; league creation fills the roster with generated players. |
+
 ## Players per team
 
 | Team | Players |
@@ -190,23 +227,23 @@ Fit against the fixture only. The check that formulas reproduce Madden OVR is de
 
 | Position | Samples | Mean abs error | Within 2 points |
 |---|---|---|---|
-| QB | 35 | 0.26 | 100% |
+| QB | 35 | 0.29 | 100% |
 | HB | 1 | too few samples | n/a |
 | FB | 0 | too few samples | n/a |
-| WR | 67 | 0.39 | 100% |
+| WR | 67 | 0.28 | 100% |
 | TE | 0 | too few samples | n/a |
 | LT | 34 | 0.38 | 100% |
 | LG | 0 | too few samples | n/a |
 | C | 0 | too few samples | n/a |
 | RG | 0 | too few samples | n/a |
 | RT | 0 | too few samples | n/a |
-| LE | 35 | 0.20 | 100% |
+| LE | 35 | 0.23 | 100% |
 | RE | 0 | too few samples | n/a |
 | DT | 0 | too few samples | n/a |
 | LOLB | 0 | too few samples | n/a |
 | MLB | 0 | too few samples | n/a |
 | ROLB | 0 | too few samples | n/a |
-| CB | 36 | 0.83 | 94% |
+| CB | 36 | 0.72 | 97% |
 | FS | 0 | too few samples | n/a |
 | SS | 0 | too few samples | n/a |
 | K | 0 | too few samples | n/a |
