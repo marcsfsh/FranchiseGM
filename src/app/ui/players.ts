@@ -1,5 +1,6 @@
 /** Player display helpers (style guide 7.5, 13.4): overall plates, development tags, and rating rows. */
 import type { DevTrait, Player, RosterStatus } from '../../engine/model/player';
+import { designation } from '../../engine/season/injuries';
 import { fullName } from '../../engine/model/player';
 import { h } from '../dom';
 import { href } from '../router';
@@ -60,6 +61,16 @@ export const STATUS_LABELS: Record<RosterStatus, string> = {
   retired: 'Retired',
   removed: 'Removed'
 };
+
+/** A player's injury designation as a status tag (style guide 2.4), or null when he's healthy. */
+export function injuryTag(player: Pick<Player, 'injury'>): HTMLElement | null {
+  const d = designation(player.injury);
+  if (!d) return null;
+  const weeks = player.injury?.weeksOut ?? 0;
+  const text = d === 'out' ? `Out, ${weeks} ${weeks === 1 ? 'week' : 'weeks'}` : d === 'doubtful' ? 'Doubtful' : d === 'questionable' ? 'Questionable' : 'Probable';
+  const tone = d === 'out' || d === 'doubtful' ? 'bad' : d === 'questionable' ? 'warn' : 'neutral';
+  return h('span', { class: `status status-${tone}` }, text);
+} // prettier-ignore
 
 export const statusTag = (status: RosterStatus): HTMLElement =>
   h(

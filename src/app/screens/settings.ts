@@ -224,18 +224,19 @@ function pauseSettings(app: AppState): HTMLElement | null {
 function sliderSettings(app: AppState): HTMLElement | null {
   if (!app.league) return null;
   const body = h('div', { class: 'stack' });
+  // One live region for the card, outside what a reset redraws, so its message is read.
+  const status = h('p', { class: 'sr-only', role: 'status' });
   const draw = () =>
     mount(
       body,
-      ...slidersCard(app, () => {
+      ...slidersCard(app, status, () => {
         draw();
-        body.querySelector<HTMLButtonElement>('.btn-row button')?.focus();
-        const status = body.querySelector('[role="status"]');
-        if (status) status.textContent = 'Every slider is back to 100%.';
+        body.querySelector<HTMLButtonElement>('#resetSliders')?.focus();
+        status.textContent = 'Every slider is back to 100%.';
       })
     );
   draw();
-  return card('Game sim and stat sliders', body);
+  return card('Game sim and stat sliders', body, status);
 }
 
 /** The developer tools entry (spec 23.5), shown once the menu is on. */

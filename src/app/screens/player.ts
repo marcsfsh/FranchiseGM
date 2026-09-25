@@ -20,7 +20,7 @@ import { careerCard } from '../ui/career';
 import { contractCard } from '../ui/contract';
 import { href } from '../router';
 import { fitNode, fitSentence } from '../ui/fit';
-import { attributeRow, devTag, heightText, stat, statusTag, tierPlate } from '../ui/players';
+import { attributeRow, devTag, heightText, injuryTag, stat, statusTag, tierPlate } from '../ui/players';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
 
@@ -166,7 +166,19 @@ export function playerScreen(): Screen {
                 : `${player.experience} ${player.experience === 1 ? 'season' : 'seasons'}`
             ),
             stat('College', player.college || '— · Not known'),
-            stat('Status', statusTag(player.status))
+            stat('Status', statusTag(player.status)),
+            // The injury he carries (spec 19.3): its designation, what's hurt, and how long he's out.
+            player.injury && injuryTag(player)
+              ? stat(
+                  'Injury',
+                  h(
+                    'span',
+                    { class: 'injury-line' },
+                    injuryTag(player),
+                    ` ${player.injury.bodyPart}${player.injury.lingering > 0 && player.injury.weeksOut === 0 ? ', playing through it' : ''}`
+                  )
+                )
+              : null
           )
         )
       );

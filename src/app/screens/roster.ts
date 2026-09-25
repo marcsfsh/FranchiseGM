@@ -21,7 +21,7 @@ import { money } from '../format';
 import { href } from '../router';
 import { fitNode } from '../ui/fit';
 import { openRosterMoves, placeOf, refocus } from '../ui/moves';
-import { devTag, playerLink, statusTag, tierPlate } from '../ui/players';
+import { devTag, injuryTag, playerLink, statusTag, tierPlate } from '../ui/players';
 import { pageHead } from './common';
 import type { Screen } from './types';
 
@@ -117,7 +117,7 @@ export function rosterScreen(): Screen {
               h('td', { class: 'wide' }, role),
               h('td', { class: 'num' }, best ? fitNode(best.fit) : 'Not applicable'),
               h('td', { class: 'wide num' }, money(hit)),
-              h('td', null, statusTag(player.status)),
+              h('td', null, statusTag(player.status), injuryTag(player) ? ' ' : null, injuryTag(player)),
               h('td', null, movesButton(player))
             )
           );
@@ -128,7 +128,7 @@ export function rosterScreen(): Screen {
                 playerLink(player),
                 h('p', { class: 'list-sub' }, `Age ${age} · ${role}`),
                 h('p', { class: 'list-sub' }, 'Fit ', best ? fitNode(best.fit) : 'not applicable', ` · ${year} cap hit ${money(hit)}`),
-                player.status === 'active' ? null : h('p', { class: 'list-sub' }, statusTag(player.status))
+                player.status === 'active' && !injuryTag(player) ? null : h('p', { class: 'list-sub' }, player.status === 'active' ? null : statusTag(player.status), injuryTag(player))
               ),
               tierPlate(player.ovr),
               h('div', { class: 'btn-row' }, movesButton(player))

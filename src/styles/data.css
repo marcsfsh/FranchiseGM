@@ -187,3 +187,9 @@
   background: var(--selection-bg);
   font-weight: 800;
 }
+.injury-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}

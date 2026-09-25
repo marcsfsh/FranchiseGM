@@ -22,7 +22,7 @@ import {
 import { RECORD_STATS } from '../../engine/stats/records';
 import { h, mount } from '../dom';
 import type { AppState } from '../state';
-import { nick } from '../ui/games';
+import { nick, teamLink } from '../ui/games';
 import { playerLink } from '../ui/players';
 import { CATEGORY_TITLES, formatStat, STAT_NAMES, type StatColumn } from '../ui/stat-columns';
 import { scrollRegion, statHeader } from '../ui/stat-table';
@@ -115,7 +115,22 @@ function ranks(entries: readonly BoardEntry[]): string[] {
   });
 }
 
-const teamCell = (abbr: TeamAbbr) => h('abbr', { title: teamFullName(abbr) }, abbr);
+/** A club's abbreviation, with its full name for assistive technology and on hover. */
+const teamCell = (abbr: TeamAbbr) =>
+  h(
+    'td',
+    null,
+    h('abbr', { title: teamFullName(abbr), 'aria-hidden': 'true' }, abbr),
+    h('span', { class: 'sr-only' }, teamFullName(abbr))
+  );
+/** A cell with nothing to show: a dash, read out as `meaning`. */
+const noneCell = (meaning: string, numeric = false) =>
+  h(
+    'td',
+    { class: numeric ? 'num' : null },
+    h('span', { 'aria-hidden': 'true' }, '—'),
+    h('span', { class: 'sr-only' }, meaning)
+  );
 
 function boardTable(league: League, entries: readonly BoardEntry[], caption: string): HTMLElement {
   const rank = ranks(entries);
@@ -129,7 +144,7 @@ function boardTable(league: League, entries: readonly BoardEntry[], caption: str
     h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Rank'), h('th', { scope: 'col' }, 'Player'), value, h('th', { scope: 'col' }, 'Pos'), h('th', { scope: 'col' }, 'Team'), statHeader('G', 'Games played'))),
     h('tbody', null, ...entries.map((e, i) => {
       const p = league.players[e.playerId];
-      return h('tr', null, h('td', null, rank[i] ?? ''), h('th', { scope: 'row' }, p ? playerLink(p) : 'Former player'), h('td', { class: 'num' }, formatStat(e.value, format)), h('td', null, p?.position ?? ''), h('td', null, teamCell(e.team)), h('td', { class: 'num' }, String(e.games)));
+      return h('tr', null, h('td', null, rank[i] ?? ''), h('th', { scope: 'row' }, p ? playerLink(p) : 'Former player'), h('td', { class: 'num' }, formatStat(e.value, format)), p ? h('td', null, p.position) : noneCell('Position not known'), teamCell(e.team), h('td', { class: 'num' }, String(e.games)));
     }))
   ); // prettier-ignore
   return scrollRegion(caption, table);
@@ -195,7 +210,8 @@ function playersView(app: AppState, league: League, seasons: readonly number[]):
     const shownSeason = choice.season ?? seasons.at(-1) ?? league.season.season;
     scope.control.value = choice.scope;
     season.control.value = String(shownSeason);
-    season.control.disabled = choice.scope === 'career';
+    // Career totals span every season, so the season choice steps aside.
+    season.field.hidden = choice.scope === 'career';
     stat.control.value = choice.stat;
     position.control.value = choice.position;
     team.control.value = choice.team;
@@ -256,8 +272,11 @@ function playersView(app: AppState, league: League, seasons: readonly number[]):
   );
 }
 
-const perGame = (total: number, games: number): string => (games ? formatStat(total / games, 'one') : '—');
-const rate = (made: number, tries: number): string => (tries ? formatStat((made / tries) * 100, 'pct') : '—');
+const perGame = (total: number, games: number): HTMLElement =>
+  games ? h('td', { class: 'num' }, formatStat(total / games, 'one')) : noneCell('No games', true);
+const rate = (made: number, tries: number): HTMLElement =>
+  tries ? h('td', { class: 'num' }, formatStat((made / tries) * 100, 'pct')) : noneCell('No attempts', true);
+const count = (n: number): HTMLElement => h('td', { class: 'num' }, String(n));
 
 /** Team offense or defense, one row per club, best first. */
 function teamTable(
@@ -300,23 +319,23 @@ function teamTable(
     const d = t.defense;
     return offense
       ? [
-          String(t.games),
+          count(t.games),
           perGame(t.pointsFor, t.games),
           perGame(o.totalYards, t.games),
           perGame(o.netPassYds, t.games),
           perGame(o.rushYds, t.games),
           rate(o.thirdDownConv, o.thirdDownAtt),
           rate(o.redZoneTd, o.redZoneTrips),
-          String(o.turnovers)
+          count(o.turnovers)
         ]
       : [
-          String(t.games),
+          count(t.games),
           perGame(t.pointsAgainst, t.games),
           perGame(d.totalYards, t.games),
           perGame(d.netPassYds, t.games),
           perGame(d.rushYds, t.games),
-          String(d.sacked),
-          String(d.turnovers)
+          count(d.sacked),
+          count(d.turnovers)
         ];
   };
   const caption = `${season} team ${side}, ${offense ? 'most points first' : 'fewest points allowed first'}`;
@@ -325,7 +344,7 @@ function teamTable(
     { class: 'stat-table standings-table' },
     h('caption', null, caption),
     h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Team'), ...head)),
-    h('tbody', null, ...rows.map(t => h('tr', { class: t.team === user ? 'is-us' : null }, h('th', { scope: 'row' }, nick(t.team), t.team === user ? h('span', { class: 'sr-only' }, ' (your team)') : null), ...cells(t).map(c => h('td', { class: 'num' }, c)))))
+    h('tbody', null, ...rows.map(t => h('tr', { class: t.team === user ? 'is-us' : null }, h('th', { scope: 'row' }, teamLink(t.team), t.team === user ? h('span', { class: 'sr-only' }, ' (your team)') : null), ...cells(t))))
   ); // prettier-ignore
   return scrollRegion(caption, table);
 }
@@ -337,36 +356,34 @@ function teamsView(app: AppState, league: League, seasons: readonly number[]): H
     [...seasons].reverse().map(s => [String(s), String(s)] as [string, string])
   );
   const body = h('div', { class: 'stack' }, h('p', { class: 'muted' }, 'Loading team stats…'));
-  const draw = async () => {
+  const status = h('p', { class: 'sr-only', role: 'status' });
+  let drawn = 0;
+  const draw = async (announce: boolean) => {
+    const turn = ++drawn;
     const shown = choice.season ?? seasons.at(-1) ?? league.season.season;
     season.control.value = String(shown);
     try {
-      const stats = await once(league, `teams-${shown}`, () =>
-        app.store.history.teamStats(league.meta.id, shown)
-      );
+      const stats = await once(league, `teams-${shown}`, () => app.store.history.teamStats(league.meta.id, shown));
+      // A slower load of an earlier choice never replaces the season picked since.
+      if (turn !== drawn) return;
+      const clubs = stats.filter(t => t.games).length;
       mount(
         body,
-        stats.some(t => t.games)
+        clubs
           ? h('div', { class: 'stack' }, card('Offense', teamTable(league, stats, 'offense', shown)), card('Defense', teamTable(league, stats, 'defense', shown)))
           : h('p', { class: 'empty' }, 'No games have been played yet.')
-      ); // prettier-ignore
-    } catch {
-      mount(
-        body,
-        h(
-          'p',
-          { class: 'empty' },
-          "The stats couldn't be read from this browser's storage. Reload the page to try again."
-        )
       );
+      if (announce) status.textContent = `${shown} team stats: ${clubs} teams.`;
+    } catch {
+      if (turn === drawn) mount(body, h('p', { class: 'empty' }, "The stats couldn't be read from this browser's storage. Reload the page to try again."));
     }
-  };
+  }; // prettier-ignore
   season.control.addEventListener('change', () => {
     choice.season = Number(season.control.value);
-    void draw();
+    void draw(true);
   });
-  void draw();
-  return h('div', { class: 'stack' }, h('div', { class: 'filterbar' }, season.field), body);
+  void draw(false);
+  return h('div', { class: 'stack' }, h('div', { class: 'filterbar' }, season.field), status, body);
 }
 
 /** The Stats tab: players or teams. */

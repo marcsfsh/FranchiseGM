@@ -18,6 +18,7 @@ import {
 import { h, mount } from '../dom';
 import { href } from '../router';
 import { CATEGORY_TITLES, STAT_NAMES, formatStat } from '../ui/stat-columns';
+import { scrollRegion } from '../ui/stat-table';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
 
@@ -175,7 +176,7 @@ function recordsView(league: League, book: RecordsBook): { node: HTMLElement; re
     mount(
       body,
       entries.length
-        ? entryTable(league, entries, caption, view)
+        ? scrollRegion(caption, entryTable(league, entries, caption, view))
         : h(
             'p',
             { class: 'empty' },

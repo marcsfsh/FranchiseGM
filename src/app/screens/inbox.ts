@@ -5,7 +5,7 @@
 import type { League } from '../../engine/league/types';
 import { h, mount } from '../dom';
 import { weekLabel } from '../ui/games';
-import { inboxMessage, inboxOrder } from '../ui/inbox';
+import { inboxList, inboxOrder } from '../ui/inbox';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
 
@@ -71,7 +71,7 @@ export function inboxScreen(): Screen {
         mount(
           body,
           ...(weeks.length
-            ? weeks.map(w => card(w.label, ...w.items.map(item => inboxMessage(league, item))))
+            ? weeks.map(w => card(w.label, inboxList(league, w.items, `${w.label} messages`)))
             : [h('p', { class: 'empty' }, unreadOnly ? 'No unread messages.' : 'No messages yet. Results, injuries, and awards for your team arrive here each week.')])
         ); // prettier-ignore
       };

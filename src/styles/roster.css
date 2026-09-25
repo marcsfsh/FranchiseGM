@@ -160,7 +160,9 @@
 }
 .preview-list a {
   flex: 1;
-  min-width: 8rem;
+  /* No wider than the card, so a long name wraps on a narrow phone at large text sizes. */
+  min-width: min(8rem, 100%);
+  overflow-wrap: anywhere;
 }
 .filterbar {
   display: grid;

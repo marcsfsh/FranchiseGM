@@ -42,7 +42,7 @@ test('lists a week of games and a club season, and opens a box score', async ({ 
   await expectTouchTargets(page, 'main', phone ? 48 : 44);
 
   await page.selectOption('#scheduleTeam', 'MIN');
-  await expect(page.locator('#scheduleWeek')).toBeDisabled();
+  await expect(page.locator('#scheduleWeek')).toBeHidden();
   const season = page.getByRole('list', { name: 'Vikings schedule' }).locator('.game-card');
   await expect(season).toHaveCount(18);
   await expect(season.filter({ hasText: 'Bye' })).toHaveCount(1);

@@ -23,11 +23,14 @@
 /* The featured player's header: a large overall plate beside the name. */
 .featured-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--s4);
   min-width: 0;
 }
+/* The name drops below the plate when there's no room beside it (a phone at large text sizes). */
 .featured-head > div {
+  flex: 1 1 12rem;
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -38,4 +41,9 @@
 .news-list a {
   flex: none;
   min-width: 0;
+}
+.inbox-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }

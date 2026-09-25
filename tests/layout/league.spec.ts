@@ -103,11 +103,22 @@ test('ranks players by any stat with filters, and shows team offense and defense
   await expect(page.locator('main [role="status"]')).toHaveText(/^Rushing yards, 2026 regular season: \d+ players?\.$/);
   expect(new Set(await rows.locator('td:nth-child(4)').allTextContents())).toEqual(new Set(['HB']));
   await page.selectOption('#statsTeam', 'MIN');
-  await expect(rows.locator('td:nth-child(5)').first()).toHaveText('MIN');
-  expect(new Set(await rows.locator('td:nth-child(5)').allTextContents())).toEqual(new Set(['MIN']));
+  await expect(rows.locator('td:nth-child(5) abbr').first()).toHaveText('MIN');
+  expect(new Set(await rows.locator('td:nth-child(5) abbr').allTextContents())).toEqual(new Set(['MIN']));
   await page.selectOption('#statsScope', 'career');
   await expect(caption).toHaveText('Rushing yards, career, regular season');
-  await expect(page.locator('#statsSeason')).toBeDisabled();
+  await expect(page.locator('#statsSeason')).toBeHidden();
+
+  // A player page and back: the same tab, the same place, and focus on his name (style guide 7.3).
+  await page.selectOption('#statsScope', 'season');
+  await page.selectOption('#statsTeam', 'all');
+  const tenth = rows.nth(9).locator('[data-player-link]');
+  const name = (await tenth.textContent()) ?? '';
+  await tenth.click();
+  await expect(page.locator('main h1')).toHaveText(name);
+  await page.goBack();
+  await expect(page.getByRole('tab', { name: 'Stats' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('main [data-player-link]', { hasText: name }).first()).toBeFocused();
 
   await page.getByRole('radio', { name: 'Teams' }).check();
   const offense = page.locator('main section.card', { hasText: 'Offense' }).locator('tbody tr');

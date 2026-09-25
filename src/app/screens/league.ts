@@ -15,16 +15,18 @@ import {
   type Ranked,
   type WinLoss
 } from '../../engine/season/standings';
+import { byes as byeCount } from '../../engine/season/playoffs';
 import { gameWeek, leagueStandings, PLAYOFF_PHASES } from '../../engine/season/state';
 import { h, mount, type Child } from '../dom';
 import { record } from '../format';
 import { href } from '../router';
 import { clubSeason, gameCard, nick, teamLink, weekLabel } from '../ui/games';
-import { playerLink } from '../ui/players';
+import { playerLink, signed } from '../ui/players';
 import { scrollRegion, statHeader } from '../ui/stat-table';
 import { tabs } from '../ui/tabs';
 import { card, pageHead } from './common';
 import { statsPanel } from './league-stats';
+import { focusKeyOf, refocusWhenReady } from '../focus';
 import type { AppState } from '../state';
 import type { Screen } from './types';
 
@@ -52,7 +54,15 @@ const CONFERENCES: readonly Conference[] = ['AFC', 'NFC'];
 
 const pct = (r: WinLoss): string => winPct(r).toFixed(3).replace(/^0/, '');
 const winLoss = (r: WinLoss): string => record(r.wins, r.losses, r.ties);
-const signed = (n: number): string => (n > 0 ? `+${n}` : String(n));
+
+/** A cell with nothing to show: a dash, read out as `meaning`. */
+const noneCell = (meaning: string): HTMLElement =>
+  h(
+    'td',
+    { class: 'num' },
+    h('span', { 'aria-hidden': 'true' }, '—'),
+    h('span', { class: 'sr-only' }, meaning)
+  );
 
 /** A team's row header: the nickname, marked when it's the user's team. */
 function teamHeader(abbr: TeamAbbr, user: TeamAbbr): HTMLElement {
@@ -69,7 +79,11 @@ function tiebreakNotes(
   standings: LeagueStandings,
   lists: readonly (readonly Ranked[])[]
 ): HTMLElement | null {
-  const notes = lists.flatMap(list => tiebreaks(list, standings.table));
+  // Before any game every club is 0–0, and only coin tosses order them: nothing worth explaining yet.
+  const played = Object.values(standings.table.records).some(
+    r => r.overall.wins + r.overall.losses + r.overall.ties > 0
+  );
+  const notes = played ? lists.flatMap(list => tiebreaks(list, standings.table)) : [];
   if (!notes.length) return null;
   return h(
     'div',
@@ -118,7 +132,7 @@ function divisionTable(standings: LeagueStandings, division: LeagueStandings['di
           h('td', { class: 'num' }, String(r.pointsAgainst)),
           h('td', { class: 'num' }, signed(r.pointsFor - r.pointsAgainst)),
           ...[r.home, r.away, r.division, r.conference].map(x => h('td', { class: 'num' }, winLoss(x))),
-          h('td', { class: 'num' }, r.streak || '—')
+          r.streak ? h('td', { class: 'num' }, r.streak) : noneCell('No games yet')
         );
       })
     )
@@ -163,7 +177,7 @@ function conferenceTable(standings: LeagueStandings, conference: Conference, use
       { class: r.abbr === user ? 'is-us' : null },
       h('td', { class: 'num' }, String(rank)),
       teamHeader(r.abbr, user),
-      h('td', null, status),
+      status ? h('td', null, status) : noneCell('Outside the field'),
       h('td', { class: 'num' }, winLoss(t.overall)),
       h('td', { class: 'num' }, pct(t.overall)),
       h('td', { class: 'num' }, winLoss(t.division)),
@@ -217,7 +231,7 @@ function projectedPicture(standings: LeagueStandings, user: TeamAbbr): HTMLEleme
       const conf = standings.conferences.find(c => c.conference === conference);
       const seeds = conf?.seeds ?? [];
       // Top seeds rest until the field is a power of two: one bye for seven clubs.
-      const byes = seeds.length ? 2 ** Math.ceil(Math.log2(seeds.length)) - seeds.length : 0;
+      const byes = seeds.length ? byeCount(seeds.length) : 0;
       const li = (abbr: TeamAbbr, text: string) => h('li', { class: abbr === user ? 'is-us' : null }, text);
       // The others pair best against worst.
       const games: [number, number][] = [];
@@ -226,13 +240,13 @@ function projectedPicture(standings: LeagueStandings, user: TeamAbbr): HTMLEleme
         `${conference} playoff picture`,
         h('p', { class: 'muted' }, 'If the season ended today.'),
         h('ul', { class: 'seed-list', 'aria-label': `${conference} seeds` }, ...seeds.map((r, i) => li(r.abbr, `${seeded(i + 1, r.abbr, standings)}${i < byes ? ': first-round bye' : ''}`))),
-        games.length ? h('p', { class: 'label' }, 'Wild Card matchups') : null,
+        games.length ? h('h3', { class: 'label' }, 'Wild Card matchups') : null,
         games.length ? h('ul', { class: 'matchup-list' }, ...games.map(([hi, lo]) => {
           const home = seeds[hi] as Ranked;
           const away = seeds[lo] as Ranked;
           return h('li', { class: home.abbr === user || away.abbr === user ? 'is-us' : null }, `${seeded(lo + 1, away.abbr, standings)} at ${seeded(hi + 1, home.abbr, standings)}`);
         })) : null,
-        conf?.rest.length ? h('p', { class: 'label' }, 'In the hunt') : null,
+        conf?.rest.length ? h('h3', { class: 'label' }, 'In the hunt') : null,
         conf?.rest.length ? h('ul', { class: 'matchup-list' }, ...conf.rest.slice(0, 4).map(r => li(r.abbr, `${nick(r.abbr)}, ${winLoss(standings.table.records[r.abbr].overall)}`))) : null
       ); // prettier-ignore
     })
@@ -364,13 +378,15 @@ function schedulePanel(league: League): HTMLElement {
     h('option', { value: user }, `${nick(user)} (your team)`),
     ...others.map(t => h('option', { value: t }, nick(t)))
   );
+  const weekField = h('div', { class: 'field' }, h('label', { for: 'scheduleWeek' }, 'Week'), week);
   const body = h('div', { class: 'stack' });
   const status = h('p', { class: 'sr-only', role: 'status' });
   const draw = (announce: boolean) => {
     const shownWeek = choice.week ?? currentWeek(league);
     week.value = String(shownWeek);
     team.value = choice.team;
-    week.disabled = choice.team !== 'all';
+    // One club's season lists every week, so the week choice steps aside.
+    weekField.hidden = choice.team !== 'all';
     if (choice.team === 'all') {
       const games = league.schedule.filter(g => g.week === shownWeek);
       const playing = new Set(games.flatMap(g => [g.home, g.away]));
@@ -403,7 +419,7 @@ function schedulePanel(league: League): HTMLElement {
     h(
       'div',
       { class: 'filterbar' },
-      h('div', { class: 'field' }, h('label', { for: 'scheduleWeek' }, 'Week'), week),
+      weekField,
       h('div', { class: 'field' }, h('label', { for: 'scheduleTeam' }, 'Team'), team)
     ),
     status,
@@ -500,13 +516,11 @@ export function leagueScreen(): Screen {
       let shown: League | null = null;
       off = app.onChange(() => {
         if (!app.league || app.league === shown) return;
-        // A week played in the background: rebuild, keeping focus on the same control.
-        const id =
-          document.activeElement instanceof HTMLElement && view.contains(document.activeElement)
-            ? document.activeElement.id
-            : '';
+        // A week played in the background: rebuild, keeping focus on the same control, even one that comes
+        // back only when its panel's data loads; failing that, on the tab panel.
+        const key = focusKeyOf(view);
         build();
-        if (id) document.getElementById(id)?.focus();
+        refocusWhenReady(view, key, () => view.querySelector<HTMLElement>('[role="tabpanel"]')?.focus());
       });
       const build = (): void => {
         const league = app.league;
@@ -518,7 +532,10 @@ export function leagueScreen(): Screen {
           `league-${choice.tab}`,
           id => {
             const tab = id.replace('league-', '');
-            if (isLeagueTab(tab)) choice.tab = tab;
+            if (!isLeagueTab(tab)) return;
+            choice.tab = tab;
+            // The address names the tab, so Back from a player or a game returns to it.
+            history.replaceState(null, '', href('leagueTab', { tab }));
           }
         ); // prettier-ignore
         mount(view, pageHead('League', String(league.season.season)), leagueTabs.element);

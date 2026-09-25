@@ -144,3 +144,26 @@
   min-width: var(--tap);
   font-weight: 700;
 }
+/* A scoring play's description wraps, so the running score stays close on a phone. */
+.table-scroll .scoring-table td.play {
+  min-width: 12rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* The user's club: a bar in the selection color on its first cell, so it stands out in Night too, where the
+   selection background matches the header rows. */
+.standings-table tr.is-us > :first-child,
+.game-team.is-us {
+  box-shadow: inset 4px 0 0 var(--selection-indicator);
+}
+.game-team.is-us {
+  padding-left: var(--s2);
+}
+/* A week of games: cards side by side where there's room, in schedule order. */
+.game-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+}
+.bracket .game-list {
+  grid-template-columns: minmax(0, 1fr);
+}

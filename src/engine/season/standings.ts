@@ -511,8 +511,13 @@ export function explainTiebreak(
   name: (abbr: TeamAbbr) => string
 ): string {
   const phrase = STEP_PHRASES[note.step] ?? note.step.toLowerCase();
-  const record = recordText(table.records[note.abbr].overall);
+  const mine = table.records[note.abbr].overall;
+  // Clubs tie on winning percentage: the same record, or different ones (2–0 and 1–0) at the same rate.
+  const same = note.over.every(o => recordText(table.records[o].overall) === recordText(mine));
+  const tie = same
+    ? `also ${recordText(mine)}`
+    : `with the same winning percentage (${winPct(mine).toFixed(3).replace(/^0/, '')})`;
   const first = name(note.abbr);
   const subject = first.charAt(0).toUpperCase() + first.slice(1);
-  return `${subject} are ahead of ${joinList(note.over.map(name))}, also ${record}, on ${phrase}.`;
+  return `${subject} are ahead of ${joinList(note.over.map(name))}, ${tie}, on ${phrase}.`;
 }

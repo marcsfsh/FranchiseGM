@@ -79,7 +79,9 @@ export function teamScreen(): Screen {
           { id: 'team-roster', label: 'Roster', render: () => rosterTable(league, abbr) },
           { id: 'team-schedule', label: 'Schedule', render: () => clubSeason(league, abbr) }
         ],
-        `team-${isTeamTab(route.params.tab) ? route.params.tab : 'roster'}`
+        `team-${isTeamTab(route.params.tab) ? route.params.tab : 'roster'}`,
+        // The address names the tab, so Back from a player or a game returns to it.
+        id => history.replaceState(null, '', href('team', { abbr, tab: id.replace('team-', '') }))
       );
       mount(
         view,

@@ -18,7 +18,7 @@ import { gameDay, kickoff, record } from '../format';
 import { href } from '../router';
 import { nick, weekLabel } from '../ui/games';
 import { playerLink } from '../ui/players';
-import { CATEGORY_TITLES, STAT_COLUMNS } from '../ui/stat-columns';
+import { CATEGORY_TITLES, formatStat, STAT_COLUMNS } from '../ui/stat-columns';
 import { scrollRegion, statCell, statHeader, statKey } from '../ui/stat-table';
 import { tabs } from '../ui/tabs';
 import { card, pageHead } from './common';
@@ -84,7 +84,7 @@ function scoringSummary(record: GameRecord): HTMLElement {
     { class: 'stat-table scoring-table' },
     h('caption', { class: 'sr-only' }, 'Scoring summary'),
     h('thead', null, h('tr', null, statHeader('Qtr', 'Quarter', false), statHeader('Time', 'Time left in the quarter', false), h('th', { scope: 'col' }, 'Team'), h('th', { scope: 'col' }, 'Play'), statHeader(record.away, `${nick(record.away)} score`), statHeader(record.home, `${nick(record.home)} score`))),
-    h('tbody', null, ...record.scoring.map((s: ScoringPlay) => h('tr', null, h('td', null, shortQuarter(s.quarter)), h('td', null, clock(s.clock)), h('th', { scope: 'row' }, nick(s.team)), h('td', null, s.description), h('td', { class: 'num' }, String(s.away)), h('td', { class: 'num' }, String(s.home)))))
+    h('tbody', null, ...record.scoring.map((s: ScoringPlay) => h('tr', null, h('td', null, shortQuarter(s.quarter)), h('td', null, clock(s.clock)), h('th', { scope: 'row' }, nick(s.team)), h('td', { class: 'play' }, s.description), h('td', { class: 'num' }, String(s.away)), h('td', { class: 'num' }, String(s.home)))))
   ); // prettier-ignore
   return scrollRegion('Scoring summary', table);
 }
@@ -239,7 +239,13 @@ function boxPanel(league: League, record: GameRecord, lines: readonly GameLine[]
     card('Team stats', teamStats(record)),
     ...(lines
       ? [picker, body]
-      : [h('p', { class: 'empty' }, "The player lines couldn't be read from this browser's storage.")])
+      : [
+          h(
+            'p',
+            { class: 'empty' },
+            "The player lines couldn't be read from this browser's storage. Reload the page to try again."
+          )
+        ])
   );
 }
 
@@ -253,7 +259,7 @@ function drivesPanel(record: GameRecord): HTMLElement {
     h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Team'), statHeader('Qtr', 'Quarter', false), statHeader('Start', 'Time left when the drive began', false), statHeader('Field', 'Starting field position', false), statHeader('Plays', 'Plays'), statHeader('Yds', 'Yards'), statHeader('Time', 'Time of possession'), h('th', { scope: 'col' }, 'Result'))),
     h('tbody', null, ...record.drives.map((d: DriveSummary) => {
       const other = d.team === record.home ? record.away : record.home;
-      return h('tr', null, h('th', { scope: 'row' }, nick(d.team)), h('td', null, shortQuarter(d.quarter)), h('td', null, clock(d.clock)), h('td', null, yardLine(d.start, d.team, other)), h('td', { class: 'num' }, String(d.plays)), h('td', { class: 'num' }, String(d.yards)), h('td', { class: 'num' }, clock(d.seconds)), h('td', null, DRIVE_RESULTS[d.result]));
+      return h('tr', null, h('th', { scope: 'row' }, nick(d.team)), h('td', null, shortQuarter(d.quarter)), h('td', null, clock(d.clock)), h('td', null, yardLine(d.start, d.team, other)), h('td', { class: 'num' }, String(d.plays)), h('td', { class: 'num' }, formatStat(d.yards, 'int')), h('td', { class: 'num' }, clock(d.seconds)), h('td', null, DRIVE_RESULTS[d.result]));
     }))
   ); // prettier-ignore
   return card('Drive summaries', scrollRegion('Drive summaries', table));
@@ -301,7 +307,7 @@ function played(
     'section',
     { class: 'card' },
     h('div', { class: 'signbar' }, h('h2', { class: 'signbar-title' }, `Final${record.overtime ? ', overtime' : ''}`)),
-    h('div', { class: 'card-body' }, lineScore(record), h('p', { class: 'muted' }, `${where}${weatherText(record)}`))
+    h('div', { class: 'card-body' }, scrollRegion('Points by quarter', lineScore(record)), h('p', { class: 'muted' }, `${where}${weatherText(record)}`))
   ); // prettier-ignore
   const gameTabs = tabs(
     'Game',
@@ -336,7 +342,8 @@ export function gameScreen(): Screen {
       }
       // A played game, this season's or an earlier one's: its details come from stored history.
       const body = h('div', { class: 'stack' }, h('p', { class: 'muted' }, 'Loading the box score…'));
-      mount(view, game ? heading(league, game.away, game.home, game.season, game.week) : pageHead('Game'), back, body);
+      const head = game ? heading(league, game.away, game.home, game.season, game.week) : pageHead('Game', 'History');
+      mount(view, head, back, body);
       void app.store.history.game(league.meta.id, id).then(
         async record => {
           if (!record) {
@@ -345,7 +352,13 @@ export function gameScreen(): Screen {
             return;
           }
           const lines = await app.store.history.gameLines(league.meta.id, record.season, id).catch(() => null);
-          mount(view, heading(league, record.away, record.home, record.season, record.week), back, body);
+          // A game from an earlier season names itself once its record loads; the heading keeps its focus.
+          if (!game) {
+            const title = head.querySelector('h1');
+            const tag = head.querySelector('.nameplate-tag');
+            if (title) title.textContent = `${nick(record.away)} at ${nick(record.home)}`;
+            if (tag) tag.textContent = `${record.season} · ${weekLabel(league, record.week)}`;
+          }
           mount(body, ...played(league, game, record, lines));
         },
         () => mount(body, card('Details', h('p', { class: 'empty' }, "This game's details couldn't be read from this browser's storage. Reload the page to try again.")))

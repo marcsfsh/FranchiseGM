@@ -47,8 +47,12 @@ let currentRoute: Route | null = null;
 let first = true;
 /** Where the roster was when a player page opened from it, so returning restores it (style guide 13.5). */
 /** Lists that bring the user back to the same place after a player page (style guide 7.3). */
-const RETURN_ROUTES: ReadonlySet<string> = new Set(['roster', 'depth']);
+const RETURN_ROUTES: ReadonlySet<string> = new Set(['roster', 'depth', 'league', 'leagueTab', 'team', 'game']);
 let listReturn: { route: string; scroll: number; playerId: string } | null = null;
+/** Waiting for a list that loads after its screen draws, to put the user back in it. */
+let pendingReturn: MutationObserver | null = null;
+/** How long a returning list may take to load before the user is left at its top. */
+const RETURN_WAIT_MS = 3000;
 /** Whether the open player page was reached from the records book. */
 let historyOpened = false;
 
@@ -61,6 +65,8 @@ function go(hash: string): void {
 
 function show(route: Route): void {
   if (!app) return;
+  pendingReturn?.disconnect();
+  pendingReturn = null;
   if (!app.league && needsLeague(route.name)) {
     history.replaceState(null, '', '#/leagues');
     route = parseHash('#/leagues');
@@ -86,22 +92,30 @@ function show(route: Route): void {
     first = false;
     return;
   }
-  // Back on the roster from a player page: the same scroll position, with focus on that player's link.
+  // Back on a list from a player page: the same scroll position, with focus on that player's link.
   const back = listReturn?.route === route.name ? listReturn : null;
-  const link = back
-    ? [...shell.main.querySelectorAll<HTMLElement>(`[data-player-link="${CSS.escape(back.playerId)}"]`)].find(
-        visible
-      )
-    : undefined;
   listReturn = back ? null : listReturn;
-  if (back && link) {
+  const restore = (): boolean => {
+    const link = back
+      ? [...shell.main.querySelectorAll<HTMLElement>(`[data-player-link="${CSS.escape(back.playerId)}"]`)].find(visible)
+      : undefined;
+    if (!back || !link) return false;
     window.scrollTo(0, back.scroll);
     link.focus({ preventScroll: true });
-    return;
-  }
+    return true;
+  };
+  if (restore()) return;
   window.scrollTo(0, 0);
   shell.main.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true });
-}
+  if (!back) return;
+  // A list that loads after the screen draws (the league leaders): restore once his link arrives.
+  const observer = new MutationObserver(() => {
+    if (restore()) observer.disconnect();
+  });
+  observer.observe(shell.main, { childList: true, subtree: true });
+  pendingReturn = observer;
+  setTimeout(() => observer.disconnect(), RETURN_WAIT_MS);
+} // prettier-ignore
 
 async function boot(): Promise<void> {
   mount(shell.main, h('p', { class: 'muted', role: 'status' }, 'Loading Franchise GM…'));

@@ -19,12 +19,13 @@ import { gameWeek, leagueStandings } from '../../engine/season/state';
 import type { WinLoss } from '../../engine/season/standings';
 import { h, type Child } from '../dom';
 import { toast } from '../feedback';
+import { focusKeyOf, refocus } from '../focus';
 import { gameDay, kickoff, money, record } from '../format';
 import { href } from '../router';
 import { dateLine } from '../shell';
 import type { AdvanceTarget, AppState } from '../state';
 import { weekLabel } from '../ui/games';
-import { inboxMessage, inboxOrder } from '../ui/inbox';
+import { inboxList, inboxOrder } from '../ui/inbox';
 import { attributeRow, devTag, playerLink, stat, tierPlate } from '../ui/players';
 import { pageHead } from './common';
 import type { Screen } from './types';
@@ -246,7 +247,7 @@ function inboxCard(app: AppState, league: League): HTMLElement {
   return homeCard(
     unread ? `Inbox (${unread} new)` : 'Inbox',
     { arrow: ['All messages', href('inbox')] },
-    shown.length ? h('div', null, ...shown.map(item => inboxMessage(league, item))) : h('p', { class: 'empty' }, 'No messages yet. Results, injuries, and awards for your team arrive here each week.'),
+    shown.length ? inboxList(league, shown, 'Latest messages') : h('p', { class: 'empty' }, 'No messages yet. Results, injuries, and awards for your team arrive here each week.'),
     h('div', { class: 'btn-row' }, markRead)
   ); // prettier-ignore
 }
@@ -302,8 +303,9 @@ function featuredCard(league: League): HTMLElement | null {
   if (!p) return null;
   const contract = p.contractId ? league.contracts[p.contractId] : undefined;
   const year = leagueYear(league.date);
-  const hit = contract ? capHit(contract, year, league.rules, capFacts(league, p.id)) : 0;
+  const hit = contract ? money(capHit(contract, year, league.rules, capFacts(league, p.id))) : 'No contract';
   const left = contract ? contractSummary(contract, league.date).remaining : 0;
+  const remaining = contract ? `${left} ${left === 1 ? 'year' : 'years'}` : 'No contract';
   const d = designation(p.injury);
   const weeks = p.injury?.weeksOut ?? 0;
   const health = d
@@ -318,7 +320,7 @@ function featuredCard(league: League): HTMLElement | null {
     'Featured player',
     { arrow: ['Player page', href('player', { id: p.id })] },
     h('div', { class: 'featured-head' }, tierPlate(p.ovr, { large: true }), h('div', null, h('p', { class: 'hero-title' }, playerLink(p)), h('p', { class: 'muted' }, `${p.position} · #${p.jersey} · age ${ageOn(p.birthDate, calendarDay(league.date))}`))),
-    h('div', { class: 'stat-grid' }, stat('Development', devTag(p.dev)), stat(`${year} cap hit`, money(hit)), stat('Years left', String(left)), stat('Health', health)),
+    h('div', { class: 'stat-grid' }, stat('Development', devTag(p.dev)), stat(`${year} cap hit`, hit), stat('Years remaining', remaining), stat('Health', health)),
     h('div', { class: 'stack' }, ...key.map(k => attributeRow(RATING_LABELS[k], p.ratings[k])))
   ); // prettier-ignore
 }
@@ -375,6 +377,8 @@ export function homeScreen(): Screen {
         date.textContent = dateLine(l);
         const active = document.activeElement;
         const key = active instanceof HTMLElement && cards.contains(active) ? active.dataset.focus : undefined;
+        // Links (a box score, an arrow) come back by their address.
+        const other = key ? null : focusKeyOf(cards);
         cards.replaceChildren(...[nextGameCard(app, l), rosterCard(l), inboxCard(app, l), newsCard(l), ...standingsCards(l), capCard(l), featuredCard(l)].filter(c => c !== null));
         // Keep focus on the control the user was using: the advance buttons hand it to Stop while a run goes
         // and take it back when it ends; a disabled button hands it to the play button.
@@ -383,7 +387,7 @@ export function homeScreen(): Screen {
           const next = cards.querySelector<HTMLButtonElement>(`[data-focus="${wanted}"]`);
           if (next && !next.disabled) next.focus();
           else cards.querySelector<HTMLElement>('[data-focus="play"]')?.focus();
-        }
+        } else if (other && !refocus(cards, other)) head.querySelector<HTMLElement>('h1')?.focus();
       }; // prettier-ignore
       view = {
         refresh: draw,

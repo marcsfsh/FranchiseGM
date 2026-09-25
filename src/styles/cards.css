@@ -112,6 +112,8 @@
 .hero-title {
   font: italic 800 var(--fs-name)/1.1 var(--font-display);
   text-transform: uppercase;
+  /* A long club or player name ("Indianapolis") breaks rather than widening a narrow card. */
+  overflow-wrap: anywhere;
 }
 .big-number {
   font: italic 800 var(--fs-big)/1.1 var(--font-display);

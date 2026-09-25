@@ -69,6 +69,18 @@ describe('standings (spec 5.3)', () => {
     expect(teams[1]?.tiebreak).toBe('Head-to-head');
   });
 
+  it('explains a tie between different records at the same winning percentage', () => {
+    // MIN 2-0 with two division wins; GB 1-0 with a win outside the division: both 1.000.
+    const s = season().win('MIN', 'CHI').win('MIN', 'DET').win('GB', 'KC');
+    const teams = division(s.games, 'NFC North');
+    const table = buildStandings(s.games);
+    const notes = tiebreaks(teams, table);
+    expect(notes[0]).toEqual({ abbr: 'MIN', over: ['GB'], step: 'Division record' });
+    expect(explainTiebreak(notes[0] as (typeof notes)[number], table, abbr => `the ${abbr}`)).toBe(
+      'The MIN are ahead of the GB, with the same winning percentage (1.000), on division record.'
+    );
+  });
+
   it('goes to the division record when head-to-head is split', () => {
     // MIN and GB finish 2-2 and split their games; MIN went 2-1 in the division, GB 1-2.
     const s = season()

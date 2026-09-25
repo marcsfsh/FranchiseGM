@@ -18,10 +18,11 @@ export const INBOX_LABELS: Record<InboxKind, string> = {
 export const inboxOrder = (items: readonly InboxItem[]): InboxItem[] =>
   [...items].sort((a, b) => b.season - a.season || b.week - a.week);
 
+/** One message as a list item; lists of them go in `inboxList`, so readers can move message by message. */
 export function inboxMessage(league: League, item: InboxItem): HTMLElement {
   const game = item.kind === 'result' ? userGameIn(league, item.season, item.week) : undefined;
   return h(
-    'div',
+    'li',
     { class: `inbox-item${item.read ? '' : ' is-unread'}` },
     h('p', { class: 'label' }, `${INBOX_LABELS[item.kind]} · ${weekLabel(league, item.week)}${item.read ? '' : ' · New'}`),
     h('p', null, h('strong', null, item.title)),
@@ -29,3 +30,7 @@ export function inboxMessage(league: League, item: InboxItem): HTMLElement {
     game ? h('a', { class: 'inbox-link', href: href('game', { id: game.id }), 'aria-label': `Box score: ${item.title}` }, 'Box score') : null
   ); // prettier-ignore
 }
+
+/** Messages as a list. */
+export const inboxList = (league: League, items: readonly InboxItem[], label: string): HTMLElement =>
+  h('ul', { class: 'inbox-list', 'aria-label': label }, ...items.map(item => inboxMessage(league, item)));

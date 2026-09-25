@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
-import { SEASON_FIXTURE, SEASON_FIXTURE_NAME } from './global-setup';
+import { FINISHED_FIXTURE, FINISHED_FIXTURE_NAME, SEASON_FIXTURE, SEASON_FIXTURE_NAME } from './global-setup';
 import {
   contrastOf,
   expectNoHorizontalOverflow,
@@ -54,7 +54,7 @@ const SCREENS: { hash: string; heading: string | RegExp; ready?: string }[] = [
 
 for (const theme of ['day', 'night'] as const) {
   test(`lays out every screen in ${theme === 'day' ? 'Day' : 'Night'}`, async ({ page }, info) => {
-    test.setTimeout(120_000);
+    test.setTimeout(180_000);
     const target = sizeOf(info) === 'phone' ? 48 : 44;
     const check = async (where: string) => {
       await expectNoHorizontalOverflow(page);
@@ -80,5 +80,62 @@ for (const theme of ['day', 'night'] as const) {
       if (screen.ready) await expect(page.locator(screen.ready).first()).toBeVisible();
       await check(screen.hash);
     }
+
+    // A game's other tabs.
+    await page.evaluate(h => (location.hash = h), `#/game/${played.id}`);
+    const gameTabs: [string, string][] = [['Box score', 'main table.team-stats'], ['Drives', 'main table.drive-table'], ['Recap', 'main table.scoring-table']];
+    for (const [tab, ready] of gameTabs) {
+      await page.getByRole('tab', { name: tab }).click();
+      await expect(page.locator(ready)).toBeVisible();
+      await check(`game ${tab}`);
+    }
+
+    // The dialogs: roster moves and a free agent offer (style guide 14.2's contract dialog).
+    const dialog = page.locator('dialog[open]');
+    const checkDialog = async (where: string) => {
+      await expect(dialog).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+      await expectTouchTargets(page, 'dialog[open]', target);
+      expect(await contrastOf(page, 'dialog[open] .dialog-title'), `${where} title`).toBeGreaterThanOrEqual(3);
+      expect(await contrastOf(page, 'dialog[open] .dialog-body p'), `${where} text`).toBeGreaterThanOrEqual(4.5);
+      await page.keyboard.press('Escape');
+      await expect(dialog).toHaveCount(0);
+    };
+    await page.evaluate(() => (location.hash = '#/roster'));
+    await page.getByRole('button', { name: /^Moves for / }).first().click();
+    await checkDialog('roster moves');
+    await page.evaluate(() => (location.hash = '#/free-agency'));
+    await page.getByRole('button', { name: /^Make an offer to / }).first().click();
+    await checkDialog('offer');
+
+    // The finished season's bracket.
+    await goTo(page, '#/settings', 'Settings');
+    await page.getByRole('button', { name: 'Switch league' }).click();
+    await expect(page.locator('main h1')).toHaveText('Leagues');
+    await page.setInputFiles('#importLeagueFile', { name: 'league.json.gz', mimeType: 'application/gzip', buffer: readFileSync(FINISHED_FIXTURE) });
+    await page.locator('[data-league-id]', { hasText: FINISHED_FIXTURE_NAME }).getByRole('button', { name: 'Continue' }).click();
+    await expect(page.locator('main h1')).toHaveText('Team hub');
+    await check('finished hub');
+    await goTo(page, '#/league/playoffs', 'League');
+    await expect(page.locator('main .bracket-round')).toHaveCount(4);
+    await check('bracket');
   }); // prettier-ignore
 }
+
+// Style guide 14.4: the narrowest phone at 200% text size still never scrolls sideways.
+test('reflows at 320 pixels with 200% text', async ({ page }, info) => {
+  test.skip(sizeOf(info) !== 'phone', 'A phone-width check.');
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 320, height: 568 });
+  await openGame(page, { hash: '#/leagues' });
+  await page.setInputFiles('#importLeagueFile', { name: 'league.json.gz', mimeType: 'application/gzip', buffer: readFileSync(SEASON_FIXTURE) });
+  await page.locator('[data-league-id]', { hasText: SEASON_FIXTURE_NAME }).getByRole('button', { name: 'Continue' }).click();
+  await expect(page.locator('main h1')).toHaveText('Team hub');
+  await page.evaluate(() => (document.documentElement.style.fontSize = '200%'));
+  for (const screen of SCREENS) {
+    await page.evaluate(h => (location.hash = h), screen.hash);
+    await expect(page.locator('main h1')).toHaveText(screen.heading);
+    if (screen.ready) await expect(page.locator(screen.ready).first()).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  }
+}); // prettier-ignore
