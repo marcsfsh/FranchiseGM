@@ -1,7 +1,7 @@
 # Status
-- Milestone: M9, the playable-season UI pass (M8 tagged m08-rosters-cap)
-- Current slice: M9 slice 4, news and inbox pages, home actions, team pages
-- Next slice: M9 slice 5, sim sliders in settings
+- Milestone: Checkpoint A reached (M9 tagged m09-playable-season); M10 waits for the user's review
+- Current slice: none
+- Next slice: M10 plan, after the Checkpoint A review
 - Open items for this milestone: none
-- Waiting on the user: the Madden roster CSV (data-raw/madden-roster.csv), which is optional and not yet available
+- Waiting on the user: the Checkpoint A review; the Madden roster CSV (data-raw/madden-roster.csv), which is optional and not yet available
 - Updated: 2026-09-25

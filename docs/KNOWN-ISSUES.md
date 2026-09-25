@@ -27,4 +27,9 @@
 - Games lost to injury is measured without a target: no public all-player count was found. Football Outsiders' adjusted games lost (starters and key reserves, camp injuries included) was 68.9 to 80.9 per team in 2021-2023.
 - Pass volume barely falls as passing efficiency rises: team pass attempts against yards per attempt correlate about -0.05 in replays and -0.54 in the 2024 NFL, because good passing teams don't lead and run enough. The passing leader is held near the NFL mean by a league-wide pass rate shift (C-13); M7's opponent-tailored game plans and M14's coaching should carry more of it.
 - Leader metrics move about 3% between seeds because a 100-season run draws only 10 leagues. At the M7 close seed 1 warns on perfect or winless teams (6 per 100 seasons, against 5) and seed 2 on the receptions leader (139, against 138), both within sampling noise (C-17).
+- The season ends after the Super Bowl: the offseason and the next season arrive with M10. Staff (M13), Scouting and draft (M11), and Trades (M15) show placeholders.
+- The playoff picture shows the seeds, the Wild Card matchups, and the clubs chasing them, without clinched or eliminated markers, which need every remaining result's scenarios.
+- A game from an earlier season opens from history without its venue, since past schedules aren't kept (spec 8.8 doesn't ask for them); this first shows once M10 starts a second season.
+- Dragging depth chart rows works with a mouse or trackpad; on touch screens players move with Up, Down, and the starter menu (style guide 7.4 makes dragging a supplement).
+- The featured player on the hub rotates weekly among the club's five best players; spec 19.2 doesn't say how to choose him.
 
