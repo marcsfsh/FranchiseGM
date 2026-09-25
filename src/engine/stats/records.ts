@@ -60,34 +60,45 @@ export function statValue(totals: Readonly<Totals> | Readonly<Partial<PlayerLine
   return totals[key] ?? 0;
 }
 
-const identity = (e: RecordEntry): string => `${e.playerId ?? e.team}|${e.gameId ?? ''}|${e.season}`;
-
 /**
- * Puts an entry in a list, replacing the same holder's earlier entry (the same game, season, or career),
- * and keeps the best RECORD_DEPTH. Earlier achievements win ties.
+ * Puts a holder's entry in a list, replacing his earlier entry (the same game, season, or career), and
+ * keeps the best RECORD_DEPTH. Earlier achievements win ties: earlier seasons first, then list order, with
+ * a changed entry going after the ones already at its value. An unchanged value keeps its place, and a
+ * value of zero or less leaves the list. (A value that drops but stays positive keeps its entry even if a
+ * player outside the list now has more; totals only drop on rare negative plays.)
  */
 function place(
   list: RecordEntry[] | undefined,
   entry: RecordEntry,
   same: (e: RecordEntry) => boolean
-): { list: RecordEntry[]; top: boolean } {
-  const kept = (list ?? []).filter(e => !same(e));
-  kept.push(entry);
-  kept.sort((a, b) => b.value - a.value || a.season - b.season || identity(a).localeCompare(identity(b)));
-  const next = kept.slice(0, RECORD_DEPTH);
-  return { list: next, top: next[0] === entry };
+): RecordEntry[] | undefined {
+  const current = list ?? [];
+  const mine = current.find(same);
+  // Unchanged: the same value, or an entry that can't make the list.
+  if (mine ? mine.value === entry.value : entry.value <= 0) return list;
+  const last = current.at(-1);
+  if (!mine && current.length >= RECORD_DEPTH && last && entry.value <= last.value) return list;
+  const kept = current.filter(e => e !== mine);
+  if (entry.value > 0) kept.push(entry);
+  kept.sort((a, b) => b.value - a.value || a.season - b.season);
+  return kept.slice(0, RECORD_DEPTH);
 }
 
+/**
+ * Notes a record that changed hands: the entry now leads a list that had a different leader with a lower
+ * value. A holder extending his own record, and the first entry in an empty list, aren't news.
+ */
 function note(
   broken: BrokenRecord[],
   scope: BrokenRecord['scope'],
   stat: BrokenRecord['stat'],
   before: RecordEntry[] | undefined,
-  result: { list: RecordEntry[]; top: boolean },
-  entry: RecordEntry
+  after: readonly RecordEntry[] | undefined,
+  entry: RecordEntry,
+  same: (e: RecordEntry) => boolean
 ): void {
-  const previous = before?.[0] ?? null;
-  if (result.top && (!previous || entry.value > previous.value))
+  const previous = before?.[0];
+  if (after?.[0] === entry && previous && !same(previous) && entry.value > previous.value)
     broken.push({ scope, stat, entry, previous });
 }
 
@@ -107,9 +118,10 @@ export function addGameRecords(
       const floor = before && before.length >= RECORD_DEPTH ? (before.at(-1) as RecordEntry).value : 0;
       if (value <= floor) continue;
       const entry: RecordEntry = { value, team, season, playerId, gameId };
-      const result = place(before, entry, e => e.playerId === playerId && e.gameId === gameId);
-      note(broken, 'game', stat, before, result, entry);
-      book.game[stat] = result.list;
+      const same = (e: RecordEntry) => e.playerId === playerId && e.gameId === gameId;
+      const after = place(before, entry, same);
+      note(broken, 'game', stat, before, after, entry, same);
+      if (after !== before) book.game[stat] = after as RecordEntry[];
     }
   }
   return broken;
@@ -125,27 +137,30 @@ export function addPlayerRecords(
     if (LONG_STATS.has(stat)) continue;
     for (const p of players) {
       if (p.season) {
-        const value = statValue(p.season.totals, stat);
+        // One entry per player-season: a player traded mid-season keeps a single line, under his new team.
+        const entry: RecordEntry = {
+          value: statValue(p.season.totals, stat),
+          team: p.season.team,
+          season: p.season.season,
+          playerId: p.id
+        };
+        const same = (e: RecordEntry) => e.playerId === p.id && e.season === entry.season;
         const before = book.season[stat];
-        if (value > 0) {
-          const entry: RecordEntry = { value, team: p.season.team, season: p.season.season, playerId: p.id };
-          const result = place(
-            before,
-            entry,
-            e => e.playerId === p.id && e.season === entry.season && e.team === entry.team
-          );
-          note(broken, 'season', stat, before, result, entry);
-          book.season[stat] = result.list;
-        }
+        const after = place(before, entry, same);
+        note(broken, 'season', stat, before, after, entry, same);
+        if (after !== before) book.season[stat] = after as RecordEntry[];
       }
-      const value = statValue(p.career.totals, stat);
+      const entry: RecordEntry = {
+        value: statValue(p.career.totals, stat),
+        team: p.career.team,
+        season: p.lastSeason,
+        playerId: p.id
+      };
+      const same = (e: RecordEntry) => e.playerId === p.id;
       const before = book.career[stat];
-      if (value > 0) {
-        const entry: RecordEntry = { value, team: p.career.team, season: p.lastSeason, playerId: p.id };
-        const result = place(before, entry, e => e.playerId === p.id);
-        note(broken, 'career', stat, before, result, entry);
-        book.career[stat] = result.list;
-      }
+      const after = place(before, entry, same);
+      note(broken, 'career', stat, before, after, entry, same);
+      if (after !== before) book.career[stat] = after as RecordEntry[];
     }
   }
   return broken;
@@ -162,17 +177,16 @@ export function addTeamRecords(
   const { team, season, gameId } = game;
   const put = (id: TeamRecordId, entry: RecordEntry, same: (e: RecordEntry) => boolean) => {
     const before = book.team[id];
-    const result = place(before, entry, same);
-    note(broken, 'team', id, before, result, entry);
-    book.team[id] = result.list;
+    const after = place(before, entry, same);
+    note(broken, 'team', id, before, after, entry, same);
+    if (after) book.team[id] = after;
   };
   put(
     'gamePoints',
     { value: game.points, team, season, gameId },
     e => e.gameId === gameId && e.team === team
   );
-  if (seasonWins > 0)
-    put('wins', { value: seasonWins, team, season }, e => e.team === team && e.season === season);
+  put('wins', { value: seasonWins, team, season }, e => e.team === team && e.season === season);
   put('points', { value: seasonPoints, team, season }, e => e.team === team && e.season === season);
   // A winning streak keeps one entry, named for the game and season it began.
   if (!game.won) delete book.streaks[team];

@@ -207,16 +207,23 @@ export function seasonLeaders(tables: Partial<Record<TableId, StatTable>>): Seas
 
 /**
  * Records a batch of one season's games (spec 9.3): their rows join the season's tables, and player and
- * team aggregates, leaders, and the records book update. Returns everything to write back; the state
- * passed in is left unchanged.
+ * team aggregates, leaders, and the records book update. Games already in the season are skipped, so a
+ * retried batch counts nothing twice. Returns everything to write back; the state passed in is left
+ * unchanged.
  */
 export function recordGames(
   state: HistoryState,
   games: readonly { result: GameResult; meta: GameMeta }[]
 ): HistoryPatch {
   const season = state.season.season;
+  const seen = new Set(state.season.results.map(r => r.id));
+  const fresh = games.filter(g => {
+    if (seen.has(g.result.id)) return false;
+    seen.add(g.result.id);
+    return true;
+  });
   const batch = Object.fromEntries(TABLE_IDS.map(id => [id, [] as StatRow[]])) as Record<TableId, StatRow[]>;
-  for (const g of games) {
+  for (const g of fresh) {
     if (g.meta.season !== season) throw new Error(`Game ${g.result.id} isn't in the ${season} season.`);
     const rows = gameRows(g.result, g.meta);
     for (const id of TABLE_IDS) batch[id].push(...rows[id]);
@@ -230,6 +237,7 @@ export function recordGames(
 
   const players = new Map(state.players);
   const touched = new Set<string>();
+  const regular = new Set<string>();
   const records = structuredClone(state.records);
   const broken: BrokenRecord[] = [];
   const summary: SeasonSummary = {
@@ -237,7 +245,7 @@ export function recordGames(
     teams: [...state.season.teams],
     results: [...state.season.results]
   };
-  for (const { result, meta } of games) {
+  for (const { result, meta } of fresh) {
     const counted = meta.kind !== 'preseason';
     const lines: { playerId: string; team: TeamAbbr; line: PlayerLine }[] = [];
     for (const side of ['home', 'away'] as const) {
@@ -245,12 +253,13 @@ export function recordGames(
       for (const [playerId, line] of Object.entries(result.box[side].players)) {
         if (!played(line)) continue;
         lines.push({ playerId, team, line });
-        if (!counted) continue;
+        // A preseason game only lists the season in his game log.
         players.set(
           playerId,
           addGame(players.get(playerId) ?? { id: playerId, seasons: [] }, line, team, season, meta.kind)
         );
         touched.add(playerId);
+        if (meta.kind === 'regular') regular.add(playerId);
       }
       if (!counted) continue;
       const kind = meta.kind as TeamSeason['kind'];
@@ -270,7 +279,7 @@ export function recordGames(
           broken
         );
     }
-    if (counted && meta.kind === 'regular') addGameRecords(records, lines, season, result.id, broken);
+    if (meta.kind === 'regular') addGameRecords(records, lines, season, result.id, broken);
     summary.results.push({
       id: result.id,
       week: meta.week,
@@ -285,18 +294,20 @@ export function recordGames(
   const changed = [...touched].map(id => players.get(id) as PlayerHistory);
   addPlayerRecords(
     records,
-    changed.map(h => ({
-      id: h.id,
-      season: wholeSeason(h, season),
-      career: careerTotals(h),
-      lastSeason: season
-    })),
+    changed
+      .filter(h => regular.has(h.id))
+      .map(h => ({
+        id: h.id,
+        season: wholeSeason(h, season),
+        career: careerTotals(h),
+        lastSeason: season
+      })),
     broken
   );
   summary.leaders = seasonLeaders(tables);
   return {
     tables,
-    games: games.map(g => gameRecord(g.result, g.meta)),
+    games: fresh.map(g => gameRecord(g.result, g.meta)),
     players: changed,
     season: summary,
     records,

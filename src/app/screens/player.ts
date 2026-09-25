@@ -6,7 +6,7 @@ import { teamFullName } from '../../data/team-colors';
 import { ability, type Ability } from '../../engine/abilities/catalog';
 import { rolesFor, type FitContext, type RoleRating } from '../../engine/fit/role-rating';
 import { leagueFitContext } from '../../engine/league/fit';
-import { calendarDay } from '../../engine/model/calendar';
+import { calendarDay, playoffRoundName } from '../../engine/model/calendar';
 import { ageOn, fullName, type Player } from '../../engine/model/player';
 import { RATING_GROUPS, RATING_LABELS, type RatingKey } from '../../engine/model/ratings';
 import type { Traits } from '../../engine/model/traits';
@@ -302,7 +302,8 @@ export function playerScreen(): Screen {
             careerCard({
               position: player.position,
               history: found,
-              loadLog: season => history.gameLog(leagueId, player.id, season)
+              loadLog: season => history.gameLog(leagueId, player.id, season),
+              roundName: week => playoffRoundName(week, league.rules.season)
             })
           ),
         () =>

@@ -55,6 +55,28 @@ export const PHASE_LABELS: Record<Phase, string> = {
   cutdown: 'Final cutdown'
 };
 
+/** Playoff rounds a bracket needs: the rounds within each conference, then the Super Bowl (spec 5.3). */
+export function playoffRounds(teamsPerConference: number): number {
+  return Math.ceil(Math.log2(Math.max(1, teamsPerConference))) + 1;
+}
+
+/** Short round names, counted back from the Super Bowl. */
+const ROUNDS_FROM_FINAL = ['Super Bowl', 'Conference', 'Divisional', 'Wild Card'] as const;
+
+/**
+ * The playoff round of a game week. Playoff games are numbered on from the regular season's weeks, so
+ * round 1 is week `weeks + 1`; smaller brackets drop the early rounds.
+ */
+export function playoffRoundName(
+  week: number,
+  season: { weeks: number; playoffTeamsPerConference: number }
+): string {
+  const round = week - season.weeks;
+  return (
+    ROUNDS_FROM_FINAL[playoffRounds(season.playoffTeamsPerConference) - round] ?? `Playoff round ${round}`
+  );
+}
+
 /** Orders two dates. Negative when a is earlier. */
 export function compareDates(a: GameDate, b: GameDate): number {
   return a.season - b.season || PHASES.indexOf(a.phase) - PHASES.indexOf(b.phase) || a.week - b.week;

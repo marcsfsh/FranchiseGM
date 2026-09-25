@@ -49,6 +49,8 @@ export class HistoryStore {
     index: Map<TableId, Map<string, number[]>>;
   } | null = null;
   private readonly memory = new Map<string, unknown>();
+  /** Batches record one at a time, so each one reads what the previous one wrote. */
+  private queue: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly db: Db | null) {}
 
@@ -96,9 +98,18 @@ export class HistoryStore {
 
   /**
    * Records a batch of one season's games: appends their stat rows and updates every running aggregate in
-   * one transaction. Returns records that changed hands.
+   * one transaction. Games it already has are skipped. Returns records that changed hands.
    */
-  async record(
+  record(
+    leagueId: string,
+    games: readonly { result: GameResult; meta: GameMeta }[]
+  ): Promise<BrokenRecord[]> {
+    const run = this.queue.then(() => this.recordNow(leagueId, games));
+    this.queue = run.catch(() => undefined);
+    return run;
+  }
+
+  private async recordNow(
     leagueId: string,
     games: readonly { result: GameResult; meta: GameMeta }[]
   ): Promise<BrokenRecord[]> {

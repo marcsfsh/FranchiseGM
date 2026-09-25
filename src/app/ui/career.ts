@@ -29,20 +29,18 @@ const PRIMARY: Partial<Record<Position, readonly CategoryId[]>> = {
   P: ['punting']
 };
 
-/** Playoff rounds by week (the season has 18 weeks). */
-const ROUNDS: Record<number, string> = {
-  19: 'Wild Card',
-  20: 'Divisional',
-  21: 'Conference',
-  22: 'Super Bowl'
-};
-
 const has = (totals: Totals, category: CategoryId) =>
   CATEGORY_KEYS[category].some(k => (totals[k] ?? 0) !== 0);
 
 /** The categories to show for a player, primary ones first, snaps last. */
 export function categoriesFor(position: Position, lines: readonly { totals: Totals }[]): CategoryId[] {
-  const shown = CATEGORY_IDS.filter(c => lines.some(l => has(l.totals, c)));
+  return ordered(
+    position,
+    CATEGORY_IDS.filter(c => lines.some(l => has(l.totals, c)))
+  );
+}
+
+function ordered(position: Position, shown: readonly CategoryId[]): CategoryId[] {
   const first = PRIMARY[position] ?? ['defense', 'returns'];
   return [
     ...first.filter(c => shown.includes(c)),
@@ -120,14 +118,18 @@ function seasonTable(
   return scrollRegion(`${title} by season`, table);
 }
 
-const weekLabel = (e: GameLogEntry): string =>
-  e.kind === 'playoffs'
-    ? (ROUNDS[e.week] ?? `Playoff week ${e.week}`)
-    : e.kind === 'preseason'
-      ? `Preseason ${e.week}`
-      : String(e.week);
-
-function logTable(category: CategoryId, entries: readonly GameLogEntry[], season: number): HTMLElement {
+function logTable(
+  category: CategoryId,
+  entries: readonly GameLogEntry[],
+  season: number,
+  roundName: (week: number) => string
+): HTMLElement {
+  const weekLabel = (e: GameLogEntry): string =>
+    e.kind === 'playoffs'
+      ? roundName(e.week)
+      : e.kind === 'preseason'
+        ? `Preseason ${e.week}`
+        : String(e.week);
   const columns = STAT_COLUMNS[category];
   const title = `${CATEGORY_TITLES[category]} game log, ${season}`;
   const result = (e: GameLogEntry) =>
@@ -174,25 +176,31 @@ export interface CareerOptions {
   history: PlayerHistory | null;
   /** Loads a season's game log (spec 9.3: one season at a time). */
   loadLog: (season: number) => Promise<GameLogEntry[]>;
+  /** Names a playoff game's round from its week (the league's rules set the bracket). */
+  roundName: (week: number) => string;
 }
 
 /** The career stats card: season tables and a game log with season and category choices. */
-export function careerCard({ position, history, loadLog }: CareerOptions): HTMLElement {
+export function careerCard({ position, history, loadLog, roundName }: CareerOptions): HTMLElement {
   const lines = history?.seasons ?? [];
-  if (!lines.length) return card('Career stats', h('p', { class: 'empty' }, 'No games played yet.'));
+  // Seasons with stored games, preseason included; older histories list only their season lines.
+  const logSeasons = history?.logSeasons ?? [...new Set(lines.map(l => l.season))];
+  if (!logSeasons.length) return card('Career stats', h('p', { class: 'empty' }, 'No games played yet.'));
   const regular = lines.filter(l => l.kind === 'regular');
   const playoffs = lines.filter(l => l.kind === 'playoffs');
-  const categories = categoriesFor(position, lines);
+  const categories = lines.length ? categoriesFor(position, lines) : ordered(position, CATEGORY_IDS);
   const careerRegular = careerTotals(history as PlayerHistory, 'regular');
   const careerPlayoffs = careerTotals(history as PlayerHistory, 'playoffs');
-  const tables: Child[] = [];
+  const tables: Child[] = lines.length
+    ? []
+    : [h('p', { class: 'muted' }, 'No regular-season or playoff games yet.')];
   for (const c of categories)
     if (regular.some(l => has(l.totals, c))) tables.push(seasonTable(c, regular, careerRegular, false));
   for (const c of categories)
     if (playoffs.some(l => has(l.totals, c))) tables.push(seasonTable(c, playoffs, careerPlayoffs, true));
 
   // Game log: any stored season, one category at a time.
-  const seasons = [...new Set(lines.map(l => l.season))].sort((a, b) => b - a);
+  const seasons = [...logSeasons].sort((a, b) => b - a);
   const seasonSelect = h(
     'select',
     { class: 'select', id: 'logSeason' },
@@ -217,7 +225,7 @@ export function careerCard({ position, history, loadLog }: CareerOptions): HTMLE
     mount(
       logBody,
       shown.length
-        ? logTable(category, shown, loadedSeason)
+        ? logTable(category, shown, loadedSeason, roundName)
         : h('p', { class: 'muted' }, `No ${name.toLowerCase()} stats in ${loadedSeason}.`)
     );
     if (announce)

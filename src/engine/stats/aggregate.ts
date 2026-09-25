@@ -23,6 +23,8 @@ export interface SeasonLine {
 export interface PlayerHistory {
   id: string;
   seasons: SeasonLine[];
+  /** Seasons with any stored game, preseason included, oldest first: the seasons his game log can open. */
+  logSeasons?: number[];
 }
 
 /** Adds a game line into running totals: sums, except "longest" stats, which keep the best game. */
@@ -39,7 +41,14 @@ export function addTotals(into: Totals, line: Readonly<Partial<PlayerLine>>): To
 export const played = (line: Readonly<Partial<PlayerLine>>): boolean =>
   STAT_KEYS.some(key => (line[key] ?? 0) !== 0);
 
-/** A new history with one game added. Preseason games are left out (spec 9.3). */
+/** A history whose game log lists the season. */
+export function withLogSeason(history: PlayerHistory, season: number): PlayerHistory {
+  const logs = history.logSeasons ?? [];
+  if (logs.includes(season)) return history;
+  return { ...history, logSeasons: [...logs, season].sort((a, b) => a - b) };
+}
+
+/** A new history with one game added. Preseason games only open the season's log (spec 9.3). */
 export function addGame(
   history: PlayerHistory,
   line: Readonly<Partial<PlayerLine>>,
@@ -47,7 +56,8 @@ export function addGame(
   season: number,
   kind: GameKind
 ): PlayerHistory {
-  if (kind === 'preseason' || !played(line)) return history;
+  if (!played(line)) return history;
+  if (kind === 'preseason') return withLogSeason(history, season);
   const seasons = history.seasons.map(s => ({ ...s, totals: { ...s.totals } }));
   let entry = seasons.find(s => s.season === season && s.team === team && s.kind === kind);
   if (!entry) {
@@ -58,14 +68,14 @@ export function addGame(
   entry.games++;
   if (line.started) entry.starts++;
   addTotals(entry.totals, line);
-  return { ...history, seasons };
+  return withLogSeason({ ...history, seasons }, season);
 }
 
-/** Career totals, summed over seasons (and teams) of one kind. */
+/** Career totals, summed over seasons (and teams) of one kind, under his latest team. */
 export function careerTotals(history: PlayerHistory, kind: SeasonLine['kind'] = 'regular'): SeasonLine {
   const out: SeasonLine = {
     season: 0,
-    team: history.seasons[0]?.team ?? 'MIN',
+    team: history.seasons.at(-1)?.team ?? 'MIN',
     kind,
     games: 0,
     starts: 0,
@@ -73,6 +83,7 @@ export function careerTotals(history: PlayerHistory, kind: SeasonLine['kind'] = 
   };
   for (const s of history.seasons) {
     if (s.kind !== kind) continue;
+    out.team = s.team;
     out.games += s.games;
     out.starts += s.starts;
     addTotals(out.totals, s.totals);
