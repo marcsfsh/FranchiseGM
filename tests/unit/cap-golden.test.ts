@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { capCharge, capHit, releaseImpact, weeksInForce } from '../../src/engine/contracts/cap';
 import { minimumContract } from '../../src/engine/contracts/build';
 import { decideOption, endContract, restructure, settleIncentives } from '../../src/engine/contracts/moves';
+import { contractSummary, contractView } from '../../src/engine/contracts/view';
 import {
   emptyYear,
   type Contract,
@@ -240,5 +241,37 @@ describe('options and incentives (spec 11.2)', () => {
     const earned = settleIncentives(vet, 2029, { sacks: 16 }, R);
     expect(capHit(earned, 2030, R)).toBe(1_000_000);
     expect(capHit(settleIncentives(vet, 2028, { sacks: 12 }, R), 2029, R)).toBe(12_000_000);
+  });
+});
+
+describe('the contract view (spec 11.2)', () => {
+  it('shows each remaining year with its cash and what a release before and after June 1 would do', () => {
+    // In March 2027 (the 2027 league year, before June 1).
+    const rows = contractView(vet, at(2026, 'freeAgency', 2), R);
+    expect(rows.map(r => [r.year, r.capHit, r.cash])).toEqual([
+      [2027, 11_000_000, 8_500_000],
+      [2028, 12_250_000, 9_000_000],
+      [2029, 12_000_000, 9_500_000]
+    ]);
+    // 2027: cut now, everything accelerates ($15.5M, costing $4.5M of space); designated, $10.5M now and $5M next.
+    expect(rows[0]?.cutEarly).toEqual({ deadNow: 15_500_000, deadNext: 0, savings: -4_500_000 });
+    expect(rows[0]?.cutLate).toEqual({ deadNow: 10_500_000, deadNext: 5_000_000, savings: 500_000 });
+    // 2028: cut as the year opens, 2028 and 2029 proration ($5M); in camp, $2.5M now and $2.5M next.
+    expect(rows[1]?.cutEarly).toEqual({ deadNow: 5_000_000, deadNext: 0, savings: 7_250_000 });
+    expect(rows[1]?.cutLate).toEqual({ deadNow: 2_500_000, deadNext: 2_500_000, savings: 9_750_000 });
+    expect(rows[2]?.cutEarly).toEqual({ deadNow: 2_500_000, deadNext: 0, savings: 9_500_000 });
+    // In season only the after-June 1 release is left for the current year.
+    const season = contractView(vet, at(2026, 'regularSeason', 5), R);
+    expect(season[0]?.cutEarly).toBeNull();
+    expect(season[0]?.cutLate?.deadNext).toBe(7_500_000 + 8_000_000);
+    // Signing bonus year: the $10M bonus is 2026 cash.
+    expect(season[0]?.cash).toBe(2_000_000 + 1_000_000 + 10_000_000);
+    expect(contractSummary(vet, at(2026, 'regularSeason', 5))).toEqual({
+      total: 10_000_000 + 2_000_000 + 1_000_000 + 8_000_000 + 500_000 + 9_000_000 + 9_500_000,
+      years: 4,
+      apy: 10_000_000,
+      guaranteed: 10_000_000 + 8_000_000,
+      remaining: 4
+    });
   });
 });
