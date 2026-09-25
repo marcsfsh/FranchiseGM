@@ -118,6 +118,8 @@ export async function expectTouchTargets(page: Page, scope: string, min: number)
       )) {
         const box = node.getBoundingClientRect();
         if (box.width === 0 || box.height === 0) continue;
+        // A control hidden from everyone (a file input a visible button opens) isn't a target.
+        if (node.closest('[aria-hidden="true"]')) continue;
         const target = node.closest('label') ?? node;
         const t = target.getBoundingClientRect();
         if (t.width + 0.5 < size || t.height + 0.5 < size) {

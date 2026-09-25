@@ -36,6 +36,7 @@
   display: inline-flex;
   align-items: center;
   min-height: var(--tap);
+  min-width: var(--tap);
   color: inherit;
   font-weight: 700;
 }

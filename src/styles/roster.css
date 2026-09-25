@@ -74,6 +74,8 @@
   display: inline-flex;
   align-items: center;
   min-height: var(--tap);
+  /* A short name ("Jim Vu") still makes a full-size target. */
+  min-width: var(--tap);
 }
 .roster-table a:focus-visible,
 .roster-table input:focus-visible {
