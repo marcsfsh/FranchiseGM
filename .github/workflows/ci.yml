@@ -17,7 +17,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      - run: npx prettier --check . --log-level warn
+      - run: npm run format:check
       - run: npm test
       # Spec 23.1: a short calibration run checks a subset of metrics against wide bands.
       - run: npm run calibrate -- --seasons 20 --ci --out test-results/calibration

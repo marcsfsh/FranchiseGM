@@ -14,10 +14,11 @@
     "test": "vitest run --reporter=dot",
     "typecheck": "tsc --noEmit --incremental --pretty false",
     "lint": "eslint . --quiet --format unix",
-    "check": "npm run typecheck && npm run lint && npm test",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
     "layout": "playwright test --reporter=line",
     "calibrate": "node tools/calibrate.mjs",
-    "measure": "tsx tools/measure.ts"
+    "measure": "tsx tools/measure.ts",
+    "format:check": "prettier --check . --log-level warn"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
