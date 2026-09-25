@@ -19,6 +19,17 @@ export const SPECIAL_SLOTS = ['K', 'P', 'LS', 'KR', 'PR', 'GUNNER'] as const;
  */
 export const DUTY_SLOTS = ['KR', 'PR', 'GUNNER'] as const;
 
+/** What each slot is called on the depth chart. */
+export const SLOT_LABELS: Readonly<Record<(typeof OFFENSE_SLOTS | typeof DEFENSE_SLOTS | typeof SPECIAL_SLOTS)[number], string>> = {
+  QB: 'Quarterback', RB1: 'Lead back', RB2: 'Second back', FB: 'Fullback', X: 'X receiver', Z: 'Z receiver',
+  SLOT: 'Slot receiver', TE1: 'Tight end', TE2: 'Second tight end', LT: 'Left tackle', LG: 'Left guard',
+  C: 'Center', RG: 'Right guard', RT: 'Right tackle', LEDGE: 'Left edge', REDGE: 'Right edge',
+  DT1: 'Defensive tackle', DT2: 'Second defensive tackle', FLEX: 'Flex front player', MIKE: 'Middle linebacker',
+  WILL: 'Weak-side linebacker', CB1: 'Top cornerback', CB2: 'Second cornerback', NCB: 'Nickel cornerback',
+  DIME: 'Dime back', FS: 'Free safety', SS: 'Strong safety', K: 'Kicker', P: 'Punter', LS: 'Long snapper',
+  KR: 'Kick returner', PR: 'Punt returner', GUNNER: 'Gunner'
+}; // prettier-ignore
+
 export type OffenseSlot = (typeof OFFENSE_SLOTS)[number];
 export type DefenseSlot = (typeof DEFENSE_SLOTS)[number];
 export type SpecialSlot = (typeof SPECIAL_SLOTS)[number];

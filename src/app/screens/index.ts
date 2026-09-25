@@ -1,5 +1,7 @@
 import type { RouteName } from '../router';
+import { depthScreen } from './depth';
 import { devScreen } from './dev';
+import { gamePlanScreen } from './gameplan';
 import { placeholderScreen } from './placeholder';
 import { historyScreen } from './history';
 import { homeScreen } from './home';
@@ -14,9 +16,8 @@ import type { Screen } from './types';
 export const SCREENS: Record<RouteName, () => Screen> = {
   home: homeScreen,
   roster: rosterScreen,
-  depth: () =>
-    placeholderScreen('Depth chart', 'Starters and backups at every position, with packages and rotations.'),
-  gameplan: () => placeholderScreen('Game plan', 'Your weekly plan against the next opponent.'),
+  depth: depthScreen,
+  gameplan: gamePlanScreen,
   staff: () => placeholderScreen('Staff', 'Your coaches, coordinators, scouts, and front office.'),
   scouting: () =>
     placeholderScreen('Scouting and draft', 'Prospects, scouting assignments, and the draft board.'),

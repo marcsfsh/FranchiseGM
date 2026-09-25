@@ -1,0 +1,173 @@
+/* Depth chart and game plan (style guide 7.2 tabs, 7.4 depth chart). Tokens only. */
+.switch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.depth-auto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--card-pad);
+  margin-bottom: var(--gap);
+}
+.tabs-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: var(--s1);
+  border-radius: var(--radius-seg);
+  background: var(--surface-2);
+}
+.tab {
+  min-height: var(--tap);
+  padding: var(--s2) var(--s4);
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+}
+.tab[aria-selected='true'] {
+  background: var(--surface);
+  border-color: var(--selection-indicator);
+}
+.tab-panel:focus-visible {
+  outline-offset: var(--s1);
+}
+.depth-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: var(--gap);
+}
+.depth-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  min-width: 0;
+}
+.depth-slot-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2);
+}
+.depth-slot-head .depth-title {
+  font-size: var(--fs-card);
+}
+/* Each player on a slot's list is a style guide depth-slot row. */
+.depth-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+.depth-slot .depth-rank {
+  min-width: 1.5rem;
+  font-weight: 800;
+  text-align: center;
+}
+.depth-slot .list-main {
+  flex: 1 1 8rem;
+}
+.depth-slot .depth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-left: auto;
+}
+.depth-slot.is-starter {
+  box-shadow: inset var(--s1) 0 0 var(--selection-indicator);
+}
+.depth-slot.is-out .list-main {
+  color: var(--text-2);
+}
+.depth-pick {
+  max-width: 28rem;
+}
+.depth-packages {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+  gap: var(--gap);
+}
+.depth-packages .card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+.range-value {
+  font-weight: 400;
+  color: var(--text-2);
+}
+.plan-dials,
+.plan-focus {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+  gap: var(--s5);
+}
+.plan-dial {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.plan-dial > legend {
+  padding: 0;
+  margin-bottom: var(--s1);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.report-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s2) var(--s4);
+  margin: 0;
+}
+.report-list dt {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.report-list dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+}
+.pick-row,
+.range-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+.pick-row .select {
+  flex: 1 1 12rem;
+}
+.range-row .range {
+  flex: 1 1 10rem;
+}
+/* Forced colors: the selected tab and the switch's state need system colors to show. */
+@media (forced-colors: active) {
+  .tab {
+    border-color: Canvas;
+  }
+  .tab[aria-selected='true'] {
+    border-color: Highlight;
+  }
+  .switch::after {
+    background: ButtonText;
+  }
+  .switch[aria-checked='true']::before {
+    background: Highlight;
+  }
+}

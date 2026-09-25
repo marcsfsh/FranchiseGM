@@ -7,7 +7,7 @@ import { needsLeague, parseHash, type Route } from './router';
 import { SCREENS } from './screens';
 import type { Screen } from './screens/types';
 import { createShell } from './shell';
-import { AppState } from './state';
+import { AppState, exportToDevice } from './state';
 import { PrefsController } from './theme/controller';
 import { WorkerClient, type Progress } from './worker-client';
 
@@ -46,7 +46,9 @@ let current: Screen | null = null;
 let currentRoute: Route | null = null;
 let first = true;
 /** Where the roster was when a player page opened from it, so returning restores it (style guide 13.5). */
-let rosterReturn: { scroll: number; playerId: string } | null = null;
+/** Lists that bring the user back to the same place after a player page (style guide 7.3). */
+const RETURN_ROUTES: ReadonlySet<string> = new Set(['roster', 'depth']);
+let listReturn: { route: string; scroll: number; playerId: string } | null = null;
 /** Whether the open player page was reached from the records book. */
 let historyOpened = false;
 
@@ -67,9 +69,9 @@ function show(route: Route): void {
     history.replaceState(null, '', '#/');
     route = parseHash('#/');
   }
-  if (currentRoute?.name === 'roster' && route.name === 'player')
-    rosterReturn = { scroll: window.scrollY, playerId: route.params.id ?? '' };
-  else if (route.name !== 'roster' && route.name !== 'player') rosterReturn = null;
+  if (currentRoute && RETURN_ROUTES.has(currentRoute.name) && route.name === 'player')
+    listReturn = { route: currentRoute.name, scroll: window.scrollY, playerId: route.params.id ?? '' };
+  else if (!RETURN_ROUTES.has(route.name) && route.name !== 'player') listReturn = null;
   // The records book restores its own focus once its data loads.
   const returning = route.name === 'history' && currentRoute?.name === 'player' && historyOpened;
   if (currentRoute?.name === 'history' && route.name === 'player') historyOpened = true;
@@ -85,13 +87,13 @@ function show(route: Route): void {
     return;
   }
   // Back on the roster from a player page: the same scroll position, with focus on that player's link.
-  const back = route.name === 'roster' ? rosterReturn : null;
+  const back = listReturn?.route === route.name ? listReturn : null;
   const link = back
     ? [...shell.main.querySelectorAll<HTMLElement>(`[data-player-link="${CSS.escape(back.playerId)}"]`)].find(
         visible
       )
     : undefined;
-  rosterReturn = route.name === 'roster' ? null : rosterReturn;
+  listReturn = back ? null : listReturn;
   if (back && link) {
     window.scrollTo(0, back.scroll);
     link.focus({ preventScroll: true });
@@ -131,9 +133,24 @@ async function boot(): Promise<void> {
   const state = new AppState(store, baseDb, worker, __GM_VERSION__);
   app = state;
   gm.app = state;
+  let saveFailed = false;
   state.onChange(() => {
     shell.setLeague(state.league);
     prefs.setFranchiseTeam(state.league?.meta.start.userTeam ?? null);
+    // A failed save anywhere (an edit, a week's autosave) says so once, with export as the way out.
+    const status = state.saveStatus;
+    if (status.state === 'failed' && !saveFailed && state.league)
+      toast(`Your league couldn't be saved (${status.message}). Export it to keep your progress.`, {
+        persistent: true,
+        action: {
+          label: 'Export league',
+          run: () =>
+            void exportToDevice(state).catch(() =>
+              toast("Couldn't export the league. Try again from Settings.", { persistent: true })
+            )
+        }
+      });
+    saveFailed = status.state === 'failed';
   });
   await state.refreshList();
   if (!store.available) {

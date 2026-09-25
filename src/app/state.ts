@@ -19,6 +19,9 @@ export type SaveStatus =
   | { state: 'failed'; message: string }
   | { state: 'none' };
 
+/** How long an edit waits for the next one before the league saves. */
+const EDIT_SAVE_DELAY_MS = 600;
+
 export class AppState {
   league: League | null = null;
   leagues: LeagueSummary[] = [];
@@ -71,6 +74,7 @@ export class AppState {
   }
 
   async close(): Promise<void> {
+    await this.flush();
     this.league = null;
     this.saveStatus = { state: 'none' };
     await this.rememberLeague(null);
@@ -157,6 +161,34 @@ export class AppState {
       this.emit();
       return false;
     }
+  }
+
+  private pendingSave: ReturnType<typeof setTimeout> | null = null;
+  /** The user's actions since the last advance, which seed the next one's variance (spec 8.9). */
+  private actions: unknown[] = [];
+
+  /**
+   * Applies a change to the open league from a screen (a depth chart move, a game plan setting) and saves
+   * shortly after, so a burst of changes saves once. `action` describes the change for the next advance's
+   * variance.
+   */
+  edit(change: (league: League) => void, action: unknown = 'edit'): void {
+    if (!this.league) return;
+    change(this.league);
+    this.actions.push(action);
+    if (this.pendingSave) clearTimeout(this.pendingSave);
+    this.pendingSave = setTimeout(() => {
+      this.pendingSave = null;
+      void this.save();
+    }, EDIT_SAVE_DELAY_MS);
+  }
+
+  /** Saves any edit still waiting for its save. */
+  async flush(): Promise<void> {
+    if (!this.pendingSave) return;
+    clearTimeout(this.pendingSave);
+    this.pendingSave = null;
+    await this.save();
   }
 
   /** Autosave hook (spec 21): after every week and every offseason phase. */
