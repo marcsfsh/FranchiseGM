@@ -154,6 +154,9 @@ export const ABILITIES = [
 
 export type AbilityId = (typeof ABILITIES)[number]['id'];
 
+/** The catalog typed as plain abilities, for code that reads optional fields such as contexts. */
+export const ABILITY_LIST: readonly Ability[] = ABILITIES;
+
 const BY_ID = new Map<string, Ability>(ABILITIES.map(a => [a.id, a]));
 
 export function ability(id: string): Ability | undefined {
