@@ -55,8 +55,24 @@ export async function createLeague(page: Page, options: LeagueOptions = {}): Pro
 
 /** The page never scrolls sideways (style guide 14.4). */
 export async function expectNoHorizontalOverflow(page: Page): Promise<void> {
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  expect(overflow, 'page-level horizontal overflow').toBeLessThanOrEqual(0);
+  const { overflow, culprits } = await page.evaluate(() => {
+    const width = window.innerWidth;
+    const past = (el: Element) => el.getBoundingClientRect().right > width + 0.5;
+    // The deepest elements reaching past the viewport, to name the cause in the failure.
+    const culprits = [...document.querySelectorAll('body *')]
+      .filter(el => past(el) && ![...el.children].some(past))
+      .slice(0, 6)
+      .map(el => {
+        const r = el.getBoundingClientRect();
+        const name = `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}${[...el.classList].map(c => `.${c}`).join('')}`;
+        return `${name} right=${Math.round(r.right)} width=${Math.round(r.width)} "${(el.textContent ?? '').trim().slice(0, 30)}"`;
+      });
+    return { overflow: document.documentElement.scrollWidth - width, culprits };
+  });
+  expect(
+    overflow,
+    `page-level horizontal overflow from ${culprits.join('; ') || 'nothing visible'}`
+  ).toBeLessThanOrEqual(0);
 }
 
 /** Visible interactive elements inside `scope` meet the target size (style guide 4.3). */

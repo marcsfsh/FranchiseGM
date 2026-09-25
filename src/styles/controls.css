@@ -244,3 +244,17 @@ fieldset.field .seg label {
   height: var(--s3);
   accent-color: var(--selection-indicator);
 }
+/* Narrow screens with large text: legends, radio labels, and menus wrap or shrink instead of overflowing. */
+fieldset.field > legend {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.seg label {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.input,
+.select {
+  max-width: 100%;
+}
