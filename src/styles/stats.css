@@ -1,0 +1,86 @@
+/* Stats tables (style guide 7.3): row headers, tabular numerals, and a labeled scroll region when wide. */
+.stat-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--fs-small);
+}
+.stat-table caption {
+  padding-bottom: var(--s2);
+  text-align: left;
+  font-weight: 700;
+}
+.stat-table th,
+.stat-table td {
+  padding: var(--row-pad) var(--s2);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.stat-table thead {
+  background: var(--surface-2);
+}
+.stat-table .num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.stat-table tfoot th,
+.stat-table tfoot td {
+  border-top: 2px solid var(--line);
+  font-weight: 700;
+}
+.stat-table abbr[title] {
+  text-decoration: none;
+}
+.stat-table a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  color: inherit;
+  font-weight: 700;
+}
+/* The scroll area contains its hidden header text, which is absolutely positioned. */
+.stat-block .table-scroll {
+  position: relative;
+}
+/* Wide career tables keep their cells on one line and scroll inside their region instead. */
+.table-scroll .stat-table th,
+.table-scroll .stat-table td {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+/* Edge shadows show there are more columns: they sit under the scrolling content and stay put. */
+.table-scroll.is-scrollable {
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent) left center / 2.5rem 100% no-repeat local,
+    linear-gradient(to left, var(--surface) 30%, transparent) right center / 2.5rem 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--text) 24%, transparent), transparent)
+      left center / 0.9rem 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--text) 24%, transparent), transparent)
+      right center / 0.9rem 100% no-repeat scroll;
+}
+.stat-block {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s1);
+}
+.stat-key summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap);
+  font-weight: 700;
+  cursor: pointer;
+}
+.stat-key dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--s1) var(--s3);
+  margin: 0;
+  font-size: var(--fs-small);
+}
+.stat-key dt {
+  font-weight: 700;
+}
+.stat-key dd {
+  margin: 0;
+}

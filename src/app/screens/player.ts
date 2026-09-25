@@ -1,6 +1,6 @@
 /**
  * Player page (style guide 11): profile, fit in the user's schemes with the breakdown (spec 7.3, 7.7),
- * ratings, traits, and abilities. Contracts, stats, and history join it in later milestones.
+ * ratings, traits, abilities, and career stats with game logs (spec 9). Contracts join it in M8.
  */
 import { teamFullName } from '../../data/team-colors';
 import { ability, type Ability } from '../../engine/abilities/catalog';
@@ -16,6 +16,7 @@ import { named, resolveDefense, resolveOffense } from '../../engine/schemes/reso
 import { CONTEXT_TRIGGERS, TRIGGER_LABELS } from '../../engine/schemes/situations';
 import { DEFENSE_SLOTS, DUTY_SLOTS, FIT_SLOTS, OFFENSE_SLOTS } from '../../engine/schemes/slots';
 import { h, mount } from '../dom';
+import { careerCard } from '../ui/career';
 import { href } from '../router';
 import { fitNode, fitSentence } from '../ui/fit';
 import { attributeRow, devTag, heightText, stat, statusTag, tierPlate } from '../ui/players';
@@ -286,11 +287,43 @@ export function playerScreen(): Screen {
           : h('p', { class: 'muted' }, 'No notable traits.')
       );
 
+      // Career stats load from the history store (spec 9.3).
+      const history = app.store.history;
+      const leagueId = league.meta.id;
+      const careerSlot = h(
+        'div',
+        null,
+        card('Career stats', h('p', { class: 'muted' }, 'Loading career stats…'))
+      );
+      history.playerHistory(leagueId, player.id).then(
+        found =>
+          mount(
+            careerSlot,
+            careerCard({
+              position: player.position,
+              history: found,
+              loadLog: season => history.gameLog(leagueId, player.id, season)
+            })
+          ),
+        () =>
+          mount(
+            careerSlot,
+            card(
+              'Career stats',
+              h(
+                'p',
+                { class: 'empty' },
+                "Career stats couldn't be read from this browser's storage. Reload the page to try again."
+              )
+            )
+          )
+      );
+
       return h(
         'section',
         { class: 'view' },
         h('p', null, h('a', { class: 'btn btn-outline', href: href('roster') }, 'Back to roster')),
-        h('div', { class: 'stack' }, head, fitCard, ratingsCard, traitsCard)
+        h('div', { class: 'stack' }, head, fitCard, ratingsCard, traitsCard, careerSlot)
       );
     }
   };

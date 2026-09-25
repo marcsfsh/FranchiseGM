@@ -8,6 +8,8 @@ export interface ScreenContext {
   app: AppState;
   /** Navigates to a hash route. */
   go(hash: string): void;
+  /** Set when the user comes back from a player page opened on this screen (lists restore focus). */
+  returning?: boolean;
 }
 
 export interface Screen {

@@ -47,6 +47,8 @@ let currentRoute: Route | null = null;
 let first = true;
 /** Where the roster was when a player page opened from it, so returning restores it (style guide 13.5). */
 let rosterReturn: { scroll: number; playerId: string } | null = null;
+/** Whether the open player page was reached from the records book. */
+let historyOpened = false;
 
 const visible = (node: HTMLElement) => node.getClientRects().length > 0;
 
@@ -68,9 +70,13 @@ function show(route: Route): void {
   if (currentRoute?.name === 'roster' && route.name === 'player')
     rosterReturn = { scroll: window.scrollY, playerId: route.params.id ?? '' };
   else if (route.name !== 'roster' && route.name !== 'player') rosterReturn = null;
+  // The records book restores its own focus once its data loads.
+  const returning = route.name === 'history' && currentRoute?.name === 'player' && historyOpened;
+  if (currentRoute?.name === 'history' && route.name === 'player') historyOpened = true;
+  else if (route.name !== 'player') historyOpened = false;
   current?.dispose?.();
   current = SCREENS[route.name]();
-  shell.main.replaceChildren(current.render({ route, prefs, app, go }));
+  shell.main.replaceChildren(current.render({ route, prefs, app, go, returning }));
   shell.setCurrent(route);
   document.title = `${current.title} · Franchise GM`;
   currentRoute = route;
