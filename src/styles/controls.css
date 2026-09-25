@@ -280,9 +280,10 @@ fieldset.field > legend {
 .select {
   max-width: 100%;
 }
-/* WebKit draws a menu's chosen option past a narrow select; clip it like other browsers do. */
+/* WebKit paints a menu's chosen option past a narrow select and ignores overflow on native menus; paint
+   containment clips the contents to the select without clipping its own focus ring. */
 .select {
-  overflow: hidden;
+  contain: paint;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
