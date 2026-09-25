@@ -182,6 +182,29 @@ export const TUNING = {
     udfaBonus: [0, 25_000]
   },
 
+  /** Injuries between games (spec 10.8). */
+  injuries: {
+    /** Weeks he plays at reduced ratings after returning, by severity (lingering effects). */
+    lingering: { minor: 0, short: 1, medium: 2, season: 2 },
+    /** Weeks of raised re-injury risk after returning, by severity. */
+    fragile: { minor: 1, short: 2, medium: 4, season: 6 },
+    /** Rating points off every composite while he plays hurt, by designation. */
+    hurtPenalty: { questionable: 4, probable: 1.5 },
+    /** Injury risk multipliers: in his fragile weeks, and more when he plays questionable. */
+    fragileRisk: 1.6,
+    questionableRisk: 1.3,
+    /** A season-ending injury changes a career this often, costing the body part's ratings this many points. */
+    careerChance: 0.12,
+    careerLoss: [3, 8],
+    /** Ratings a career-altering injury takes, by body part. */
+    careerRatings: {
+      'knee (ACL)': ['spd', 'acc', 'agi', 'cod'],
+      Achilles: ['spd', 'acc', 'jmp'],
+      'foot (Lisfranc)': ['acc', 'agi', 'cod'],
+      shoulder: ['str', 'thp'],
+      ankle: ['agi', 'cod']
+    }
+  },
   /** The fictional league (spec 10.2 item 4): roster quality by slot, ages, and cap use. */
   league: {
     /** Latent quality of starters, their spread, and the spread of team strength. */

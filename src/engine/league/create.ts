@@ -87,7 +87,7 @@ export function createLeague(input: NewLeagueInput): League {
       const mismatch = coordinatorFit(member, schemes);
       if (mismatch) member.morale = Math.max(0, member.morale + mismatch.morale);
     }
-    teams[abbr] = { abbr, ownerId: owner.id, staff, schemes };
+    teams[abbr] = { abbr, ownerId: owner.id, staff, schemes, resting: [] };
   }
 
   return {

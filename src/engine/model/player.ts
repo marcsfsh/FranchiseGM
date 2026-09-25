@@ -1,4 +1,5 @@
 /** The player record (spec 6.1). */
+import type { PlayerInjury } from '../season/injuries';
 import type { TeamAbbr } from '../../data/team-colors';
 import type { Position } from './positions';
 import type { Ratings } from './ratings';
@@ -62,6 +63,8 @@ export interface Player {
   /** Morale, 0 to 100. */
   morale: number;
   contractId: string | null;
+  /** The injury he's carrying, if any (spec 10.8). */
+  injury: PlayerInjury | null;
   /** Columns from an import that the model doesn't use, kept for lossless round trips. */
   extra?: Record<string, string>;
 }

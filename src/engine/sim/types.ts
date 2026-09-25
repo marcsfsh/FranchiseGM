@@ -44,6 +44,8 @@ export interface SimPlayer {
   energy: number;
   /** Out of the game for injury. */
   out: boolean;
+  /** Multiplies his in-game injury risk: above 1 while he plays hurt or is fragile after one (spec 10.8). */
+  injuryRisk: number;
 }
 
 export interface CoachStyle {

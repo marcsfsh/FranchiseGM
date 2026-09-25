@@ -374,6 +374,7 @@ export function generatePlayer(ctx: GenContext, req: PlayerRequest): Player {
     team: req.team,
     status: req.status,
     morale: Math.max(G.morale[2], Math.min(G.morale[3], Math.round(rng.normal(G.morale[0], G.morale[1])))),
-    contractId: null
+    contractId: null,
+    injury: null
   };
 }

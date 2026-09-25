@@ -53,6 +53,8 @@ export interface TeamState {
   staff: Partial<Record<StaffRole, string[]>>;
   /** The schemes the head coach runs (spec 7.2). */
   schemes: TeamSchemes;
+  /** Questionable players the coach is resting this week instead of playing them hurt (spec 10.8). */
+  resting: string[];
 }
 
 /** League settings that can change mid-save (spec 22). Sections are added as their features arrive. */

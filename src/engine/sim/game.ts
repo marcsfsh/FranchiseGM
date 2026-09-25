@@ -2858,6 +2858,7 @@ class GameSim {
         (C.toughnessBase - p.toughness / C.toughnessScale) *
         (1 + Math.max(0, C.injuryTiredBelow - p.energy) / 100) *
         surface *
+        p.injuryRisk *
         g.injuryFrequency;
       if (!this.rng.chance(risk)) continue;
       const weights = S.injurySeverity.map((w, i) => (i === 0 ? w / g.injurySeverity : w * g.injurySeverity));

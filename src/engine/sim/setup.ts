@@ -18,6 +18,7 @@ import { fullName, type Player } from '../model/player';
 import type { Rng } from '../rng';
 import { DEFENSE_SLOTS, OFFENSE_SLOTS, SPECIAL_SLOTS, type Slot } from '../schemes/slots';
 import { TUNING } from '../tuning';
+import { cannotPlay, designation, hurtEffects } from '../season/injuries';
 import { abilityEdges, compositeEdges } from './composites';
 import type { SimSliders } from './sliders';
 import type { CoachStyle, GameSetup, GameWeather, SimAbility, SimPlayer, TeamSetup } from './types';
@@ -36,6 +37,11 @@ function simAbilities(player: Player): SimAbility[] {
 }
 
 export function simPlayer(player: Player): SimPlayer {
+  // Playing hurt costs rating points and raises the injury risk (spec 10.8).
+  const hurt = hurtEffects(player.injury);
+  const edges = compositeEdges(player.ratings);
+  if (hurt.penalty)
+    for (const key of Object.keys(edges) as (keyof typeof edges)[]) edges[key] -= hurt.penalty;
   return {
     id: player.id,
     name: fullName(player),
@@ -43,7 +49,7 @@ export function simPlayer(player: Player): SimPlayer {
     position: player.position,
     jersey: player.jersey,
     ovr: player.ovr,
-    edges: compositeEdges(player.ratings),
+    edges,
     traits: player.traits,
     abilities: simAbilities(player),
     fit: {},
@@ -51,7 +57,8 @@ export function simPlayer(player: Player): SimPlayer {
     injury: player.ratings.inj,
     toughness: player.ratings.tgh,
     energy: 100,
-    out: false
+    out: false,
+    injuryRisk: hurt.risk
   };
 }
 
@@ -118,8 +125,16 @@ function passRunBalance(players: Record<string, SimPlayer>, depth: Record<Slot, 
   return passing - running;
 }
 
+/** Whether a player dresses for his team's game: active, and not held out by an injury (spec 10.8). */
+export function available(league: League, player: Player): boolean {
+  if (player.status !== 'active') return false;
+  if (cannotPlay(designation(player.injury))) return false;
+  // A questionable player the coach decided to rest.
+  return !(league.teams[player.team as TeamAbbr]?.resting ?? []).includes(player.id);
+}
+
 export function teamSetup(league: League, abbr: TeamAbbr, boost: number): TeamSetup {
-  const roster = Object.values(league.players).filter(p => p.team === abbr && p.status === 'active');
+  const roster = Object.values(league.players).filter(p => p.team === abbr && available(league, p));
   const ctx = leagueFitContext(league, abbr);
   const players: Record<string, SimPlayer> = {};
   for (const p of roster) players[p.id] = simPlayer(p);
@@ -253,7 +268,8 @@ export function gameSetup(
     id: game.id,
     season: game.season,
     week: game.week,
-    playoff: false,
+    // Playoff games are numbered on from the regular season's weeks and can't end in a tie.
+    playoff: game.week > league.rules.season.weeks,
     neutral: game.siteType !== 'home',
     venue,
     weather,
