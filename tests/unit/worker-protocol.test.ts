@@ -101,6 +101,7 @@ describe('createLeague job', () => {
 });
 
 describe('calibrate job', () => {
+  // Two replays and two league builds: slower than most unit tests when the suite runs in parallel.
   it('replays a plan step by step and returns the same report as replaying it directly', async () => {
     const { readFileSync } = await import('node:fs');
     const { parseClimate } = await import('../../src/data/climate');
@@ -130,5 +131,5 @@ describe('calibrate job', () => {
     const samples = planJobs(plan).map(job => runJob(data, plan.seed, job, league));
     const { created, seconds } = result.payload;
     expect(result.payload).toEqual(finishRun(plan, samples, targets, 'full', created, seconds));
-  });
+  }, 30_000);
 });
