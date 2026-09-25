@@ -275,6 +275,8 @@ export const TUNING = {
     },
     /** Share of coordinators who run the head coach's scheme. */
     coordinatorMatchesHead: 0.75,
+    /** Staff morale when the league starts, 0 to 100 (spec 7.6 coordinator mismatch lowers it). */
+    startMorale: 70,
     /** Age mean and spread by role. */
     age: {
       HC: [52, 8],
@@ -313,6 +315,143 @@ export const TUNING = {
       SCOUT: [80_000, 180_000],
       GM: [2_500_000, 9_000_000]
     }
+  },
+
+  /**
+   * Estimated situation profiles (spec 7.5): the share of each role's snaps in each trigger situation,
+   * estimated from scheme tendencies until M4 measures them by running the sim. League figures are
+   * 2021-2025 NFL averages from nflverse play-by-play.
+   */
+  situations: {
+    /** Offensive snaps by down and distance (short is 3 yards or fewer to go). */
+    downMix: { first: 0.45, secondShort: 0.13, secondLong: 0.19, thirdShort: 0.09, thirdLong: 0.14 },
+    /** Game contexts as shares of snaps: inside the 20, two-minute drill, one-score games late, bad weather. */
+    redZone: 0.13,
+    twoMinute: 0.09,
+    lateAndClose: 0.1,
+    badWeather: 0.12,
+    /** League averages the other side of the ball faces. */
+    leaguePass: 0.58,
+    leagueBlitz: 0.28,
+    leagueMan: 0.35,
+    leagueDeep: 0.11,
+    leagueInside: 0.62,
+    leaguePlayAction: 0.22,
+    /** Passes between 10 and 19 air yards; short passes are the rest after deep shots. */
+    intermediateShare: 0.25,
+    /** Dropbacks that end in a pass attempt (the rest are sacks and scrambles). */
+    attemptShare: 0.9,
+    contestedShare: 0.14,
+    /** The lead back's share of running back snaps. */
+    rb1Share: 0.7,
+    /** Carries by the back on the field when a back runs it (the fullback gets the rest). */
+    backCarryShare: 0.95,
+    fullbackCarryShare: 0.05,
+    /** Share of pass snaps each slot runs a route (the rest it blocks). */
+    routeShare: { X: 1, Z: 1, SLOT: 1, TE1: 0.7, TE2: 0.4, RB1: 0.45, RB2: 0.5, FB: 0.3 },
+    /** How much more (or less) often each receiving slot draws deep and short targets than average. */
+    deepBias: { X: 1.4, Z: 1.4, SLOT: 0.6, TE1: 0.5, TE2: 0.4, RB1: 0.1, RB2: 0.1, FB: 0.1 },
+    shortBias: { X: 0.9, Z: 0.9, SLOT: 1.15, TE1: 1.1, TE2: 1.1, RB1: 1.3, RB2: 1.3, FB: 1.3 },
+    /** Catches that turn into open-field runs, and runs that reach the open field (more on outside runs). */
+    catchOpenField: 0.5,
+    openFieldBase: 0.12,
+    openFieldOutside: 0.12,
+    /** Carries met at or behind the line (more on gap runs). */
+    contactBase: 0.35,
+    contactGap: 0.2,
+    /** Quarterback throws outside the pocket: base, per unit of play action (bootlegs), per unit of scramble. */
+    outsidePocketBase: 0.05,
+    outsidePocketPlayAction: 0.35,
+    outsidePocketScramble: 0.08,
+    /** Counters count half inside, half outside; linemen release downfield on this share of screens. */
+    counterInside: 0.5,
+    screenRelease: 0.5,
+    /** Extra contested catches per unit of deep-target share. */
+    contestedDeep: 0.3,
+    /**
+     * Defensive groups against a league-average offense. rush: share of pass plays rushing with a 4-man and
+     * a 3-man front, plus per unit of blitz and simulated-pressure rate. deep: how often the group is the
+     * deep defender relative to average, plus per unit of single-high and two-high shells. The rest are
+     * relative involvement in short coverage, contested catches, open-field tackles, inside and outside
+     * runs, and contact at the line (plus per unit of penetrating run fits).
+     */
+    // prettier-ignore
+    defenseGroups: {
+      edge:     { rush4: 0.9,  rush3: 0.8, blitz: 0.2,  sim: 0,    deep: 0,   single: 0,    two: 0,   short: 0.3, contested: 0,   openField: 0.15, inside: 0.6, outside: 1,   atLine: 0.7,  penetration: 0.3 },
+      interior: { rush4: 1,    rush3: 1,   blitz: 0,    sim: -0.3, deep: 0,   single: 0,    two: 0,   short: 0,   contested: 0,   openField: 0.05, inside: 1,   outside: 0.4, atLine: 0.7,  penetration: 0.3 },
+      flex:     { rush4: 0,    rush3: 1,   blitz: 0.35, sim: 0,    deep: 0.05, single: 0,   two: 0,   short: 1,   contested: 0.3, openField: 0.3,  inside: 0.8, outside: 0.8, atLine: 0.5,  penetration: 0.3 },
+      mike:     { rush4: 0,    rush3: 0,   blitz: 0.45, sim: 0.3,  deep: 0.1, single: 0,    two: 0,   short: 1.2, contested: 0.4, openField: 0.35, inside: 1,   outside: 0.8, atLine: 0.5,  penetration: 0 },
+      will:     { rush4: 0,    rush3: 0,   blitz: 0.35, sim: 0.2,  deep: 0.15, single: 0,   two: 0,   short: 1.2, contested: 0.5, openField: 0.4,  inside: 0.8, outside: 1,   atLine: 0.4,  penetration: 0 },
+      corner:   { rush4: 0,    rush3: 0,   blitz: 0.05, sim: 0,    deep: 0.8, single: 0.45, two: 0.3, short: 0.8, contested: 1.2, openField: 0.3,  inside: 0.2, outside: 0.8, atLine: 0.1,  penetration: 0 },
+      nickel:   { rush4: 0,    rush3: 0,   blitz: 0.15, sim: 0.1,  deep: 0.3, single: 0,    two: 0,   short: 1.2, contested: 1,   openField: 0.35, inside: 0.4, outside: 0.7, atLine: 0.2,  penetration: 0 },
+      dime:     { rush4: 0,    rush3: 0,   blitz: 0.2,  sim: 0,    deep: 0.4, single: 0,    two: 0,   short: 1,   contested: 0.9, openField: 0.35, inside: 0.4, outside: 0.6, atLine: 0.15, penetration: 0 },
+      free:     { rush4: 0,    rush3: 0,   blitz: 0.03, sim: 0,    deep: 1,   single: 0.8,  two: 0,   short: 0.4, contested: 0.8, openField: 0.45, inside: 0.4, outside: 0.6, atLine: 0.1,  penetration: 0 },
+      strong:   { rush4: 0,    rush3: 0,   blitz: 0.15, sim: 0.1,  deep: 0.6, single: 0,    two: 0.6, short: 0.9, contested: 0.8, openField: 0.4,  inside: 0.7, outside: 0.8, atLine: 0.3,  penetration: 0 }
+    },
+    /** A defender's share of the coverage on a short pass or contested catch (about one in four). */
+    defenderShare: 0.25,
+    /** Open-field tackles per pass play (after the catch), relative to per run play; and the scale of both. */
+    openFieldPass: 0.1,
+    openFieldScale: 0.5,
+    /** Special teams: open-field and contact shares of return snaps, and gunners in space. */
+    special: {
+      kickReturnOpenField: 0.6,
+      kickReturnContact: 0.3,
+      puntReturnOpenField: 0.5,
+      puntReturnContested: 0.2,
+      gunnerOpenField: 0.8
+    }
+  },
+
+  /** Abilities (spec 7.4). */
+  abilities: {
+    /** Role rating points an ability adds in a scheme that triggers it as often as the named-scheme average. */
+    tierPoints: [0, 1, 2, 3],
+    /** A scheme can make an ability worth at most this multiple of its tier points. */
+    maxFrequencyRatio: 2,
+    /** Generated players (spec 10.2): abilities by development trait, and the overall a Star needs for one. */
+    count: { Normal: 0, Star: 1, Superstar: 2, 'X-Factor': 3 },
+    starMinOverall: 80,
+    /** Generated coaches (spec 13.1): one ability at this overall, two at the second threshold. */
+    coachOneAt: 72,
+    coachTwoAt: 84
+  },
+
+  /** Role ratings and fit (spec 7.3). */
+  fit: {
+    /** Default fit cap in points; leagues can change it (setting). */
+    cap: 8,
+    /** Age of the typical player that role ratings are measured from (the overall formulas' reference). */
+    referenceAge: 27,
+    /** The fit breakdown names up to this many ratings, and calls a scheme's trigger rate "often" or "rarely"
+     * past these multiples of the named-scheme average. */
+    namedRatings: 2,
+    oftenRatio: 1.15,
+    rarelyRatio: 0.85
+  },
+
+  /** Scheme cohesion and coaching (spec 7.6). */
+  cohesion: {
+    /** Cohesion is clamped to this many points either way. */
+    limit: 10,
+    /** Execution bonus per point of cohesion (fewer negative plays, penalties, and blown assignments). */
+    executionPerPoint: 0.004,
+    /** How far the most flexible head coach bends tendencies toward the roster's strengths. */
+    maxBend: 0.35,
+    /** Share of a positive cohesion bonus a fully flexible coach gives up. */
+    flexibilityCost: 0.5,
+    /** Softmax temperature, in fit points, when weighing which named scheme suits the roster. */
+    rosterTemperature: 1.5
+  },
+
+  /**
+   * Coordinator mismatch (spec 7.6): penalties per unit of scheme distance. Named schemes sit 0.1 to 0.36
+   * apart, so the most different pair costs about 18% of play calling and development and 18 morale.
+   */
+  coordinators: {
+    playCallingPenalty: 0.5,
+    developmentPenalty: 0.5,
+    moraleDrop: 50
   }
 } as const;
 
