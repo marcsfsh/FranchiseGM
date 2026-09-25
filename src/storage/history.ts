@@ -16,6 +16,13 @@ import {
   type GameRecord,
   type SeasonSummary
 } from '../engine/stats/record';
+import {
+  careerTotalsOf,
+  seasonTotals,
+  teamSeasonStats,
+  type PlayerTotals,
+  type TeamSeasonStats
+} from '../engine/stats/leaders';
 import { emptyRecords, type BrokenRecord, type RecordsBook } from '../engine/stats/records';
 import {
   decodeTable,
@@ -223,14 +230,39 @@ export class HistoryStore {
       if (k.includes(`|${prefix},`) || k === this.key('records', leagueId)) this.memory.delete(k);
   }
 
+  /** Every record of a league in a store, or those whose second key part starts with `prefix`. */
+  private async all<T>(store: HistoryStoreName, leagueId: string, prefix?: string): Promise<T[]> {
+    if (this.db)
+      return this.db.getAll<T>(
+        store,
+        prefix === undefined
+          ? leagueRange(leagueId)
+          : IDBKeyRange.bound([leagueId, prefix], [leagueId, `${prefix}\uffff`])
+      );
+    const head = `${store}|${JSON.stringify([leagueId]).slice(0, -1)},`;
+    return [...this.memory]
+      .filter(([k]) => k.startsWith(head) && (prefix === undefined || k.startsWith(`${head}${JSON.stringify(prefix).slice(0, -1)}`)))
+      .map(([, v]) => v as T);
+  } // prettier-ignore
+
+  /** Every player's regular-season totals for a season, for the leaderboards (spec 19.3). */
+  async seasonPlayerTotals(leagueId: string, season: number): Promise<PlayerTotals[]> {
+    return seasonTotals(await this.seasonTables(leagueId, season));
+  }
+
+  /** Every player's regular-season career totals, for the leaderboards. */
+  async careerPlayerTotals(leagueId: string): Promise<PlayerTotals[]> {
+    return careerTotalsOf(await this.all<PlayerHistory>('playerHistory', leagueId));
+  }
+
+  /** Every club's regular-season team stats for a season, from its stored games. */
+  async teamStats(leagueId: string, season: number): Promise<TeamSeasonStats[]> {
+    return teamSeasonStats(await this.all<GameRecord>('gameRecords', leagueId, `${season}-`));
+  }
+
   /** The league's whole history for an export file (spec 21). */
   async exportHistory(leagueId: string): Promise<HistoryExport> {
-    const all = async <T>(store: HistoryStoreName): Promise<T[]> =>
-      this.db
-        ? this.db.getAll<T>(store, leagueRange(leagueId))
-        : [...this.memory]
-            .filter(([k]) => k.startsWith(`${store}|${JSON.stringify([leagueId]).slice(0, -1)},`))
-            .map(([, v]) => v as T);
+    const all = <T>(store: HistoryStoreName): Promise<T[]> => this.all<T>(store, leagueId);
     return {
       tables: (await all<StatTable>('statTables')).map(encodeTable),
       games: await all<GameRecord>('gameRecords'),

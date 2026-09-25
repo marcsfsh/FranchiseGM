@@ -1239,6 +1239,34 @@ export const TUNING = {
     playCallingPenalty: 0.5,
     developmentPenalty: 0.5,
     moraleDrop: 50
+  },
+
+  /**
+   * Leaderboard minimums for rate stats (spec 19.3), after the NFL's: per team game in a season, and in
+   * total for a career. Passing rates need attempts, rushing and receiving averages carries and catches,
+   * kicking rates attempts, and return and punt averages returns and punts.
+   */
+  leaders: {
+    perTeamGame: {
+      passAtt: 14,
+      rushAtt: 6.25,
+      receptions: 1.875,
+      targets: 3,
+      fgAtt: 1,
+      punts: 2.5,
+      kickReturns: 1.25,
+      puntReturns: 0.875
+    },
+    career: {
+      passAtt: 1500,
+      rushAtt: 750,
+      receptions: 200,
+      targets: 300,
+      fgAtt: 100,
+      punts: 250,
+      kickReturns: 75,
+      puntReturns: 75
+    }
   }
 } as const;
 

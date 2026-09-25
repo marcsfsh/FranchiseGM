@@ -22,9 +22,11 @@ import { gameCard, nick, weekLabel } from '../ui/games';
 import { scrollRegion, statHeader } from '../ui/stat-table';
 import { tabs } from '../ui/tabs';
 import { card, pageHead } from './common';
+import { statsPanel } from './league-stats';
+import type { AppState } from '../state';
 import type { Screen } from './types';
 
-export const LEAGUE_TABS = ['standings', 'playoffs', 'schedule'] as const;
+export const LEAGUE_TABS = ['standings', 'playoffs', 'schedule', 'stats'] as const;
 export type LeagueTab = (typeof LEAGUE_TABS)[number];
 
 type StandingsView = 'divisions' | 'conferences';
@@ -411,12 +413,14 @@ function schedulePanel(league: League): HTMLElement {
 const TAB_LABELS: Record<LeagueTab, string> = {
   standings: 'Standings',
   playoffs: 'Playoffs',
-  schedule: 'Schedule'
+  schedule: 'Schedule',
+  stats: 'Stats'
 };
-const PANELS: Record<LeagueTab, (league: League) => Child> = {
+const PANELS: Record<LeagueTab, (league: League, app: AppState) => Child> = {
   standings: standingsPanel,
   playoffs: playoffsPanel,
-  schedule: schedulePanel
+  schedule: schedulePanel,
+  stats: (league, app) => statsPanel(app, league)
 };
 
 export const isLeagueTab = (tab: string | undefined): tab is LeagueTab =>
@@ -448,7 +452,7 @@ export function leagueScreen(): Screen {
         shown = league;
         const leagueTabs = tabs(
           'League',
-          LEAGUE_TABS.map(id => ({ id: `league-${id}`, label: TAB_LABELS[id], render: () => h('div', null, PANELS[id](league)) })),
+          LEAGUE_TABS.map(id => ({ id: `league-${id}`, label: TAB_LABELS[id], render: () => h('div', null, PANELS[id](league, app)) })),
           `league-${choice.tab}`,
           id => {
             const tab = id.replace('league-', '');

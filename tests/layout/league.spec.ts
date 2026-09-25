@@ -78,3 +78,42 @@ test('shows the playoff picture during the season and the bracket after it', asy
   await expectNoHorizontalOverflow(page);
   await expectTouchTargets(page, 'main', phone ? 48 : 44);
 }); // prettier-ignore
+
+test('ranks players by any stat with filters, and shows team offense and defense', async ({ page }, info) => {
+  const phone = sizeOf(info) === 'phone';
+  await importLeagueFixture(page, SEASON_FIXTURE, SEASON_FIXTURE_NAME);
+  await goTo(page, '#/league/stats', 'League');
+  const caption = page.locator('main table.leader-table caption');
+  await expect(caption).toHaveText('Passing yards, 2026 regular season');
+  const rows = page.locator('main table.leader-table tbody tr');
+  await expect(rows.first().locator('td').first()).toHaveText(/^(T-)?1$/);
+  const values = (await rows.locator('td:nth-child(3)').allTextContents()).map(v => Number(v.replace(/,/g, '')));
+  expect(values.length).toBeGreaterThan(20);
+  expect(values).toEqual([...values].sort((a, b) => b - a));
+  await expectRegionsMatchOverflow(page);
+  await expectNoHorizontalOverflow(page);
+  await expectTouchTargets(page, 'main', phone ? 48 : 44);
+
+  // A rate needs the minimum: six team games in, 14 pass attempts a game.
+  await page.selectOption('#statsStat', 'passerRating');
+  await expect(caption).toHaveText('Passer rating, 2026 regular season');
+  await expect(page.locator('main p.hint', { hasText: 'qualify' })).toHaveText('Players with at least 84 pass attempts qualify.');
+  await page.selectOption('#statsStat', 'rushYds');
+  await page.selectOption('#statsPosition', 'HB');
+  await expect(page.locator('main [role="status"]')).toHaveText(/^Rushing yards, 2026 regular season: \d+ players?\.$/);
+  expect(new Set(await rows.locator('td:nth-child(4)').allTextContents())).toEqual(new Set(['HB']));
+  await page.selectOption('#statsTeam', 'MIN');
+  await expect(rows.locator('td:nth-child(5)').first()).toHaveText('MIN');
+  expect(new Set(await rows.locator('td:nth-child(5)').allTextContents())).toEqual(new Set(['MIN']));
+  await page.selectOption('#statsScope', 'career');
+  await expect(caption).toHaveText('Rushing yards, career, regular season');
+  await expect(page.locator('#statsSeason')).toBeDisabled();
+
+  await page.getByRole('radio', { name: 'Teams' }).check();
+  const offense = page.locator('main section.card', { hasText: 'Offense' }).locator('tbody tr');
+  await expect(offense).toHaveCount(32);
+  await expect(page.locator('main section.card', { hasText: 'Defense' }).locator('tbody tr')).toHaveCount(32);
+  await expect(page.locator('main section.card', { hasText: 'Offense' }).locator('tr.is-us th')).toHaveText('Vikings (your team)');
+  await expectRegionsMatchOverflow(page);
+  await expectNoHorizontalOverflow(page);
+}); // prettier-ignore
