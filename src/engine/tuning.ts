@@ -749,7 +749,7 @@ export const TUNING = {
     airDeepMean: 11,
     screenAir: [-3, 1],
     /** Yards after catch means by depth, and the broken-tackle chance and extra yards. */
-    yac: { short: 3.9, intermediate: 2.55, deep: 3.9, screen: 5.2 },
+    yac: { short: 3.74, intermediate: 2.45, deep: 3.74, screen: 4.99 },
     brokenTackle: 0.065,
     brokenTackleYards: 11,
     /** Runs: stuff rate, stuff depth, gain shape and mean, breakaway chance and extra yards. */
@@ -1075,7 +1075,7 @@ export const TUNING = {
       /** Backs run checkdowns into open space: rating points of separation on their routes. */
       backfieldSeparation: 18,
       /** A pressured quarterback favors his backs by this factor when choosing a target. */
-      checkdownFavor: 2.6,
+      checkdownFavor: 3.4,
       pressWeight: 0.05,
       playActionSeparation: 2.5,
       blitzSeparation: 2.5,
@@ -1083,7 +1083,7 @@ export const TUNING = {
       /** How much target choice follows separation, per rating point. */
       openness: 0.03,
       // prettier-ignore
-      deepFavor: { X: 2, Z: 2, SLOT: 0.7, EXTRA: 0.8, TE1: 0.5, TE2: 0.3, RB1: 0.1, RB2: 0.1, FB: 0.05 },
+      deepFavor: { X: 2.4, Z: 2.4, SLOT: 0.7, EXTRA: 0.8, TE1: 0.5, TE2: 0.3, RB1: 0.1, RB2: 0.1, FB: 0.05 },
       // prettier-ignore
       screenFavor: { X: 0.8, Z: 0.6, SLOT: 1.3, EXTRA: 0.6, TE1: 0.6, TE2: 0.3, RB1: 3, RB2: 3, FB: 0.5 },
       poiseWeight: 0.4,

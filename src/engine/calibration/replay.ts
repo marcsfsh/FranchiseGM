@@ -16,6 +16,7 @@ import type { NameData } from '../generate/player';
 import { createLeague, defaultStartOptions } from '../league/create';
 import { orderOf } from '../league/depth';
 import type { League } from '../league/types';
+import type { Player } from '../model/player';
 import type { Position } from '../model/positions';
 import { stream, type Rng } from '../rng';
 import { simulateGame } from '../sim/game';
@@ -176,6 +177,12 @@ export function replaySeason(
     for (const abbr of [g.home, g.away]) weeks.set(abbr, [...(weeks.get(abbr) ?? []), g.week]);
   // Players out with injuries, through the week they return after.
   const outThrough = new Map<string, number>();
+  const rosters = new Map<TeamAbbr, Player[]>();
+  for (const p of Object.values(league.players))
+    if (p.status === 'active' && p.team)
+      rosters.set(p.team as TeamAbbr, [...(rosters.get(p.team as TeamAbbr) ?? []), p]);
+  // Each team's players out this week, so its cached setup is rebuilt when the list changes.
+  const outKey = new Map<TeamAbbr, string>();
   const team = (abbr: TeamAbbr): TeamFact => {
     let fact = teams.get(abbr);
     if (!fact) {
@@ -197,15 +204,22 @@ export function replaySeason(
 
   for (const game of [...schedule].sort((a, b) => a.week - b.week || (a.id < b.id ? -1 : 1))) {
     const g = rng.fork('game', game.id);
+    // Players out hurt don't dress (spec 12.1): they sit on injured reserve while the teams set up and plan,
+    // so their backups dress and the lineup fills around them, as the weekly depth chart does.
+    const hurt: Player[] = [];
+    for (const abbr of [game.home, game.away]) {
+      const out = (rosters.get(abbr) ?? []).filter(p => (outThrough.get(p.id) ?? 0) >= game.week);
+      const key = out.map(p => p.id).join();
+      if (outKey.get(abbr) !== key) cache.delete(abbr);
+      outKey.set(abbr, key);
+      team(abbr).injuries.absences += out.length;
+      hurt.push(...out);
+    }
+    for (const p of hurt) p.status = 'ir';
     const setup = gameSetup(league, game, climate, g.fork('setup'), cache);
     setup.home.plan = decideGamePlan(league, game.home, game.away, g.fork('homePlan')).plan;
     setup.away.plan = decideGamePlan(league, game.away, game.home, g.fork('awayPlan')).plan;
-    for (const side of ['home', 'away'] as const)
-      for (const player of Object.values(setup[side].players))
-        if ((outThrough.get(player.id) ?? 0) >= game.week) {
-          player.out = true;
-          team(setup[side].abbr).injuries.absences++;
-        }
+    for (const p of hurt) p.status = 'active';
     experiment?.assign(setup, g.fork('arms'));
     const result = simulateGame(setup, g.fork('plays'));
     experiment?.record(setup, result);

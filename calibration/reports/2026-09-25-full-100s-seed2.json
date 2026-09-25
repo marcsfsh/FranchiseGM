@@ -7,10 +7,10 @@
   "perLeague": 10,
   "experiments": 10,
   "created": "2026-09-25",
-  "seconds": 181.519315606,
+  "seconds": 253.65358485000002,
   "counts": {
-    "pass": 62,
-    "warn": 0,
+    "pass": 61,
+    "warn": 1,
     "fail": 0,
     "info": 12,
     "pending": 4
@@ -21,7 +21,7 @@
       "group": "games",
       "label": "Home win rate",
       "format": "pct",
-      "value": 0.5466159695817491,
+      "value": 0.5513498098859315,
       "n": 26300,
       "status": "pass",
       "target": {
@@ -46,7 +46,7 @@
       "group": "games",
       "label": "Home field, points per game",
       "format": "signed1",
-      "value": 1.5922053231939164,
+      "value": 1.7106083650190114,
       "n": 26300,
       "status": "pass",
       "target": {
@@ -71,7 +71,7 @@
       "group": "games",
       "label": "Points per team game",
       "format": "dec1",
-      "value": 22.47702205882353,
+      "value": 22.51904411764706,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -96,7 +96,7 @@
       "group": "games",
       "label": "Games decided by 8 or fewer",
       "format": "pct",
-      "value": 0.5104044117647059,
+      "value": 0.5087867647058824,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -121,7 +121,7 @@
       "group": "games",
       "label": "Games decided by 1 to 3",
       "format": "pct",
-      "value": 0.21511029411764707,
+      "value": 0.21838235294117647,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -142,7 +142,7 @@
       "group": "games",
       "label": "Games decided by 17 or more",
       "format": "pct",
-      "value": 0.2431985294117647,
+      "value": 0.24393382352941176,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -167,7 +167,7 @@
       "group": "games",
       "label": "Overtime games",
       "format": "pct",
-      "value": 0.06316176470588235,
+      "value": 0.06235294117647059,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -192,7 +192,7 @@
       "group": "games",
       "label": "Ties",
       "format": "pct",
-      "value": 0.004963235294117647,
+      "value": 0.005294117647058823,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -213,7 +213,7 @@
       "group": "games",
       "label": "Winner trailed in the 4th quarter",
       "format": "pct",
-      "value": 0.24790441176470587,
+      "value": 0.24595588235294116,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -238,7 +238,7 @@
       "group": "games",
       "label": "Favorites win (by rating gap)",
       "format": "pct",
-      "value": 0.6490992647058823,
+      "value": 0.6461764705882352,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -263,8 +263,8 @@
       "group": "games",
       "label": "Favorites by 0 to 3 points",
       "format": "pct",
-      "value": 0.5478628230616303,
-      "n": 10060,
+      "value": 0.5509,
+      "n": 10000,
       "status": "pass",
       "target": {
         "pass": [
@@ -284,8 +284,8 @@
       "group": "games",
       "label": "Favorites by 3 to 7 points",
       "format": "pct",
-      "value": 0.6504554655870445,
-      "n": 9880,
+      "value": 0.6496707431796801,
+      "n": 10630,
       "status": "pass",
       "target": {
         "pass": [
@@ -305,8 +305,8 @@
       "group": "games",
       "label": "Favorites by 7 to 10 points",
       "format": "pct",
-      "value": 0.7486714975845411,
-      "n": 4140,
+      "value": 0.7488721804511278,
+      "n": 3990,
       "status": "pass",
       "target": {
         "pass": [
@@ -326,8 +326,8 @@
       "group": "games",
       "label": "Favorites by 10+ points",
       "format": "pct",
-      "value": 0.8391025641025641,
-      "n": 3120,
+      "value": 0.8422480620155038,
+      "n": 2580,
       "status": "pass",
       "target": {
         "pass": [
@@ -347,7 +347,7 @@
       "group": "games",
       "label": "Margin spread around the rating gap (sd)",
       "format": "dec1",
-      "value": 13.067438678846973,
+      "value": 13.01515335330352,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -372,7 +372,7 @@
       "group": "games",
       "label": "Team rating spread (sd, points)",
       "format": "dec1",
-      "value": 4.213199791304639,
+      "value": 4.057950821019181,
       "n": 320,
       "status": "info",
       "target": null
@@ -382,7 +382,7 @@
       "group": "seasons",
       "label": "Team wins, sd",
       "format": "dec2",
-      "value": 2.9524618964518408,
+      "value": 2.9135995778418144,
       "n": 3200,
       "status": "pass",
       "target": {
@@ -407,7 +407,7 @@
       "group": "seasons",
       "label": "Most wins in a season (mean)",
       "format": "dec1",
-      "value": 14.485,
+      "value": 14.35,
       "n": 100,
       "status": "pass",
       "target": {
@@ -428,7 +428,7 @@
       "group": "seasons",
       "label": "Fewest wins in a season (mean)",
       "format": "dec1",
-      "value": 2.655,
+      "value": 2.775,
       "n": 100,
       "status": "pass",
       "target": {
@@ -449,7 +449,7 @@
       "group": "seasons",
       "label": "15-win teams per decade",
       "format": "dec1",
-      "value": 6.2,
+      "value": 4.8,
       "n": 100,
       "status": "pass",
       "target": {
@@ -470,7 +470,7 @@
       "group": "seasons",
       "label": "2-or-fewer-win teams per decade",
       "format": "dec1",
-      "value": 5.6,
+      "value": 4.2,
       "n": 100,
       "status": "pass",
       "target": {
@@ -512,7 +512,7 @@
       "group": "stats",
       "label": "Pass attempts per team game",
       "format": "dec1",
-      "value": 32.90834558823529,
+      "value": 32.8333455882353,
       "n": 54400,
       "status": "pass",
       "target": {
@@ -537,8 +537,8 @@
       "group": "stats",
       "label": "Completion rate",
       "format": "pct",
-      "value": 0.6458602155943368,
-      "n": 1790214,
+      "value": 0.6479334697172776,
+      "n": 1786134,
       "status": "pass",
       "target": {
         "pass": [
@@ -562,8 +562,8 @@
       "group": "stats",
       "label": "Yards per pass attempt",
       "format": "dec2",
-      "value": 7.072519821652607,
-      "n": 1790214,
+      "value": 7.077990789044943,
+      "n": 1786134,
       "status": "pass",
       "target": {
         "pass": [
@@ -587,8 +587,8 @@
       "group": "stats",
       "label": "Touchdown rate",
       "format": "pct",
-      "value": 0.04337581987404858,
-      "n": 1790214,
+      "value": 0.04361822797169753,
+      "n": 1786134,
       "status": "pass",
       "target": {
         "pass": [
@@ -608,8 +608,8 @@
       "group": "stats",
       "label": "Interception rate",
       "format": "pct",
-      "value": 0.022048202058524848,
-      "n": 1790214,
+      "value": 0.021671386357350567,
+      "n": 1786134,
       "status": "pass",
       "target": {
         "pass": [
@@ -629,8 +629,8 @@
       "group": "stats",
       "label": "Sack rate",
       "format": "pct",
-      "value": 0.061888073044506255,
-      "n": 1908316,
+      "value": 0.06203446580936257,
+      "n": 1904264,
       "status": "pass",
       "target": {
         "pass": [
@@ -650,7 +650,7 @@
       "group": "stats",
       "label": "Rush attempts per team game",
       "format": "dec1",
-      "value": 26.86637867647059,
+      "value": 26.862426470588236,
       "n": 54400,
       "status": "pass",
       "target": {
@@ -675,8 +675,8 @@
       "group": "stats",
       "label": "Yards per carry",
       "format": "dec2",
-      "value": 4.234372038636197,
-      "n": 1461531,
+      "value": 4.23972159341306,
+      "n": 1461316,
       "status": "pass",
       "target": {
         "pass": [
@@ -700,8 +700,8 @@
       "group": "stats",
       "label": "Third-down conversions",
       "format": "pct",
-      "value": 0.4041317226461815,
-      "n": 651399,
+      "value": 0.40423975821977476,
+      "n": 650839,
       "status": "pass",
       "target": {
         "pass": [
@@ -721,7 +721,7 @@
       "group": "stats",
       "label": "Fourth-down attempts per team game",
       "format": "dec2",
-      "value": 1.4009742647058823,
+      "value": 1.3919117647058823,
       "n": 54400,
       "status": "pass",
       "target": {
@@ -742,8 +742,8 @@
       "group": "stats",
       "label": "Fourth-down conversions",
       "format": "pct",
-      "value": 0.5189928227467755,
-      "n": 76213,
+      "value": 0.5214738510301109,
+      "n": 75720,
       "status": "pass",
       "target": {
         "pass": [
@@ -763,8 +763,8 @@
       "group": "stats",
       "label": "Red zone touchdowns",
       "format": "pct",
-      "value": 0.553739988187875,
-      "n": 193022,
+      "value": 0.5556504130639611,
+      "n": 192101,
       "status": "pass",
       "target": {
         "pass": [
@@ -784,7 +784,7 @@
       "group": "stats",
       "label": "Turnovers per team game",
       "format": "dec2",
-      "value": 1.2459926470588236,
+      "value": 1.234044117647059,
       "n": 54400,
       "status": "pass",
       "target": {
@@ -805,7 +805,7 @@
       "group": "stats",
       "label": "Penalties per team game",
       "format": "dec2",
-      "value": 6.212830882352941,
+      "value": 6.236360294117647,
       "n": 54400,
       "status": "pass",
       "target": {
@@ -830,7 +830,7 @@
       "group": "stats",
       "label": "Penalty yards per team game",
       "format": "dec1",
-      "value": 46.66220588235294,
+      "value": 46.912242647058825,
       "n": 54400,
       "status": "pass",
       "target": {
@@ -851,8 +851,8 @@
       "group": "stats",
       "label": "Field goals under 40 yards",
       "format": "pct",
-      "value": 0.9572830085842758,
-      "n": 58712,
+      "value": 0.9572463270630235,
+      "n": 58264,
       "status": "pass",
       "target": {
         "pass": [
@@ -872,8 +872,8 @@
       "group": "stats",
       "label": "Field goals from 40 to 49",
       "format": "pct",
-      "value": 0.7745349709727104,
-      "n": 25321,
+      "value": 0.7797694753577107,
+      "n": 25160,
       "status": "pass",
       "target": {
         "pass": [
@@ -893,8 +893,8 @@
       "group": "stats",
       "label": "Field goals from 50 or more",
       "format": "pct",
-      "value": 0.6943072044834452,
-      "n": 27122,
+      "value": 0.6960725974412377,
+      "n": 26888,
       "status": "pass",
       "target": {
         "pass": [
@@ -914,8 +914,8 @@
       "group": "stats",
       "label": "Gross punt average",
       "format": "dec1",
-      "value": 46.93052365930599,
-      "n": 198125,
+      "value": 46.932998871190264,
+      "n": 199325,
       "status": "pass",
       "target": {
         "pass": [
@@ -935,8 +935,8 @@
       "group": "stats",
       "label": "Kickoffs returned",
       "format": "pct",
-      "value": 0.750109401529871,
-      "n": 285645,
+      "value": 0.7521898960193257,
+      "n": 285630,
       "status": "pass",
       "target": {
         "pass": [
@@ -956,8 +956,8 @@
       "group": "stats",
       "label": "Kick return average",
       "format": "dec1",
-      "value": 25.36883298718876,
-      "n": 214265,
+      "value": 25.387939380399168,
+      "n": 214848,
       "status": "pass",
       "target": {
         "pass": [
@@ -977,8 +977,8 @@
       "group": "stats",
       "label": "Punt return average",
       "format": "dec1",
-      "value": 9.95766496268876,
-      "n": 68076,
+      "value": 10.050607405676907,
+      "n": 68488,
       "status": "pass",
       "target": {
         "pass": [
@@ -998,7 +998,7 @@
       "group": "leaders",
       "label": "Passing yards leader",
       "format": "int",
-      "value": 5117.68,
+      "value": 5121.41,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1023,7 +1023,7 @@
       "group": "leaders",
       "label": "Rushing yards leader",
       "format": "int",
-      "value": 1784.02,
+      "value": 1713.67,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1044,7 +1044,7 @@
       "group": "leaders",
       "label": "Receiving yards leader",
       "format": "int",
-      "value": 1796.53,
+      "value": 1810.92,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1065,9 +1065,9 @@
       "group": "leaders",
       "label": "Receptions leader",
       "format": "int",
-      "value": 137.76,
+      "value": 138.91,
       "n": 100,
-      "status": "pass",
+      "status": "warn",
       "target": {
         "pass": [
           127.5,
@@ -1086,7 +1086,7 @@
       "group": "leaders",
       "label": "Sacks leader",
       "format": "dec1",
-      "value": 19.15,
+      "value": 18.92,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1107,7 +1107,7 @@
       "group": "leaders",
       "label": "Interceptions leader",
       "format": "dec1",
-      "value": 9.11,
+      "value": 8.84,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1128,7 +1128,7 @@
       "group": "leaders",
       "label": "4,000-yard passers",
       "format": "dec1",
-      "value": 8.06,
+      "value": 7.99,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1149,7 +1149,7 @@
       "group": "leaders",
       "label": "1,000-yard rushers",
       "format": "dec1",
-      "value": 16.33,
+      "value": 13.38,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1170,7 +1170,7 @@
       "group": "leaders",
       "label": "1,000-yard receivers",
       "format": "dec1",
-      "value": 27.77,
+      "value": 27.63,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1191,7 +1191,7 @@
       "group": "leaders",
       "label": "Team's top target share",
       "format": "pct",
-      "value": 0.24940897087487346,
+      "value": 0.24710891033259677,
       "n": 3200,
       "status": "pass",
       "target": {
@@ -1212,7 +1212,7 @@
       "group": "leaders",
       "label": "Highest target share in the league",
       "format": "pct",
-      "value": 0.33222404854252013,
+      "value": 0.33559853982696675,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1233,7 +1233,7 @@
       "group": "leaders",
       "label": "Lead back's share of running back carries",
       "format": "pct",
-      "value": 0.5621746886691988,
+      "value": 0.5130321112672765,
       "n": 3200,
       "status": "pass",
       "target": {
@@ -1254,7 +1254,7 @@
       "group": "injuries",
       "label": "Injuries costing a game, per team season",
       "format": "dec1",
-      "value": 21.7375,
+      "value": 21.483125,
       "n": 3200,
       "status": "pass",
       "target": {
@@ -1279,7 +1279,7 @@
       "group": "injuries",
       "label": "Games lost to injury, per team season",
       "format": "dec1",
-      "value": 67.520625,
+      "value": 66.861875,
       "n": 3200,
       "status": "info",
       "target": null
@@ -1289,7 +1289,7 @@
       "group": "injuries",
       "label": "Season-ending injuries, per team season",
       "format": "dec1",
-      "value": 3.881875,
+      "value": 3.8959375,
       "n": 3200,
       "status": "info",
       "target": null
@@ -1299,7 +1299,7 @@
       "group": "injuries",
       "label": "All in-game injuries, per team season",
       "format": "dec1",
-      "value": 39.075,
+      "value": 38.7603125,
       "n": 3200,
       "status": "info",
       "target": null
@@ -1309,7 +1309,7 @@
       "group": "effects",
       "label": "Fit: best versus worst fit, same players",
       "format": "pct",
-      "value": 0.05579107974445554,
+      "value": 0.057598638117195344,
       "n": 10,
       "status": "pass",
       "target": {
@@ -1334,8 +1334,8 @@
       "group": "effects",
       "label": "Fit effect, yards per attempt",
       "format": "pct",
-      "value": 0.019840096723782667,
-      "n": 4702,
+      "value": 0.0048429600030753936,
+      "n": 4653,
       "status": "info",
       "target": null
     },
@@ -1344,8 +1344,8 @@
       "group": "effects",
       "label": "Fit effect, yards per carry",
       "format": "pct",
-      "value": 0.05138369912296171,
-      "n": 4267,
+      "value": 0.08288528484385582,
+      "n": 4402,
       "status": "info",
       "target": null
     },
@@ -1354,8 +1354,8 @@
       "group": "effects",
       "label": "Fit effect, yards per target",
       "format": "pct",
-      "value": 0.07730521909351777,
-      "n": 18839,
+      "value": 0.06810974812730607,
+      "n": 18783,
       "status": "info",
       "target": null
     },
@@ -1364,8 +1364,8 @@
       "group": "effects",
       "label": "Fit effect, pressures allowed",
       "format": "pct",
-      "value": 0.061977604022561764,
-      "n": 24224,
+      "value": 0.05408019337961862,
+      "n": 23927,
       "status": "info",
       "target": null
     },
@@ -1374,8 +1374,8 @@
       "group": "effects",
       "label": "Fit effect, pressures",
       "format": "pct",
-      "value": 0.06564847063385723,
-      "n": 19053,
+      "value": 0.08077460581715135,
+      "n": 18947,
       "status": "info",
       "target": null
     },
@@ -1384,8 +1384,8 @@
       "group": "effects",
       "label": "Fit effect, yards allowed per target",
       "format": "pct",
-      "value": 0.05859138887005212,
-      "n": 23018,
+      "value": 0.054899036532164845,
+      "n": 22712,
       "status": "info",
       "target": null
     },
@@ -1394,7 +1394,7 @@
       "group": "effects",
       "label": "Wind 16+ mph versus calm, points per team",
       "format": "signed1",
-      "value": -2.0897300262528873,
+      "value": -2.239562517142744,
       "n": 1128,
       "status": "pass",
       "target": {
@@ -1415,7 +1415,7 @@
       "group": "effects",
       "label": "Indoors versus outdoors, points per team",
       "format": "signed1",
-      "value": 1.5626310547202245,
+      "value": 1.5885460129551134,
       "n": 6557,
       "status": "pass",
       "target": {
@@ -1436,7 +1436,7 @@
       "group": "effects",
       "label": "Freezing versus mild, points per team",
       "format": "signed1",
-      "value": -0.30417659671089226,
+      "value": -0.35482145824786926,
       "n": 1714,
       "status": "pass",
       "target": {
@@ -1457,7 +1457,7 @@
       "group": "effects",
       "label": "Rain versus dry, points per team",
       "format": "signed1",
-      "value": -1.7509394692721258,
+      "value": -1.951878201705611,
       "n": 2499,
       "status": "info",
       "target": null
@@ -1467,7 +1467,7 @@
       "group": "effects",
       "label": "Snow versus dry, points per team",
       "format": "signed1",
-      "value": -1.5926719069280395,
+      "value": -2.11734864520216,
       "n": 141,
       "status": "info",
       "target": null
@@ -1477,8 +1477,8 @@
       "group": "effects",
       "label": "Wind 20+ mph versus under 10, completion rate",
       "format": "pctPoints",
-      "value": -0.05134272120921035,
-      "n": 19502,
+      "value": -0.05247333147588862,
+      "n": 19233,
       "status": "pass",
       "target": {
         "pass": [
@@ -1498,8 +1498,8 @@
       "group": "effects",
       "label": "Wind 20+ mph versus under 10, field goal rate",
       "format": "pctPoints",
-      "value": -0.07092268254831535,
-      "n": 1232,
+      "value": -0.07989182552220664,
+      "n": 1169,
       "status": "pass",
       "target": {
         "pass": [
