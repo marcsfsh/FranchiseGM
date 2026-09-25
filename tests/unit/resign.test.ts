@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { resignDecisions } from '../../src/engine/ai/decisions/resign';
 import { capSheet } from '../../src/engine/cap/sheet';
 import { capCharge, capHit } from '../../src/engine/contracts/cap';
+import { extensionContract } from '../../src/engine/contracts/build';
 import {
+  creditedNextYear,
   expiring,
   extensionAsk,
   freeAgentKind,
@@ -176,6 +178,54 @@ describe('extensions', () => {
     openLeagueYear(league, at('freeAgency'), stream(6));
     expect(kept).toMatchObject({ team, contractId: ext.id, status: 'active' });
     expect(kept.nextContractId).toBeUndefined();
+  }); // prettier-ignore
+});
+
+describe("the new league year's pay scales (spec 11.1, 11.5)", () => {
+  it('raises running years to the new minimums and tenders to the new amounts', () => {
+    const { league } = window();
+    const team = league.meta.start.userTeam;
+    const [young, sure, rfa, erfa] = Object.values(league.players).filter(p => p.team === team && p.position !== 'QB' && p.status === 'active') as [Player, Player, Player, Player];
+    const min = [...league.rules.pay.minimumSalary];
+    const second = league.rules.tags.tenders.secondRound;
+    // An undrafted deal priced at the old minimums, a fully guaranteed one, and two tenders.
+    Object.assign(young, { experience: 1 });
+    give(league, young, deal('y1', young, [[2026, min[0] as number], [2027, min[1] as number]], { type: 'udfa' }));
+    Object.assign(sure, { experience: 2 });
+    give(league, sure, deal('g1', sure, [[2026, min[1] as number], [2027, min[2] as number]], { type: 'rookie' }));
+    (league.contracts.g1 as Contract).years.forEach(y => (y.guaranteedBase = y.base));
+    Object.assign(rfa, { experience: 3 });
+    give(league, rfa, deal('r1', rfa, [[2026, 1_000_000]]));
+    Object.assign(erfa, { experience: 2 });
+    give(league, erfa, deal('e1', erfa, [[2026, 900_000]]));
+    expect(makeMove(league, { kind: 'tender', team, playerId: rfa.id, level: 'second' }, stream(1)).ok).toBe(true);
+    expect(makeMove(league, { kind: 'tender', team, playerId: erfa.id, level: 'exclusive' }, stream(1)).ok).toBe(true);
+    openLeagueYear(league, at('freeAgency'), stream(7));
+    const now = league.rules.pay.minimumSalary;
+    expect(now[1]).toBeGreaterThan(min[1] as number);
+    expect(league.contracts.y1?.years[1]).toMatchObject({ year: 2027, base: now[1] });
+    expect(league.contracts.g1?.years[1]).toMatchObject({ base: now[2], guaranteedBase: now[2] });
+    expect(league.rules.tags.tenders.secondRound).toBeGreaterThan(second);
+    expect(league.contracts[rfa.contractId ?? '']?.years[0]?.base).toBe(league.rules.tags.tenders.secondRound);
+    expect(league.contracts[erfa.contractId ?? '']?.years[0]?.base).toBe(now[2]);
+    // Years already played stay as they were.
+    expect(league.contracts.y1?.years[0]?.base).toBe(min[0]);
+  }); // prettier-ignore
+
+  it("prices an extension's minimums by the seasons he'll have when it starts", () => {
+    const { league } = window();
+    const [p] = Object.values(league.players).filter(q => q.team === 'MIN' && q.position !== 'QB') as [Player];
+    Object.assign(p, { experience: 3 });
+    // In the window the season just played is already credited; during a season it counts when it ends.
+    expect(creditedNextYear(league, p)).toBe(3);
+    const low = { years: 2, salary: 0, signingBonus: 0 };
+    const base = { id: 'x', playerId: p.id, team: 'MIN' as const };
+    const min = league.rules.pay.minimumSalary;
+    expect(extensionContract(league.rules, base, league.date, low, creditedNextYear(league, p)).years.map(y => y.base)).toEqual([min[3], min[4]]);
+    league.date = at('regularSeason');
+    expect(creditedNextYear(league, p)).toBe(4);
+    league.date = at('draft');
+    expect(creditedNextYear(league, p)).toBe(4);
   }); // prettier-ignore
 });
 

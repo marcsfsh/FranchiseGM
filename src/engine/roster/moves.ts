@@ -18,6 +18,7 @@ import {
 import { afterJune1, capHit, payWeek, releaseImpact } from '../contracts/cap';
 import { endContract, restructure, type Outcome } from '../contracts/moves';
 import {
+  creditedNextYear,
   endPending,
   expiring,
   extensionProblem,
@@ -481,7 +482,7 @@ function resignPlan(
       if (!expiring(league, player)) return refuse(`${name}'s contract doesn't run out this league year.`);
       const declined = extensionProblem(league, player, move.offer);
       if (declined) return refuse(declined);
-      const deal = extensionContract(rules, base, league.date, move.offer, player.experience);
+      const deal = extensionContract(rules, base, league.date, move.offer, creditedNextYear(league, player));
       return next(deal, [`${name} signs a ${move.offer.years}-year extension from ${year + 1}.`], 'extended');
     } // prettier-ignore
 

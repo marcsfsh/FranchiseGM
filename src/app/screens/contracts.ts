@@ -7,6 +7,7 @@
 import { teamFullName, type TeamAbbr } from '../../data/team-colors';
 import { capHit } from '../../engine/contracts/cap';
 import {
+  creditedNextYear,
   currentDeal,
   extensionAsk,
   freeAgentKind,
@@ -95,7 +96,7 @@ function decisionsMade(league: League, abbr: TeamAbbr): Decided[] {
 /** The extension offer's inputs, like a free agent offer: length, salary, and signing bonus. */
 function extensionChoice(league: League, player: Player): MoveChoice {
   const ask = extensionAsk(league, player);
-  const minimum = minimumSalary(league.rules, player.experience + 1);
+  const minimum = minimumSalary(league.rules, creditedNextYear(league, player));
   const years = h('select', { class: 'select', id: 'extend-years' }, ...Array.from({ length: TUNING.contracts.acceptance.maxYears }, (_, i) => h('option', { value: i + 1 }, `${i + 1} ${i === 0 ? 'year' : 'years'}`)));
   years.value = String(Math.min(3, TUNING.contracts.acceptance.maxYears));
   const salary = dollarField('extend-salary', 'Salary each year, dollars', `He asks for ${money(ask, true)} a year to stay; his minimum is ${money(minimum, true)}.`, ask);

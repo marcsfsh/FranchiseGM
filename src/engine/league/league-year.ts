@@ -7,10 +7,11 @@
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { capSheet } from '../cap/sheet';
 import { endContract } from '../contracts/moves';
+import { tenderAmount, TENDER_LABELS, type TenderLevel } from '../contracts/resign';
 import type { Contract } from '../contracts/types';
 import { leagueYear, type GameDate } from '../model/calendar';
 import type { Rng } from '../rng';
-import type { RuleSet } from '../rules/ruleset';
+import { minimumSalary, type RuleSet } from '../rules/ruleset';
 import { TUNING } from '../tuning';
 import type { League } from './types';
 
@@ -131,8 +132,39 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
     Object.assign(player, { team: null, status: 'freeAgent', contractId: null });
   }
   for (const abbr of TEAM_ABBRS) league.teams[abbr].resting = [];
+  meetNewScales(league, year);
   dropSpentContracts(league, year);
   return { year, capBefore, cap: league.rules.cap.amount, carryover, expired };
+}
+
+/**
+ * Pay below the new league year's scales rises to meet them (spec 11.1, 11.5): each running deal's base
+ * salary this year to the minimum for the player's credited seasons, and a tender to its level's new
+ * amount. A fully guaranteed base stays fully guaranteed.
+ */
+function meetNewScales(league: League, year: number): void {
+  for (const player of Object.values(league.players)) {
+    const contract = player.team && player.contractId ? league.contracts[player.contractId] : undefined;
+    if (!contract || contract.ended || contract.type === 'practiceSquad') continue;
+    const index = contract.years.findIndex(y => y.year === year && runningYears(contract).includes(y.year));
+    const current = contract.years[index];
+    if (!current) continue;
+    const tender =
+      contract.type === 'rfaTender' && contract.rights && contract.rights in TENDER_LABELS
+        ? tenderAmount(league.rules, contract.rights as TenderLevel)
+        : 0;
+    const floor = Math.max(minimumSalary(league.rules, player.experience), tender);
+    if (current.base >= floor) continue;
+    const raised = {
+      ...current,
+      base: floor,
+      guaranteedBase: current.guaranteedBase === current.base ? floor : current.guaranteedBase
+    };
+    league.contracts[contract.id] = {
+      ...contract,
+      years: contract.years.map((y, i) => (i === index ? raised : y))
+    };
+  }
 }
 
 /** League years a finished contract is kept after its last year or its end: a third straight tag looks back two. */

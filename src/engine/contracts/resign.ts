@@ -5,10 +5,10 @@
  */
 import type { TeamAbbr } from '../../data/team-colors';
 import type { League } from '../league/types';
-import { calendarDay, leagueYear } from '../model/calendar';
+import { calendarDay, leagueYear, PHASES } from '../model/calendar';
 import { ageOn, type Player } from '../model/player';
 import type { Position } from '../model/positions';
-import { minimumSalary } from '../rules/ruleset';
+import { minimumSalary, type RuleSet } from '../rules/ruleset';
 import { dollars } from '../text';
 import { TUNING } from '../tuning';
 import { offerValue } from './acceptance';
@@ -122,19 +122,23 @@ export function tagSalary(league: League, player: Player, kind: TagKind): number
   return Math.round(salary / 1000) * 1000;
 } // prettier-ignore
 
+/**
+ * A tender level's amount under these rules (spec 11.5): a right of first refusal pays the original-round
+ * amount, and an exclusive rights tender the minimum, so it has none of its own.
+ */
+export function tenderAmount(rules: RuleSet, level: TenderLevel): number {
+  const t = rules.tags.tenders;
+  if (level === 'exclusive') return 0;
+  return level === 'first' ? t.firstRound : level === 'second' ? t.secondRound : t.originalRound;
+}
+
 /** A tender's one-year salary (spec 11.5): its level's amount, and at least 110% of his base this league year. */
 export function tenderSalary(league: League, player: Player, level: TenderLevel): number {
   const t = league.rules.tags;
   const next = leagueYear(league.date) + 1;
-  if (level === 'exclusive') return minimumSalary(league.rules, player.experience);
-  const amount =
-    level === 'first'
-      ? t.tenders.firstRound
-      : level === 'second'
-        ? t.tenders.secondRound
-        : t.tenders.originalRound;
+  if (level === 'exclusive') return minimumSalary(league.rules, creditedNextYear(league, player));
   const base = currentDeal(league, player)?.years.find(y => y.year === next - 1)?.base ?? 0;
-  return Math.max(amount, Math.round((base * t.tenderPriorShare) / 1000) * 1000);
+  return Math.max(tenderAmount(league.rules, level), Math.round((base * t.tenderPriorShare) / 1000) * 1000);
 }
 
 /** The tender levels open to a player whose deal runs out. */
@@ -198,6 +202,17 @@ export function windowDecisions(league: League, abbr: TeamAbbr): { expiring: Pla
 }
 
 /**
+ * The credited seasons a player will have when the next league year opens: a season counts once its Super
+ * Bowl week ends (closeSeason), so from then until the new league year he has them all, and before then
+ * the season under way or still to come adds one.
+ */
+export function creditedNextYear(league: League, player: Player): number {
+  const phase = PHASES.indexOf(league.date.phase);
+  const credited = phase > PHASES.indexOf('superBowl') && phase < PHASES.indexOf('freeAgency');
+  return player.experience + (credited ? 0 : 1);
+}
+
+/**
  * What a player whose deal runs out asks for a year to stay (M12's negotiation replaces this): his market
  * value as the offseason prices it, and at least next year's minimum.
  */
@@ -206,13 +221,13 @@ export function extensionAsk(league: League, player: Player): number {
   const age = ageOn(player.birthDate, calendarDay(league.date));
   const value = marketValue(rules, player.position, player.ovr, age, player.experience);
   const step = TUNING.market.quoteStep;
-  return Math.max(minimumSalary(rules, player.experience + 1), Math.round(value / step) * step);
+  return Math.max(minimumSalary(rules, creditedNextYear(league, player)), Math.round(value / step) * step);
 }
 
 /** Why a player turns down an extension, or null if he signs it. */
 export function extensionProblem(league: League, player: Player, offer: Offer): string | null {
   const max = TUNING.contracts.acceptance.maxYears;
-  const minimum = minimumSalary(league.rules, player.experience + 1);
+  const minimum = minimumSalary(league.rules, creditedNextYear(league, player));
   if (!Number.isInteger(offer.years) || offer.years < 1 || offer.years > max) return `Offer 1 to ${max} years.`;
   if (!Number.isInteger(offer.salary) || offer.salary < minimum) return `His minimum salary is ${dollars(minimum)} a year.`;
   if (!Number.isInteger(offer.signingBonus) || offer.signingBonus < 0)

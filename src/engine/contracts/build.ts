@@ -199,7 +199,8 @@ export function practiceSquadSigning(
 
 /**
  * An extension (spec 11.3): a new deal signed on `date` that starts when his current one runs out, at the
- * next league year. Each year's base is the salary or the minimum then, whichever is more.
+ * next league year, when he'll have `credited` seasons. Each year's base is the salary or the minimum then,
+ * whichever is more.
  */
 export function extensionContract(
   rules: RuleSet,
@@ -212,7 +213,7 @@ export function extensionContract(
   const c = contract(base, 'extension', { ...date }, offer.signingBonus);
   c.years = Array.from({ length: offer.years }, (_, i) => ({
     ...emptyYear(start + i),
-    base: Math.max(offer.salary, minimumSalary(rules, credited + 1 + i))
+    base: Math.max(offer.salary, minimumSalary(rules, credited + i))
   }));
   return c;
 }
