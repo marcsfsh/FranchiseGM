@@ -44,7 +44,19 @@ export default tseslint.config(
         { object: 'Math', property: 'random', message: 'Use the seeded PRNG in src/engine/rng.' }
       ],
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      '@typescript-eslint/consistent-type-imports': 'error'
+      '@typescript-eslint/consistent-type-imports': 'error',
+      // UI copy uses straight quotes and apostrophes.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Literal[value=/[\\u2018\\u2019\\u201C\\u201D]/]',
+          message: 'Use straight quotes and apostrophes.'
+        },
+        {
+          selector: 'TemplateElement[value.raw=/[\\u2018\\u2019\\u201C\\u201D]/]',
+          message: 'Use straight quotes and apostrophes.'
+        }
+      ]
     }
   },
   {
