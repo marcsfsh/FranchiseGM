@@ -69,6 +69,45 @@ describe('game results are internally consistent (spec 8.8)', () => {
     }
   });
 
+  it('records the spec 9.2 stats so each side of a matchup agrees', () => {
+    for (const g of games) {
+      for (const [off, def] of [
+        ['home', 'away'],
+        ['away', 'home']
+      ] as const) {
+        const o = g.box[off].players;
+        const d = g.box[def].players;
+        const t = g.box[off].totals;
+        // Every sack and pressure has a blocker who allowed it and a rusher who got there.
+        expect(total(o, 'sacksAllowed')).toBe(total(d, 'sacks'));
+        expect(total(o, 'pressuresAllowed')).toBe(total(d, 'pressures'));
+        expect(total(o, 'pressured')).toBe(total(d, 'pressures'));
+        expect(total(d, 'qbHits')).toBeGreaterThanOrEqual(total(d, 'sacks'));
+        // Coverage allowed matches what the offense caught against it.
+        expect(total(d, 'targetsAllowed')).toBeLessThanOrEqual(total(o, 'targets'));
+        expect(total(d, 'completionsAllowed')).toBeLessThanOrEqual(t.passCmp);
+        expect(total(d, 'yardsAllowed')).toBeLessThanOrEqual(t.passYds + total(o, 'sackYds'));
+        // First downs by player add up to the team's passing and rushing first downs.
+        expect(total(o, 'passFirstDowns')).toBe(t.firstDownsPass);
+        expect(total(o, 'recFirstDowns')).toBe(t.firstDownsPass);
+        expect(total(o, 'rushFirstDowns')).toBe(t.firstDownsRush);
+        expect(total(o, 'passAirYds')).toBeGreaterThan(0);
+        expect(total(o, 'pass20')).toBe(total(o, 'rec20'));
+        expect(total(o, 'passDrops')).toBe(total(o, 'drops'));
+        expect(total(o, 'rushYac')).toBeLessThanOrEqual(total(o, 'rushYds') + 3 * t.rushAtt);
+        expect(total(o, 'runBlockWins')).toBeLessThanOrEqual(total(o, 'runBlockSnaps'));
+        // Solo and assisted tackles are the tackles; assists come in pairs across the game.
+        expect(total(d, 'soloTackles') + total(d, 'assistedTackles')).toBe(total(d, 'tackles'));
+        // Eleven started on offense and eleven on defense.
+        expect(total(o, 'started')).toBe(22);
+        expect(total(o, 'kickoffs')).toBeGreaterThan(0);
+        expect(total(o, 'snapsSpecial')).toBeGreaterThan(50);
+      }
+      const penaltyRows = g.penalties.length;
+      expect(penaltyRows).toBe(g.box.home.totals.penalties + g.box.away.totals.penalties);
+    }
+  });
+
   it('scores points only the ways football allows', () => {
     for (const g of games) {
       for (const side of ['home', 'away'] as const) {

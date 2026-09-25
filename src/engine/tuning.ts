@@ -697,6 +697,22 @@ export const TUNING = {
       fakeExtraYards: 4,
       /** Share of goal-line snaps against heavy personnel where the defense brings its goal-line package. */
       goalLinePackage: 0.8,
+      /** Share of non-sack pressures that hit the quarterback (sacks always count as hits). */
+      hitShare: 0.35,
+      /** Share of tackles two defenders share, each credited with an assist (spec 9.2). */
+      assistShare: 0.21,
+      /** Stat definitions (spec 9.2): runs of 10+ yards and completions of 20+. */
+      bigRun: 10,
+      bigPlay: 20,
+      /** Yards before first contact on a run average contactYards, plus contactPerPoint per point of net
+       * blocking edge; the rest are yards after contact. */
+      contactYards: 2.4,
+      contactPerPoint: 0.05,
+      /** A blocker wins his run block this often at an even matchup (spec 9.2 run block win rate). */
+      runBlockWin: 0.7,
+      /** Runs of pancakeYards or more credit a winning blocker with a pancake pancakeShare of the time. */
+      pancakeYards: 6,
+      pancakeShare: 0.25,
       /** Share of ejection-eligible fouls flagrant enough to eject the player (spec 16). */
       ejectionShare: 0.03,
       onsideSeconds: 180,

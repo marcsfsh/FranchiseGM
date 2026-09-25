@@ -4,23 +4,29 @@
  */
 
 export const STAT_KEYS = [
-  // Passing
-  'passAtt', 'passCmp', 'passYds', 'passTd', 'passInt', 'sacked', 'sackYds', 'passLong',
-  // Rushing
-  'rushAtt', 'rushYds', 'rushTd', 'rushLong', 'fumbles', 'fumblesLost',
+  // Passing (passDrops: passes his receivers dropped)
+  'passAtt', 'passCmp', 'passYds', 'passTd', 'passInt', 'sacked', 'sackYds', 'passLong', 'passFirstDowns',
+  'passAirYds', 'pass20', 'pressured', 'throwAways', 'passDrops',
+  // Rushing (rushYac: yards after contact)
+  'rushAtt', 'rushYds', 'rushTd', 'rushLong', 'rushFirstDowns', 'fumbles', 'fumblesLost', 'rushYac',
+  'brokenTackles', 'rush10',
   // Receiving
-  'targets', 'receptions', 'recYds', 'recTd', 'recLong', 'yac', 'drops',
+  'targets', 'receptions', 'recYds', 'recTd', 'recLong', 'recFirstDowns', 'yac', 'drops', 'contestedCatches',
+  'rec20',
+  // Blocking
+  'sacksAllowed', 'pressuresAllowed', 'pancakes', 'runBlockWins', 'runBlockSnaps',
   // Defense
-  'tackles', 'tacklesForLoss', 'sacks', 'qbHits', 'passesDefended', 'defInt', 'defIntYds', 'defIntTd',
-  'forcedFumbles', 'fumbleRecoveries', 'fumbleReturnTd', 'safeties',
+  'tackles', 'soloTackles', 'assistedTackles', 'tacklesForLoss', 'sacks', 'qbHits', 'pressures', 'passesDefended',
+  'defInt', 'defIntYds', 'defIntTd', 'forcedFumbles', 'fumbleRecoveries', 'fumbleReturnTd', 'safeties',
+  'targetsAllowed', 'completionsAllowed', 'yardsAllowed', 'tdsAllowed', 'missedTackles',
   // Kicking and punting
-  'fgMade', 'fgAtt', 'fgLong', 'fgMade40', 'fgAtt40', 'fgMade50', 'fgAtt50', 'xpMade', 'xpAtt',
-  'punts', 'puntYds', 'puntNetYds', 'puntsIn20', 'puntTouchbacks', 'puntLong',
+  'fgMade', 'fgAtt', 'fgLong', 'fgMade40', 'fgAtt40', 'fgMade50', 'fgAtt50', 'xpMade', 'xpAtt', 'kickoffs',
+  'kickoffTouchbacks', 'punts', 'puntYds', 'puntNetYds', 'puntsIn20', 'puntTouchbacks', 'puntLong', 'puntsBlocked',
   // Returns
   'kickReturns', 'kickReturnYds', 'kickReturnTd', 'kickReturnLong', 'puntReturns', 'puntReturnYds',
   'puntReturnTd', 'puntReturnLong', 'fairCatches',
-  // Other
-  'twoPointMade', 'penalties', 'penaltyYds', 'snapsOffense', 'snapsDefense', 'snapsSpecial'
+  // Scoring, penalties, and participation
+  'twoPointMade', 'penalties', 'penaltyYds', 'snapsOffense', 'snapsDefense', 'snapsSpecial', 'started'
 ] as const; // prettier-ignore
 
 export type StatKey = (typeof STAT_KEYS)[number];

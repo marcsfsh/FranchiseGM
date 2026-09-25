@@ -23,6 +23,7 @@ import type {
   GameSetup,
   InjuryEvent,
   InjurySeverity,
+  PenaltyEvent,
   ScoringPlay,
   Side,
   SimPlayer,
@@ -164,6 +165,7 @@ class GameSim {
   private readonly drives: DriveSummary[] = [];
   private readonly injuries: InjuryEvent[] = [];
   private readonly ejections: EjectionEvent[] = [];
+  private readonly penaltyLog: PenaltyEvent[] = [];
   private readonly situations: Record<Side, SituationCounts> = {
     home: { snaps: {}, counts: {} },
     away: { snaps: {}, counts: {} }
@@ -197,6 +199,11 @@ class GameSim {
   /** Players on the field this play, by side and slot. */
   private field: Record<Side, OnField> = { home: new Map(), away: new Map() };
   private contexts: ContextTrigger[] = [];
+  /** Whether each side's offense and defense have taken their first snap (spec 9.2 games started). */
+  private readonly startersMarked: Record<Side, { offense: boolean; defense: boolean }> = {
+    home: { offense: false, defense: false },
+    away: { offense: false, defense: false }
+  };
 
   constructor(
     private readonly setup: GameSetup,
@@ -848,6 +855,7 @@ class GameSim {
     const personnel = this.personnel();
     const pkg = this.defensePackage(personnel);
     this.fill(personnel, pkg);
+    this.markStarters(off, def);
     const call = this.callPlay();
     const dcall = this.defenseCall();
 
@@ -896,6 +904,110 @@ class GameSim {
       return this.nextSnap(foulStops);
     }
     this.apply(outcome, startBall, down, distance);
+  }
+
+  /** Players on the field for each unit's first snap started the game. */
+  private markStarters(off: Side, def: Side): void {
+    for (const [side, unit] of [
+      [off, 'offense'],
+      [def, 'defense']
+    ] as const) {
+      if (this.startersMarked[side][unit]) continue;
+      this.startersMarked[side][unit] = true;
+      for (const p of this.field[side].values()) this.line(side, p).started = 1;
+    }
+  }
+
+  /**
+   * A special teams unit (spec 9.2 special teams snaps): the specialists for the kick, then backups from
+   * the depth chart who cover and block, eleven in all.
+   */
+  private specialUnit(
+    side: Side,
+    kind: 'kickoff' | 'kickReturn' | 'punt' | 'puntReturn' | 'fieldGoal' | 'block'
+  ): SimPlayer[] {
+    const team = this.teams[side];
+    const first = (slot: Slot, n = 1) =>
+      (team.depth[slot] ?? [])
+        .map(id => team.players[id])
+        .filter((p): p is SimPlayer => !!p && !p.out)
+        .slice(0, n);
+    const second = (slot: Slot) =>
+      (team.depth[slot] ?? [])
+        .slice(1)
+        .map(id => team.players[id])
+        .filter((p): p is SimPlayer => !!p && !p.out)
+        .slice(0, 1);
+    const core: SimPlayer[] =
+      kind === 'kickoff'
+        ? [...first('K'), ...first('GUNNER', 2)]
+        : kind === 'punt'
+          ? [...first('P'), ...first('LS'), ...first('GUNNER', 2)]
+          : kind === 'kickReturn'
+            ? first('KR', 2)
+            : kind === 'puntReturn'
+              ? first('PR')
+              : kind === 'fieldGoal'
+                ? [
+                    ...first('K'),
+                    ...first('P'),
+                    ...first('LS'),
+                    ...LINE.flatMap(s => first(s)),
+                    ...first('TE1'),
+                    ...first('TE2')
+                  ]
+                : [
+                    ...FRONT.flatMap(s => first(s)),
+                    ...first('MIKE'),
+                    ...first('WILL'),
+                    ...first('CB1'),
+                    ...first('CB2'),
+                    ...first('FS'),
+                    ...first('SS')
+                  ];
+    const reserves: Slot[] = [
+      'MIKE',
+      'WILL',
+      'FLEX',
+      'SS',
+      'FS',
+      'CB2',
+      'NCB',
+      'TE2',
+      'RB2',
+      'SLOT',
+      'LEDGE',
+      'Z'
+    ];
+    const unit = [...new Set(core)];
+    for (const slot of reserves) {
+      if (unit.length >= 11) break;
+      for (const p of second(slot)) if (!unit.includes(p) && unit.length < 11) unit.push(p);
+    }
+    return unit.slice(0, 11);
+  }
+
+  /** Special teams snaps for both units on a kick. */
+  private kickSnaps(kicking: Side, kick: 'kickoff' | 'punt' | 'fieldGoal'): SimPlayer[] {
+    const cover = this.specialUnit(kicking, kick);
+    const other_ = other(kicking);
+    const receive = this.specialUnit(
+      other_,
+      kick === 'kickoff' ? 'kickReturn' : kick === 'punt' ? 'puntReturn' : 'block'
+    );
+    for (const p of cover) this.line(kicking, p).snapsSpecial++;
+    for (const p of receive) this.line(other_, p).snapsSpecial++;
+    return cover;
+  }
+
+  /** A coverage player makes the tackle on a return. */
+  private coverTackle(kicking: Side, cover: readonly SimPlayer[]): void {
+    const tacklers = cover.filter(p => p.position !== 'K' && p.position !== 'P');
+    const who = tacklers[Math.floor(this.rng.float() * tacklers.length)];
+    if (who) {
+      this.add(kicking, who, 'soloTackles');
+      this.add(kicking, who, 'tackles');
+    }
   }
 
   /** Game seconds a scrimmage play takes. */
@@ -1173,9 +1285,17 @@ class GameSim {
       const sense = qb.traits.sensePressure;
       const senseLogit = C.senseSack[sense];
       const pSack = sigmoid(logit(S.sackGivenPressure) - S.edge.sack * escape + senseLogit);
+      // The rusher who got there and the blocker he beat (spec 9.2 pressures and pressures allowed).
       const rusher = this.bestOf(rushers, def, 'passRush');
-      if (rusher) this.add(def, rusher, 'qbHits');
-      if (this.rng.chance(pSack)) return this.sack(qb, rusher, base);
+      const beaten = this.worstOf(blockers, off, 'passBlock');
+      this.add(off, qb, 'pressured');
+      this.add(def, rusher, 'pressures');
+      this.add(off, beaten, 'pressuresAllowed');
+      if (this.rng.chance(pSack)) {
+        this.add(off, beaten, 'sacksAllowed');
+        return this.sack(qb, rusher, base);
+      }
+      if (this.rng.chance(C.hitShare)) this.add(def, rusher, 'qbHits');
       const scrambleP =
         S.scrambleGivenPressure +
         S.scrambleTendency *
@@ -1192,6 +1312,7 @@ class GameSim {
         (sense === 'paranoid' ? C.paranoidThrowAway : 0);
       if (this.rng.chance(throwAway)) {
         this.add(off, qb, 'passAtt');
+        this.add(off, qb, 'throwAways');
         return { ...base, pressured: true, throwAway: true, description: `${qb.short} throws it away` };
       }
     }
@@ -1202,6 +1323,40 @@ class GameSim {
     if (!players.length) return null;
     const weights = players.map(([slot, p]) => Math.exp(this.edge(side, p, slot, id) / C.creditSpread));
     return (players[this.rng.weightedIndex(weights)] as [Slot, SimPlayer])[1];
+  }
+
+  /** The player most likely to have lost his matchup: weighted toward the weakest edge. */
+  private worstOf(players: [Slot, SimPlayer][], side: Side, id: CompositeId): SimPlayer | null {
+    if (!players.length) return null;
+    const weights = players.map(([slot, p]) => Math.exp(-this.edge(side, p, slot, id) / C.creditSpread));
+    return (players[this.rng.weightedIndex(weights)] as [Slot, SimPlayer])[1];
+  }
+
+  /**
+   * Credits a tackle (spec 9.2): solo, or shared with a teammate from `helpers` who was in on the play, in
+   * which case both get an assist.
+   */
+  private tackle(side: Side, tackler: SimPlayer | null, helpers: readonly Slot[] = []): void {
+    if (!tackler) return;
+    const others = helpers.flatMap(slot => {
+      const p = this.at(side, slot);
+      return p && p !== tackler ? [p] : [];
+    });
+    const helper =
+      others.length && this.rng.chance(C.assistShare)
+        ? (others[Math.floor(this.rng.float() * others.length)] as SimPlayer)
+        : null;
+    for (const p of helper ? [tackler, helper] : [tackler]) {
+      this.add(side, p, helper ? 'assistedTackles' : 'soloTackles');
+      this.add(side, p, 'tackles');
+    }
+  }
+
+  /** Yards a carrier gains before first contact; the rest of the run comes after contact (spec 9.2). */
+  private beforeContact(yards: number, blocking: number): number {
+    if (yards <= 0) return yards;
+    const mean = Math.max(0.2, C.contactYards + blocking * C.contactPerPoint);
+    return Math.min(yards, Math.round(-Math.log(1 - this.rng.float()) * mean));
   }
 
   private sack(qb: SimPlayer, rusher: SimPlayer | null, base: PlayOutcome): PlayOutcome {
@@ -1218,8 +1373,9 @@ class GameSim {
     this.add(off, qb, 'sacked');
     this.add(off, qb, 'sackYds', -yards);
     this.add(def, rusher, 'sacks');
+    this.add(def, rusher, 'qbHits');
     this.add(def, rusher, 'tacklesForLoss');
-    this.add(def, rusher, 'tackles');
+    this.tackle(def, rusher);
     const strip = this.rng.chance(C.stripSack * this.slider(off, 'fumbles') * this.output('turnovers'));
     if (strip) {
       this.add(off, qb, 'fumbles');
@@ -1266,8 +1422,10 @@ class GameSim {
     this.add(off, qb, 'rushAtt');
     this.add(off, qb, 'rushYds', yards);
     this.long(off, qb, 'rushLong', yards);
+    this.add(off, qb, 'rushYac', Math.max(0, yards - this.beforeContact(yards, 0)));
+    if (yards >= C.bigRun) this.add(off, qb, 'rush10');
     const tackler = this.tacklerFor(['MIKE', 'WILL', 'SS', 'FS', 'LEDGE', 'REDGE']);
-    this.add(other(off), tackler, 'tackles');
+    if (this.ball + yards < 100) this.tackle(other(off), tackler, ['MIKE', 'WILL', 'SS', 'FS']);
     const oob = this.rng.chance(C.scrambleOutOfBounds);
     return {
       ...base,
@@ -1362,6 +1520,10 @@ class GameSim {
     }
     this.add(off, qb, 'passAtt');
     this.add(off, rec, 'targets');
+    this.add(def, defender, 'targetsAllowed');
+    // Intended air yards, measured to the target whether or not the pass is caught (spec 9.2).
+    const air = Math.min(100 - this.ball, this.airYards(call.depth));
+    this.add(off, qb, 'passAirYds', air);
 
     // Throw quality and interception chance (spec 8.3: accuracy by depth, under pressure, on the run).
     const accId: CompositeId =
@@ -1413,7 +1575,7 @@ class GameSim {
       ) *
       this.slider(def, 'interceptions') *
       this.output('turnovers');
-    if (this.rng.chance(pInt) && defender) return this.interception(qb, rec, defender, base, depthKey);
+    if (this.rng.chance(pInt) && defender) return this.interception(qb, rec, defender, base, air);
 
     const hands = this.edge(off, rec, target.slot, target.sep < C.contestedSep ? 'contested' : 'hands', [
       depthTrig,
@@ -1439,11 +1601,13 @@ class GameSim {
         S.dropShare *
         (rec.traits.dropsOpenPasses ? C.dropsTrait : 1) *
         (weather.precipitation !== 'none' ? C.wetDrops : 1);
-      if (this.rng.chance(drops)) this.add(off, rec, 'drops');
-      else if (defender && this.rng.chance(C.breakupShare)) this.add(def, defender, 'passesDefended');
+      if (this.rng.chance(drops)) {
+        this.add(off, rec, 'drops');
+        this.add(off, qb, 'passDrops');
+      } else if (defender && this.rng.chance(C.breakupShare)) this.add(def, defender, 'passesDefended');
       return {
         ...base,
-        air: this.airYards(depthKey),
+        air,
         covering: defender,
         description: `${qb.short} pass incomplete to ${rec.short}`
       };
@@ -1451,7 +1615,6 @@ class GameSim {
 
     // Completion: air yards, then yards after the catch against the tackle (spec 8.3 step 5).
     const goal = 100 - this.ball;
-    const air = Math.min(goal, this.airYards(depthKey));
     const elusive =
       this.edge(off, rec, target.slot, 'elusive', ['openField']) * 0.5 +
       this.edge(off, rec, target.slot, 'burst', ['openField', depthTrig]) * 0.5;
@@ -1470,7 +1633,10 @@ class GameSim {
           (this.slider(def, 'tackling') - 1) * C.sliderLogit
       )
     );
-    if (broken) yac += Math.round(-Math.log(1 - this.rng.float()) * S.brokenTackleYards);
+    if (broken) {
+      yac += Math.round(-Math.log(1 - this.rng.float()) * S.brokenTackleYards);
+      this.add(def, tacklePlayer, 'missedTackles');
+    }
     if (yac >= C.openFieldYards || broken) {
       this.note(off, target.slot, 'openField');
       this.note(def, tacklerSlot, 'openField');
@@ -1484,8 +1650,16 @@ class GameSim {
     this.add(off, rec, 'recYds', gained);
     this.add(off, rec, 'yac', Math.max(0, gained - air));
     this.long(off, rec, 'recLong', gained);
+    if (gained >= C.bigPlay) {
+      this.add(off, qb, 'pass20');
+      this.add(off, rec, 'rec20');
+    }
+    if (target.sep < C.contestedSep) this.add(off, rec, 'contestedCatches');
     const touchdown = this.ball + gained >= 100;
-    if (!touchdown) this.add(def, tacklePlayer, 'tackles');
+    this.add(def, defender, 'completionsAllowed');
+    this.add(def, defender, 'yardsAllowed', gained);
+    if (touchdown) this.add(def, defender, 'tdsAllowed');
+    else this.tackle(def, tacklePlayer, ['FS', 'SS', 'MIKE', 'WILL', 'NCB']);
     // A fumble after the catch.
     const fumbleP =
       sigmoid(
@@ -1539,14 +1713,13 @@ class GameSim {
     rec: SimPlayer,
     defender: SimPlayer,
     base: PlayOutcome,
-    depth: Depth
+    air: number
   ): PlayOutcome {
     const off = this.offense;
     const def = other(off);
     this.add(off, qb, 'passInt');
     this.add(def, defender, 'defInt');
     this.add(def, defender, 'passesDefended');
-    const air = Math.min(100 - this.ball, this.airYards(depth));
     const back = Math.round(-Math.log(1 - this.rng.float()) * C.intReturnMean);
     this.add(def, defender, 'defIntYds', back);
     return {
@@ -1592,13 +1765,16 @@ class GameSim {
     // Blocking against the front (spec 8.3: run block types against block shedding and power moves).
     let block = 0;
     let count = 0;
+    const blockers: [SimPlayer, number][] = [];
     for (const slot of [...LINE, 'TE1', 'TE2', 'FB'] as Slot[]) {
       const p = this.at(off, slot);
       if (!p) continue;
       this.note(off, slot, lane, ...(LINE.includes(slot as OffenseSlot) ? (['contactAtLine'] as const) : []));
       const weight = slot === 'FB' ? C.leadWeight : slot === 'TE1' || slot === 'TE2' ? C.teBlockWeight : 1;
       const id: CompositeId = slot === 'FB' ? 'leadBlock' : zone ? 'runBlockZone' : 'runBlockGap';
-      block += weight * this.edge(off, p, slot, id, [lane, 'contactAtLine']);
+      const edge = this.edge(off, p, slot, id, [lane, 'contactAtLine']);
+      blockers.push([p, edge]);
+      block += weight * edge;
       count += weight;
     }
     block /= Math.max(1, count);
@@ -1614,6 +1790,14 @@ class GameSim {
       dcount += weight;
     }
     stop /= Math.max(1, dcount);
+    const winners: SimPlayer[] = [];
+    for (const [p, edge] of blockers) {
+      this.add(off, p, 'runBlockSnaps');
+      if (this.rng.chance(sigmoid(logit(C.runBlockWin) + S.edge.stuff * (edge - stop)))) {
+        this.add(off, p, 'runBlockWins');
+        winners.push(p);
+      }
+    }
     const light = (this.field[def].has('NCB') ? 1 : 0) + (this.field[def].has('DIME') ? 1 : 0);
     const runFit = this.teams[def].tendencies.defense.runFit;
     const net =
@@ -1639,6 +1823,7 @@ class GameSim {
           : (this.edge(off, carrier, carrierSlot, 'power', [lane, 'carry', 'contactAtLine']) + this.edge(off, carrier, carrierSlot, 'vision', [lane, 'carry'])) / 2; // prettier-ignore
     let yards: number;
     let tackler: SimPlayer | null;
+    let contact: number;
     if (this.rng.chance(pStuff)) {
       yards = -Math.floor(this.rng.float() * S.stuffYards);
       tackler = this.tacklerFor(['DT1', 'DT2', 'LEDGE', 'REDGE', 'FLEX', 'MIKE']);
@@ -1648,6 +1833,7 @@ class GameSim {
         if (slot) this.note(def, slot, 'contactAtLine');
       }
       if (yards < 0) this.add(def, tackler, 'tacklesForLoss');
+      contact = yards;
     } else {
       const shape = S.runGainShape;
       const mean = Math.max(
@@ -1662,6 +1848,10 @@ class GameSim {
       for (let i = 0; i < Math.round(shape); i++) g -= Math.log(1 - this.rng.float());
       yards = Math.round((g / Math.round(shape)) * mean) + (this.rng.float() < 0.5 ? 0 : -1) + 1;
       if (yards <= C.contactAtLineYards && zone) this.note(off, carrierSlot, 'contactAtLine');
+      contact = this.beforeContact(yards, net);
+      // A big gain behind a winning block puts a defender on his back now and then (flavor).
+      if (yards >= C.pancakeYards && winners.length && this.rng.chance(C.pancakeShare))
+        this.add(off, winners[Math.floor(this.rng.float() * winners.length)] as SimPlayer, 'pancakes');
       // Outside runs that turn the corner put the back in space.
       if (!inside && yards >= C.edgeYards) this.note(off, carrierSlot, 'openField');
       const pursuers: DefenseSlot[] = ['MIKE', 'WILL', 'SS', 'FS', 'NCB', 'CB1', 'CB2'];
@@ -1686,6 +1876,10 @@ class GameSim {
         yards += C.breakawayStart + Math.round(-Math.log(1 - this.rng.float()) * S.breakawayYards);
         this.note(off, carrierSlot, 'openField');
         if (tackler) this.note(def, this.slotOf(def, tackler) ?? 'FS', 'openField');
+        // The pursuer missed; a deep defender makes the tackle.
+        this.add(off, carrier, 'brokenTackles');
+        this.add(def, tackler, 'missedTackles');
+        tackler = this.tacklerFor(['FS', 'SS', 'CB1', 'CB2', 'NCB']);
       }
     }
     yards = Math.min(goal, yards);
@@ -1693,8 +1887,11 @@ class GameSim {
     this.add(off, carrier, 'rushAtt');
     this.add(off, carrier, 'rushYds', yards);
     this.long(off, carrier, 'rushLong', yards);
+    this.add(off, carrier, 'rushYac', Math.max(0, yards - Math.max(0, contact)));
+    if (yards >= C.bigRun) this.add(off, carrier, 'rush10');
     const touchdown = this.ball + yards >= 100;
-    if (!touchdown && this.ball + yards > 0) this.add(def, tackler, 'tackles');
+    if (!touchdown && this.ball + yards > 0)
+      this.tackle(def, tackler, ['MIKE', 'WILL', 'DT1', 'DT2', 'LEDGE', 'REDGE', 'SS']);
 
     // Fumbles (spec 8.3: carrying, covers ball, strips ball, weather).
     const covers = C.coversBall[carrier.traits.coversBall];
@@ -1785,6 +1982,7 @@ class GameSim {
     const l = this.line(side, who);
     l.penalties++;
     l.penaltyYds += yards;
+    this.penaltyLog.push({ playerId: who.id, team: this.teams[side].abbr, penalty: id, yards });
     if (this.setup.rules.penalties[id].ejectionEligible && !who.out && this.rng.chance(C.ejectionShare)) {
       who.out = true;
       this.returning.delete(who);
@@ -2002,6 +2200,15 @@ class GameSim {
   // ---------------------------------------------------------------------------------------------------
   // After the play
 
+  /** First downs by player: the passer and receiver, or the runner. */
+  private creditFirstDown(outcome: PlayOutcome): void {
+    const off = this.offense;
+    if (outcome.kind === 'pass') {
+      this.add(off, outcome.passer, 'passFirstDowns');
+      this.add(off, outcome.ballCarrier, 'recFirstDowns');
+    } else this.add(off, outcome.ballCarrier, 'rushFirstDowns');
+  }
+
   private firstDown(kind: 'pass' | 'run' | 'penalty'): void {
     const off = this.offense;
     this.down = 1;
@@ -2058,6 +2265,7 @@ class GameSim {
         t.firstDowns++;
         if (outcome.kind === 'pass') t.firstDownsPass++;
         else t.firstDownsRush++;
+        this.creditFirstDown(outcome);
       }
       const scorer = outcome.ballCarrier;
       if (outcome.kind === 'pass' && outcome.passer && scorer) {
@@ -2078,6 +2286,7 @@ class GameSim {
       if (down === 3) this.totals[off].thirdDownConv++;
       if (down === 4) this.totals[off].fourthDownConv++;
       this.firstDown(outcome.kind === 'pass' ? 'pass' : 'run');
+      this.creditFirstDown(outcome);
     } else {
       this.down = down + 1;
       this.distance = distance - outcome.yards;
@@ -2241,6 +2450,7 @@ class GameSim {
     }
     const distance = this.setup.rules.extraPointSpot + C.fgSnapYards + C.xpExtraYards;
     this.add(team, kicker, 'xpAtt');
+    this.kickSnaps(team, 'fieldGoal');
     if (this.rng.chance(this.kickChance(team, kicker, distance))) {
       this.add(team, kicker, 'xpMade');
       const point = this.setup.rules.points.extraPoint;
@@ -2281,6 +2491,7 @@ class GameSim {
     const distance = this.fgDistance();
     this.plays++;
     this.note(off, 'K', 'kick');
+    this.kickSnaps(off, 'fieldGoal');
     this.add(off, kicker, 'fgAtt');
     if (distance >= 40 && distance < 50) this.add(off, kicker, 'fgAtt40');
     if (distance >= 50) this.add(off, kicker, 'fgAtt50');
@@ -2345,6 +2556,7 @@ class GameSim {
     this.overtimeCheck();
     if (this.over) return;
     this.add(off, punter, 'punts');
+    const cover = this.kickSnaps(off, 'punt');
     const w = this.setup.weather;
     const impact = this.setup.sliders.general.weatherImpact;
     const wind = w.indoor ? 0 : (this.rng.float() - 0.5) * w.windMph * C.puntWind * impact;
@@ -2371,6 +2583,7 @@ class GameSim {
     let net: number;
     this.tick(K.kickSeconds);
     if (this.rng.chance(S.puntBlocked)) {
+      this.add(off, punter, 'puntsBlocked');
       gross = 0;
       receiveAt = 100 - (this.ball - C.blockedPuntLoss);
       net = -C.blockedPuntLoss;
@@ -2419,6 +2632,7 @@ class GameSim {
             returned = Math.max(-C.returnFoulFloor, returned - yards);
           }
           receiveAt = catchAt + returned;
+          if (receiveAt < 100) this.coverTackle(off, cover);
           if (receiveAt >= 100) {
             this.add(def, returner, 'puntReturnTd');
             this.add(off, punter, 'puntYds', gross);
@@ -2460,6 +2674,8 @@ class GameSim {
     const k = this.kicker(kicker);
     this.note(kicker, 'K', 'kick');
     this.running = true;
+    const cover = this.kickSnaps(kicker, 'kickoff');
+    this.add(kicker, k, 'kickoffs');
     const behind = this.score[kicker] - this.score[receiver];
     const onsideAllowed =
       (!rules.onsideOnlyWhenTrailing || behind < 0) && (!rules.onsideFourthQuarterOnly || this.quarter >= 4);
@@ -2488,10 +2704,12 @@ class GameSim {
         Math.round(this.rng.normal(S.kickReturnMean * C.freeKickReturnShare, S.kickReturnSd));
       this.offense = receiver;
       this.tick(K.returnSeconds);
+      this.coverTackle(kicker, cover);
     } else if (r < S.kickoffShort) {
       start = rules.shortSpot;
     } else if (r < S.kickoffShort + S.kickoffLandingRollTouchback) {
       start = rules.landingZoneTouchback;
+      this.add(kicker, k, 'kickoffTouchbacks');
     } else if (r < S.kickoffShort + S.kickoffLandingRollTouchback + returnable && returner) {
       // Caught inside the landing zone and returned (spec 8.3: return rating, blocking, and coverage).
       this.note(receiver, 'KR', 'carry', 'openField');
@@ -2523,8 +2741,10 @@ class GameSim {
         this.touchdown(receiver, `${returner.short} kickoff return`);
         return;
       }
+      this.coverTackle(kicker, cover);
     } else {
       start = rules.touchback;
+      this.add(kicker, k, 'kickoffTouchbacks');
     }
     this.possess(receiver, start);
     this.nextSnap(true);
@@ -2610,6 +2830,7 @@ class GameSim {
       drives: this.drives,
       injuries: this.injuries,
       ejections: this.ejections,
+      penalties: this.penaltyLog,
       recap: [],
       weather: this.setup.weather,
       plays: this.plays,

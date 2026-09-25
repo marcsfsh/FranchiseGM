@@ -154,6 +154,14 @@ export interface InjuryEvent {
   bodyPart: string;
 }
 
+/** An accepted foul, charged to a player (spec 9.2 penalties by type). */
+export interface PenaltyEvent {
+  playerId: string;
+  team: TeamAbbr;
+  penalty: PenaltyId;
+  yards: number;
+}
+
 /** A player thrown out of the game for a flagrant foul (spec 16). */
 export interface EjectionEvent {
   playerId: string;
@@ -186,6 +194,7 @@ export interface GameResult {
   drives: DriveSummary[];
   injuries: InjuryEvent[];
   ejections: EjectionEvent[];
+  penalties: PenaltyEvent[];
   recap: string[];
   weather: GameWeather;
   plays: number;
