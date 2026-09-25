@@ -1,0 +1,278 @@
+# Source: the NFL 2026 regular-season schedule, released May 14, 2026 (nfl.com/schedules/2026).
+# Taken from nflverse's games.csv copy of the NFL feed and cross-checked game by game against ESPN.
+# Times are US Eastern; games awaiting flex decisions are listed at the default 13:00.
+# site_type is home, neutral, or international.
+# Written by tools/fetch-data.mjs. Do not edit by hand.
+week,day,date,time_et,away,home,site_type,site_name
+1,Wed,2026-09-09,20:20,NE,SEA,home,Lumen Field
+1,Thu,2026-09-10,20:35,SF,LAR,international,Melbourne Cricket Ground
+1,Sun,2026-09-13,13:00,ATL,PIT,home,Acrisure Stadium
+1,Sun,2026-09-13,13:00,BAL,IND,home,Lucas Oil Stadium
+1,Sun,2026-09-13,13:00,BUF,HOU,home,NRG Stadium
+1,Sun,2026-09-13,13:00,CHI,CAR,home,Bank of America Stadium
+1,Sun,2026-09-13,13:00,CLE,JAX,home,EverBank Stadium
+1,Sun,2026-09-13,13:00,NO,DET,home,Ford Field
+1,Sun,2026-09-13,13:00,NYJ,TEN,home,Nissan Stadium
+1,Sun,2026-09-13,13:00,TB,CIN,home,Paycor Stadium
+1,Sun,2026-09-13,16:25,ARI,LAC,home,SoFi Stadium
+1,Sun,2026-09-13,16:25,GB,MIN,home,U.S. Bank Stadium
+1,Sun,2026-09-13,16:25,MIA,LV,home,Allegiant Stadium
+1,Sun,2026-09-13,16:25,WAS,PHI,home,Lincoln Financial Field
+1,Sun,2026-09-13,20:20,DAL,NYG,home,MetLife Stadium
+1,Mon,2026-09-14,20:15,DEN,KC,home,Arrowhead Stadium
+2,Thu,2026-09-17,20:15,DET,BUF,home,Highmark Stadium
+2,Sun,2026-09-20,13:00,CAR,ATL,home,Mercedes-Benz Stadium
+2,Sun,2026-09-20,13:00,CIN,HOU,home,NRG Stadium
+2,Sun,2026-09-20,13:00,CLE,TB,home,Raymond James Stadium
+2,Sun,2026-09-20,13:00,GB,NYJ,home,MetLife Stadium
+2,Sun,2026-09-20,13:00,MIN,CHI,home,Soldier Field
+2,Sun,2026-09-20,13:00,NO,BAL,home,M&T Bank Stadium
+2,Sun,2026-09-20,13:00,PHI,TEN,home,Nissan Stadium
+2,Sun,2026-09-20,13:00,PIT,NE,home,Gillette Stadium
+2,Sun,2026-09-20,16:05,JAX,DEN,home,Empower Field at Mile High
+2,Sun,2026-09-20,16:05,LV,LAC,home,SoFi Stadium
+2,Sun,2026-09-20,16:25,MIA,SF,home,Levi's Stadium
+2,Sun,2026-09-20,16:25,SEA,ARI,home,State Farm Stadium
+2,Sun,2026-09-20,16:25,WAS,DAL,home,AT&T Stadium
+2,Sun,2026-09-20,20:20,IND,KC,home,Arrowhead Stadium
+2,Mon,2026-09-21,20:15,NYG,LAR,home,SoFi Stadium
+3,Thu,2026-09-24,20:15,ATL,GB,home,Lambeau Field
+3,Sun,2026-09-27,13:00,CAR,CLE,home,Huntington Bank Field
+3,Sun,2026-09-27,13:00,CIN,PIT,home,Acrisure Stadium
+3,Sun,2026-09-27,13:00,HOU,IND,home,Lucas Oil Stadium
+3,Sun,2026-09-27,13:00,KC,MIA,home,Hard Rock Stadium
+3,Sun,2026-09-27,13:00,LAC,BUF,home,Highmark Stadium
+3,Sun,2026-09-27,13:00,NE,JAX,home,EverBank Stadium
+3,Sun,2026-09-27,13:00,NYJ,DET,home,Ford Field
+3,Sun,2026-09-27,13:00,SEA,WAS,home,Northwest Stadium
+3,Sun,2026-09-27,13:00,TEN,NYG,home,MetLife Stadium
+3,Sun,2026-09-27,16:05,ARI,SF,home,Levi's Stadium
+3,Sun,2026-09-27,16:05,MIN,TB,home,Raymond James Stadium
+3,Sun,2026-09-27,16:25,BAL,DAL,international,Maracanã Stadium
+3,Sun,2026-09-27,16:25,LV,NO,home,Caesars Superdome
+3,Sun,2026-09-27,20:20,LAR,DEN,home,Empower Field at Mile High
+3,Mon,2026-09-28,20:15,PHI,CHI,home,Soldier Field
+4,Thu,2026-10-01,20:15,PIT,CLE,home,Huntington Bank Field
+4,Sun,2026-10-04,09:30,IND,WAS,international,Tottenham Hotspur Stadium
+4,Sun,2026-10-04,13:00,ARI,NYG,home,MetLife Stadium
+4,Sun,2026-10-04,13:00,DAL,HOU,home,NRG Stadium
+4,Sun,2026-10-04,13:00,GB,TB,home,Raymond James Stadium
+4,Sun,2026-10-04,13:00,JAX,CIN,home,Paycor Stadium
+4,Sun,2026-10-04,13:00,LAR,PHI,home,Lincoln Financial Field
+4,Sun,2026-10-04,13:00,NE,BUF,home,Highmark Stadium
+4,Sun,2026-10-04,13:00,NYJ,CHI,home,Soldier Field
+4,Sun,2026-10-04,13:00,TEN,BAL,home,M&T Bank Stadium
+4,Sun,2026-10-04,16:05,MIA,MIN,home,U.S. Bank Stadium
+4,Sun,2026-10-04,16:25,DEN,SF,home,Levi's Stadium
+4,Sun,2026-10-04,16:25,KC,LV,home,Allegiant Stadium
+4,Sun,2026-10-04,16:25,LAC,SEA,home,Lumen Field
+4,Sun,2026-10-04,20:20,DET,CAR,home,Bank of America Stadium
+4,Mon,2026-10-05,20:15,ATL,NO,home,Caesars Superdome
+5,Thu,2026-10-08,20:15,TB,DAL,home,AT&T Stadium
+5,Sun,2026-10-11,09:30,PHI,JAX,international,Tottenham Hotspur Stadium
+5,Sun,2026-10-11,13:00,CIN,MIA,home,Hard Rock Stadium
+5,Sun,2026-10-11,13:00,CLE,NYJ,home,MetLife Stadium
+5,Sun,2026-10-11,13:00,HOU,TEN,home,Nissan Stadium
+5,Sun,2026-10-11,13:00,IND,PIT,home,Acrisure Stadium
+5,Sun,2026-10-11,13:00,LV,NE,home,Gillette Stadium
+5,Sun,2026-10-11,13:00,MIN,NO,home,Caesars Superdome
+5,Sun,2026-10-11,13:00,NYG,WAS,home,Northwest Stadium
+5,Sun,2026-10-11,16:05,DEN,LAC,home,SoFi Stadium
+5,Sun,2026-10-11,16:25,CHI,GB,home,Lambeau Field
+5,Sun,2026-10-11,16:25,DET,ARI,home,State Farm Stadium
+5,Sun,2026-10-11,16:25,SF,SEA,home,Lumen Field
+5,Sun,2026-10-11,20:20,BAL,ATL,home,Mercedes-Benz Stadium
+5,Mon,2026-10-12,20:15,BUF,LAR,home,SoFi Stadium
+6,Thu,2026-10-15,20:15,SEA,DEN,home,Empower Field at Mile High
+6,Sun,2026-10-18,09:30,HOU,JAX,international,Wembley Stadium
+6,Sun,2026-10-18,13:00,BAL,CLE,home,Huntington Bank Field
+6,Sun,2026-10-18,13:00,CAR,PHI,home,Lincoln Financial Field
+6,Sun,2026-10-18,13:00,CHI,ATL,home,Mercedes-Benz Stadium
+6,Sun,2026-10-18,13:00,NO,NYG,home,MetLife Stadium
+6,Sun,2026-10-18,13:00,NYJ,NE,home,Gillette Stadium
+6,Sun,2026-10-18,13:00,PIT,TB,home,Raymond James Stadium
+6,Sun,2026-10-18,13:00,TEN,IND,home,Lucas Oil Stadium
+6,Sun,2026-10-18,16:05,ARI,LAR,home,SoFi Stadium
+6,Sun,2026-10-18,16:25,BUF,LV,home,Allegiant Stadium
+6,Sun,2026-10-18,16:25,LAC,KC,home,Arrowhead Stadium
+6,Sun,2026-10-18,20:20,DAL,GB,home,Lambeau Field
+6,Mon,2026-10-19,20:15,WAS,SF,home,Levi's Stadium
+7,Thu,2026-10-22,20:15,NE,CHI,home,Soldier Field
+7,Sun,2026-10-25,09:30,PIT,NO,international,Stade de France
+7,Sun,2026-10-25,13:00,CIN,BAL,home,M&T Bank Stadium
+7,Sun,2026-10-25,13:00,CLE,TEN,home,Nissan Stadium
+7,Sun,2026-10-25,13:00,IND,MIN,home,U.S. Bank Stadium
+7,Sun,2026-10-25,13:00,MIA,NYJ,home,MetLife Stadium
+7,Sun,2026-10-25,13:00,NYG,HOU,home,NRG Stadium
+7,Sun,2026-10-25,13:00,SF,ATL,home,Mercedes-Benz Stadium
+7,Sun,2026-10-25,13:00,TB,CAR,home,Bank of America Stadium
+7,Sun,2026-10-25,16:05,DEN,ARI,home,State Farm Stadium
+7,Sun,2026-10-25,16:25,GB,DET,home,Ford Field
+7,Sun,2026-10-25,16:25,LAR,LV,home,Allegiant Stadium
+7,Sun,2026-10-25,20:20,KC,SEA,home,Lumen Field
+7,Mon,2026-10-26,20:15,DAL,PHI,home,Lincoln Financial Field
+8,Thu,2026-10-29,20:15,CAR,GB,home,Lambeau Field
+8,Sun,2026-11-01,13:00,ARI,DAL,home,AT&T Stadium
+8,Sun,2026-11-01,13:00,ATL,TB,home,Raymond James Stadium
+8,Sun,2026-11-01,13:00,BAL,BUF,home,Highmark Stadium
+8,Sun,2026-11-01,13:00,CLE,PIT,home,Acrisure Stadium
+8,Sun,2026-11-01,13:00,IND,JAX,home,EverBank Stadium
+8,Sun,2026-11-01,13:00,LV,NYJ,home,MetLife Stadium
+8,Sun,2026-11-01,13:00,MIN,DET,home,Ford Field
+8,Sun,2026-11-01,13:00,TEN,CIN,home,Paycor Stadium
+8,Sun,2026-11-01,16:05,LAC,LAR,home,SoFi Stadium
+8,Sun,2026-11-01,16:25,KC,DEN,home,Empower Field at Mile High
+8,Sun,2026-11-01,16:25,NE,MIA,home,Hard Rock Stadium
+8,Sun,2026-11-01,20:20,PHI,WAS,home,Northwest Stadium
+8,Mon,2026-11-02,20:15,CHI,SEA,home,Lumen Field
+9,Thu,2026-11-05,20:15,JAX,BAL,home,M&T Bank Stadium
+9,Sun,2026-11-08,09:30,CIN,ATL,international,Santiago Bernabéu
+9,Sun,2026-11-08,13:00,CLE,NO,home,Caesars Superdome
+9,Sun,2026-11-08,13:00,DAL,IND,home,Lucas Oil Stadium
+9,Sun,2026-11-08,13:00,DEN,CAR,home,Bank of America Stadium
+9,Sun,2026-11-08,13:00,DET,MIA,home,Hard Rock Stadium
+9,Sun,2026-11-08,13:00,LAR,WAS,home,Northwest Stadium
+9,Sun,2026-11-08,13:00,NYG,PHI,home,Lincoln Financial Field
+9,Sun,2026-11-08,13:00,NYJ,KC,home,Arrowhead Stadium
+9,Sun,2026-11-08,16:05,HOU,LAC,home,SoFi Stadium
+9,Sun,2026-11-08,16:05,LV,SF,home,Levi's Stadium
+9,Sun,2026-11-08,16:25,ARI,SEA,home,Lumen Field
+9,Sun,2026-11-08,16:25,GB,NE,home,Gillette Stadium
+9,Sun,2026-11-08,20:20,TB,CHI,home,Soldier Field
+9,Mon,2026-11-09,20:15,BUF,MIN,home,U.S. Bank Stadium
+10,Thu,2026-11-12,20:15,WAS,NYG,home,MetLife Stadium
+10,Sun,2026-11-15,09:30,NE,DET,international,FC Bayern Munich Stadium
+10,Sun,2026-11-15,13:00,BUF,NYJ,home,MetLife Stadium
+10,Sun,2026-11-15,13:00,CAR,NO,home,Caesars Superdome
+10,Sun,2026-11-15,13:00,HOU,CLE,home,Huntington Bank Field
+10,Sun,2026-11-15,13:00,JAX,TEN,home,Nissan Stadium
+10,Sun,2026-11-15,13:00,KC,ATL,home,Mercedes-Benz Stadium
+10,Sun,2026-11-15,13:00,MIA,IND,home,Lucas Oil Stadium
+10,Sun,2026-11-15,13:00,MIN,GB,home,Lambeau Field
+10,Sun,2026-11-15,16:05,LAR,ARI,home,State Farm Stadium
+10,Sun,2026-11-15,16:05,SEA,LV,home,Allegiant Stadium
+10,Sun,2026-11-15,16:25,SF,DAL,home,AT&T Stadium
+10,Sun,2026-11-15,20:20,PIT,CIN,home,Paycor Stadium
+10,Mon,2026-11-16,20:15,LAC,BAL,home,M&T Bank Stadium
+11,Thu,2026-11-19,20:15,IND,HOU,home,NRG Stadium
+11,Sun,2026-11-22,13:00,ARI,KC,home,Arrowhead Stadium
+11,Sun,2026-11-22,13:00,BAL,CAR,home,Bank of America Stadium
+11,Sun,2026-11-22,13:00,JAX,NYG,home,MetLife Stadium
+11,Sun,2026-11-22,13:00,MIA,BUF,home,Highmark Stadium
+11,Sun,2026-11-22,13:00,NO,CHI,home,Soldier Field
+11,Sun,2026-11-22,13:00,TB,DET,home,Ford Field
+11,Sun,2026-11-22,13:00,TEN,DAL,home,AT&T Stadium
+11,Sun,2026-11-22,16:05,NYJ,LAC,home,SoFi Stadium
+11,Sun,2026-11-22,16:25,LV,DEN,home,Empower Field at Mile High
+11,Sun,2026-11-22,16:25,PIT,PHI,home,Lincoln Financial Field
+11,Sun,2026-11-22,20:20,MIN,SF,international,Estadio Banorte
+11,Mon,2026-11-23,20:15,CIN,WAS,home,Northwest Stadium
+12,Wed,2026-11-25,20:00,GB,LAR,home,SoFi Stadium
+12,Thu,2026-11-26,13:00,CHI,DET,home,Ford Field
+12,Thu,2026-11-26,16:30,PHI,DAL,home,AT&T Stadium
+12,Thu,2026-11-26,20:20,KC,BUF,home,Highmark Stadium
+12,Fri,2026-11-27,15:00,DEN,PIT,home,Acrisure Stadium
+12,Sun,2026-11-29,13:00,ATL,MIN,home,U.S. Bank Stadium
+12,Sun,2026-11-29,13:00,BAL,HOU,home,NRG Stadium
+12,Sun,2026-11-29,13:00,LV,CLE,home,Huntington Bank Field
+12,Sun,2026-11-29,13:00,NO,CIN,home,Paycor Stadium
+12,Sun,2026-11-29,13:00,NYG,IND,home,Lucas Oil Stadium
+12,Sun,2026-11-29,13:00,NYJ,MIA,home,Hard Rock Stadium
+12,Sun,2026-11-29,16:05,TEN,JAX,home,EverBank Stadium
+12,Sun,2026-11-29,16:25,SEA,SF,home,Levi's Stadium
+12,Sun,2026-11-29,16:25,WAS,ARI,home,State Farm Stadium
+12,Sun,2026-11-29,20:20,NE,LAC,home,SoFi Stadium
+12,Mon,2026-11-30,20:15,CAR,TB,home,Raymond James Stadium
+13,Thu,2026-12-03,20:15,KC,LAR,home,SoFi Stadium
+13,Sun,2026-12-06,13:00,CIN,CLE,home,Huntington Bank Field
+13,Sun,2026-12-06,13:00,DET,ATL,home,Mercedes-Benz Stadium
+13,Sun,2026-12-06,13:00,GB,NO,home,Caesars Superdome
+13,Sun,2026-12-06,13:00,JAX,CHI,home,Soldier Field
+13,Sun,2026-12-06,13:00,LAC,TB,home,Raymond James Stadium
+13,Sun,2026-12-06,13:00,SF,NYG,home,MetLife Stadium
+13,Sun,2026-12-06,13:00,WAS,TEN,home,Nissan Stadium
+13,Sun,2026-12-06,16:05,MIA,DEN,home,Empower Field at Mile High
+13,Sun,2026-12-06,16:05,PHI,ARI,home,State Farm Stadium
+13,Sun,2026-12-06,16:25,BUF,NE,home,Gillette Stadium
+13,Sun,2026-12-06,16:25,CAR,MIN,home,U.S. Bank Stadium
+13,Sun,2026-12-06,20:20,HOU,PIT,home,Acrisure Stadium
+13,Mon,2026-12-07,20:15,DAL,SEA,home,Lumen Field
+14,Thu,2026-12-10,20:15,MIN,NE,home,Gillette Stadium
+14,Sun,2026-12-13,13:00,ATL,CLE,home,Huntington Bank Field
+14,Sun,2026-12-13,13:00,CHI,MIA,home,Hard Rock Stadium
+14,Sun,2026-12-13,13:00,DEN,NYJ,home,MetLife Stadium
+14,Sun,2026-12-13,13:00,HOU,WAS,home,Northwest Stadium
+14,Sun,2026-12-13,13:00,IND,PHI,home,Lincoln Financial Field
+14,Sun,2026-12-13,13:00,NO,CAR,home,Bank of America Stadium
+14,Sun,2026-12-13,13:00,TB,BAL,home,M&T Bank Stadium
+14,Sun,2026-12-13,13:00,TEN,DET,home,Ford Field
+14,Sun,2026-12-13,16:05,LAC,LV,home,Allegiant Stadium
+14,Sun,2026-12-13,16:25,KC,CIN,home,Paycor Stadium
+14,Sun,2026-12-13,16:25,LAR,SF,home,Levi's Stadium
+14,Sun,2026-12-13,16:25,NYG,SEA,home,Lumen Field
+14,Sun,2026-12-13,20:20,BUF,GB,home,Lambeau Field
+14,Mon,2026-12-14,20:15,PIT,JAX,home,EverBank Stadium
+15,Thu,2026-12-17,20:15,SF,LAC,home,SoFi Stadium
+15,Sat,2026-12-19,17:00,SEA,PHI,home,Lincoln Financial Field
+15,Sat,2026-12-19,20:20,CHI,BUF,home,Highmark Stadium
+15,Sun,2026-12-20,13:00,ATL,WAS,home,Northwest Stadium
+15,Sun,2026-12-20,13:00,BAL,PIT,home,Acrisure Stadium
+15,Sun,2026-12-20,13:00,CIN,CAR,home,Bank of America Stadium
+15,Sun,2026-12-20,13:00,CLE,NYG,home,MetLife Stadium
+15,Sun,2026-12-20,13:00,IND,TEN,home,Nissan Stadium
+15,Sun,2026-12-20,13:00,JAX,HOU,home,NRG Stadium
+15,Sun,2026-12-20,13:00,MIA,GB,home,Lambeau Field
+15,Sun,2026-12-20,13:00,NO,TB,home,Raymond James Stadium
+15,Sun,2026-12-20,16:05,NYJ,ARI,home,State Farm Stadium
+15,Sun,2026-12-20,16:25,DAL,LAR,home,SoFi Stadium
+15,Sun,2026-12-20,16:25,DEN,LV,home,Allegiant Stadium
+15,Sun,2026-12-20,20:20,DET,MIN,home,U.S. Bank Stadium
+15,Mon,2026-12-21,20:15,NE,KC,home,Arrowhead Stadium
+16,Thu,2026-12-24,20:15,HOU,PHI,home,Lincoln Financial Field
+16,Fri,2026-12-25,13:00,GB,CHI,home,Soldier Field
+16,Fri,2026-12-25,16:30,BUF,DEN,home,Empower Field at Mile High
+16,Fri,2026-12-25,20:15,LAR,SEA,home,Lumen Field
+16,Sun,2026-12-27,13:00,ARI,NO,home,Caesars Superdome
+16,Sun,2026-12-27,13:00,CAR,PIT,home,Acrisure Stadium
+16,Sun,2026-12-27,13:00,CIN,IND,home,Lucas Oil Stadium
+16,Sun,2026-12-27,13:00,CLE,BAL,home,M&T Bank Stadium
+16,Sun,2026-12-27,13:00,LAC,MIA,home,Hard Rock Stadium
+16,Sun,2026-12-27,13:00,NE,NYJ,home,MetLife Stadium
+16,Sun,2026-12-27,13:00,TB,ATL,home,Mercedes-Benz Stadium
+16,Sun,2026-12-27,13:00,WAS,MIN,home,U.S. Bank Stadium
+16,Sun,2026-12-27,16:05,TEN,LV,home,Allegiant Stadium
+16,Sun,2026-12-27,16:25,SF,KC,home,Arrowhead Stadium
+16,Sun,2026-12-27,20:20,JAX,DAL,home,AT&T Stadium
+16,Mon,2026-12-28,20:15,NYG,DET,home,Ford Field
+17,Thu,2026-12-31,20:15,BAL,CIN,home,Paycor Stadium
+17,Sun,2027-01-03,13:00,BUF,MIA,home,Hard Rock Stadium
+17,Sun,2027-01-03,13:00,DEN,NE,home,Gillette Stadium
+17,Sun,2027-01-03,13:00,IND,CLE,home,Huntington Bank Field
+17,Sun,2027-01-03,13:00,KC,LAC,home,SoFi Stadium
+17,Sun,2027-01-03,13:00,LAR,TB,home,Raymond James Stadium
+17,Sun,2027-01-03,13:00,MIN,NYJ,home,MetLife Stadium
+17,Sun,2027-01-03,13:00,NO,ATL,home,Mercedes-Benz Stadium
+17,Sun,2027-01-03,13:00,NYG,DAL,home,AT&T Stadium
+17,Sun,2027-01-03,13:00,PIT,TEN,home,Nissan Stadium
+17,Sun,2027-01-03,13:00,SEA,CAR,home,Bank of America Stadium
+17,Sun,2027-01-03,13:00,WAS,JAX,home,EverBank Stadium
+17,Sun,2027-01-03,16:05,LV,ARI,home,State Farm Stadium
+17,Sun,2027-01-03,16:25,DET,CHI,home,Soldier Field
+17,Sun,2027-01-03,20:20,PHI,SF,home,Levi's Stadium
+17,Mon,2027-01-04,20:15,HOU,GB,home,Lambeau Field
+18,Sun,2027-01-10,13:00,ATL,CAR,home,Bank of America Stadium
+18,Sun,2027-01-10,13:00,CHI,MIN,home,U.S. Bank Stadium
+18,Sun,2027-01-10,13:00,CLE,CIN,home,Paycor Stadium
+18,Sun,2027-01-10,13:00,DAL,WAS,home,Northwest Stadium
+18,Sun,2027-01-10,13:00,DET,GB,home,Lambeau Field
+18,Sun,2027-01-10,13:00,JAX,IND,home,Lucas Oil Stadium
+18,Sun,2027-01-10,13:00,LAC,DEN,home,Empower Field at Mile High
+18,Sun,2027-01-10,13:00,LV,KC,home,Arrowhead Stadium
+18,Sun,2027-01-10,13:00,MIA,NE,home,Gillette Stadium
+18,Sun,2027-01-10,13:00,NYJ,BUF,home,Highmark Stadium
+18,Sun,2027-01-10,13:00,PHI,NYG,home,MetLife Stadium
+18,Sun,2027-01-10,13:00,PIT,BAL,home,M&T Bank Stadium
+18,Sun,2027-01-10,13:00,SEA,LAR,home,SoFi Stadium
+18,Sun,2027-01-10,13:00,SF,ARI,home,State Farm Stadium
+18,Sun,2027-01-10,13:00,TB,NO,home,Caesars Superdome
+18,Sun,2027-01-10,13:00,TEN,HOU,home,NRG Stadium

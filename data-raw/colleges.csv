@@ -1,0 +1,307 @@
+# Hand-written list of NCAA football programs with their 2026 conference membership and region.
+# School names and conference affiliations are public facts. Weights approximate each school's share of
+# NFL roster spots from recent rosters; they are estimates, not an official count. Edit by hand.
+name,division,conference,region,weight
+Alabama,FBS,SEC,Southeast,62
+Arkansas,FBS,SEC,South,18
+Auburn,FBS,SEC,Southeast,30
+Florida,FBS,SEC,Southeast,40
+Georgia,FBS,SEC,Southeast,58
+Kentucky,FBS,SEC,Southeast,20
+LSU,FBS,SEC,South,52
+Mississippi State,FBS,SEC,South,20
+Missouri,FBS,SEC,Midwest,20
+Oklahoma,FBS,SEC,Southwest,35
+Ole Miss,FBS,SEC,South,24
+South Carolina,FBS,SEC,Southeast,22
+Tennessee,FBS,SEC,Southeast,28
+Texas,FBS,SEC,Southwest,38
+Texas A&M,FBS,SEC,Southwest,30
+Vanderbilt,FBS,SEC,Southeast,8
+Illinois,FBS,Big Ten,Midwest,14
+Indiana,FBS,Big Ten,Midwest,12
+Iowa,FBS,Big Ten,Midwest,36
+Maryland,FBS,Big Ten,Northeast,16
+Michigan,FBS,Big Ten,Midwest,50
+Michigan State,FBS,Big Ten,Midwest,20
+Minnesota,FBS,Big Ten,Midwest,18
+Nebraska,FBS,Big Ten,Midwest,14
+Northwestern,FBS,Big Ten,Midwest,12
+Ohio State,FBS,Big Ten,Midwest,62
+Oregon,FBS,Big Ten,West,34
+Penn State,FBS,Big Ten,Northeast,40
+Purdue,FBS,Big Ten,Midwest,14
+Rutgers,FBS,Big Ten,Northeast,12
+UCLA,FBS,Big Ten,West,24
+USC,FBS,Big Ten,West,34
+Washington,FBS,Big Ten,West,28
+Wisconsin,FBS,Big Ten,Midwest,30
+Boston College,FBS,ACC,Northeast,16
+California,FBS,ACC,West,18
+Clemson,FBS,ACC,Southeast,40
+Duke,FBS,ACC,Southeast,10
+Florida State,FBS,ACC,Southeast,30
+Georgia Tech,FBS,ACC,Southeast,12
+Louisville,FBS,ACC,Southeast,18
+Miami,FBS,ACC,Southeast,32
+NC State,FBS,ACC,Southeast,16
+North Carolina,FBS,ACC,Southeast,22
+Pittsburgh,FBS,ACC,Northeast,20
+SMU,FBS,ACC,Southwest,8
+Stanford,FBS,ACC,West,22
+Syracuse,FBS,ACC,Northeast,12
+Virginia,FBS,ACC,Southeast,12
+Virginia Tech,FBS,ACC,Southeast,18
+Wake Forest,FBS,ACC,Southeast,12
+Arizona,FBS,Big 12,Southwest,14
+Arizona State,FBS,Big 12,Southwest,16
+Baylor,FBS,Big 12,Southwest,18
+BYU,FBS,Big 12,West,14
+Cincinnati,FBS,Big 12,Midwest,16
+Colorado,FBS,Big 12,West,14
+Houston,FBS,Big 12,Southwest,12
+Iowa State,FBS,Big 12,Midwest,14
+Kansas,FBS,Big 12,Midwest,8
+Kansas State,FBS,Big 12,Midwest,14
+Oklahoma State,FBS,Big 12,Southwest,16
+TCU,FBS,Big 12,Southwest,18
+Texas Tech,FBS,Big 12,Southwest,14
+UCF,FBS,Big 12,Southeast,16
+Utah,FBS,Big 12,West,26
+West Virginia,FBS,Big 12,Northeast,16
+Notre Dame,FBS,Independent,Midwest,40
+UConn,FBS,Independent,Northeast,6
+Boise State,FBS,Pac-12,West,14
+Colorado State,FBS,Pac-12,West,6
+Fresno State,FBS,Pac-12,West,10
+Oregon State,FBS,Pac-12,West,14
+San Diego State,FBS,Pac-12,West,10
+Texas State,FBS,Pac-12,Southwest,4
+Utah State,FBS,Pac-12,West,8
+Washington State,FBS,Pac-12,West,14
+Air Force,FBS,Mountain West,West,3
+Hawaii,FBS,Mountain West,West,5
+Nevada,FBS,Mountain West,West,6
+New Mexico,FBS,Mountain West,Southwest,4
+Northern Illinois,FBS,Mountain West,Midwest,6
+San Jose State,FBS,Mountain West,West,5
+UNLV,FBS,Mountain West,West,5
+UTEP,FBS,Mountain West,Southwest,4
+Wyoming,FBS,Mountain West,West,7
+Army,FBS,American,Northeast,3
+Charlotte,FBS,American,Southeast,5
+East Carolina,FBS,American,Southeast,8
+Florida Atlantic,FBS,American,Southeast,6
+Memphis,FBS,American,South,10
+Navy,FBS,American,Northeast,3
+North Texas,FBS,American,Southwest,5
+Rice,FBS,American,Southwest,4
+South Florida,FBS,American,Southeast,9
+Temple,FBS,American,Northeast,9
+Tulane,FBS,American,South,8
+Tulsa,FBS,American,Southwest,5
+UAB,FBS,American,Southeast,6
+UTSA,FBS,American,Southwest,6
+Appalachian State,FBS,Sun Belt,Southeast,8
+Arkansas State,FBS,Sun Belt,South,4
+Coastal Carolina,FBS,Sun Belt,Southeast,6
+Georgia Southern,FBS,Sun Belt,Southeast,5
+Georgia State,FBS,Sun Belt,Southeast,4
+James Madison,FBS,Sun Belt,Southeast,6
+Louisiana,FBS,Sun Belt,South,6
+Louisiana-Monroe,FBS,Sun Belt,South,3
+Marshall,FBS,Sun Belt,Northeast,8
+Old Dominion,FBS,Sun Belt,Southeast,4
+South Alabama,FBS,Sun Belt,Southeast,4
+Southern Miss,FBS,Sun Belt,South,6
+Troy,FBS,Sun Belt,Southeast,6
+Akron,FBS,MAC,Midwest,3
+Ball State,FBS,MAC,Midwest,4
+Bowling Green,FBS,MAC,Midwest,5
+Buffalo,FBS,MAC,Northeast,5
+Central Michigan,FBS,MAC,Midwest,7
+Eastern Michigan,FBS,MAC,Midwest,5
+Kent State,FBS,MAC,Midwest,4
+Miami (OH),FBS,MAC,Midwest,5
+Ohio,FBS,MAC,Midwest,5
+Toledo,FBS,MAC,Midwest,8
+UMass,FBS,MAC,Northeast,3
+Western Michigan,FBS,MAC,Midwest,7
+Delaware,FBS,Conference USA,Northeast,4
+FIU,FBS,Conference USA,Southeast,4
+Jacksonville State,FBS,Conference USA,Southeast,3
+Kennesaw State,FBS,Conference USA,Southeast,2
+Liberty,FBS,Conference USA,Southeast,5
+Louisiana Tech,FBS,Conference USA,South,6
+Middle Tennessee,FBS,Conference USA,Southeast,5
+Missouri State,FBS,Conference USA,Midwest,3
+New Mexico State,FBS,Conference USA,Southwest,3
+Sam Houston,FBS,Conference USA,Southwest,3
+Western Kentucky,FBS,Conference USA,Southeast,6
+North Dakota State,FCS,Missouri Valley,Midwest,7
+South Dakota State,FCS,Missouri Valley,Midwest,6
+South Dakota,FCS,Missouri Valley,Midwest,3
+North Dakota,FCS,Missouri Valley,Midwest,3
+Northern Iowa,FCS,Missouri Valley,Midwest,4
+Illinois State,FCS,Missouri Valley,Midwest,3
+Southern Illinois,FCS,Missouri Valley,Midwest,3
+Youngstown State,FCS,Missouri Valley,Midwest,3
+Indiana State,FCS,Missouri Valley,Midwest,1
+Murray State,FCS,Missouri Valley,Southeast,1
+Montana,FCS,Big Sky,West,3
+Montana State,FCS,Big Sky,West,3
+Eastern Washington,FCS,Big Sky,West,3
+Weber State,FCS,Big Sky,West,3
+UC Davis,FCS,Big Sky,West,2
+Sacramento State,FCS,Big Sky,West,2
+Idaho,FCS,Big Sky,West,2
+Idaho State,FCS,Big Sky,West,1
+Portland State,FCS,Big Sky,West,1
+Northern Arizona,FCS,Big Sky,Southwest,2
+Cal Poly,FCS,Big Sky,West,1
+Villanova,FCS,CAA,Northeast,3
+Richmond,FCS,CAA,Southeast,2
+William & Mary,FCS,CAA,Southeast,2
+Towson,FCS,CAA,Northeast,2
+Maine,FCS,CAA,Northeast,2
+New Hampshire,FCS,CAA,Northeast,2
+Rhode Island,FCS,CAA,Northeast,2
+Stony Brook,FCS,CAA,Northeast,1
+Albany,FCS,CAA,Northeast,1
+Monmouth,FCS,CAA,Northeast,1
+Elon,FCS,CAA,Southeast,2
+Campbell,FCS,CAA,Southeast,1
+Hampton,FCS,CAA,Southeast,1
+North Carolina A&T,FCS,CAA,Southeast,2
+Furman,FCS,Southern,Southeast,2
+Samford,FCS,Southern,Southeast,2
+Chattanooga,FCS,Southern,Southeast,2
+Wofford,FCS,Southern,Southeast,1
+Mercer,FCS,Southern,Southeast,1
+The Citadel,FCS,Southern,Southeast,1
+VMI,FCS,Southern,Southeast,1
+East Tennessee State,FCS,Southern,Southeast,1
+Western Carolina,FCS,Southern,Southeast,1
+Jackson State,FCS,SWAC,South,3
+Southern,FCS,SWAC,South,2
+Grambling State,FCS,SWAC,South,2
+Alabama State,FCS,SWAC,Southeast,2
+Alabama A&M,FCS,SWAC,Southeast,1
+Alcorn State,FCS,SWAC,South,2
+Prairie View A&M,FCS,SWAC,Southwest,1
+Texas Southern,FCS,SWAC,Southwest,1
+Florida A&M,FCS,SWAC,Southeast,2
+Bethune-Cookman,FCS,SWAC,Southeast,1
+Mississippi Valley State,FCS,SWAC,South,1
+Arkansas-Pine Bluff,FCS,SWAC,South,1
+North Carolina Central,FCS,MEAC,Southeast,1
+South Carolina State,FCS,MEAC,Southeast,2
+Howard,FCS,MEAC,Northeast,1
+Norfolk State,FCS,MEAC,Southeast,1
+Morgan State,FCS,MEAC,Northeast,1
+Delaware State,FCS,MEAC,Northeast,1
+Tennessee State,FCS,Big South-OVC,Southeast,2
+Austin Peay,FCS,United Athletic,Southeast,1
+Southeast Missouri State,FCS,Big South-OVC,Midwest,1
+UT Martin,FCS,Big South-OVC,Southeast,1
+Eastern Illinois,FCS,Big South-OVC,Midwest,1
+Tennessee Tech,FCS,Big South-OVC,Southeast,1
+Gardner-Webb,FCS,Big South-OVC,Southeast,1
+Charleston Southern,FCS,Big South-OVC,Southeast,1
+Eastern Kentucky,FCS,United Athletic,Southeast,2
+Central Arkansas,FCS,United Athletic,South,2
+Abilene Christian,FCS,United Athletic,Southwest,1
+Tarleton State,FCS,United Athletic,Southwest,1
+Southern Utah,FCS,United Athletic,West,1
+Utah Tech,FCS,United Athletic,West,1
+North Alabama,FCS,United Athletic,Southeast,1
+West Georgia,FCS,United Athletic,Southeast,1
+Incarnate Word,FCS,Southland,Southwest,2
+Nicholls,FCS,Southland,South,1
+McNeese,FCS,Southland,South,2
+Southeastern Louisiana,FCS,Southland,South,2
+Northwestern State,FCS,Southland,South,1
+Lamar,FCS,Southland,Southwest,1
+Stephen F. Austin,FCS,Southland,Southwest,2
+Houston Christian,FCS,Southland,Southwest,1
+East Texas A&M,FCS,Southland,Southwest,1
+Princeton,FCS,Ivy,Northeast,1
+Harvard,FCS,Ivy,Northeast,2
+Yale,FCS,Ivy,Northeast,1
+Penn,FCS,Ivy,Northeast,1
+Dartmouth,FCS,Ivy,Northeast,1
+Brown,FCS,Ivy,Northeast,1
+Columbia,FCS,Ivy,Northeast,1
+Cornell,FCS,Ivy,Northeast,1
+Lehigh,FCS,Patriot,Northeast,1
+Lafayette,FCS,Patriot,Northeast,1
+Holy Cross,FCS,Patriot,Northeast,1
+Fordham,FCS,Patriot,Northeast,1
+Bucknell,FCS,Patriot,Northeast,1
+Colgate,FCS,Patriot,Northeast,1
+Duquesne,FCS,Northeast,Northeast,1
+Robert Morris,FCS,Northeast,Northeast,1
+Central Connecticut,FCS,Northeast,Northeast,1
+Sacred Heart,FCS,Northeast,Northeast,1
+Wagner,FCS,Northeast,Northeast,1
+San Diego,FCS,Pioneer,West,1
+Dayton,FCS,Pioneer,Midwest,1
+Drake,FCS,Pioneer,Midwest,1
+Grand Valley State,D2,GLIAC,Midwest,1.5
+Ferris State,D2,GLIAC,Midwest,1.5
+Saginaw Valley State,D2,GLIAC,Midwest,0.6
+Wayne State (MI),D2,GLIAC,Midwest,0.4
+Hillsdale,D2,G-MAC,Midwest,0.4
+Ashland,D2,G-MAC,Midwest,0.5
+Findlay,D2,G-MAC,Midwest,0.3
+Pittsburg State,D2,MIAA,Midwest,1
+Northwest Missouri State,D2,MIAA,Midwest,1
+Central Missouri,D2,MIAA,Midwest,0.6
+Missouri Western,D2,MIAA,Midwest,0.6
+Washburn,D2,MIAA,Midwest,0.5
+Emporia State,D2,MIAA,Midwest,0.4
+Fort Hays State,D2,MIAA,Midwest,0.4
+Nebraska-Kearney,D2,MIAA,Midwest,0.4
+Valdosta State,D2,Gulf South,Southeast,1
+West Florida,D2,Gulf South,Southeast,0.8
+Delta State,D2,Gulf South,South,0.4
+Bowie State,D2,CIAA,Northeast,0.6
+Virginia Union,D2,CIAA,Southeast,0.5
+Shepherd,D2,PSAC,Northeast,0.6
+Slippery Rock,D2,PSAC,Northeast,0.6
+Indiana (PA),D2,PSAC,Northeast,0.6
+Kutztown,D2,PSAC,Northeast,0.5
+Shippensburg,D2,PSAC,Northeast,0.4
+Tuskegee,D2,SIAC,Southeast,0.5
+Fort Valley State,D2,SIAC,Southeast,0.4
+Albany State,D2,SIAC,Southeast,0.4
+Miles,D2,SIAC,Southeast,0.3
+Colorado Mines,D2,RMAC,West,0.4
+CSU Pueblo,D2,RMAC,West,0.5
+Chadron State,D2,RMAC,West,0.3
+Minnesota State,D2,NSIC,Midwest,0.8
+Winona State,D2,NSIC,Midwest,0.4
+Augustana (SD),D2,NSIC,Midwest,0.3
+Lenoir-Rhyne,D2,South Atlantic,Southeast,0.5
+Newberry,D2,South Atlantic,Southeast,0.3
+Harding,D2,Great American,South,0.5
+Henderson State,D2,Great American,South,0.4
+Ouachita Baptist,D2,Great American,South,0.4
+Angelo State,D2,Lone Star,Southwest,0.5
+Midwestern State,D2,Lone Star,Southwest,0.4
+Kentucky State,D2,SIAC,Southeast,0.2
+Mary Hardin-Baylor,D3,ASC,Southwest,0.5
+Hardin-Simmons,D3,ASC,Southwest,0.2
+Wisconsin-Whitewater,D3,WIAC,Midwest,0.5
+Wisconsin-Oshkosh,D3,WIAC,Midwest,0.3
+Wisconsin-La Crosse,D3,WIAC,Midwest,0.2
+Mount Union,D3,OAC,Midwest,0.4
+North Central (IL),D3,CCIW,Midwest,0.4
+St. John's (MN),D3,MIAC,Midwest,0.2
+Linfield,D3,Northwest,West,0.2
+Johns Hopkins,D3,Centennial,Northeast,0.2
+Muhlenberg,D3,Centennial,Northeast,0.2
+Delaware Valley,D3,MAC (D3),Northeast,0.2
+Wesleyan (CT),D3,NESCAC,Northeast,0.1
+Trinity (CT),D3,NESCAC,Northeast,0.1
+Williams,D3,NESCAC,Northeast,0.1
