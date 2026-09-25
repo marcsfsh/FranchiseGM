@@ -196,7 +196,7 @@ describe('special teams (spec 8.3)', () => {
     const cornerback = freshSetup().away.depth.CB2[0] as string;
     const benched = (ball: number) =>
       run(
-        { quarter: 4, clock: 3, score: { home: 13, away: 20 }, offense: 'home', ball, distance: 100 - ball },
+        { quarter: 4, clock: 3, score: { home: 10, away: 24 }, offense: 'home', ball, distance: 100 - ball },
         60
       ).filter(g => (g.box.away.players[cornerback]?.snapsDefense ?? 0) === 0).length;
     expect(benched(98)).toBeGreaterThan(15);
