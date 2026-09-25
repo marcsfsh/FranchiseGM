@@ -48,7 +48,23 @@ test('sims to the playoffs and through the Super Bowl without pausing', async ({
   await page.evaluate(() => (location.hash = '#/'));
   const status = page.locator('main p.sr-only[role="status"]');
   await page.getByRole('button', { name: 'Sim to the playoffs' }).click();
+  // A change made while weeks play in the background isn't lost when they land.
+  await page.evaluate(() => (location.hash = '#/game-plan'));
+  await page
+    .getByRole('group', { name: 'Run and pass balance' })
+    .getByRole('radio', { name: 'Pass heavy' })
+    .check();
+  await page.evaluate(() => (location.hash = '#/'));
   await expect(status).toHaveText('Played 18 weeks.', { timeout: 200_000 });
+  await page.evaluate(() => (location.hash = '#/game-plan'));
+  await expect(
+    page.getByRole('group', { name: 'Run and pass balance' }).getByRole('radio', { name: 'Pass heavy' })
+  ).toBeChecked();
+  await expect(page.getByRole('switch', { name: 'Coordinators set the game plan' })).toHaveAttribute(
+    'aria-checked',
+    'false'
+  );
+  await page.evaluate(() => (location.hash = '#/'));
   await expect(page.locator('main section.card', { hasText: 'playoff picture' })).toContainText(
     'The seeds are set.'
   );

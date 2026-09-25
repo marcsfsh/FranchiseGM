@@ -183,6 +183,8 @@ export class AppState {
   private pendingSave: ReturnType<typeof setTimeout> | null = null;
   /** The user's actions since the last advance, which seed the next one's variance (spec 8.9). */
   private actions: unknown[] = [];
+  /** Edits made while a week is in the worker, to reapply to the league it sends back. */
+  private inFlight: ((league: League) => void)[] | null = null;
 
   /**
    * Applies a change to the open league from a screen (a depth chart move, a game plan setting) and saves
@@ -192,6 +194,7 @@ export class AppState {
   edit(change: (league: League) => void, action: unknown = 'edit'): void {
     if (!this.league) return;
     change(this.league);
+    this.inFlight?.push(change);
     this.actions.push(action);
     if (this.pendingSave) clearTimeout(this.pendingSave);
     this.pendingSave = setTimeout(() => {
@@ -212,7 +215,8 @@ export class AppState {
    * Advances week by week in the worker (spec 4.2), stopping at the target, at a message that pauses under
    * the user's settings (spec 19.6), or between weeks once `signal` aborts. Each week's games go into
    * history before the league takes the new week, so a failed write leaves the week to replay; then the
-   * league autosaves (spec 21).
+   * league autosaves (spec 21). Edits the user makes while a week is in the worker apply to the league it
+   * sends back, so none are lost.
    */
   async advance(
     target: AdvanceTarget,
@@ -225,14 +229,25 @@ export class AppState {
     let weeks = 0;
     while (this.league && gameWeek(this.league) !== null && !signal?.aborted) {
       const input = { actions: digestActions(this.actions), entropy: freshSeed() };
-      const week: AdvancedWeek = await this.worker.run<AdvancedWeek>('advanceWeek', {
-        league: this.league,
-        climate: this.baseDb.climate,
-        input
-      }).result;
-      await this.store.history.record(week.league.meta.id, week.games);
-      this.actions = [];
+      const posted = this.actions.length;
+      this.inFlight = [];
+      let week: AdvancedWeek;
+      let edits: ((league: League) => void)[];
+      try {
+        week = await this.worker.run<AdvancedWeek>('advanceWeek', {
+          league: this.league,
+          climate: this.baseDb.climate,
+          input
+        }).result;
+        await this.store.history.record(week.league.meta.id, week.games);
+      } finally {
+        edits = this.inFlight;
+        this.inFlight = null;
+      }
+      // Actions taken during the week count toward the next one.
+      this.actions = this.actions.slice(posted);
       this.league = week.league;
+      for (const change of edits) change(week.league);
       await this.save();
       weeks++;
       onWeek(week.league, weeks);

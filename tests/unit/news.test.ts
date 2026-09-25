@@ -115,6 +115,28 @@ describe('the news feed (spec 18.1)', () => {
   });
 });
 
+describe('headline text', () => {
+  it('fills every template in every round, with the right articles', () => {
+    const league = fresh();
+    const weeks = league.rules.season.weeks;
+    const results = [game('MIN', 'GB', [18, 3]), game('KC', 'BUF', [11, 7]), game('SF', 'DAL', [24, 24])];
+    const headlines = new Set<string>();
+    for (const week of [1, weeks + 1, weeks + 4])
+      for (let seed = 0; seed < 30; seed++)
+        for (const n of weekNews(
+          league,
+          { week, results, awards: [], before: {}, after: {}, moves: [] },
+          stream(seed)
+        ))
+          headlines.add(n.headline);
+    for (const h of headlines) {
+      expect(h).not.toMatch(/[{}]|\s\s|^\s|^[a-z]/);
+      expect(h).not.toMatch(/\ba (8|11|18)\b/);
+    }
+    expect([...headlines].some(h => h.startsWith("The Packers' season ends in an 18–3 loss"))).toBe(true);
+  });
+});
+
 describe('the inbox and pause rules (spec 19.6)', () => {
   it("reports the user's game and pauses for a starter's injury, not a backup's", () => {
     const league = fresh();

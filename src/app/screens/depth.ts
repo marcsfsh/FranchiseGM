@@ -76,14 +76,24 @@ function coachStyle(league: League, abbr: League['meta']['start']['userTeam']): 
   return `${name} mostly ${lead[0]}${also.length ? `, and also ${joinList(also)}` : ''}.`;
 }
 
+/** A key for the focused control that survives a redraw: its ID or its accessible name. */
+function focusKey(within: Element): string | null {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement) || !within.contains(active)) return null;
+  return active.id ? `#${CSS.escape(active.id)}` : active.getAttribute('aria-label') ? `[aria-label="${CSS.escape(active.getAttribute('aria-label') ?? '')}"]` : null;
+} // prettier-ignore
+
 export function depthScreen(): Screen {
+  let off: (() => void) | null = null;
   return {
     title: 'Depth chart',
+    dispose: () => off?.(),
     render: ({ app }) => {
-      const league = app.league;
-      if (!league) return h('section', { class: 'view' }, pageHead('Depth chart'));
+      const opened = app.league;
+      if (!opened) return h('section', { class: 'view' }, pageHead('Depth chart'));
+      let league: League = opened;
       const abbr = league.meta.start.userTeam;
-      const team = league.teams[abbr];
+      let team = league.teams[abbr];
       const status = h('p', { class: 'sr-only', role: 'status' });
       const announce = (message: string) => {
         status.textContent = message;
@@ -300,6 +310,18 @@ export function depthScreen(): Screen {
           visit.tab = id;
         }
       );
+
+      // A week played in the background brings a new league: redraw from it, keeping focus.
+      off = app.onChange(() => {
+        const next = app.league;
+        if (!next || next === league) return;
+        league = next;
+        team = next.teams[abbr];
+        const key = focusKey(panels.element);
+        syncAuto();
+        panels.refresh();
+        if (key) panels.element.querySelector<HTMLElement>(key)?.focus();
+      });
 
       return h(
         'section',

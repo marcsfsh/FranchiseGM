@@ -10,6 +10,9 @@ export const possessive = (name: string): string => (name.endsWith('s') ? `${nam
 /** "a knee", "an ankle", "an Achilles". */
 export const withArticle = (word: string): string => `${/^[aeiou]/i.test(word) ? 'an' : 'a'} ${word}`;
 
+/** The article a number takes when read aloud: "an 18–3 win", "an 8-yard gain", "a 21–7 win". */
+export const numberArticle = (n: number): string => (/^(8\d*|11|18)$/.test(String(n)) ? 'an' : 'a');
+
 /** "a", "a and b", "a, b, and c". */
 export function joinList(parts: readonly string[]): string {
   if (parts.length <= 1) return parts[0] ?? '';

@@ -9,6 +9,7 @@ import { minimumContract } from '../contracts/build';
 import { pickJersey } from '../model/jerseys';
 import type { Player } from '../model/player';
 import type { Rng } from '../rng';
+import { scheduleWeek } from '../season/state';
 import type { League } from './types';
 
 export type TransactionKind = 'injuredReserve' | 'activated' | 'signed' | 'promoted' | 'released';
@@ -36,6 +37,21 @@ export const activeRoster = (league: League, abbr: TeamAbbr): Player[] =>
 /** Free agents available to sign. */
 export const freeAgents = (league: League): Player[] =>
   Object.values(league.players).filter(p => p.status === 'freeAgent' && p.team === null);
+
+/**
+ * Games the player's team has played since his last placement on injured reserve (spec 12.1: a player
+ * placed there misses at least `irMinGames` games, whatever byes fall in between).
+ */
+export function gamesOnReserve(league: League, player: Player): number {
+  const placed = league.season.transactions.findLast(
+    t => t.playerId === player.id && t.kind === 'injuredReserve'
+  );
+  const since = placed ? scheduleWeek(league, placed) : null;
+  if (!player.team || since === null) return 0;
+  return Object.values(league.season.results).filter(
+    g => g.week >= since && (g.home === player.team || g.away === player.team)
+  ).length;
+}
 
 /** Designated-to-return activations the team has used this season. */
 export const irReturnsUsed = (league: League, abbr: TeamAbbr): number =>

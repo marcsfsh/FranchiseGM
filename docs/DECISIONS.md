@@ -94,7 +94,7 @@
 - When: 2026-09-25, M5
 - Decision: A playoff game's week continues from the regular season (week 19 is the first round after an 18-week season), and round names count back from the Super Bowl by the bracket size in the rule set (`playoffRoundName`).
 - Why: Stat rows and game logs sort by week, and the rule set can change the season length and the number of playoff teams (spec 16, 5.3).
-- Revisit if: the M7 bracket needs byes or rounds that don't map to one week each.
+- Revisit if: a bracket needs rounds that don't map to one week each. M7: the Super Bowl is still one week number after the conference championships, and the off week between them heals injuries a second week.
 
 ## D-17: How calibration replays work before the season loop
 - When: 2026-09-25, M6

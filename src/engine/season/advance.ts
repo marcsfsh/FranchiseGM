@@ -133,6 +133,8 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     week,
     leagueStream(league.random, 'injuries', week)
   );
+  // The Super Bowl comes two weeks after the conference championships: the off week heals too.
+  if (week === league.rules.season.weeks + PLAYOFF_PHASES.length - 1) healWeek(league);
   // Season totals and players of the week, then the calendar moves on (seeds come after week 18).
   const before = league.season.totals;
   league.season.totals = addToTotals(before, results);

@@ -14,7 +14,7 @@ import type { Rng } from '../rng';
 import type { PlayerLine, StatKey } from '../sim/stats';
 import type { GameResult } from '../sim/types';
 import { TUNING } from '../tuning';
-import { plural, possessive, withArticle } from '../text';
+import { numberArticle, plural, possessive, withArticle } from '../text';
 import type { WeeklyAward } from './awards';
 
 const N = TUNING.news;
@@ -100,22 +100,24 @@ function resultCandidates(league: League, results: readonly GameResult[], week: 
     const fill = {
       W: nick(w),
       L: nick(l),
+      Ls: `The ${possessive(nick(l))}`,
       ws: String(ws),
+      'a ws': `${numberArticle(ws)} ${ws}`,
       ls: String(ls),
       sb: superBowlName(league.season.season)
     };
     const templates =
       week === league.rules.season.weeks + 4
-        ? ['The {W} win {sb}, beating the {L} {ws}–{ls}', 'The {W} are champions after a {ws}–{ls} win over the {L} in {sb}']
+        ? ['The {W} win {sb}, beating the {L} {ws}–{ls}', 'The {W} are champions after {a ws}–{ls} win over the {L} in {sb}']
         : playoff
-          ? ['The {W} beat the {L} {ws}–{ls} to advance', 'The {W} move on with a {ws}–{ls} win over the {L}', "{Ls} season ends in a {ws}–{ls} loss to the {W}"]
+          ? ['The {W} beat the {L} {ws}–{ls} to advance', 'The {W} move on with {a ws}–{ls} win over the {L}', "{Ls} season ends in {a ws}–{ls} loss to the {W}"]
           : upset
             ? ['The {W} stun the {L} {ws}–{ls}', 'Upset: the {W} knock off the {L} {ws}–{ls}', 'The {W} take down the favored {L} {ws}–{ls}']
             : r.overtime
               ? ['The {W} beat the {L} {ws}–{ls} in overtime', 'The {W} outlast the {L} {ws}–{ls} in overtime']
               : margin >= N.blowout
                 ? ['The {W} rout the {L} {ws}–{ls}', 'The {W} roll past the {L} {ws}–{ls}', 'The {W} run away from the {L}, {ws}–{ls}']
-                : margin <= 3
+                : margin <= N.close
                   ? ['The {W} edge the {L} {ws}–{ls}', 'The {W} hold off the {L} {ws}–{ls}', 'The {W} squeak past the {L} {ws}–{ls}']
                   : ['The {W} beat the {L} {ws}–{ls}', 'The {W} top the {L} {ws}–{ls}', 'The {W} handle the {L} {ws}–{ls}']; // prettier-ignore
     out.push({

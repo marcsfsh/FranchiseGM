@@ -54,13 +54,15 @@ export const PLAYOFF_PHASES = [
   'superBowl'
 ] as const satisfies readonly Phase[];
 
-/** The schedule week the league is in (playoff rounds follow the regular season's weeks), or null. */
-export function gameWeek(league: League): number | null {
-  const { phase, week } = league.date;
-  if (phase === 'regularSeason') return week;
-  const round = (PLAYOFF_PHASES as readonly Phase[]).indexOf(phase) + 1;
+/** The schedule week of a date in the season (playoff rounds follow the regular season's weeks), or null. */
+export function scheduleWeek(league: League, date: Pick<League['date'], 'phase' | 'week'>): number | null {
+  if (date.phase === 'regularSeason') return date.week;
+  const round = (PLAYOFF_PHASES as readonly Phase[]).indexOf(date.phase) + 1;
   return round > 0 ? league.rules.season.weeks + round : null;
 }
+
+/** The schedule week the league is in, or null outside the season. */
+export const gameWeek = (league: League): number | null => scheduleWeek(league, league.date);
 
 /** This week's games still to play. */
 export function weekGames(league: League): ScheduledGame[] {

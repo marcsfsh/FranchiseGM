@@ -10,7 +10,7 @@ import type { League } from '../../engine/league/types';
 import { fullName, type Player } from '../../engine/model/player';
 import type { Position } from '../../engine/model/positions';
 import { PLAN_LIMITS, type GamePlan } from '../../engine/sim/plan';
-import { h } from '../dom';
+import { h, mount } from '../dom';
 import { gameDay, kickoff } from '../format';
 import { pageHead } from './common';
 import type { Screen } from './types';
@@ -103,102 +103,123 @@ function reportCard(report: ScoutingReport): HTMLElement {
   );
 }
 
+/** A key for the focused control that survives a rebuild: its ID or its accessible name. */
+function focusKey(within: Element): string | null {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement) || !within.contains(active)) return null;
+  return active.id ? `#${CSS.escape(active.id)}` : active.getAttribute('aria-label') ? `[aria-label="${CSS.escape(active.getAttribute('aria-label') ?? '')}"]` : null;
+} // prettier-ignore
+
 export function gamePlanScreen(): Screen {
+  let off: (() => void) | null = null;
   return {
     title: 'Game plan',
+    dispose: () => off?.(),
     render: ({ app }) => {
-      const league = app.league;
-      if (!league) return h('section', { class: 'view' }, pageHead('Game plan'));
-      const abbr = league.meta.start.userTeam;
-      const team = league.teams[abbr];
-      const game = nextGame(league, abbr);
-      const opponent = game ? (game.home === abbr ? game.away : game.home) : null;
+      const opened = app.league;
+      if (!opened) return h('section', { class: 'view' }, pageHead('Game plan'));
       const status = h('p', { class: 'sr-only', role: 'status' });
       const announce = (message: string) => {
         status.textContent = message;
       };
-
-      const autoHint = h('p', { class: 'muted', id: 'plan-auto-hint' });
-      const autoSwitch = h('button', {
-        class: 'switch',
-        type: 'button',
-        role: 'switch',
-        'aria-labelledby': 'plan-auto-label',
-        'aria-describedby': 'plan-auto-hint'
+      const view = h('section', { class: 'view' });
+      let shown: League = opened;
+      // A week played in the background brings a new league and opponent: rebuild, keeping focus.
+      off = app.onChange(() => {
+        if (!app.league || app.league === shown) return;
+        const key = focusKey(view);
+        build();
+        if (key) view.querySelector<HTMLElement>(key)?.focus();
       });
-      const syncAuto = () => {
-        autoSwitch.setAttribute('aria-checked', String(team.plan.auto));
-        autoHint.textContent = team.plan.auto
-          ? 'Your coordinators build a plan for each opponent from the scouting report. Any change you make takes the plan back.'
-          : 'You set the plan. Turn this on to hand it to your coordinators; they plan the next game before kickoff.';
-      };
-      autoSwitch.addEventListener('click', () => {
-        app.edit(l => {
-          l.teams[abbr].plan.auto = !l.teams[abbr].plan.auto;
+      const build = (): void => {
+        const league: League = app.league ?? opened;
+        shown = league;
+        const abbr = league.meta.start.userTeam;
+        const team = league.teams[abbr];
+        const game = nextGame(league, abbr);
+        const opponent = game ? (game.home === abbr ? game.away : game.home) : null;
+
+        const autoHint = h('p', { class: 'muted', id: 'plan-auto-hint' });
+        const autoSwitch = h('button', {
+          class: 'switch',
+          type: 'button',
+          role: 'switch',
+          'aria-labelledby': 'plan-auto-label',
+          'aria-describedby': 'plan-auto-hint'
+        });
+        const syncAuto = () => {
+          autoSwitch.setAttribute('aria-checked', String(team.plan.auto));
+          autoHint.textContent = team.plan.auto
+            ? 'Your coordinators build a plan for each opponent from the scouting report. Any change you make takes the plan back.'
+            : 'You set the plan. Turn this on to hand it to your coordinators; they plan the next game before kickoff.';
+        };
+        autoSwitch.addEventListener('click', () => {
+          app.edit(l => {
+            l.teams[abbr].plan.auto = !l.teams[abbr].plan.auto;
+          });
+          syncAuto();
+          announce(
+            team.plan.auto
+              ? 'Your coordinators will build the plan before the next game.'
+              : 'You set the game plan now.'
+          );
         });
         syncAuto();
-        announce(
-          team.plan.auto
-            ? 'Your coordinators will build the plan before the next game.'
-            : 'You set the game plan now.'
-        );
-      });
-      syncAuto();
 
-      /** Applies a user change to the plan, taking it back from the staff if they had it. */
-      const change = (apply: (plan: GamePlan) => void, message: string) => {
-        const took = team.plan.auto;
-        app.edit(l => {
-          apply(l.teams[abbr].plan.plan);
-          l.teams[abbr].plan.auto = false;
-        });
-        if (took) syncAuto();
-        announce(
-          message + (took ? ' You now set the game plan; your coordinators stopped making changes.' : '')
-        );
-      };
+        /** Applies a user change to the plan, taking it back from the staff if they had it. */
+        const change = (apply: (plan: GamePlan) => void, message: string) => {
+          const took = team.plan.auto;
+          app.edit(l => {
+            apply(l.teams[abbr].plan.plan);
+            l.teams[abbr].plan.auto = false;
+          });
+          if (took) syncAuto();
+          announce(
+            message + (took ? ' You now set the game plan; your coordinators stopped making changes.' : '')
+          );
+        };
 
-      const dialField = (dial: (typeof DIALS)[number]) => {
-        const current = nearest(dial.key, team.plan.plan[dial.key]);
-        const settings = settingsOf(dial.key);
-        return h(
-          'fieldset',
-          { class: 'plan-dial', 'aria-describedby': `dial-${dial.key}-hint` },
-          h('legend', { class: 'field-label' }, dial.legend),
-          h('p', { class: 'muted', id: `dial-${dial.key}-hint` }, dial.hint),
-          h(
-            'div',
-            { class: 'seg' },
-            ...dial.labels.map((label, i) => {
-              const input = h('input', {
-                type: 'radio',
-                name: `dial-${dial.key}`,
-                value: String(i),
-                checked: i === current
-              });
-              input.addEventListener('change', () =>
-                change(plan => {
-                  plan[dial.key] = settings[i] ?? plan[dial.key];
-                }, `${dial.legend}: ${label}.`)
-              );
-              return h('label', null, input, label);
-            })
-          )
-        );
-      };
+        const dialField = (dial: (typeof DIALS)[number]) => {
+          const current = nearest(dial.key, team.plan.plan[dial.key]);
+          const settings = settingsOf(dial.key);
+          return h(
+            'fieldset',
+            { class: 'plan-dial', 'aria-describedby': `dial-${dial.key}-hint` },
+            h('legend', { class: 'field-label' }, dial.legend),
+            h('p', { class: 'muted', id: `dial-${dial.key}-hint` }, dial.hint),
+            h(
+              'div',
+              { class: 'seg' },
+              ...dial.labels.map((label, i) => {
+                const input = h('input', {
+                  type: 'radio',
+                  name: `dial-${dial.key}`,
+                  value: String(i),
+                  checked: i === current
+                });
+                input.addEventListener('change', () =>
+                  change(plan => {
+                    plan[dial.key] = settings[i] ?? plan[dial.key];
+                  }, `${dial.legend}: ${label}.`)
+                );
+                return h('label', null, input, label);
+              })
+            )
+          );
+        };
 
-      const roster = (abbrOf: TeamAbbr, positions: readonly Position[]) =>
-        Object.values(league.players)
-          .filter(p => p.team === abbrOf && p.status === 'active' && positions.includes(p.position))
-          .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
-      // The menus change nothing until Apply, so browsing one with the arrow keys is safe.
-      const focusSelects: {
-        key: 'feature' | 'shadow' | 'doubleReceiver' | 'doubleRusher';
-        label: string;
-        select: HTMLSelectElement;
-      }[] = [];
-      const applyFocus = h('button', { class: 'btn btn-solid', type: 'button' }, 'Apply player focus');
-      applyFocus.addEventListener('click', () => {
+        const roster = (abbrOf: TeamAbbr, positions: readonly Position[]) =>
+          Object.values(league.players)
+            .filter(p => p.team === abbrOf && p.status === 'active' && positions.includes(p.position))
+            .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
+        // The menus change nothing until Apply, so browsing one with the arrow keys is safe.
+        const focusSelects: {
+          key: 'feature' | 'shadow' | 'doubleReceiver' | 'doubleRusher';
+          label: string;
+          select: HTMLSelectElement;
+        }[] = [];
+        const applyFocus = h('button', { class: 'btn btn-solid', type: 'button' }, 'Apply player focus');
+        applyFocus.addEventListener('click', () => {
         const changed = focusSelects.filter(f => (f.select.value || null) !== team.plan.plan[f.key]);
         if (!changed.length) {
           announce('Player focus is unchanged.');
@@ -208,7 +229,7 @@ export function gamePlanScreen(): Screen {
           for (const f of changed) plan[f.key] = f.select.value || null;
         }, changed.map(f => `${f.label}: ${f.select.value ? fullName(league.players[f.select.value] as Player) : 'nobody'}.`).join(' '));
       }); // prettier-ignore
-      const focusField = (key: 'feature' | 'shadow' | 'doubleReceiver' | 'doubleRusher', label: string, hint: string, players: Player[]) => {
+        const focusField = (key: 'feature' | 'shadow' | 'doubleReceiver' | 'doubleRusher', label: string, hint: string, players: Player[]) => {
         const id = `focus-${key}`;
         const select = h(
           'select',
@@ -220,23 +241,22 @@ export function gamePlanScreen(): Screen {
         return h('div', { class: 'field' }, h('label', { for: id }, label), select, h('p', { class: 'muted', id: `${id}-hint` }, hint));
       }; // prettier-ignore
 
-      const spy = h('input', { type: 'checkbox', id: 'focus-spy', checked: team.plan.plan.spy });
-      spy.addEventListener('change', () =>
-        change(
-          plan => {
-            plan.spy = spy.checked;
-          },
-          spy.checked ? 'A spy will shadow their quarterback.' : 'No spy on their quarterback.'
-        )
-      );
+        const spy = h('input', { type: 'checkbox', id: 'focus-spy', checked: team.plan.plan.spy });
+        spy.addEventListener('change', () =>
+          change(
+            plan => {
+              plan.spy = spy.checked;
+            },
+            spy.checked ? 'A spy will shadow their quarterback.' : 'No spy on their quarterback.'
+          )
+        );
 
-      const header = game && opponent
+        const header = game && opponent
         ? `Week ${game.week}: ${game.home === abbr ? 'against' : 'at'} the ${teamFullName(opponent)}, ${gameDay(game.date, game.day)} at ${kickoff(game.timeEt)}.`
         : 'No game left to play this season.'; // prettier-ignore
 
-      return h(
-        'section',
-        { class: 'view' },
+        mount(
+          view,
         pageHead('Game plan', teamFullName(abbr)),
         h('p', null, header),
         h(
@@ -273,6 +293,9 @@ export function gamePlanScreen(): Screen {
         ),
         status
       ); // prettier-ignore
+      };
+      build();
+      return view;
     }
   };
 }

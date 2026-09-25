@@ -233,9 +233,20 @@ describe('injury replacements (spec 12.1, 14.11)', () => {
     expect(newcomer?.contractId && league.contracts[newcomer.contractId]?.years[0]?.base).toBeGreaterThan(0);
     expect(logs[0]?.decision).toBe('Sign a free agent');
 
-    // Healed, he comes back and the weakest healthy receiver makes room.
+    // Healed after three games, he still waits: injured reserve is at least four games (spec 12.1).
     hurt.injury = { ...injury, weeksOut: 0 };
+    const play = (week: number) => {
+      const id = `g${week}`;
+      league.season.results[id] = {
+        id, week, home: TEAM, away: 'BUF', homeScore: 20, awayScore: 17, homeTd: 2, awayTd: 2, playoff: false, overtime: false
+      }; // prettier-ignore
+    };
+    [1, 2, 3].forEach(play);
     rosterMoves(league, TEAM, stream(5));
+    expect(hurt.status).toBe('ir');
+    // After the fourth game he comes back, and the weakest healthy receiver makes room.
+    play(5);
+    rosterMoves(league, TEAM, stream(6));
     expect(hurt.status).toBe('active');
     expect(activeRoster(league, TEAM)).toHaveLength(league.rules.roster.active);
     const released = league.season.transactions.filter(t => t.kind === 'released');

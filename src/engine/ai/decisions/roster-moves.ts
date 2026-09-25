@@ -9,6 +9,7 @@ import { ACTIVE_ROSTER } from '../../generate/league';
 import {
   activateFromInjuredReserve,
   freeAgents,
+  gamesOnReserve,
   irReturnsUsed,
   placeOnInjuredReserve,
   promoteFromPracticeSquad,
@@ -133,9 +134,12 @@ export function rosterMoves(league: League, abbr: TeamAbbr, rng: Rng): DecisionL
 
   for (const p of active()) if ((p.injury?.weeksOut ?? 0) >= irMinGames) placeOnInjuredReserve(league, p);
 
-  // Healed players come back, best first, if they beat the weakest healthy player in their group.
+  // Healed players who have missed the minimum games come back, best first, if they beat the weakest
+  // healthy player in their group.
   const healed = mine
-    .filter(p => p.status === 'ir' && (p.injury?.weeksOut ?? 0) === 0)
+    .filter(
+      p => p.status === 'ir' && (p.injury?.weeksOut ?? 0) === 0 && gamesOnReserve(league, p) >= irMinGames
+    )
     .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
   for (const p of healed) {
     if (irReturnsUsed(league, abbr) >= irReturns) break;

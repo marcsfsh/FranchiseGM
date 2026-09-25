@@ -215,7 +215,7 @@ export const TUNING = {
   /**
    * The news feed (spec 18.1). Newsworthiness: a result scores `result` (tie `tie`), plus perUpsetPoint per
    * point the loser's best 22 out-rate the winner's from upsetGap up, `overtime`, and blowoutBonus from a
-   * `blowout` margin; playoff games multiply by playoffStakes and the Super Bowl by superBowlStakes. A big
+   * `blowout` margin (a `close` margin or less reads as a close game); playoff games multiply by playoffStakes and the Super Bowl by superBowlStakes. A big
    * game scores `performance` times how far past its mark (bigGame) it went; a season milestone scores
    * `milestone` times its rank among the stat's marks; an injury scores `injury` per week out, up to
    * injuryWeeksCap, and seasonEnding more for the season, for players rated injuryFrom or more; a signing
@@ -224,7 +224,7 @@ export const TUNING = {
    * and a team sees a template once in templateWeeks weeks.
    */
   news: {
-    result: 3, tie: 6, upsetGap: 2, perUpsetPoint: 3, overtime: 3, blowout: 21, blowoutBonus: 1,
+    result: 3, tie: 6, upsetGap: 2, perUpsetPoint: 3, overtime: 3, blowout: 21, blowoutBonus: 1, close: 3,
     playoffStakes: 3, superBowlStakes: 6, performance: 6, milestone: 4, injury: 1, injuryWeeksCap: 6,
     seasonEnding: 3, injuryFrom: 72, signingFrom: 68, transaction: 1, award: 4, prominentFrom: 70, perOverall: 0.3,
     perWeek: 12, templateWeeks: 4,
