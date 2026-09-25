@@ -6,9 +6,11 @@ import { TEAM_ABBRS } from '../../src/data/team-colors';
 import { team } from '../../src/data/teams';
 import { createLeague, defaultStartOptions } from '../../src/engine/league/create';
 import { startersOf } from '../../src/engine/league/depth';
+import { depthRows, moveInDepth } from '../../src/engine/league/depth-view';
 import type { League } from '../../src/engine/league/types';
 import { advanceWeek, gameWeek, weekGames } from '../../src/engine/season/advance';
 import { leagueStandings } from '../../src/engine/season/state';
+import { NEUTRAL_PLAN } from '../../src/engine/sim/plan';
 import { available } from '../../src/engine/sim/setup';
 import { nameData } from '../helpers/base-data';
 
@@ -115,5 +117,43 @@ describe('the season loop (spec 4.2, 5.3)', { timeout: 120_000 }, () => {
     expect(available(l, b)).toBe(false);
     advanceWeek(l, climate, input);
     expect(l.players[a.id]?.injury?.weeksOut).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('a season with the user managing (spec 12.2, 8.7)', { timeout: 180_000 }, () => {
+  it("keeps the user's starters and plan every week while the AI manages everyone else", () => {
+    const l = league();
+    const user = l.meta.start.userTeam;
+    // Three weeks on auto, then the user takes over: the backup quarterback starts and the plan passes.
+    for (let w = 0; w < 3; w++) advanceWeek(l, climate, input);
+    const qbs = depthRows(l, user).QB.filter(r => r.available);
+    const backup = qbs[1]?.id as string;
+    expect(backup).toBeDefined();
+    const moved = moveInDepth(l, user, 'QB', backup, 0);
+    l.teams[user].depth = { auto: false, order: moved.order };
+    l.teams[user].plan = { auto: false, plan: { ...NEUTRAL_PLAN, passLean: 0.15, blitz: 1.5 } };
+    let started = 0;
+    let games = 0;
+    while (l.date.phase !== 'staff') {
+      const week = advanceWeek(l, climate, input);
+      for (const { result } of week.games) {
+        const side = result.home === user ? 'home' : result.away === user ? 'away' : null;
+        if (!side) continue;
+        games++;
+        // He starts whenever he's healthy; the user's plan and chart are never overwritten.
+        if ((result.box[side].players[backup]?.started ?? 0) > 0) started++;
+      }
+      expect(l.teams[user].depth.auto).toBe(false);
+      expect(l.teams[user].depth.order.QB?.[0]).toBe(backup);
+      expect(l.teams[user].plan.plan.passLean).toBe(0.15);
+    }
+    expect(games).toBeGreaterThanOrEqual(14);
+    expect(started).toBeGreaterThanOrEqual(games - 4);
+    expect(l.season.champion).not.toBeNull();
+    // AI teams kept managing: their depth charts changed hands and plans varied by opponent.
+    expect(l.season.transactions.some(t => t.team !== user)).toBe(true);
+    expect(l.season.transactions.some(t => t.team === user)).toBe(false);
+    expect(l.inbox.length).toBeGreaterThan(games);
+    expect(new Set(l.season.news.map(n => n.week)).size).toBe(22);
   });
 });

@@ -59,3 +59,42 @@ test('sims to the playoffs and through the Super Bowl without pausing', async ({
   );
   await expect(page.getByRole('button', { name: /^Play / })).toHaveCount(0);
 });
+
+test('keeps a custom game plan and depth chart through a played week', async ({ page }, info) => {
+  test.skip(info.project.name.endsWith('tablet'), 'Phone and desktop cover it.');
+  await openGame(page);
+  await createLeague(page, { name: 'Managed league', team: 'MIN', seed: '31' });
+  // A custom plan and a custom depth chart.
+  await page.evaluate(() => (location.hash = '#/game-plan'));
+  const balance = page.getByRole('group', { name: 'Run and pass balance' });
+  await balance.getByRole('radio', { name: 'Pass heavy' }).check();
+  await page.evaluate(() => (location.hash = '#/depth-chart'));
+  const quarterbacks = page.locator('[data-slot="QB"] .depth-slot');
+  const second = (await quarterbacks.nth(1).locator('a').textContent()) ?? '';
+  await page.getByRole('button', { name: `Move ${second} up at quarterback` }).click();
+  await expect(page.getByRole('switch', { name: 'Coach sets the depth chart' })).toHaveAttribute(
+    'aria-checked',
+    'false'
+  );
+
+  await page.evaluate(() => (location.hash = '#/'));
+  const nextGame = page.locator('main section.card', { hasText: 'Next game and game plan' });
+  await expect(nextGame).toContainText('Game plan: Custom.');
+  await page.getByRole('button', { name: 'Play week 1' }).click();
+  await expect(page.locator('main p.sr-only[role="status"]')).toHaveText(/^Played a week\./, {
+    timeout: 60_000
+  });
+  await expect(nextGame).toContainText('Game plan: Custom.');
+
+  // The staff didn't touch either: the plan and the starter are still the user's.
+  await page.evaluate(() => (location.hash = '#/game-plan'));
+  await expect(
+    page.getByRole('group', { name: 'Run and pass balance' }).getByRole('radio', { name: 'Pass heavy' })
+  ).toBeChecked();
+  await expect(page.getByRole('switch', { name: 'Coordinators set the game plan' })).toHaveAttribute(
+    'aria-checked',
+    'false'
+  );
+  await page.evaluate(() => (location.hash = '#/depth-chart'));
+  await expect(page.locator('[data-slot="QB"] .depth-slot').first().locator('a')).toHaveText(second);
+});
