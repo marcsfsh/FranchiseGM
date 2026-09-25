@@ -13,10 +13,23 @@ export const DEFENSE_SLOTS = [
 ] as const; // prettier-ignore
 export const SPECIAL_SLOTS = ['K', 'P', 'LS', 'KR', 'PR', 'GUNNER'] as const;
 
+/**
+ * Return and coverage duties. Fit compares a role rating with the player's overall, which only means
+ * something in the roles of his position, so these show role ratings without fit.
+ */
+export const DUTY_SLOTS = ['KR', 'PR', 'GUNNER'] as const;
+
 export type OffenseSlot = (typeof OFFENSE_SLOTS)[number];
 export type DefenseSlot = (typeof DEFENSE_SLOTS)[number];
 export type SpecialSlot = (typeof SPECIAL_SLOTS)[number];
 export type Slot = OffenseSlot | DefenseSlot | SpecialSlot;
+
+/** Slots where fit applies: every offensive, defensive, and kicking role. */
+export const FIT_SLOTS: readonly Slot[] = [
+  ...OFFENSE_SLOTS,
+  ...DEFENSE_SLOTS,
+  ...SPECIAL_SLOTS.filter(s => !(DUTY_SLOTS as readonly string[]).includes(s))
+];
 
 /** Backs and tight ends in each personnel group; receivers fill the rest of the five skill spots. */
 const PERSONNEL_COUNTS: Record<Personnel, { rb: number; te: number }> = {

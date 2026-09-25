@@ -64,3 +64,35 @@ export function compareDates(a: GameDate, b: GameDate): number {
 export function leagueYear(date: GameDate): number {
   return PHASES.indexOf(date.phase) >= PHASES.indexOf('freeAgency') ? date.season + 1 : date.season;
 }
+
+/**
+ * Where each phase falls on the calendar: month (1 to 12), day, and years after the season's start year.
+ * Weekly phases advance a week at a time from here. Used for ages and calendar lines, not for scheduling.
+ */
+const PHASE_DAYS: Record<Phase, readonly [month: number, day: number, yearOffset: number]> = {
+  regularSeason: [9, 10, 0],
+  wildCard: [1, 16, 1],
+  divisional: [1, 23, 1],
+  conference: [1, 30, 1],
+  superBowl: [2, 14, 1],
+  staff: [2, 16, 1],
+  awards: [2, 18, 1],
+  resign: [2, 20, 1],
+  combine: [2, 27, 1],
+  annualMeeting: [3, 6, 1],
+  freeAgency: [3, 10, 1],
+  proDays: [4, 7, 1],
+  draft: [4, 22, 1],
+  udfa: [4, 25, 1],
+  otas: [5, 25, 1],
+  trainingCamp: [7, 22, 1],
+  preseason: [8, 8, 1],
+  cutdown: [8, 25, 1]
+};
+
+/** The calendar day a game date falls on, YYYY-MM-DD (approximate within the week). */
+export function calendarDay(date: GameDate): string {
+  const [month, day, offset] = PHASE_DAYS[date.phase];
+  const utc = new Date(Date.UTC(date.season + offset, month - 1, day + 7 * Math.max(0, date.week - 1)));
+  return utc.toISOString().slice(0, 10);
+}
