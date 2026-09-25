@@ -55,6 +55,7 @@ export const STATUS_LABELS: Record<RosterStatus, string> = {
   pup: 'Physically unable to perform',
   nfi: 'Non-football injury',
   suspended: 'Suspended',
+  waivers: 'On waivers',
   freeAgent: 'Free agent',
   retired: 'Retired',
   removed: 'Removed'

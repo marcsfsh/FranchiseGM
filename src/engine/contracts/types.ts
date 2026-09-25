@@ -71,11 +71,11 @@ export interface Restructure {
 
 /**
  * How a deal ended before its last year (spec 11.2). Every end but a replacement accelerates the remaining
- * proration. A release also owes the guaranteed salary; a trade sends the guarantees with the player; a
- * declined option ends the deal when the option year opens; a replaced deal (a practice squad deal on
- * promotion) just stops.
+ * proration. A release also owes the guaranteed salary; a trade, or a claim off waivers, sends the
+ * guarantees with the player; a declined option ends the deal when the option year opens; a replaced deal
+ * (a practice squad deal on promotion) just stops.
  */
-export type ContractEndReason = 'released' | 'traded' | 'declined' | 'replaced';
+export type ContractEndReason = 'released' | 'claimed' | 'traded' | 'declined' | 'replaced';
 
 export interface ContractEnd {
   date: GameDate;

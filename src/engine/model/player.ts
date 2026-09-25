@@ -10,7 +10,7 @@ export const DEV_TRAITS = ['Normal', 'Star', 'Superstar', 'X-Factor'] as const;
 export type DevTrait = (typeof DEV_TRAITS)[number];
 
 export const ROSTER_STATUSES = [
-  'active', 'practice', 'ir', 'pup', 'nfi', 'suspended', 'freeAgent', 'retired', 'removed'
+  'active', 'practice', 'ir', 'pup', 'nfi', 'suspended', 'waivers', 'freeAgent', 'retired', 'removed'
 ] as const; // prettier-ignore
 export type RosterStatus = (typeof ROSTER_STATUSES)[number];
 

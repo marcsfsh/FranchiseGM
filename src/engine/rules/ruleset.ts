@@ -42,8 +42,15 @@ export interface RosterRules {
   /** Injured reserve: minimum games out, and designated-to-return activations per season. */
   irMinGames: number;
   irReturns: number;
-  /** Accrued seasons that make a vested veteran: his season's salary is owed once he's on the week 1 roster. */
+  /**
+   * Accrued seasons that make a vested veteran: his season's salary is owed once he's on the week 1 roster,
+   * and he skips waivers when released before the trade deadline.
+   */
   vestedVeteranSeasons: number;
+  /** Games a player on the reserve PUP or NFI list must miss. */
+  pupMinGames: number;
+  /** Through this regular-season week the waiver order follows the draft order, then the standings. */
+  waiverDraftOrderWeeks: number;
 }
 
 export interface PayRules {
@@ -295,7 +302,9 @@ export const DEFAULT_RULES: RuleSet = {
     elevationsPerPlayer: 3,
     irMinGames: 4,
     irReturns: 8,
-    vestedVeteranSeasons: 4
+    vestedVeteranSeasons: 4,
+    pupMinGames: 4,
+    waiverDraftOrderWeeks: 3
   },
   pay: {
     // 2026 CBA minimums for 0, 1, 2, 3, 4-6, and 7+ credited seasons.
@@ -342,6 +351,8 @@ export function validateRules(rules: RuleSet): string[] {
   whole(rules.roster.gameDayActives, 'Game-day actives', 1);
   whole(rules.cap.offseasonCount, 'The offseason cap count', 1);
   whole(rules.roster.vestedVeteranSeasons, 'Seasons for a vested veteran', 1);
+  whole(rules.roster.pupMinGames, 'Games on the reserve PUP list');
+  whole(rules.roster.waiverDraftOrderWeeks, 'Weeks of waivers in draft order');
   if (rules.roster.gameDayActives > rules.roster.active)
     problems.push('Game-day actives exceed the active roster.');
   if (rules.roster.offseason < rules.roster.active)

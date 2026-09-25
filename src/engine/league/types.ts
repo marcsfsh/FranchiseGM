@@ -12,6 +12,7 @@ import type { DepthOrder } from './depth';
 import type { LeagueRandom } from '../rng';
 import type { RuleSet } from '../rules/ruleset';
 import type { TeamSchemes } from '../schemes/resolve';
+import type { WaiverEntry } from '../roster/waivers';
 import type { InboxItem, PauseEvent } from '../season/inbox';
 import type { SeasonState } from '../season/state';
 import type { GamePlan, Rotation } from '../sim/plan';
@@ -101,6 +102,8 @@ export interface League {
   season: SeasonState;
   /** Messages for the user (spec 19.6), oldest first. */
   inbox: InboxItem[];
+  /** Players on waivers until the league next advances (spec 12.1). */
+  waivers: WaiverEntry[];
   /** Counters for new IDs by prefix (p, c, s, o, and more later). */
   nextId: Record<string, number>;
 }

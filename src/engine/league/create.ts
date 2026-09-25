@@ -117,6 +117,7 @@ export function createLeague(input: NewLeagueInput): League {
     schedule: input.schedule.filter(g => g.season === start.startSeason).map(g => ({ ...g })),
     season: emptySeason(start.startSeason),
     inbox: [],
+    waivers: [],
     nextId: idCounters([
       ...generated.players.map(p => p.id),
       ...generated.contracts.map(c => c.id),

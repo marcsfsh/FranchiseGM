@@ -6,6 +6,7 @@
 import type { ClimateTable } from '../../data/climate';
 import type { DecisionLog } from '../ai/framework';
 import { settleIncentives } from '../contracts/moves';
+import { processWaivers } from '../roster/waivers';
 import { manageWeek } from '../ai/weekly';
 import type { Conference, TeamAbbr } from '../../data/teams';
 import type { League } from '../league/types';
@@ -128,8 +129,10 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
   if (week === null) throw new Error(`There are no games to play in the ${league.date.phase} phase.`);
   const season = league.season.season;
   const playoff = week > league.rules.season.weeks;
-  // Teams set their rosters, lineups, and game plans before kickoff (spec 14.10).
+  // Last week's waiver wire clears first (spec 12.1), then teams set their rosters, lineups, and game plans
+  // before kickoff (spec 14.10).
   const movesBefore = league.season.transactions.length;
+  processWaivers(league, leagueStream(league.random, 'waivers', week));
   const decisions = manageWeek(
     league,
     leagueStream(league.random, 'ai', week),

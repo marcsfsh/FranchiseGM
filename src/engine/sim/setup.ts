@@ -4,6 +4,7 @@
  * role rating; the week's game plan and rotations come along (spec 8.7, 12.3); tendencies bend toward the
  * roster by the head coach's flexibility; weather, home field, and form are drawn for the day.
  */
+import { isElevated } from '../roster/rules';
 import type { ClimateTable } from '../../data/climate';
 import type { ScheduledGame } from '../../data/schedule';
 import { venueById, type Venue } from '../../data/stadiums';
@@ -143,7 +144,8 @@ function passRunBalance(players: Record<string, SimPlayer>, depth: Record<Slot, 
 
 /** Whether a player dresses for his team's game: active, and not held out by an injury (spec 10.8). */
 export function available(league: League, player: Player): boolean {
-  if (player.status !== 'active') return false;
+  // Active players, and practice squad players elevated for this week's game (spec 12.1).
+  if (player.status !== 'active' && !isElevated(league, player)) return false;
   if (cannotPlay(designation(player.injury))) return false;
   // A questionable player the coach decided to rest.
   return !(league.teams[player.team as TeamAbbr]?.resting ?? []).includes(player.id);

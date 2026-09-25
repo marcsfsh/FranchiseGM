@@ -12,7 +12,7 @@ import type { Rng } from '../rng';
 import { scheduleWeek } from '../season/state';
 import type { League } from './types';
 
-export type TransactionKind = 'injuredReserve' | 'activated' | 'signed' | 'promoted' | 'released';
+export type TransactionKind = 'injuredReserve' | 'activated' | 'signed' | 'promoted' | 'released' | 'claimed';
 
 export interface Transaction {
   season: number;
@@ -57,7 +57,13 @@ export function gamesOnReserve(league: League, player: Player): number {
 export const irReturnsUsed = (league: League, abbr: TeamAbbr): number =>
   league.season.transactions.filter(t => t.team === abbr && t.kind === 'activated').length;
 
-function record(league: League, team: TeamAbbr, kind: TransactionKind, playerId: string): void {
+/** Logs a roster move in the season's transactions. */
+export function recordTransaction(
+  league: League,
+  team: TeamAbbr,
+  kind: TransactionKind,
+  playerId: string
+): void {
   const { season, phase, week } = league.date;
   league.season.transactions.push({ season, phase, week, team, kind, playerId });
 }
@@ -65,13 +71,13 @@ function record(league: League, team: TeamAbbr, kind: TransactionKind, playerId:
 export function placeOnInjuredReserve(league: League, player: Player): void {
   if (!player.team || player.status !== 'active') throw new Error(`${player.id} isn't on an active roster.`);
   player.status = 'ir';
-  record(league, player.team, 'injuredReserve', player.id);
+  recordTransaction(league, player.team, 'injuredReserve', player.id);
 }
 
 export function activateFromInjuredReserve(league: League, player: Player): void {
   if (!player.team || player.status !== 'ir') throw new Error(`${player.id} isn't on injured reserve.`);
   player.status = 'active';
-  record(league, player.team, 'activated', player.id);
+  recordTransaction(league, player.team, 'activated', player.id);
 }
 
 /** Signs a free agent to a one-year minimum deal and gives him a free jersey number for his position. */
@@ -92,7 +98,7 @@ export function signFreeAgent(league: League, abbr: TeamAbbr, player: Player, rn
   player.team = abbr;
   player.status = 'active';
   player.contractId = contract.id;
-  record(league, abbr, 'signed', player.id);
+  recordTransaction(league, abbr, 'signed', player.id);
 }
 
 /** Promotes a practice squad player to the active roster on a one-year minimum deal. */
@@ -108,7 +114,7 @@ export function promoteFromPracticeSquad(league: League, player: Player): void {
   league.contracts[contract.id] = contract;
   player.contractId = contract.id;
   player.status = 'active';
-  record(league, team, 'promoted', player.id);
+  recordTransaction(league, team, 'promoted', player.id);
 }
 
 /** Releases a player to free agency; his contract ends (dead money comes with M8's cap accounting). */
@@ -119,5 +125,5 @@ export function releasePlayer(league: League, player: Player): void {
   player.contractId = null;
   player.team = null;
   player.status = 'freeAgent';
-  record(league, team, 'released', player.id);
+  recordTransaction(league, team, 'released', player.id);
 }
