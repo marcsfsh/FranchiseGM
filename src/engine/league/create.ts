@@ -10,6 +10,10 @@ import type { NameData } from '../generate/player';
 import { createLeagueRandom } from '../rng';
 import { DEFAULT_RULES, type RuleSet } from '../rules/ruleset';
 import type { StaffRole } from '../model/staff';
+import { coordinatorFit } from '../fit/cohesion';
+import { DEFENSE_SCHEMES, OFFENSE_SCHEMES } from '../schemes/ids';
+import { named, type TeamSchemes } from '../schemes/resolve';
+import { TUNING } from '../tuning';
 import { SAVE_SCHEMA_VERSION, type League, type StartOptions, type TeamState } from './types';
 
 export interface NewLeagueInput {
@@ -68,10 +72,20 @@ export function createLeague(input: NewLeagueInput): League {
   for (const abbr of TEAM_ABBRS) {
     const owner = generated.owners.find(o => o.team === abbr);
     if (!owner) throw new LeagueCreationError(`No owner generated for ${abbr}.`);
+    const members = generated.staff.filter(s => s.team === abbr);
     const staff: Partial<Record<StaffRole, string[]>> = {};
-    for (const member of generated.staff.filter(s => s.team === abbr))
-      (staff[member.role] ??= []).push(member.id);
-    teams[abbr] = { abbr, ownerId: owner.id, staff };
+    for (const member of members) (staff[member.role] ??= []).push(member.id);
+    // The head coach runs his preferred schemes (spec 7.6); coordinators who prefer others lose morale.
+    const hc = members.find(m => m.role === 'HC');
+    const schemes: TeamSchemes = {
+      offense: named(hc?.offenseScheme ?? OFFENSE_SCHEMES[0]),
+      defense: named(hc?.defenseScheme ?? DEFENSE_SCHEMES[0])
+    };
+    for (const member of members) {
+      const mismatch = coordinatorFit(member, schemes);
+      if (mismatch) member.morale = Math.max(0, member.morale + mismatch.morale);
+    }
+    teams[abbr] = { abbr, ownerId: owner.id, staff, schemes };
   }
 
   return {
@@ -80,7 +94,7 @@ export function createLeague(input: NewLeagueInput): League {
     date: { season: start.startSeason, phase: 'regularSeason', week: 1 },
     random: createLeagueRandom(start.seed, input.fixed ?? false),
     rules,
-    settings: { version: 1 },
+    settings: { version: 1, fitCap: TUNING.fit.cap },
     teams,
     players: byId(generated.players),
     contracts: byId(generated.contracts),

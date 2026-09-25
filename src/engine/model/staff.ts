@@ -88,6 +88,8 @@ export interface StaffMember {
   /** Personality traits, 0 to 100 (spec 14.3). */
   personality: Record<string, number>;
   tendencies: CoachTendencies | null;
+  /** Morale, 0 to 100; a coordinator running a scheme he doesn't prefer loses some (spec 7.6). */
+  morale: number;
   contract: { years: number; salary: number };
   /** Head coach record counts head coach games only (spec 13.4). */
   record: CareerRecord;

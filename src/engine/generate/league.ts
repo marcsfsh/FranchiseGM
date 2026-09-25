@@ -24,6 +24,7 @@ import {
   type VeteranTerms
 } from '../contracts/build';
 import { TUNING } from '../tuning';
+import { pickAbilities, pickCoachAbilities } from '../abilities/assign';
 import { generatePlayer, type GenContext, type NameData } from './player';
 import { generateOwner, generateTeamStaff } from './staff';
 
@@ -352,6 +353,13 @@ export function generateFictionalLeague(input: LeagueInput): FictionalLeague {
       })
     );
   }
+
+  // Abilities for players (spec 7.4) and coaches (spec 13.1), each from its own stream so the catalogs can
+  // change without changing the rest of the league.
+  const abilityRng = stream(seed, 'fictional', 'abilities');
+  for (const player of players) player.abilities = pickAbilities(abilityRng, player);
+  const coachRng = stream(seed, 'fictional', 'coachAbilities');
+  for (const member of staff) member.abilities = pickCoachAbilities(coachRng, member);
 
   return { season, players, contracts, staff, owners };
 }

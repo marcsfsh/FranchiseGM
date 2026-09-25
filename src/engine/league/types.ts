@@ -10,12 +10,13 @@ import type { Player } from '../model/player';
 import type { Owner, StaffMember, StaffRole } from '../model/staff';
 import type { LeagueRandom } from '../rng';
 import type { RuleSet } from '../rules/ruleset';
+import type { TeamSchemes } from '../schemes/resolve';
 
 /**
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 1;
+export const SAVE_SCHEMA_VERSION = 2;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -48,11 +49,15 @@ export interface TeamState {
   ownerId: string;
   /** Staff IDs by role; scouts share a role. */
   staff: Partial<Record<StaffRole, string[]>>;
+  /** The schemes the head coach runs (spec 7.2). */
+  schemes: TeamSchemes;
 }
 
 /** League settings that can change mid-save (spec 22). Sections are added as their features arrive. */
 export interface LeagueSettings {
   version: number;
+  /** Fit is capped at plus or minus this many points (spec 7.3). */
+  fitCap: number;
 }
 
 export interface League {

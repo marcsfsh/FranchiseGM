@@ -89,6 +89,7 @@ export function generateStaffMember(ctx: GenContext, role: StaffRole, team: Team
     defenseScheme: role === 'HC' || role === 'DC' ? rng.pick(DEFENSE_SCHEMES) : null,
     personality: traits(rng, S.personality),
     tendencies: role === 'HC' ? tendencies(rng) : null,
+    morale: S.startMorale,
     contract: { years: rng.int(contractYears[0], contractYears[1]), salary },
     record: emptyRecord(),
     yearsInRole: Math.max(
