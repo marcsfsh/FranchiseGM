@@ -8,7 +8,7 @@ import { signed } from './players';
 const F = TUNING.fit;
 
 /** Fit this far from zero either way is a good or poor fit; closer is fair (the copy and colors agree). */
-const CLEAR_FIT = 3;
+const CLEAR_FIT = F.clearFit;
 
 export function fitVerdict(fit: number): string {
   return fit >= CLEAR_FIT ? 'Good fit' : fit <= -CLEAR_FIT ? 'Poor fit' : 'Fair fit';
@@ -33,11 +33,17 @@ export function fitParts(r: RoleRating): string[] {
   const parts: { points: number; text: string }[] = [];
   const ratingPoints = Math.round(r.parts.ratings);
   if (ratingPoints !== 0) {
-    const names = r.ratingEffects
-      .filter(e => Math.sign(e.points) === Math.sign(ratingPoints))
+    // Name the role's ratings where he beats (or trails) its typical player. When there are none, the
+    // difference comes from ratings his overall weighs more than this role does.
+    const names = (ratingPoints > 0 ? r.strengths : r.weaknesses)
       .slice(0, F.namedRatings)
       .map(e => RATING_LABELS[e.key].toLowerCase());
-    parts.push({ points: ratingPoints, text: `${signed(ratingPoints)} ratings (${names.join(', ')})` });
+    const why = names.length
+      ? names.join(', ')
+      : ratingPoints > 0
+        ? 'his weaknesses matter less here'
+        : "this role doesn't use his strengths";
+    parts.push({ points: ratingPoints, text: `${signed(ratingPoints)} ratings (${why})` });
   }
   for (const sign of [1, -1]) {
     const traits = r.traits.filter(t => Math.sign(t.points) === sign);

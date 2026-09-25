@@ -26,3 +26,10 @@ export function isPosition(value: unknown): value is Position {
 
 /** Who throws or kicks with a handedness that matters (spec 6.1). */
 export const HANDED: readonly Position[] = ['QB', 'K', 'P'];
+
+/** Left and right versions of a position play the same roles. */
+const MIRROR: Partial<Record<Position, Position>> = {
+  LT: 'RT', RT: 'LT', LG: 'RG', RG: 'LG', LE: 'RE', RE: 'LE', LOLB: 'ROLB', ROLB: 'LOLB'
+}; // prettier-ignore
+
+export const samePosition = (a: Position, b: Position): boolean => a === b || MIRROR[a] === b;

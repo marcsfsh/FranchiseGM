@@ -427,7 +427,11 @@ export const TUNING = {
      * past these multiples of the named-scheme average. */
     namedRatings: 2,
     oftenRatio: 1.15,
-    rarelyRatio: 0.85
+    rarelyRatio: 0.85,
+    /** Fit at least this far from zero is a good or poor fit; closer is fair. */
+    clearFit: 3,
+    /** A rating must move the role rating at least this many points to be named in the breakdown. */
+    namedMinPoints: 0.5
   },
 
   /** Scheme cohesion and coaching (spec 7.6). */

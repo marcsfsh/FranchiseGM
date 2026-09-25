@@ -16,13 +16,17 @@ export interface CoachAbility {
   description: string;
   /** Trigger situations the coach creates more of, by side of the ball. */
   triggers?: { side: 'offense' | 'defense'; trigger: PlayTrigger; multiplier: number }[];
-  /** Role rating points for players with a trait. */
+  /**
+   * Role rating points for players with a trait. With `offsets`, the trait is a flaw the coach corrects:
+   * the points only offset the penalty a role gives it, never more.
+   */
   traits?: {
     trait: keyof Traits;
     value: string | boolean;
     points: number;
     positions: readonly Position[];
     label: string;
+    offsets?: boolean;
   }[];
   /** Offseason progression bonus for a position (applies from M10). */
   development?: { positions: readonly Position[]; points: number };
@@ -104,7 +108,8 @@ export const COACH_ABILITIES: readonly CoachAbility[] = [
         value: 'undisciplined',
         points: 1,
         positions: EVERYONE,
-        label: 'penalties coached out'
+        label: 'penalties coached out',
+        offsets: true
       }
     ]
   },
@@ -119,7 +124,8 @@ export const COACH_ABILITIES: readonly CoachAbility[] = [
         value: 'never',
         points: 1,
         positions: OFFENSE_SKILL,
-        label: 'ball security coaching'
+        label: 'ball security coaching',
+        offsets: true
       }
     ]
   },

@@ -35,29 +35,40 @@ export interface LineupEntry {
 }
 
 /**
- * The best available player for each slot: every eligible player-slot pair is rated, and the highest
- * role ratings are filled first, one slot per player. The AI depth chart (M7) starts from this.
+ * The best available player for each slot, filling the most-played slots first so the best players start
+ * where the snaps are (a corner at CB1 before the dime, the lead back before the change of pace). Each
+ * slot takes the highest remaining role rating. The AI depth chart (M7) starts from this.
  */
 export function autoLineup(
   players: readonly LineupPlayer[],
   ctx: FitContext,
   slots: readonly Slot[] = [...OFFENSE_SLOTS, ...DEFENSE_SLOTS]
 ): Map<Slot, LineupEntry> {
-  const pairs: LineupEntry[] = [];
-  for (const slot of slots) {
-    const eligible = recipeFor(ctx, slot).eligible;
-    for (const player of players)
-      if (eligible.includes(player.position)) pairs.push({ player, role: roleRating(player, slot, ctx) });
-  }
-  pairs.sort(
-    (a, b) => b.role.rating - a.role.rating || b.role.fit - a.role.fit || (a.player.id < b.player.id ? -1 : 1)
-  );
+  const snaps: Partial<Record<Slot, number>> = {
+    ...offenseSnapShares(ctx.offense.tendencies, TUNING.situations.rb1Share),
+    ...defenseSnapShares(ctx.defense.tendencies)
+  };
+  const order = [...slots].sort((a, b) => (snaps[b] ?? 0) - (snaps[a] ?? 0));
   const lineup = new Map<Slot, LineupEntry>();
   const used = new Set<string>();
-  for (const pair of pairs) {
-    if (lineup.has(pair.role.slot) || used.has(pair.player.id)) continue;
-    lineup.set(pair.role.slot, pair);
-    used.add(pair.player.id);
+  for (const slot of order) {
+    const eligible = recipeFor(ctx, slot).eligible;
+    let best: LineupEntry | null = null;
+    for (const player of players) {
+      if (used.has(player.id) || !eligible.includes(player.position)) continue;
+      const role = roleRating(player, slot, ctx);
+      if (
+        !best ||
+        role.rating > best.role.rating ||
+        (role.rating === best.role.rating &&
+          (role.fit > best.role.fit || (role.fit === best.role.fit && player.id < best.player.id)))
+      )
+        best = { player, role };
+    }
+    if (best) {
+      lineup.set(slot, best);
+      used.add(best.player.id);
+    }
   }
   return lineup;
 }
@@ -91,7 +102,8 @@ function side<S extends Slot>(
     const entry = lineup.get(slot);
     if (!entry || share <= 0) continue;
     weight += share;
-    fit += share * entry.role.fit;
+    // Role ratings already include the staff's abilities; split them out so they count once.
+    fit += share * (entry.role.fit - entry.role.coach);
     coaching += share * entry.role.coach;
   }
   fit = weight ? fit / weight : 0;

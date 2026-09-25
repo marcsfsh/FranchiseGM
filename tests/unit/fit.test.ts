@@ -5,10 +5,14 @@ import { abilityWorth, triggerRate } from '../../src/engine/abilities/value';
 import { adaptedTendencies, autoLineup, coordinatorFit, teamCohesion } from '../../src/engine/fit/cohesion';
 import { REFERENCES } from '../../src/engine/fit/reference';
 import { recipeFor, roleRating, rolesFor } from '../../src/engine/fit/role-rating';
+import { POSITIONS } from '../../src/engine/model/positions';
+import { RATING_KEYS } from '../../src/engine/model/ratings';
+import { stream } from '../../src/engine/rng';
+import { FIT_SLOTS } from '../../src/engine/schemes/slots';
 import type { StaffMember } from '../../src/engine/model/staff';
 import { named, REFERENCE_PROFILE, resolveOffense } from '../../src/engine/schemes/resolve';
 import { CONTEXT_SHARES, PLAY_TRIGGERS, type SituationShares } from '../../src/engine/schemes/situations';
-import { DEFENSE_SLOTS, OFFENSE_SLOTS } from '../../src/engine/schemes/slots';
+import { DEFENSE_SLOTS, OFFENSE_SLOTS, defenseSnapShares } from '../../src/engine/schemes/slots';
 import { TUNING } from '../../src/engine/tuning';
 import { fitContext, typicalPlayer } from '../helpers/fit';
 
@@ -35,7 +39,7 @@ describe('role rating math (spec 7.3)', () => {
     // Vision is 25% of the zone recipe and 13/115 of the HB overall formula.
     expect(after.rating - before.rating).toBeCloseTo(scale * 0.25 * 10, -0.5);
     expect(after.fit - before.fit).toBeCloseTo(scale * (0.25 - 13 / 115) * 10, -0.5);
-    expect(after.ratingEffects[0]?.key).toBe('bcv');
+    expect(after.strengths[0]?.key).toBe('bcv');
   });
 
   it('holds the spec 7.3 example: an agile, high-vision back is a zone runner, a power back is not', () => {
@@ -306,5 +310,91 @@ describe('coach abilities, cohesion, and coordinators (spec 7.6)', () => {
     expect(flexible.offense.runConcepts.outsideZone).toBeGreaterThan(
       ctx.offense.tendencies.runConcepts.outsideZone
     );
+  });
+});
+
+describe('review fixes (M3)', () => {
+  it('keeps fit equal to role rating minus overall, within the cap, for any player and role', () => {
+    const rng = stream(77, 'fit-property');
+    for (let i = 0; i < 150; i++) {
+      const position = POSITIONS[i % POSITIONS.length] as (typeof POSITIONS)[number];
+      const adjust = Object.fromEntries(RATING_KEYS.map(k => [k, Math.round(rng.normal(0, 12))]));
+      const player = typicalPlayer(position, adjust, { penalty: 'undisciplined', coversBall: 'never' });
+      const cap = 2 + (i % 9);
+      const ctx = fitContext(i % 2 ? 'airRaid' : 'powerRun', i % 3 ? 'manBlitz' : 'cover3', cap);
+      for (const slot of FIT_SLOTS) {
+        if (!recipeFor(ctx, slot).eligible.includes(position)) continue;
+        const r = roleRating(player, slot, ctx);
+        expect(r.fit).toBe(r.rating - player.ovr);
+        expect(Math.abs(r.fit)).toBeLessThanOrEqual(cap);
+        expect(r.rating).toBeGreaterThanOrEqual(0);
+        expect(r.rating).toBeLessThanOrEqual(99);
+      }
+    }
+  });
+
+  it('lets a coach offset a flaw only where the role penalizes it', () => {
+    const effects = coachEffects([coach('HC', ['disciplinarian'])]);
+    const ctx = { ...fitContext('westCoast'), coaches: effects };
+    const sloppyQb = typicalPlayer('QB', {}, { penalty: 'undisciplined' });
+    const cleanQb = typicalPlayer('QB');
+    // The timing passer recipe doesn't penalize penalties, so the coach adds nothing.
+    expect(roleRating(sloppyQb, 'QB', ctx).rating).toBe(roleRating(cleanQb, 'QB', ctx).rating);
+    expect(roleRating(sloppyQb, 'QB', ctx).coach).toBe(0);
+    // A lineman's -2 becomes -1, never better than a disciplined-neutral lineman.
+    const sloppyLt = roleRating(typicalPlayer('LT', {}, { penalty: 'undisciplined' }), 'LT', ctx);
+    expect(sloppyLt.parts.traits).toBe(-1);
+  });
+
+  it("heads a player's roles with his own position's roles", () => {
+    const ctx = fitContext('westCoast', 'fourThreeOver');
+    const kicker = typicalPlayer('K', { kpw: 10, kac: 10 });
+    expect(rolesFor(kicker, ctx, FIT_SLOTS)[0]?.label).toBe('Kicker');
+    const center = typicalPlayer('C', { pbk: 8, rbp: 8, str: 8 });
+    expect(rolesFor(center, ctx, FIT_SLOTS)[0]?.slot).toBe('C');
+    const corner = typicalPlayer('CB', { zcv: 10, prc: 10, tak: 10 });
+    expect(rolesFor(corner, ctx, FIT_SLOTS)[0]?.label).not.toBe('Dime back');
+    const guard = typicalPlayer('RG');
+    expect(['LG', 'RG']).toContain(rolesFor(guard, ctx, FIT_SLOTS)[0]?.slot);
+  });
+
+  it('fills the most-played slots first', () => {
+    const ctx = fitContext('westCoast', 'fourThreeOver');
+    const star = { ...typicalPlayer('CB', { mcv: 20, zcv: 20, spd: 10, prc: 15, tak: 15 }), id: 'star' };
+    const others = [0, 1, 2].map(i => ({ ...typicalPlayer('CB', { mcv: -i }), id: `cb${i}` }));
+    const lineup = autoLineup([star, ...others], ctx, ['CB1', 'CB2', 'NCB', 'DIME']);
+    expect(['star']).toContain(lineup.get('CB1')?.player.id);
+    const lead = { ...typicalPlayer('HB', { bcv: 12, spd: 8, acc: 8, car: 10 }), id: 'lead' };
+    const backup = { ...typicalPlayer('HB', { bcv: -10, spd: -10 }), id: 'backup' };
+    const backs = autoLineup([backup, lead], ctx, ['RB2', 'RB1']);
+    expect(backs.get('RB1')?.player.id).toBe('lead');
+  });
+
+  it('counts coach points once in cohesion', () => {
+    const ctx = {
+      ...fitContext('westCoast', 'fourThreeOver'),
+      coaches: coachEffects([coach('DC', ['pressureDesigner'])])
+    };
+    const players = [...OFFENSE_SLOTS, ...DEFENSE_SLOTS].map((slot, i) => ({
+      ...typicalPlayer(recipeFor(ctx, slot).primary, {}, {}, ['edgeBurst']),
+      id: `c${i}`
+    }));
+    const lineup = autoLineup(players, ctx);
+    const c = teamCohesion(lineup, ctx, 0);
+    const shares = defenseSnapShares(ctx.defense.tendencies);
+    let fit = 0;
+    let coachPoints = 0;
+    let weight = 0;
+    for (const slot of DEFENSE_SLOTS) {
+      const entry = lineup.get(slot);
+      if (!entry || shares[slot] <= 0) continue;
+      weight += shares[slot];
+      fit += shares[slot] * entry.role.fit;
+      coachPoints += shares[slot] * entry.role.coach;
+    }
+    expect(coachPoints).toBeGreaterThan(0);
+    // The starters' fit already includes the coach's points; cohesion splits them out, not adds them.
+    expect(c.defense.fit + c.defense.coaching).toBeCloseTo(fit / weight);
+    expect(c.defense.coaching).toBeCloseTo(coachPoints / weight);
   });
 });
