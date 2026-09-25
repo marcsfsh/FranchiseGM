@@ -1,0 +1,106 @@
+import { describe, expect, it } from 'vitest';
+import { generateFictionalLeague } from '../../src/engine/generate/league';
+import { capHit } from '../../src/engine/contracts/cap';
+import { DEFAULT_RULES } from '../../src/engine/rules/ruleset';
+import { TEAM_ABBRS } from '../../src/data/team-colors';
+import { ageOn } from '../../src/engine/model/player';
+import { STAFF_ROLES } from '../../src/engine/model/staff';
+import { nameData } from '../helpers/base-data';
+
+const league = generateFictionalLeague({ seed: 2026, season: 2026, names: nameData(), rules: DEFAULT_RULES });
+const contractById = new Map(league.contracts.map(c => [c.id, c]));
+
+describe('fictional league (build order no-CSV path)', () => {
+  it('fills every team with 53 active and 16 practice squad players', () => {
+    for (const team of TEAM_ABBRS) {
+      const roster = league.players.filter(p => p.team === team);
+      expect(
+        roster.filter(p => p.status === 'active'),
+        team
+      ).toHaveLength(53);
+      expect(
+        roster.filter(p => p.status === 'practice'),
+        team
+      ).toHaveLength(16);
+      const qbs = roster.filter(p => p.status === 'active' && p.position === 'QB').length;
+      expect(qbs, team).toBeGreaterThanOrEqual(2);
+      expect(
+        roster.filter(p => p.status === 'active' && p.position === 'K'),
+        team
+      ).toHaveLength(1);
+      const jerseys = roster.map(p => p.jersey);
+      expect(new Set(jerseys).size, `${team} jerseys`).toBe(jerseys.length);
+    }
+  });
+
+  it('has about 300 unsigned free agents', () => {
+    const fas = league.players.filter(p => p.status === 'freeAgent');
+    expect(fas).toHaveLength(300);
+    expect(fas.every(p => p.team === null && p.contractId === null)).toBe(true);
+  });
+
+  it('fits every team under the 2026 cap with realistic cap use', () => {
+    for (const team of TEAM_ABBRS) {
+      const roster = league.players.filter(p => p.team === team);
+      const total = roster.reduce(
+        (sum, p) => sum + capHit(contractById.get(p.contractId ?? '')!, 2026, DEFAULT_RULES),
+        0
+      );
+      expect(total, team).toBeLessThanOrEqual(DEFAULT_RULES.cap.amount);
+      expect(total, team).toBeGreaterThan(DEFAULT_RULES.cap.amount * 0.8);
+    }
+  });
+
+  it('gives every rostered player one contract with his team', () => {
+    for (const p of league.players.filter(x => x.team)) {
+      const c = contractById.get(p.contractId ?? '');
+      expect(c?.playerId).toBe(p.id);
+      expect(c?.team).toBe(p.team);
+    }
+    expect(new Set(league.contracts.map(c => c.id)).size).toBe(league.contracts.length);
+  });
+
+  it('spreads overall and age like a real league', () => {
+    const active = league.players.filter(p => p.status === 'active');
+    const share = (f: (o: number) => boolean) => active.filter(p => f(p.ovr)).length / active.length;
+    const elite = active.filter(p => p.ovr >= 90).length / 32;
+    expect(elite).toBeGreaterThan(0.8);
+    expect(elite).toBeLessThan(4);
+    expect(share(o => o >= 80 && o < 90)).toBeGreaterThan(0.1);
+    expect(share(o => o < 60)).toBeLessThan(0.15);
+    const ages = active.map(p => ageOn(p.birthDate, '2026-09-01'));
+    const meanAge = ages.reduce((a, b) => a + b, 0) / ages.length;
+    expect(meanAge).toBeGreaterThan(25.5);
+    expect(meanAge).toBeLessThan(27.5);
+    const devShare = (d: string) => league.players.filter(p => p.dev === d).length / league.players.length;
+    expect(devShare('Normal')).toBeGreaterThan(0.6);
+    expect(devShare('X-Factor')).toBeLessThan(0.04);
+  });
+
+  it('staffs every team and gives each an owner', () => {
+    for (const team of TEAM_ABBRS) {
+      const s = league.staff.filter(m => m.team === team);
+      for (const role of STAFF_ROLES)
+        expect(
+          s.some(m => m.role === role),
+          `${team} ${role}`
+        ).toBe(true);
+      expect(league.owners.filter(o => o.team === team)).toHaveLength(1);
+    }
+  });
+
+  it('never repeats a name and is deterministic for a seed', () => {
+    const names = [...league.players, ...league.staff, ...league.owners].map(
+      x => `${x.firstName} ${x.lastName}`
+    );
+    expect(new Set(names).size).toBe(names.length);
+    const again = generateFictionalLeague({
+      seed: 2026,
+      season: 2026,
+      names: nameData(),
+      rules: DEFAULT_RULES
+    });
+    expect(again.players.slice(0, 50)).toEqual(league.players.slice(0, 50));
+    expect(again.contracts.at(-1)).toEqual(league.contracts.at(-1));
+  });
+});

@@ -32,3 +32,50 @@ export function freeJersey(position: Position, taken: ReadonlySet<number>): numb
   }
   return null;
 }
+
+/** Numbers players at each position tend to choose, weighted within the allowed ranges. */
+const PREFERRED: Partial<Record<Position, readonly Range[]>> = {
+  QB: [[1, 19]],
+  HB: [[20, 39]],
+  FB: [[30, 49]],
+  WR: [[10, 19], [80, 89]],
+  TE: [[80, 89], [40, 49]],
+  LE: [[90, 99], [50, 59]],
+  RE: [[90, 99], [50, 59]],
+  DT: [[90, 99], [60, 79]],
+  LOLB: [[40, 59], [90, 99]],
+  MLB: [[40, 59]],
+  ROLB: [[40, 59], [90, 99]],
+  CB: [[20, 39]],
+  FS: [[20, 49]],
+  SS: [[20, 49]],
+  K: [[1, 19]],
+  P: [[1, 19]]
+}; // prettier-ignore
+
+/** A free number for the position, drawn with a preference for its traditional ranges. */
+export function pickJersey(
+  position: Position,
+  taken: ReadonlySet<number>,
+  roll: (total: number) => number
+): number | null {
+  const free: number[] = [];
+  const weights: number[] = [];
+  const seen = new Set<number>();
+  for (const [lo, hi] of JERSEY_RANGES[position]) {
+    for (let n = lo; n <= hi; n++) {
+      if (taken.has(n) || seen.has(n)) continue;
+      seen.add(n);
+      const preferred = PREFERRED[position]?.some(([a, b]) => n >= a && n <= b) ?? true;
+      free.push(n);
+      weights.push(preferred ? 4 : n === 0 ? 0.2 : 1);
+    }
+  }
+  if (free.length === 0) return null;
+  let target = roll(weights.reduce((a, b) => a + b, 0));
+  for (let i = 0; i < free.length; i++) {
+    target -= weights[i] as number;
+    if (target < 0) return free[i] as number;
+  }
+  return free[free.length - 1] as number;
+}

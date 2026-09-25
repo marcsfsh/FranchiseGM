@@ -59,6 +59,20 @@ export interface PayRules {
   june1Designations: number;
 }
 
+export interface RookieScaleRules {
+  /** Rookie contract length (spec 11.4). */
+  years: number;
+  /** Signing bonus of the first overall pick. The scale grows with the cap. */
+  topSigningBonus: number;
+  /** First-round bonuses fall as pick ^ -decay. */
+  firstRoundDecay: number;
+  /** After the first round, bonuses fall by a factor of e every this many picks. */
+  laterPickScale: number;
+  minimumSigningBonus: number;
+  /** First-round base salaries add this share of the signing bonus in each year. */
+  firstRoundBaseShare: number;
+}
+
 export interface SeasonRules {
   /** Fixed and not votable (spec 16). */
   games: number;
@@ -76,6 +90,7 @@ export interface RuleSet {
   cap: CapRules;
   roster: RosterRules;
   pay: PayRules;
+  rookieScale: RookieScaleRules;
 }
 
 export const DEFAULT_RULES: RuleSet = {
@@ -123,6 +138,15 @@ export const DEFAULT_RULES: RuleSet = {
     paychecks: 18,
     prorationYearsMax: 5,
     june1Designations: 2
+  },
+  rookieScale: {
+    // Fitted to recent slot values: about $33M for the first pick, $6.3M at pick 32, $2.6M at 64.
+    years: 4,
+    topSigningBonus: 33_000_000,
+    firstRoundDecay: 0.48,
+    laterPickScale: 36,
+    minimumSigningBonus: 80_000,
+    firstRoundBaseShare: 0.12
   }
 };
 
@@ -159,6 +183,8 @@ export function validateRules(rules: RuleSet): string[] {
     problems.push('Minimum salaries must not fall with experience.');
   }
   whole(rules.pay.prorationYearsMax, 'The proration limit', 1);
+  whole(rules.rookieScale.years, 'Rookie contract length', 1);
+  whole(rules.rookieScale.topSigningBonus, 'The top rookie signing bonus', 0);
   if (rules.season.games !== 17 || rules.season.playoffTeamsPerConference !== 7) {
     problems.push('The season format (17 games, 14-team playoffs) is fixed.');
   }

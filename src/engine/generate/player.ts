@@ -230,12 +230,13 @@ function drawPersonality(rng: Rng, ovr: number, age: number, awr: number): Perso
 }
 
 function drawDevTrait(rng: Rng, potential: number, age: number): DevTrait {
-  const young = age <= 25 ? 1 : age <= 28 ? 0.7 : 0.45;
+  // Development describes the future, so young players with high ceilings carry the better traits.
+  const young = age <= 25 ? 1 : age <= 29 ? 0.85 : 0.7;
   const weights = [
     1,
-    sigmoid((potential - 80) / 3) * 0.3 * young + 0.04,
-    sigmoid((potential - 88) / 2.5) * 0.35 * young,
-    sigmoid((potential - 93) / 1.5) * 0.3 * young
+    sigmoid((potential - 78) / 4) * 0.55 * young + 0.08,
+    sigmoid((potential - 84) / 3) * 0.7 * young + 0.01,
+    sigmoid((potential - 90) / 2) * 0.5 * young
   ];
   return DEV_TRAITS[rng.weightedIndex(weights)] as DevTrait;
 }
