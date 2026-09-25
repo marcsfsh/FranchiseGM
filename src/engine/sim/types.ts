@@ -53,6 +53,8 @@ export interface CoachStyle {
   clock: number;
   /** Halftime adjustment skill, 0 to 100. */
   halftime: number;
+  /** Conservatism when leading, 0 to 100 (spec 8.6): how hard he protects a second-half lead. */
+  conservatism: number;
 }
 
 export interface TeamSetup {

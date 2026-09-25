@@ -89,7 +89,9 @@ function coachStyle(league: League, abbr: TeamAbbr): CoachStyle {
   return {
     aggressiveness: hc?.tendencies?.aggressiveness ?? 50,
     clock: hc?.tendencies?.clockManagement ?? 50,
-    halftime: hc?.ratings.gameManagement ?? 50
+    halftime: hc?.ratings.gameManagement ?? 50,
+    // Until M13 gives head coaches this tendency, the aggressive ones protect leads least (D-18).
+    conservatism: 100 - (hc?.tendencies?.aggressiveness ?? 50)
   };
 }
 
@@ -214,12 +216,29 @@ export function homeField(
 
 const total = (h: HomeField): number => h.crowd + h.travel + h.early + h.rest + h.familiarity + h.cold;
 
+/**
+ * Team setups kept while rosters, depth charts, and staffs stay the same (a calibration replay), so each
+ * game clones one instead of rebuilding it. The sim changes a setup's players as it runs.
+ */
+export type TeamSetups = Map<TeamAbbr, TeamSetup>;
+
+function setupFor(league: League, abbr: TeamAbbr, boost: number, cache?: TeamSetups): TeamSetup {
+  if (!cache) return teamSetup(league, abbr, boost);
+  let base = cache.get(abbr);
+  if (!base) {
+    base = teamSetup(league, abbr, 0);
+    cache.set(abbr, base);
+  }
+  return { ...structuredClone(base), boost };
+}
+
 /** Everything the sim needs for one scheduled game. */
 export function gameSetup(
   league: League,
   game: ScheduledGame,
   climate: ClimateTable | null,
-  rng: Rng
+  rng: Rng,
+  cache?: TeamSetups
 ): GameSetup {
   const venue = venueById(game.venue);
   const month = Number(game.date.slice(5, 7)) - 1;
@@ -240,8 +259,8 @@ export function gameSetup(
     weather,
     rules: league.rules.game,
     sliders,
-    home: teamSetup(league, game.home, b.home),
-    away: teamSetup(league, game.away, b.away),
+    home: setupFor(league, game.home, b.home, cache),
+    away: setupFor(league, game.away, b.away, cache),
     crowd: b.crowd
   };
 }
