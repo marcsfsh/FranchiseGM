@@ -12,7 +12,10 @@ import type { Player } from '../../src/engine/model/player';
 import { advanceWeek, gameWeek, weekGames } from '../../src/engine/season/advance';
 import { leagueStandings } from '../../src/engine/season/state';
 import { NEUTRAL_PLAN } from '../../src/engine/sim/plan';
-import { rosterProblems } from '../../src/engine/roster/rules';
+import { makeMove, type Move } from '../../src/engine/roster/moves';
+import { rosterCounts, rosterProblems } from '../../src/engine/roster/rules';
+import { askingSalary } from '../../src/engine/contracts/acceptance';
+import { stream, type Rng } from '../../src/engine/rng';
 import { available } from '../../src/engine/sim/setup';
 import { nameData } from '../helpers/base-data';
 
@@ -141,7 +144,33 @@ describe('the season loop (spec 4.2, 5.3)', { timeout: 120_000 }, () => {
   });
 });
 
-describe('a season with the user managing (spec 12.2, 8.7)', { timeout: 180_000 }, () => {
+/**
+ * The user's week of roster moves, through the same checked transactions as the screens (spec 19.4): long
+ * injuries to injured reserve, and open spots filled with free agents at their asking price. Returns the
+ * moves made.
+ */
+function userRosterMoves(l: League, rng: Rng): number {
+  const user = l.meta.start.userTeam;
+  let made = 0;
+  const move = (m: Move) => {
+    const done = makeMove(l, m, rng).ok;
+    if (done) made++;
+    return done;
+  };
+  for (const p of Object.values(l.players))
+    if (p.team === user && p.status === 'active' && (p.injury?.weeksOut ?? 0) >= l.rules.roster.irMinGames)
+      move({ kind: 'injuredReserve', team: user, playerId: p.id });
+  const pool = Object.values(l.players)
+    .filter(p => p.status === 'freeAgent')
+    .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
+  for (const p of pool) {
+    if (rosterCounts(l, user).active >= l.rules.roster.active) break;
+    move({ kind: 'sign', team: user, playerId: p.id, offer: { years: 1, salary: askingSalary(l, p), signingBonus: 0 } });
+  }
+  return made;
+} // prettier-ignore
+
+describe('a season with the user managing (spec 12.2, 8.7, 19.4)', { timeout: 180_000 }, () => {
   it("keeps the user's starters and plan every week while the AI manages everyone else", () => {
     const l = league();
     const user = l.meta.start.userTeam;
@@ -156,7 +185,16 @@ describe('a season with the user managing (spec 12.2, 8.7)', { timeout: 180_000 
     let started = 0;
     let ready = 0;
     let games = 0;
+    let moves = 0;
     while (l.date.phase !== 'staff') {
+      // The user's roster moves before each week, and a release at midseason (never the quarterback).
+      if (l.date.phase === 'regularSeason' && l.date.week === 8) {
+        const cut = Object.values(l.players)
+          .filter(p => p.team === user && p.status === 'active' && p.position !== 'QB')
+          .sort((a, b) => a.ovr - b.ovr || (a.id < b.id ? -1 : 1))[0];
+        if (cut && makeMove(l, { kind: 'release', team: user, playerId: cut.id }, stream(9)).ok) moves++;
+      }
+      moves += userRosterMoves(l, stream(1, 'user', l.date.week));
       const healthy = available(l, l.players[backup] as Player);
       const week = advanceWeek(l, climate, input);
       for (const { result } of week.games) {
@@ -167,6 +205,7 @@ describe('a season with the user managing (spec 12.2, 8.7)', { timeout: 180_000 
         if (healthy) ready++;
         if (healthy && (result.box[side].players[backup]?.started ?? 0) > 0) started++;
       }
+      expect(rosterProblems(l, user)).toEqual([]);
       expect(l.teams[user].depth.auto).toBe(false);
       expect(l.teams[user].depth.order.QB?.[0]).toBe(backup);
       expect(l.teams[user].plan.plan.passLean).toBe(0.15);
@@ -175,9 +214,10 @@ describe('a season with the user managing (spec 12.2, 8.7)', { timeout: 180_000 
     expect(ready).toBeGreaterThan(0);
     expect(started).toBe(ready);
     expect(l.season.champion).not.toBeNull();
-    // AI teams kept managing: their depth charts changed hands and plans varied by opponent.
+    // AI teams kept managing; the user's roster moved only by the user's own moves, which kept it legal.
     expect(l.season.transactions.some(t => t.team !== user)).toBe(true);
-    expect(l.season.transactions.some(t => t.team === user)).toBe(false);
+    expect(moves).toBeGreaterThan(1);
+    expect(l.season.transactions.filter(t => t.team === user)).toHaveLength(moves);
     expect(l.inbox.length).toBeGreaterThan(games);
     expect(new Set(l.season.news.map(n => n.week)).size).toBe(22);
   });
