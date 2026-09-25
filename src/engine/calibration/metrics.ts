@@ -35,10 +35,12 @@ export interface MetricValue {
   n: number;
 }
 
-/** One replay's facts and where it came from. */
+/** One season's facts and where they came from: a replay, or a season through the weekly loop. */
 export interface RunSample {
   league: number;
   replay: number;
+  /** Played through the weekly loop (spec 4.2) rather than replayed. */
+  loop?: boolean;
   facts: ReplayFacts;
 }
 

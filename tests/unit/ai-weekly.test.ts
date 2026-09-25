@@ -11,7 +11,7 @@ import { decideDepthChart, depthWeights } from '../../src/engine/ai/decisions/de
 import { decideGamePlan, idealPlan } from '../../src/engine/ai/decisions/game-plan';
 import { decideRest } from '../../src/engine/ai/decisions/rest';
 import { decideRotation } from '../../src/engine/ai/decisions/rotation';
-import { NEED_GROUP, rosterMoves } from '../../src/engine/ai/decisions/roster-moves';
+import { NEED_GROUP, rosterMoves, waiverClaims } from '../../src/engine/ai/decisions/roster-moves';
 import { score } from '../../src/engine/ai/framework';
 import { coachProfile, staffIn } from '../../src/engine/ai/profile';
 import { scoutingReport } from '../../src/engine/ai/scouting';
@@ -20,6 +20,7 @@ import type { TeamAbbr } from '../../src/data/team-colors';
 import { orderOf } from '../../src/engine/league/depth';
 import { activeRoster } from '../../src/engine/league/transactions';
 import type { League } from '../../src/engine/league/types';
+import type { Player } from '../../src/engine/model/player';
 import type { StaffMember } from '../../src/engine/model/staff';
 import { stream } from '../../src/engine/rng';
 import type { PlayerInjury } from '../../src/engine/season/injuries';
@@ -272,6 +273,56 @@ describe('injury replacements (spec 12.1, 14.11)', () => {
     expect(NEED_GROUP[league.players[released[0]?.playerId as string]?.position ?? 'QB']).toBe('WR');
   });
 
+  it("never promotes or signs a player who can't play this week", () => {
+    const league = fresh();
+    const hurt = (p: Player | undefined, weeksOut: number) => {
+      if (!p) throw new Error('no player');
+      p.injury = { bodyPart: 'knee', severity: 'medium', weeksOut, lingering: 1, fragile: 1, season: 2026, week: 1, career: false };
+    };
+    const qbs = activeRoster(league, TEAM).filter(p => p.position === 'QB');
+    for (const qb of qbs) hurt(qb, 6);
+    // The practice squad has the best quarterback on offer, but he's hurt too, so a healthy free agent has
+    // to come in.
+    const squad = Object.values(league.players).filter(p => p.team === TEAM && p.status === 'practice' && p.position === 'QB');
+    expect(squad.length).toBeGreaterThan(0);
+    for (const p of squad) {
+      hurt(p, 5);
+      p.ovr = 90;
+    }
+    rosterMoves(league, TEAM, stream(8));
+    const joined = league.season.transactions
+      .filter(t => t.team === TEAM && (t.kind === 'signed' || t.kind === 'promoted'))
+      .map(t => league.players[t.playerId]);
+    const quarterback = joined.find(p => p?.position === 'QB');
+    expect(quarterback).toBeDefined();
+    expect(quarterback?.injury ?? null).toBeNull();
+    expect(squad.every(p => p.status === 'practice')).toBe(true);
+  }); // prettier-ignore
+
+  it('brings a healed player back from injured reserve when nobody at his position is healthy', () => {
+    const league = fresh();
+    const [starter, backup] = activeRoster(league, TEAM)
+      .filter(p => p.position === 'QB')
+      .sort((a, b) => b.ovr - a.ovr);
+    if (!starter || !backup) throw new Error('no quarterbacks');
+    starter.injury = { bodyPart: 'knee', severity: 'medium', weeksOut: 6, lingering: 0, fragile: 0, season: 2026, week: 1, career: false }; // prettier-ignore
+    rosterMoves(league, TEAM, stream(9));
+    expect(starter.status).toBe('ir');
+    // Four games later he's healed, and the other quarterbacks are hurt.
+    for (const week of [1, 2, 3, 4]) {
+      const id = `g${week}`;
+      league.season.results[id] = {
+        id, week, home: TEAM, away: 'BUF', homeScore: 20, awayScore: 17, homeTd: 2, awayTd: 2, playoff: false, overtime: false
+      }; // prettier-ignore
+    }
+    starter.injury = null;
+    for (const p of activeRoster(league, TEAM).filter(q => q.position === 'QB'))
+      p.injury = { bodyPart: 'ankle', severity: 'short', weeksOut: 3, lingering: 0, fragile: 0, season: 2026, week: 4, career: false }; // prettier-ignore
+    rosterMoves(league, TEAM, stream(10));
+    expect(starter.status).toBe('active');
+    expect(activeRoster(league, TEAM)).toHaveLength(league.rules.roster.active);
+  });
+
   it('signs a kicker when the only one is hurt, even for a short injury', () => {
     const league = fresh();
     const kicker = activeRoster(league, TEAM).find(p => p.position === 'K');
@@ -349,4 +400,45 @@ describe('weekly management (spec 14.10)', () => {
     expect(logs.some(l => l.actor === 'KC defensive coordinator')).toBe(true);
     expect(logs.some(l => l.actor.startsWith(user))).toBe(false);
   });
+
+  it("makes the user team's roster moves only while its roster management is on auto (spec 22.7)", () => {
+    const league = fresh();
+    const user = league.meta.start.userTeam;
+    const hurt = activeRoster(league, user).find(p => p.position === 'WR');
+    if (!hurt) throw new Error('no receiver');
+    hurt.injury = {
+      bodyPart: 'knee',
+      severity: 'medium',
+      weeksOut: 6,
+      lingering: 2,
+      fragile: 3,
+      season: 2026,
+      week: 1,
+      career: false
+    };
+    const signed = () =>
+      league.season.transactions.filter(
+        t => t.team === user && (t.kind === 'signed' || t.kind === 'promoted')
+      );
+    manageWeek(league, stream(2, 'week'), stream(2, 'season'));
+    expect(hurt.status).toBe('active');
+    expect(signed()).toHaveLength(0);
+    league.settings.auto.roster = true;
+    manageWeek(league, stream(3, 'week'), stream(3, 'season'));
+    expect(hurt.status).toBe('ir');
+    expect(signed()).toHaveLength(1);
+  });
+
+  it("claims players on waivers for the user team only while its roster management is on auto", () => {
+    const league = fresh();
+    const user = league.meta.start.userTeam;
+    const star = Object.values(league.players).find(p => p.team === 'KC' && p.position === 'QB');
+    if (!star) throw new Error('no quarterback');
+    const entry = { playerId: star.id, from: 'KC' as const, contractId: star.contractId ?? '', placed: { ...league.date }, claims: [] };
+    // A player far better than every team's weakest at his group draws claims from everyone who may claim.
+    const better = { ...star, ovr: 99 };
+    expect(waiverClaims(league, entry, better)).not.toContain(user);
+    league.settings.auto.roster = true;
+    expect(waiverClaims(league, entry, better)).toContain(user);
+  }); // prettier-ignore
 });

@@ -14,8 +14,9 @@ import {
   type ReplayFacts,
   type TeamFact
 } from '../../src/engine/calibration/replay';
+import { LoopSeason, loopLeague } from '../../src/engine/calibration/loop';
 import { formatValue, reportMarkdown, summaryLines } from '../../src/engine/calibration/report';
-import { defaultExperiments, finishRun, planJobs } from '../../src/engine/calibration/run';
+import { defaultExperiments, finishRun, planJobs, sharedLeague } from '../../src/engine/calibration/run';
 import { checkTargets, evaluate, type TargetsFile } from '../../src/engine/calibration/targets';
 import { stream } from '../../src/engine/rng';
 import { emptyTotals } from '../../src/engine/sim/stats';
@@ -74,6 +75,25 @@ describe('calibration replays (spec 23.1)', { timeout: 30_000 }, () => {
         fit[group].worst.fit / fit[group].worst.games
       );
     }
+  });
+
+  it('plays weeks through the weekly advance with every club on auto, collecting the same facts', () => {
+    const loop = loopLeague(data, 23);
+    expect(loop.settings.auto.roster).toBe(true);
+    const season = new LoopSeason(loop, data.climate);
+    expect(season.done).toBe(false);
+    season.playWeek();
+    season.playWeek();
+    expect(loop.date).toMatchObject({ phase: 'regularSeason', week: 3 });
+    const facts = season.facts();
+    const played = Object.values(loop.season.results);
+    expect(facts.games).toHaveLength(played.length);
+    expect(facts.teams.reduce((n, t) => n + t.wins + t.losses + t.ties, 0)).toBe(2 * played.length);
+    const points = played.reduce((n, g) => n + g.homeScore + g.awayScore, 0);
+    expect(facts.games.reduce((n, g) => n + g.homeScore + g.awayScore, 0)).toBe(points);
+    expect(facts.teams.reduce((n, t) => n + t.pointsFor, 0)).toBe(points);
+    const passYds = facts.teams.reduce((n, t) => n + t.totals.passYds, 0);
+    expect(facts.players.reduce((n, p) => n + p.line.passYds, 0)).toBe(passYds);
   });
 
   it('marks fourth-quarter and overtime comebacks by the winner', () => {
@@ -183,28 +203,65 @@ describe('calibration targets and reports (spec 23.2)', { timeout: 30_000 }, () 
       ['stats.ypa', { value: 7, n: 1 }],
       ['stats.cmpPct', { value: 0.64, n: 1 }]
     ]);
-    const full = new Map(evaluate(values, file, 'full').map(r => [r.id, r.status]));
+    const none = new Map<string, { value: number; n: number }>();
+    const full = new Map(evaluate({ replays: values, loop: none }, file, 'full').map(r => [r.id, r.status]));
     expect(full.get('games.homeWinRate')).toBe('warn');
     expect(full.get('games.pointsPerTeam')).toBe('fail');
     expect(full.get('stats.ypa')).toBe('pass');
     expect(full.get('stats.cmpPct')).toBe('info');
     expect(full.get('games.overtimeRate')).toBe('pending');
-    const ci = evaluate(values, file, 'ci');
+    const ci = evaluate({ replays: values, loop: none }, file, 'ci');
     expect(ci.map(r => [r.id, r.status])).toEqual([['games.homeWinRate', 'pass']]);
   });
 
+  it('judges season records on the weekly loop and everything else on the replays', () => {
+    const file: TargetsFile = {
+      version: 1,
+      targets: {
+        'seasons.winSd': { pass: [2.8, 3.5], warn: [2.5, 3.8], source: 's', note: 'n' },
+        'games.homeWinRate': { pass: [0.52, 0.58], warn: [0.5, 0.6], source: 's', note: 'n' }
+      }
+    };
+    const replays = new Map([
+      ['seasons.winSd', { value: 3.1, n: 3200 }],
+      ['games.homeWinRate', { value: 0.55, n: 27200 }]
+    ]);
+    const loop = new Map([
+      ['seasons.winSd', { value: 2.66, n: 640 }],
+      ['games.homeWinRate', { value: 0.7, n: 5440 }]
+    ]);
+    const results = new Map(evaluate({ replays, loop }, file, 'full').map(r => [r.id, r]));
+    const winSd = results.get('seasons.winSd');
+    expect(winSd).toMatchObject({ status: 'warn', value: 2.66, n: 640, decidedBy: 'loop' });
+    expect(winSd?.replays.value).toBe(3.1);
+    const home = results.get('games.homeWinRate');
+    expect(home).toMatchObject({ status: 'pass', value: 0.55, decidedBy: 'replays' });
+    expect(home?.loop.value).toBe(0.7);
+    // Without weekly-loop seasons, season records go unmeasured.
+    const alone = evaluate({ replays, loop: new Map() }, file, 'full');
+    expect(alone.find(r => r.id === 'seasons.winSd')?.status).toBe('pending');
+  });
+
   it('plans replays across leagues and writes a readable report', () => {
-    const plan = { seed: 1, seasons: 25, perLeague: 10, experiments: defaultExperiments(25) };
+    const plan = { seed: 1, seasons: 25, perLeague: 10, experiments: defaultExperiments(25), loopSeasons: 4 };
     const jobs = planJobs(plan);
-    expect(jobs.filter(j => !j.experiment)).toHaveLength(25);
-    expect(jobs.filter(j => j.experiment)).toHaveLength(3);
-    expect(new Set(jobs.map(j => `${j.league}-${j.replay}`)).size).toBe(jobs.length);
-    expect(Math.max(...jobs.map(j => j.league))).toBe(2);
+    // Weekly-loop seasons, the longest jobs, come first, each in a league of its own.
+    expect(jobs.slice(0, 4).map(j => [j.kind, j.league, sharedLeague(j)])).toEqual([
+      ['loop', 0, null],
+      ['loop', 1, null],
+      ['loop', 2, null],
+      ['loop', 3, null]
+    ]);
+    const replays = jobs.filter(j => j.kind !== 'loop');
+    expect(replays.filter(j => j.kind === 'replay')).toHaveLength(25);
+    expect(replays.filter(j => j.kind === 'experiment')).toHaveLength(3);
+    expect(new Set(replays.map(j => `${j.league}-${j.replay}`)).size).toBe(replays.length);
+    expect(Math.max(...replays.map(j => j.league))).toBe(2);
 
     const facts = replaySeason(short, data.climate, stream(7, 'replay'));
     const samples: RunSample[] = [{ league: 0, replay: 0, facts }];
     const report = finishRun(
-      { ...plan, seasons: 1, experiments: 0 },
+      { ...plan, seasons: 1, experiments: 0, loopSeasons: 0 },
       samples,
       targets,
       'full',
@@ -221,10 +278,15 @@ describe('calibration targets and reports (spec 23.2)', { timeout: 30_000 }, () 
     const markdown = reportMarkdown(report);
     expect(markdown).toContain('# Calibration report');
     expect(markdown).toContain(
-      '- Replays: 1 season (1 generated league, up to 10 replays each) and 0 fit experiment seasons.'
+      '- Replays: 1 season (1 generated league, up to 10 replays each) and 0 fit experiment seasons, with rosters as generated.'
     );
+    expect(markdown).toContain('- Weekly loop: 0 seasons through the weekly advance');
+    expect(markdown).toContain('| Metric | Replays | Weekly loop | Target | Status | Sample |');
     expect(markdown).toContain('## Targets and sources');
-    expect(summaryLines(report)[0]).toMatch(/^Calibration \(full, 1 season, seed 1\): \d+ pass/);
+    expect(summaryLines(report)[0]).toMatch(
+      /^Calibration \(full, 1 replay season and 0 weekly-loop seasons, seed 1\): \d+ pass/
+    );
+    expect(summaryLines(report)).toContain('Decided by the weekly loop (replays, weekly loop, status):');
     expect(formatValue(0.6512, 'pct')).toBe('65.1%');
     expect(formatValue(-0.031, 'pctPoints')).toBe('−3.1 pts');
     expect(formatValue(5316.4, 'int')).toBe('5,316');

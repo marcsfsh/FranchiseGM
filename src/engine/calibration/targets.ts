@@ -1,9 +1,10 @@
 /**
  * Calibration targets (spec 23.2): each metric's pass and warn bands, a wide band for the short CI run, a
  * source, and a note, kept in `calibration/targets.json`. Evaluation marks each metric pass, warn, fail,
- * info (measured, no target yet), or pending (not measured until a later milestone).
+ * info (measured, no target yet), or pending (not measured in this run, or not until a later milestone).
+ * Season-level metrics are judged on the weekly-loop seasons, everything else on the replays (C-20).
  */
-import { METRICS, type MetricDef, type MetricValue } from './metrics';
+import { METRICS, type MetricDef, type MetricGroup, type MetricValue } from './metrics';
 
 export type Band = readonly [number, number];
 
@@ -25,9 +26,25 @@ export interface TargetsFile {
 export type Status = 'pass' | 'warn' | 'fail' | 'info' | 'pending';
 export type Mode = 'full' | 'ci';
 
+/** A run's two modes: replays of the season, and seasons through the weekly loop. */
+export type Source = 'replays' | 'loop';
+
+/**
+ * Metric groups the weekly loop decides: season records depend on in-season roster management (injured
+ * reserve, signings, waivers, and elevations), which replays leave out (C-20).
+ */
+export const LOOP_GROUPS: readonly MetricGroup[] = ['seasons'];
+
+export const decidedBy = (def: Pick<MetricDef, 'group'>): Source =>
+  LOOP_GROUPS.includes(def.group) ? 'loop' : 'replays';
+
+/** A metric's result: the deciding mode's value and sample, with both modes' values side by side. */
 export interface MetricResult extends MetricDef, MetricValue {
   status: Status;
   target: Target | null;
+  decidedBy: Source;
+  replays: MetricValue;
+  loop: MetricValue;
 }
 
 const within = (value: number, [lo, hi]: Band): boolean => value >= lo && value <= hi;
@@ -50,12 +67,14 @@ export function checkTargets(file: TargetsFile): string[] {
   return problems;
 }
 
+const NONE: MetricValue = { value: null, n: 0 };
+
 /**
- * Compares measured metrics with their targets. A full run checks every metric; a CI run checks only the
- * metrics with a CI band, against that band alone.
+ * Compares measured metrics with their targets, each on the mode that decides it. A full run checks every
+ * metric; a CI run checks only the metrics with a CI band, against that band alone.
  */
 export function evaluate(
-  metrics: ReadonlyMap<string, MetricValue>,
+  metrics: Readonly<Record<Source, ReadonlyMap<string, MetricValue>>>,
   file: TargetsFile,
   mode: Mode
 ): MetricResult[] {
@@ -63,14 +82,17 @@ export function evaluate(
   for (const def of METRICS) {
     const target = file.targets[def.id] ?? null;
     if (mode === 'ci' && !target?.ci) continue;
-    const measured = metrics.get(def.id) ?? { value: null, n: 0 };
+    const by = decidedBy(def);
+    const replays = metrics.replays.get(def.id) ?? NONE;
+    const loop = metrics.loop.get(def.id) ?? NONE;
+    const measured = by === 'loop' ? loop : replays;
     let status: Status;
     if (measured.value === null) status = 'pending';
     else if (!target) status = 'info';
     else if (mode === 'ci') status = within(measured.value, target.ci as Band) ? 'pass' : 'fail';
     else if (within(measured.value, target.pass)) status = 'pass';
     else status = within(measured.value, target.warn) ? 'warn' : 'fail';
-    results.push({ ...def, ...measured, status, target });
+    results.push({ ...def, ...measured, status, target, decidedBy: by, replays, loop });
   }
   return results;
 }

@@ -156,35 +156,26 @@ const emptyLines = (): Record<TeamLineKey, number> =>
   Object.fromEntries(TEAM_LINE_KEYS.map(k => [k, 0])) as Record<TeamLineKey, number>;
 
 /**
- * Plays the league's regular season once from `rng` (spec 23.1). Every game draws its own sub-stream, so
- * a replay is the same whatever order the runner schedules it in.
+ * A regular season's facts, collected game by game: the same facts whether the games come from a replay or
+ * from the weekly loop.
  */
-export function replaySeason(
-  league: League,
-  climate: ClimateTable | null,
-  rng: Rng,
-  options: ReplayOptions = {}
-): ReplayFacts {
-  const schedule = league.schedule.filter(g => g.season === league.date.season);
-  const cache: TeamSetups = new Map();
-  const experiment = options.fitExperiment ? new FitExperiment(league) : null;
-  const teams = new Map<TeamAbbr, TeamFact>();
-  const players = new Map<string, PlayerFact>();
-  const games: GameFact[] = [];
-  // Each team's game weeks, to count the games an injury costs (bye weeks cost none).
-  const weeks = new Map<TeamAbbr, number[]>();
-  for (const g of schedule)
-    for (const abbr of [g.home, g.away]) weeks.set(abbr, [...(weeks.get(abbr) ?? []), g.week]);
-  // Players out with injuries, through the week they return after.
-  const outThrough = new Map<string, number>();
-  const rosters = new Map<TeamAbbr, Player[]>();
-  for (const p of Object.values(league.players))
-    if (p.status === 'active' && p.team)
-      rosters.set(p.team as TeamAbbr, [...(rosters.get(p.team as TeamAbbr) ?? []), p]);
-  // Each team's players out this week, so its cached setup is rebuilt when the list changes.
-  const outKey = new Map<TeamAbbr, string>();
-  const team = (abbr: TeamAbbr): TeamFact => {
-    let fact = teams.get(abbr);
+export class SeasonFacts {
+  private readonly teams = new Map<TeamAbbr, TeamFact>();
+  private readonly players = new Map<string, PlayerFact>();
+  private readonly games: GameFact[] = [];
+  /** Each team's game weeks, to count the games an injury costs (bye weeks cost none). */
+  private readonly weeks = new Map<TeamAbbr, number[]>();
+
+  constructor(
+    private readonly league: League,
+    schedule: readonly ScheduledGame[]
+  ) {
+    for (const g of schedule)
+      for (const abbr of [g.home, g.away]) this.weeks.set(abbr, [...(this.weeks.get(abbr) ?? []), g.week]);
+  }
+
+  team(abbr: TeamAbbr): TeamFact {
+    let fact = this.teams.get(abbr);
     if (!fact) {
       fact = {
         team: abbr,
@@ -197,36 +188,16 @@ export function replaySeason(
         lines: emptyLines(),
         injuries: { all: 0, missed: 0, gamesLost: 0, seasonEnding: 0, absences: 0 }
       };
-      teams.set(abbr, fact);
+      this.teams.set(abbr, fact);
     }
     return fact;
-  };
+  }
 
-  for (const game of [...schedule].sort((a, b) => a.week - b.week || (a.id < b.id ? -1 : 1))) {
-    const g = rng.fork('game', game.id);
-    // Players out hurt don't dress (spec 12.1): they sit on injured reserve while the teams set up and plan,
-    // so their backups dress and the lineup fills around them, as the weekly depth chart does.
-    const hurt: Player[] = [];
-    for (const abbr of [game.home, game.away]) {
-      const out = (rosters.get(abbr) ?? []).filter(p => (outThrough.get(p.id) ?? 0) >= game.week);
-      const key = out.map(p => p.id).join();
-      if (outKey.get(abbr) !== key) cache.delete(abbr);
-      outKey.set(abbr, key);
-      team(abbr).injuries.absences += out.length;
-      hurt.push(...out);
-    }
-    for (const p of hurt) p.status = 'ir';
-    const setup = gameSetup(league, game, climate, g.fork('setup'), cache);
-    setup.home.plan = decideGamePlan(league, game.home, game.away, g.fork('homePlan')).plan;
-    setup.away.plan = decideGamePlan(league, game.away, game.home, g.fork('awayPlan')).plan;
-    for (const p of hurt) p.status = 'active';
-    experiment?.assign(setup, g.fork('arms'));
-    const result = simulateGame(setup, g.fork('plays'));
-    experiment?.record(setup, result);
-
+  /** Adds a played regular-season game. */
+  add(game: ScheduledGame, result: GameResult): void {
     const both = (key: 'passAtt' | 'passCmp' | 'fgAtt' | 'fgMade') =>
       result.box.home.totals[key] + result.box.away.totals[key];
-    games.push({
+    this.games.push({
       week: game.week,
       home: game.home,
       away: game.away,
@@ -244,7 +215,7 @@ export function replaySeason(
 
     for (const side of ['home', 'away'] as const satisfies readonly Side[]) {
       const abbr = result[side];
-      const fact = team(abbr);
+      const fact = this.team(abbr);
       const scored = result.score[side];
       const allowed = result.score[side === 'home' ? 'away' : 'home'];
       if (scored > allowed) fact.wins++;
@@ -256,41 +227,94 @@ export function replaySeason(
       for (const [id, line] of Object.entries(result.box[side].players)) {
         for (const key of TEAM_LINE_KEYS) fact.lines[key] += line[key];
         if (!PLAYER_KEYS.some(k => line[k] !== 0)) continue;
-        let player = players.get(id);
+        let player = this.players.get(id);
         if (!player) {
           player = {
             id,
             team: abbr,
-            position: league.players[id]?.position ?? 'WR',
+            position: this.league.players[id]?.position ?? 'WR',
             line: Object.fromEntries(PLAYER_KEYS.map(k => [k, 0])) as Record<PlayerKey, number>
           };
-          players.set(id, player);
+          this.players.set(id, player);
         }
         for (const key of PLAYER_KEYS) player.line[key] += line[key];
       }
     }
 
     for (const injury of result.injuries) {
-      const fact = team(injury.team).injuries;
-      const lost = (weeks.get(injury.team) ?? []).filter(
+      const fact = this.team(injury.team).injuries;
+      const lost = (this.weeks.get(injury.team) ?? []).filter(
         w => w > game.week && w <= game.week + injury.weeks
       ).length;
       fact.all++;
-      if (injury.weeks > 0)
-        outThrough.set(
-          injury.playerId,
-          Math.max(outThrough.get(injury.playerId) ?? 0, game.week + injury.weeks)
-        );
       if (lost > 0) fact.missed++;
       fact.gamesLost += lost;
       if (injury.severity === 'season') fact.seasonEnding++;
     }
   }
 
-  return {
-    games,
-    teams: [...teams.values()],
-    players: [...players.values()],
-    ...(experiment ? { fit: experiment.sample } : {})
-  };
+  facts(fit?: FitSample): ReplayFacts {
+    return {
+      games: this.games,
+      teams: [...this.teams.values()],
+      players: [...this.players.values()],
+      ...(fit ? { fit } : {})
+    };
+  }
+}
+
+/**
+ * Plays the league's regular season once from `rng` (spec 23.1). Every game draws its own sub-stream, so
+ * a replay is the same whatever order the runner schedules it in.
+ */
+export function replaySeason(
+  league: League,
+  climate: ClimateTable | null,
+  rng: Rng,
+  options: ReplayOptions = {}
+): ReplayFacts {
+  const schedule = league.schedule.filter(g => g.season === league.date.season);
+  const cache: TeamSetups = new Map();
+  const experiment = options.fitExperiment ? new FitExperiment(league) : null;
+  const facts = new SeasonFacts(league, schedule);
+  // Players out with injuries, through the week they return after.
+  const outThrough = new Map<string, number>();
+  const rosters = new Map<TeamAbbr, Player[]>();
+  for (const p of Object.values(league.players))
+    if (p.status === 'active' && p.team)
+      rosters.set(p.team as TeamAbbr, [...(rosters.get(p.team as TeamAbbr) ?? []), p]);
+  // Each team's players out this week, so its cached setup is rebuilt when the list changes.
+  const outKey = new Map<TeamAbbr, string>();
+
+  for (const game of [...schedule].sort((a, b) => a.week - b.week || (a.id < b.id ? -1 : 1))) {
+    const g = rng.fork('game', game.id);
+    // Players out hurt don't dress (spec 12.1): they sit on injured reserve while the teams set up and plan,
+    // so their backups dress and the lineup fills around them, as the weekly depth chart does.
+    const hurt: Player[] = [];
+    for (const abbr of [game.home, game.away]) {
+      const out = (rosters.get(abbr) ?? []).filter(p => (outThrough.get(p.id) ?? 0) >= game.week);
+      const key = out.map(p => p.id).join();
+      if (outKey.get(abbr) !== key) cache.delete(abbr);
+      outKey.set(abbr, key);
+      facts.team(abbr).injuries.absences += out.length;
+      hurt.push(...out);
+    }
+    for (const p of hurt) p.status = 'ir';
+    const setup = gameSetup(league, game, climate, g.fork('setup'), cache);
+    setup.home.plan = decideGamePlan(league, game.home, game.away, g.fork('homePlan')).plan;
+    setup.away.plan = decideGamePlan(league, game.away, game.home, g.fork('awayPlan')).plan;
+    for (const p of hurt) p.status = 'active';
+    experiment?.assign(setup, g.fork('arms'));
+    const result = simulateGame(setup, g.fork('plays'));
+    experiment?.record(setup, result);
+    facts.add(game, result);
+    for (const injury of result.injuries)
+      if (injury.weeks > 0)
+        outThrough.set(
+          injury.playerId,
+          Math.max(outThrough.get(injury.playerId) ?? 0, game.week + injury.weeks)
+        );
+  }
+
+  return facts.facts(experiment?.sample);
 }

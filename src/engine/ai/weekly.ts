@@ -3,7 +3,7 @@
  * its roster moves, decides its questionable players, and sets its depth chart; then every team that
  * plays builds a game plan for its opponent, reading the opponent's new depth chart. The user's team gets
  * the lineup decisions while its depth chart is on auto and a plan while its game plan is on auto; its
- * roster moves are the user's (M8 brings the screens).
+ * roster moves are the user's unless roster management is on auto (spec 22.7).
  */
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { orderOf } from '../league/depth';
@@ -55,7 +55,8 @@ export function manageWeek(league: League, rng: Rng, seasonRng: Rng): DecisionLo
   for (const abbr of TEAM_ABBRS) {
     const team = league.teams[abbr];
     const teamRng = streams.get(abbr) as Rng;
-    if (abbr !== user) logs.push(...rosterMoves(league, abbr, teamRng.fork('roster')));
+    if (abbr !== user || league.settings.auto.roster)
+      logs.push(...rosterMoves(league, abbr, teamRng.fork('roster')));
     const auto = abbr !== user || team.depth.auto;
     if (!opponents.has(abbr)) continue;
     const roster = dressable(league, abbr);

@@ -22,7 +22,7 @@ import type { SimSliders } from '../sim/sliders';
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 9;
+export const SAVE_SCHEMA_VERSION = 10;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -73,6 +73,15 @@ export interface TeamState {
   carryover: number;
 }
 
+/**
+ * The user's jobs that can run on auto (spec 22.7), with the same AI as AI teams. The game plan and depth
+ * chart toggles live on the team; the other jobs are added as their features arrive.
+ */
+export interface AutoJobs {
+  /** Signings, cuts, injured reserve, practice squad moves, and waiver claims. */
+  roster: boolean;
+}
+
 /** League settings that can change mid-save (spec 22). Sections are added as their features arrive. */
 export interface LeagueSettings {
   version: number;
@@ -82,6 +91,8 @@ export interface LeagueSettings {
   sim: SimSliders;
   /** Event types that stop a multi-week advance (spec 19.6). */
   pause: Record<PauseEvent, boolean>;
+  /** The user's jobs on auto (spec 22.7). */
+  auto: AutoJobs;
 }
 
 export interface League {

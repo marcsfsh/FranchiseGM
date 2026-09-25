@@ -47,8 +47,11 @@ test('runs a calibration in the worker and shows the report, in Night', async ({
   await expect(page.locator('#calSeasons-error')).toBeVisible();
   await expect(page.locator('#calSeasons')).toBeFocused();
 
-  // Run by keyboard: the busy button keeps focus and its width.
+  // Run by keyboard: the busy button keeps focus and its width. Desktop also plays a season through the
+  // weekly loop (about half a minute); the other sizes skip it, and season records go unmeasured.
+  const desktop = info.project.name.endsWith('desktop');
   await page.fill('#calSeasons', '1');
+  await page.fill('#calLoop', desktop ? '1' : '0');
   const run = page.locator('main form button[type=submit]');
   const idleWidth = (await run.boundingBox())?.width ?? 0;
   await run.focus();
@@ -65,6 +68,20 @@ test('runs a calibration in the worker and shows the report, in Night', async ({
   await expect(run).not.toHaveAttribute('aria-busy', 'true');
   await expect(run).toBeFocused();
   await expect(page.locator('main')).toContainText('1 season in 1 league');
+  await expect(page.locator('main')).toContainText(
+    desktop ? '1 weekly-loop season' : '0 weekly-loop seasons'
+  );
+  const seasons = page.locator('main .metric-region', {
+    has: page.getByRole('heading', { name: 'Seasons', exact: true })
+  });
+  const winSd = seasons.locator('tr', { hasText: 'Team wins, sd' });
+  if (await winSd.isVisible()) {
+    await expect(seasons.getByRole('columnheader', { name: 'Weekly loop' })).toBeVisible();
+    // Season records are judged on the weekly loop.
+    await expect(winSd.locator('.status')).toHaveText(
+      desktop ? /^(Pass|Warn|Fail) \(weekly loop\)$/ : 'Not measured yet (weekly loop)'
+    );
+  }
   for (const group of ['Games', 'Seasons', 'League stats', 'Effect sizes'])
     await expect(page.getByRole('heading', { name: group, exact: true })).toBeVisible();
   await expect(page.locator('main .metric-region .status:visible').first()).toBeVisible();

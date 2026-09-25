@@ -1,6 +1,7 @@
 /**
- * Developer tools (spec 23.5): the calibration runner and report viewer (spec 23.1). The same replays as
- * `npm run calibrate`, in the worker with a progress bar; the report shows here and saves as Markdown.
+ * Developer tools (spec 23.5): the calibration runner and report viewer (spec 23.1). The same replays and
+ * weekly-loop seasons as `npm run calibrate`, in the worker with a progress bar; the report shows here and
+ * saves as Markdown.
  * A run belongs to the visit: it keeps going when you leave the screen, and the screen picks it up again
  * when you come back. Later milestones add the AI decision log, the sim inspector, and the performance
  * overlay.
@@ -12,7 +13,8 @@ import {
   formatBand,
   formatValue,
   reportMarkdown,
-  STATUS_LABELS,
+  SOURCE_LABELS,
+  statusText,
   type CalibrationReport
 } from '../../engine/calibration/report';
 import { defaultExperiments, type RunPlan } from '../../engine/calibration/run';
@@ -36,6 +38,7 @@ const STATUS_CLASS: Record<Status, string> = {
 };
 
 const SEASONS_MAX = 100;
+const LOOP_MAX = 20;
 const SEED_MAX = 2 ** 31 - 1;
 
 /** A calibration run in progress. */
@@ -58,8 +61,15 @@ interface RunView {
 }
 
 /** The visit's state: the form's values, the run in progress, and the last report. */
-const visit: { seasons: string; seed: string; run: ActiveRun | null; report: CalibrationReport | null } = {
+const visit: {
+  seasons: string;
+  loop: string;
+  seed: string;
+  run: ActiveRun | null;
+  report: CalibrationReport | null;
+} = {
   seasons: '10',
+  loop: '2',
   seed: '1',
   run: null,
   report: null
@@ -77,7 +87,9 @@ function startRun(app: AppState, plan: RunPlan): void {
   };
   visit.run = run;
   view?.sync();
-  view?.announce(`Calibration started: ${count(plan.seasons, 'season')}.`);
+  view?.announce(
+    `Calibration started: ${count(plan.seasons, 'season')} and ${count(plan.loopSeasons, 'weekly-loop season')}.`
+  );
   const onProgress = (p: { done: number; total: number; label?: string }) => {
     run.total = Math.max(1, p.total);
     run.done = p.done;
@@ -120,23 +132,28 @@ function startRun(app: AppState, plan: RunPlan): void {
   );
 }
 
-/** A value cell; a metric this build can't measure yet shows a dash and reads "Not measured yet". */
-function valueText(r: MetricResult): HTMLElement {
-  return r.value === null
+/** A value cell; a metric the run didn't measure shows a dash and reads "Not measured". */
+function valueText(r: MetricResult, value: number | null): HTMLElement {
+  return value === null
     ? h(
         'span',
         null,
         h('span', { 'aria-hidden': 'true' }, '—'),
-        h('span', { class: 'sr-only' }, 'Not measured yet')
+        h('span', { class: 'sr-only' }, 'Not measured')
       )
-    : h('span', null, formatValue(r.value, r.format));
+    : h('span', null, formatValue(value, r.format));
 }
 
 const targetText = (r: MetricResult) => (r.target ? formatBand(r.target.pass, r.format) : 'No target');
 
-const statusChip = (s: Status) => {
-  const label = STATUS_LABELS[s];
-  return h('span', { class: `status ${STATUS_CLASS[s]}` }, label.charAt(0).toUpperCase() + label.slice(1));
+/** The status, with "(weekly loop)" where the weekly loop decided it. */
+const statusChip = (r: MetricResult) => {
+  const label = statusText(r);
+  return h(
+    'span',
+    { class: `status ${STATUS_CLASS[r.status]}` },
+    label.charAt(0).toUpperCase() + label.slice(1)
+  );
 };
 
 /**
@@ -156,7 +173,8 @@ function resultGroup(key: string, title: string, rows: readonly MetricResult[]):
         'tr',
         null,
         h('th', { scope: 'col' }, 'Metric'),
-        h('th', { scope: 'col', class: 'num' }, 'Value'),
+        h('th', { scope: 'col', class: 'num' }, SOURCE_LABELS.replays),
+        h('th', { scope: 'col', class: 'num' }, SOURCE_LABELS.loop),
         h('th', { scope: 'col' }, 'Target'),
         h('th', { scope: 'col' }, 'Status')
       )
@@ -169,9 +187,10 @@ function resultGroup(key: string, title: string, rows: readonly MetricResult[]):
           'tr',
           null,
           h('th', { scope: 'row' }, r.label),
-          h('td', { class: 'num' }, valueText(r)),
+          h('td', { class: 'num' }, valueText(r, r.replays.value)),
+          h('td', { class: 'num' }, valueText(r, r.loop.value)),
           h('td', null, targetText(r)),
-          h('td', null, statusChip(r.status))
+          h('td', null, statusChip(r))
         )
       )
     )
@@ -184,11 +203,12 @@ function resultGroup(key: string, title: string, rows: readonly MetricResult[]):
         'li',
         { class: 'metric-row' },
         h('span', { class: 'metric-name' }, r.label),
-        statusChip(r.status),
+        statusChip(r),
         h(
           'dl',
           { class: 'metric-facts' },
-          h('div', null, h('dt', null, 'Value'), h('dd', null, valueText(r))),
+          h('div', null, h('dt', null, SOURCE_LABELS.replays), h('dd', null, valueText(r, r.replays.value))),
+          h('div', null, h('dt', null, SOURCE_LABELS.loop), h('dd', null, valueText(r, r.loop.value))),
           h('div', null, h('dt', null, 'Target'), h('dd', null, targetText(r)))
         )
       )
@@ -224,9 +244,15 @@ function reportView(report: CalibrationReport): HTMLElement {
       'p',
       null,
       `${c.pass} pass, ${c.warn} warn, ${c.fail} fail, ${c.info} info, ${c.pending} not measured yet. ` +
-        `${count(report.seasons, 'season')} in ${count(report.leagues, 'league')} and ` +
-        `${count(report.experiments, 'fit experiment season')}, seed ${report.seed}, ` +
+        `${count(report.seasons, 'season')} in ${count(report.leagues, 'league')}, ` +
+        `${count(report.experiments, 'fit experiment season')}, and ` +
+        `${count(report.loopSeasons, 'weekly-loop season')}, seed ${report.seed}, ` +
         `${count(Math.round(report.seconds), 'second')}.`
+    ),
+    h(
+      'p',
+      { class: 'hint' },
+      'Season records are judged on the weekly-loop seasons, which play through the weekly advance as the game does. Everything else is judged on the replays.'
     ),
     h('p', { class: 'hint' }, 'The report lasts until you close the page. Save report keeps a copy.'),
     h('div', { class: 'btn-row' }, save),
@@ -269,9 +295,21 @@ function calibrationCard({ app }: ScreenContext): HTMLElement {
     value: visit.seed,
     'aria-describedby': 'calSeed-error'
   });
+  const loop = h('input', {
+    class: 'input',
+    id: 'calLoop',
+    type: 'number',
+    inputmode: 'numeric',
+    min: '0',
+    max: String(LOOP_MAX),
+    value: visit.loop,
+    'aria-describedby': 'calLoop-hint calLoop-error'
+  });
   seasons.addEventListener('input', () => (visit.seasons = seasons.value));
+  loop.addEventListener('input', () => (visit.loop = loop.value));
   seed.addEventListener('input', () => (visit.seed = seed.value));
   const seasonsError = h('p', { class: 'field-error', id: 'calSeasons-error', role: 'alert', hidden: true });
+  const loopError = h('p', { class: 'field-error', id: 'calLoop-error', role: 'alert', hidden: true });
   const seedError = h('p', { class: 'field-error', id: 'calSeed-error', role: 'alert', hidden: true });
   const runButton = h('button', { class: 'btn btn-primary', type: 'submit' }, 'Run calibration');
   const cancel = h('button', { class: 'btn btn-outline', type: 'button', hidden: true }, 'Cancel');
@@ -313,7 +351,7 @@ function calibrationCard({ app }: ScreenContext): HTMLElement {
   const whole = (input: HTMLInputElement, error: HTMLElement, max: number, message: string) => {
     const text = input.value.trim();
     const n = Number(text);
-    const ok = text !== '' && Number.isInteger(n) && n >= (input === seasons ? 1 : 0) && n <= max;
+    const ok = text !== '' && Number.isInteger(n) && n >= Number(input.min) && n <= max;
     error.hidden = ok;
     error.textContent = ok ? '' : message;
     if (ok) input.removeAttribute('aria-invalid');
@@ -336,6 +374,18 @@ function calibrationCard({ app }: ScreenContext): HTMLElement {
       ),
       seasonsError
     ),
+    h(
+      'div',
+      { class: 'field' },
+      h('label', { for: 'calLoop' }, 'Weekly-loop seasons'),
+      loop,
+      h(
+        'p',
+        { class: 'hint', id: 'calLoop-hint' },
+        'Each plays the regular season through the weekly advance, roster moves and all, and decides the season records. Each takes about half a minute here.'
+      ),
+      loopError
+    ),
     h('div', { class: 'field' }, h('label', { for: 'calSeed' }, 'Seed'), seed, seedError),
     h('div', { class: 'btn-row' }, runButton, cancel),
     progress,
@@ -348,16 +398,18 @@ function calibrationCard({ app }: ScreenContext): HTMLElement {
     run.cancelling = true;
     run.controller.abort();
     sync();
-    status.textContent = 'Cancelling after this season.';
+    status.textContent = 'Cancelling after the season or week in progress.';
   });
   form.addEventListener('submit', event => {
     event.preventDefault();
     if (visit.run) return;
     const n = whole(seasons, seasonsError, SEASONS_MAX, 'Enter a whole number of seasons from 1 to 100.');
+    const l = whole(loop, loopError, LOOP_MAX, `Enter a whole number of seasons from 0 to ${LOOP_MAX}.`);
     const s = whole(seed, seedError, SEED_MAX, 'Enter a whole number from 0 to 2,147,483,647.');
     if (n === null) return seasons.focus();
+    if (l === null) return loop.focus();
     if (s === null) return seed.focus();
-    startRun(app, { seed: s, seasons: n, perLeague: 10, experiments: defaultExperiments(n) });
+    startRun(app, { seed: s, seasons: n, perLeague: 10, experiments: defaultExperiments(n), loopSeasons: l });
   });
 
   view = {
@@ -371,7 +423,7 @@ function calibrationCard({ app }: ScreenContext): HTMLElement {
     h(
       'p',
       { class: 'muted' },
-      'Replays the 2026 season in generated leagues and checks the results against sourced NFL targets.'
+      'Replays the 2026 season in generated leagues, plays it through the weekly advance, and checks the results against sourced NFL targets.'
     ),
     form,
     results

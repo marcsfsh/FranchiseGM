@@ -227,13 +227,19 @@ describe('rotation plans in the sim (spec 12.3)', { timeout: 60_000 }, () => {
     const devSnaps = (share: number) =>
       runFrom(kickoffStart, N, {
         adjust: s => {
-          young = s.home.depth.CB1?.[1] ?? '';
+          // A backup at a defensive spot who starts nowhere else, so his development snaps are all extra.
+          const starting = new Set(Object.values(s.home.depth).map(order => order?.[0]));
+          young =
+            (['CB1', 'CB2', 'FS', 'SS', 'MIKE'] as const)
+              .flatMap(k => s.home.depth[k]?.slice(1) ?? [])
+              .find(id => !starting.has(id)) ?? '';
           return withRotation(() => ({ devSnaps: share ? { [young]: share } : {} }))(s);
         },
         seed: 'develop'
       });
     const none = devSnaps(0);
     const some = devSnaps(0.3);
+    expect(young).not.toBe('');
     expect(snaps(some, young, 'snapsDefense', 'home')).toBeGreaterThan(
       snaps(none, young, 'snapsDefense', 'home') + 5 * N
     );

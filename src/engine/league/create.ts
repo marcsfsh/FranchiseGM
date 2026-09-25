@@ -108,7 +108,13 @@ export function createLeague(input: NewLeagueInput): League {
     date: { season: start.startSeason, phase: 'regularSeason', week: 1 },
     random: createLeagueRandom(start.seed, input.fixed ?? false),
     rules,
-    settings: { version: 1, fitCap: TUNING.fit.cap, sim: defaultSliders(), pause: defaultPauses() },
+    settings: {
+      version: 1,
+      fitCap: TUNING.fit.cap,
+      sim: defaultSliders(),
+      pause: defaultPauses(),
+      auto: { roster: false }
+    },
     teams,
     players: byId(generated.players),
     contracts: byId(generated.contracts),

@@ -4,9 +4,11 @@ import { advanceWeek } from '../engine/season/advance';
 import type { ClimateTable } from '../data/climate';
 import type { RunSample } from '../engine/calibration/metrics';
 import type { CalibrationData } from '../engine/calibration/replay';
+import { LoopSeason } from '../engine/calibration/loop';
 import { finishRun, jobLeague, planJobs, runJob, type RunPlan } from '../engine/calibration/run';
 import type { Mode, TargetsFile } from '../engine/calibration/targets';
 import { createLeague, type NewLeagueInput } from '../engine/league/create';
+import { DEFAULT_RULES } from '../engine/rules/ruleset';
 import type { League } from '../engine/league/types';
 import { simLeagueGame } from '../engine/sim';
 import type { JobHandler } from './protocol';
@@ -55,8 +57,9 @@ export const JOBS: Record<string, JobHandler> = {
   },
 
   /**
-   * A calibration run for the dev menu (spec 23.1): the same replays as `npm run calibrate`, one at a time,
-   * with progress after each and a chance to cancel between them. Returns the report.
+   * A calibration run for the dev menu (spec 23.1): the same seasons as `npm run calibrate`, one at a time,
+   * with progress after each replay and each week of a weekly-loop season, and a chance to cancel between
+   * them. Returns the report.
    */
   calibrate: async (payload, ctx) => {
     const { data, plan, targets, mode } = payload as {
@@ -66,24 +69,47 @@ export const JOBS: Record<string, JobHandler> = {
       mode: Mode;
     };
     const jobs = planJobs(plan);
+    // Progress counts a replay as one step and a weekly-loop season as a step a week.
+    const weeks = DEFAULT_RULES.season.weeks;
+    const total = jobs.reduce((n, j) => n + (j.kind === 'loop' ? weeks : 1), 0);
+    let done = 0;
     const started = performance.now();
     const samples: RunSample[] = [];
-    // Jobs come league by league, so each league is generated once.
+    // Replays come league by league, so each replay league is generated once.
     let league: League | null = null;
     let leagueIndex = -1;
-    for (const [i, job] of jobs.entries()) {
-      const step = job.experiment
-        ? `Fit experiment ${i - plan.seasons + 1} of ${plan.experiments}`
-        : `Season ${i + 1} of ${plan.seasons}`;
-      ctx.progress(i, jobs.length, step);
+    let replays = 0;
+    let experiments = 0;
+    for (const job of jobs) {
+      if (job.kind === 'loop') {
+        const season = new LoopSeason(jobLeague(data, plan.seed, job), data.climate);
+        for (let week = 1; !season.done; week++) {
+          ctx.progress(
+            done,
+            total,
+            `Weekly-loop season ${job.league + 1} of ${plan.loopSeasons}, week ${week}`
+          );
+          await ctx.checkpoint();
+          season.playWeek();
+          done++;
+        }
+        samples.push({ league: job.league, replay: 0, loop: true, facts: season.facts() });
+        continue;
+      }
+      const step =
+        job.kind === 'experiment'
+          ? `Fit experiment ${++experiments} of ${plan.experiments}`
+          : `Season ${++replays} of ${plan.seasons}`;
+      ctx.progress(done, total, step);
       await ctx.checkpoint();
       if (!league || leagueIndex !== job.league) {
-        league = jobLeague(data, plan.seed, job.league);
+        league = jobLeague(data, plan.seed, job);
         leagueIndex = job.league;
       }
       samples.push(runJob(data, plan.seed, job, league));
+      done++;
     }
-    ctx.progress(jobs.length, jobs.length);
+    ctx.progress(total, total);
     const created = new Date().toISOString().slice(0, 10);
     return finishRun(plan, samples, targets, mode, created, (performance.now() - started) / 1000);
   },

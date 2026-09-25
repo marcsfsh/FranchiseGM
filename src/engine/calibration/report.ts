@@ -1,10 +1,11 @@
 /**
  * Calibration reports (spec 23.1): the run's settings, pass, warn, and fail counts, every metric against
- * its band, and the targets' sources. The runner writes the Markdown and JSON forms to
- * `calibration/reports/`; the dev menu shows the same report in the app.
+ * its band with the replay and weekly-loop values side by side, and the targets' sources. The runner
+ * writes the Markdown and JSON forms to `calibration/reports/`; the dev menu shows the same report in the
+ * app.
  */
 import { GROUP_TITLES, type MetricFormat, type MetricGroup } from './metrics';
-import type { Band, MetricResult, Mode, Status } from './targets';
+import { LOOP_GROUPS, type Band, type MetricResult, type Mode, type Source, type Status } from './targets';
 
 export interface RunSettings {
   mode: Mode;
@@ -15,10 +16,12 @@ export interface RunSettings {
   perLeague: number;
   /** Fit experiment replays. */
   experiments: number;
+  /** Seasons played through the weekly loop, each in a league of its own. */
+  loopSeasons: number;
 }
 
 export interface CalibrationReport extends RunSettings {
-  version: 1;
+  version: 2;
   /** When the run finished, and how long it took; the caller supplies both. */
   created: string;
   seconds: number;
@@ -42,7 +45,7 @@ export function buildReport(
 ): CalibrationReport {
   const counts: Record<Status, number> = { pass: 0, warn: 0, fail: 0, info: 0, pending: 0 };
   for (const r of results) counts[r.status]++;
-  return { version: 1, ...settings, created, seconds, counts, results };
+  return { version: 2, ...settings, created, seconds, counts, results };
 }
 
 /** A whole number with thousands separators. */
@@ -84,11 +87,21 @@ const judged = (r: MetricResult, mode: Mode): Band | null =>
 export const count = (n: number, one: string, many = `${one}s`): string =>
   `${thousands(n)} ${n === 1 ? one : many}`;
 
-/** A one-line summary and a line per warning or failure, for the command line. */
+export const SOURCE_LABELS: Record<Source, string> = { replays: 'Replays', loop: 'Weekly loop' };
+
+/** A status with the mode that decided it when that's the weekly loop: "pass (weekly loop)". */
+export const statusText = (r: MetricResult): string =>
+  STATUS_LABELS[r.status] + (r.decidedBy === 'loop' ? ' (weekly loop)' : '');
+
+/**
+ * A one-line summary, a line per warning or failure, and the metrics the weekly loop decides with both
+ * modes' values, for the command line.
+ */
 export function summaryLines(report: CalibrationReport): string[] {
   const c = report.counts;
   const lines = [
-    `Calibration (${report.mode}, ${count(report.seasons, 'season')}, seed ${report.seed}): ` +
+    `Calibration (${report.mode}, ${count(report.seasons, 'replay season')} and ` +
+      `${count(report.loopSeasons, 'weekly-loop season')}, seed ${report.seed}): ` +
       `${c.pass} pass, ${c.warn} warn, ${c.fail} fail, ${c.info} info, ${c.pending} not measured yet.`
   ];
   for (const r of report.results) {
@@ -96,21 +109,31 @@ export function summaryLines(report: CalibrationReport): string[] {
     const band = judged(r, report.mode);
     lines.push(
       `${r.status.toUpperCase()} ${r.id}: ${formatValue(r.value, r.format)}` +
+        (r.decidedBy === 'loop' ? ' in the weekly loop' : '') +
         (band ? ` (target ${formatBand(band, r.format)})` : '')
     );
   }
+  const decided = report.results.filter(r => r.decidedBy === 'loop');
+  if (decided.length) lines.push('Decided by the weekly loop (replays, weekly loop, status):');
+  for (const r of decided)
+    lines.push(
+      `  ${r.id}: ${formatValue(r.replays.value, r.format)}, ${formatValue(r.loop.value, r.format)}, ${r.status}`
+    );
   return lines;
 }
 
 const cell = (text: string): string => text.replace(/\|/g, '\\|').replace(/\n/g, ' ');
 
 function table(rows: readonly MetricResult[], mode: Mode): string[] {
-  const out = ['| Metric | Value | Target | Status | Sample |', '| --- | ---: | --- | --- | ---: |'];
+  const out = [
+    '| Metric | Replays | Weekly loop | Target | Status | Sample |',
+    '| --- | ---: | ---: | --- | --- | ---: |'
+  ];
   for (const r of rows) {
     const band = judged(r, mode);
     out.push(
-      `| ${cell(r.label)} | ${formatValue(r.value, r.format)} | ${band ? formatBand(band, r.format) : '—'} | ` +
-        `${STATUS_LABELS[r.status]} | ${thousands(r.n)} |`
+      `| ${cell(r.label)} | ${formatValue(r.replays.value, r.format)} | ${formatValue(r.loop.value, r.format)} | ` +
+        `${band ? formatBand(band, r.format) : '—'} | ${statusText(r)} | ${thousands(r.n)} |`
     );
   }
   return out;
@@ -125,7 +148,12 @@ export function reportMarkdown(report: CalibrationReport): string {
     `- Run: ${report.created}, ${report.mode === 'ci' ? 'CI subset with wide bands' : 'full'}, seed ${report.seed}, ` +
       `${report.seconds.toFixed(0)} s.`,
     `- Replays: ${count(report.seasons, 'season')} (${count(report.leagues, 'generated league')}, up to ` +
-      `${count(report.perLeague, 'replay')} each) and ${count(report.experiments, 'fit experiment season')}.`,
+      `${count(report.perLeague, 'replay')} each) and ${count(report.experiments, 'fit experiment season')}, ` +
+      'with rosters as generated.',
+    `- Weekly loop: ${count(report.loopSeasons, 'season')} through the weekly advance, a generated league ` +
+      'each, with AI roster moves, injured reserve, waivers, and practice squad elevations.',
+    `- Decided by the weekly loop: ${LOOP_GROUPS.map(g => GROUP_TITLES[g].toLowerCase()).join(', ')}. ` +
+      "Everything else is decided by the replays. Each sample is the deciding mode's.",
     `- Result: ${c.pass} pass, ${c.warn} warn, ${c.fail} fail, ${c.info} info, ${c.pending} not measured yet.`
   ];
   const flagged = report.results.filter(r => r.status === 'warn' || r.status === 'fail');

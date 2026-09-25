@@ -117,7 +117,7 @@ describe('calibrate job', () => {
       climate: parseClimate(readFileSync('data-raw/climate.csv', 'utf8'))
     };
     const targets = JSON.parse(readFileSync('calibration/targets.json', 'utf8')) as TargetsFile;
-    const plan = { seed: 4, seasons: 1, perLeague: 10, experiments: 1 };
+    const plan = { seed: 4, seasons: 1, perLeague: 10, experiments: 1, loopSeasons: 0 };
     const { messages, post } = collect();
     await createJobRunner(
       JOBS,
@@ -127,7 +127,7 @@ describe('calibrate job', () => {
     expect(labels).toEqual(['Season 1 of 1', 'Fit experiment 1 of 1', undefined]);
     const result = messages.at(-1) as { kind: string; payload: CalibrationReport };
     expect(result.kind).toBe('result');
-    const league = jobLeague(data, plan.seed, 0);
+    const league = jobLeague(data, plan.seed, { kind: 'replay', league: 0, replay: 0 });
     const samples = planJobs(plan).map(job => runJob(data, plan.seed, job, league));
     const { created, seconds } = result.payload;
     expect(result.payload).toEqual(finishRun(plan, samples, targets, 'full', created, seconds));

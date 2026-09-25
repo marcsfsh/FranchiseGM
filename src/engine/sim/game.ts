@@ -417,9 +417,14 @@ class GameSim {
     const first = available[depthIndex] ?? available[0];
     if (!first) return null;
     const next = available[depthIndex + 1];
+    if (rotate) {
+      // Development snaps go to the young backup wherever he stands behind the starter.
+      for (const backup of available.slice(depthIndex + 1)) {
+        const dev = team.rotation.devSnaps[backup.id];
+        if (dev && this.rng.chance(dev)) return backup;
+      }
+    }
     if (rotate && next) {
-      const dev = team.rotation.devSnaps[next.id];
-      if (dev && this.rng.chance(dev)) return next;
       const limit = team.rotation.snapLimits[first.id];
       if (limit !== undefined) {
         const unit = side === this.offense ? 'offense' : 'defense';

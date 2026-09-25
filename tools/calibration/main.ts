@@ -1,12 +1,15 @@
 /**
- * The calibration runner (spec 23.1). Replays the 2026 season across generated leagues on worker threads,
- * compares every metric with calibration/targets.json, writes Markdown and JSON reports to
- * calibration/reports/, and prints the summary. Exits with 1 when a metric fails.
+ * The calibration runner (spec 23.1). Replays the 2026 season across generated leagues and plays seasons
+ * through the weekly loop on worker threads, compares every metric with calibration/targets.json on the
+ * mode that decides it, writes Markdown and JSON reports to calibration/reports/, and prints the summary.
+ * Exits with 1 when a metric fails.
  *
- *   npm run calibrate -- [--seasons 100] [--per-league 10] [--experiments N] [--seed 1] [--workers N]
- *                        [--ci] [--out calibration/reports]
+ *   npm run calibrate -- [--seasons 100] [--per-league 10] [--experiments N] [--loop-seasons N] [--seed 1]
+ *                        [--workers N] [--ci] [--out calibration/reports]
  *
- * --ci runs the CI subset against its wide bands (spec 23.1: 20 seasons in CI).
+ * --ci runs the CI subset against its wide bands (spec 23.1: 20 seasons in CI). Weekly-loop seasons default
+ * to 100 in a full run, since perfect and winless seasons are rare, and 8 in CI; each takes about as long as
+ * one and a half replays.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
@@ -19,7 +22,8 @@ import {
   defaultExperiments,
   finishRun,
   planJobs,
-  type ReplayJob,
+  sharedLeague,
+  type RunJob,
   type RunPlan
 } from '../../src/engine/calibration/run';
 import { checkTargets, type Mode, type TargetsFile } from '../../src/engine/calibration/targets';
@@ -29,6 +33,7 @@ const { values } = parseArgs({
     seasons: { type: 'string', default: '100' },
     'per-league': { type: 'string', default: '10' },
     experiments: { type: 'string' },
+    'loop-seasons': { type: 'string' },
     seed: { type: 'string', default: '1' },
     workers: { type: 'string' },
     ci: { type: 'boolean', default: false },
@@ -43,6 +48,7 @@ const whole = (name: string, text: string | undefined, min: number): number => {
 };
 
 const seasons = whole('seasons', values.seasons, 1);
+const mode: Mode = values.ci ? 'ci' : 'full';
 const plan: RunPlan = {
   seed: whole('seed', values.seed, 0),
   seasons,
@@ -50,9 +56,14 @@ const plan: RunPlan = {
   experiments:
     values.experiments === undefined
       ? defaultExperiments(seasons)
-      : whole('experiments', values.experiments, 0)
+      : whole('experiments', values.experiments, 0),
+  loopSeasons:
+    values['loop-seasons'] === undefined
+      ? mode === 'ci'
+        ? 8
+        : 100
+      : whole('loop-seasons', values['loop-seasons'], 0)
 };
-const mode: Mode = values.ci ? 'ci' : 'full';
 const workers = Math.min(
   values.workers === undefined ? Math.min(availableParallelism(), 8) : whole('workers', values.workers, 1),
   planJobs(plan).length
@@ -62,12 +73,15 @@ const targets = JSON.parse(readFileSync('calibration/targets.json', 'utf8')) as 
 const problems = checkTargets(targets);
 if (problems.length) throw new Error(`calibration/targets.json:\n${problems.join('\n')}`);
 
-/** Runs every job on a pool of workers; a free worker takes a job from its cached league when it can. */
-function runJobs(jobs: readonly ReplayJob[]): Promise<RunSample[]> {
+/**
+ * Runs every job on a pool of workers, in plan order; a free worker takes a job from its cached replay league
+ * when one is waiting, so each league is generated about once per worker.
+ */
+function runJobs(jobs: readonly RunJob[]): Promise<RunSample[]> {
   const pending = [...jobs];
   const samples: RunSample[] = [];
-  const take = (league: number | null): ReplayJob | undefined => {
-    const at = pending.findIndex(j => j.league === league);
+  const take = (league: number | null): RunJob | undefined => {
+    const at = pending[0]?.kind === 'loop' ? 0 : pending.findIndex(j => sharedLeague(j) === league);
     return pending.splice(at >= 0 ? at : 0, 1)[0];
   };
   return Promise.all(
@@ -85,7 +99,7 @@ function runJobs(jobs: readonly ReplayJob[]): Promise<RunSample[]> {
               void worker.terminate().then(() => resolve());
               return;
             }
-            league = job.league;
+            league = sharedLeague(job) ?? league;
             worker.postMessage(job);
           };
           worker.on('message', (sample: RunSample) => {
