@@ -14,7 +14,8 @@ test('signs, releases, and reads the cap without ever reaching an illegal roster
   await page.evaluate(() => (location.hash = '#/free-agency'));
   await expect(page.locator('main h1')).toHaveText('Free agency');
   await expect(page.locator('main')).toContainText('53 of 53 on the active roster');
-  const agents = page.getByRole('list', { name: 'Free agents' }).locator('.list-row');
+  // A table where there's room, a list on phones.
+  const agents = page.locator('.fa-list > li, table.fa-table tbody tr').filter({ visible: true });
   await expect(agents.first()).toBeVisible();
   const firstName = (await agents.first().locator('a').textContent()) ?? '';
   await page.getByRole('button', { name: `Make an offer to ${firstName}` }).click();

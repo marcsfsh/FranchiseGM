@@ -25,7 +25,8 @@ import type { AppState } from '../state';
 import { nick, teamLink } from '../ui/games';
 import { playerLink } from '../ui/players';
 import { CATEGORY_TITLES, formatStat, STAT_NAMES, type StatColumn } from '../ui/stat-columns';
-import { scrollRegion, statHeader } from '../ui/stat-table';
+import { spoken } from '../ui/sort-rows';
+import { sortableTable, type TableColumn } from '../ui/sortable';
 import { card } from './common';
 
 /** How many players a board lists. */
@@ -132,23 +133,22 @@ const noneCell = (meaning: string, numeric = false) =>
     h('span', { class: 'sr-only' }, meaning)
   );
 
-function boardTable(league: League, entries: readonly BoardEntry[], caption: string): HTMLElement {
+function boardTable(league: League, entries: readonly BoardEntry[], caption: string, status: HTMLElement): HTMLElement {
   const rank = ranks(entries);
+  const place = new Map(entries.map((e, i) => [e.playerId, i]));
   const format = statFormat(choice.stat);
+  const player = (e: BoardEntry) => league.players[e.playerId];
   // The ranked value comes right after the name, so a narrow screen shows it without scrolling.
-  const value = statHeader(isRate(choice.stat) ? 'Rate' : 'Total', statName(choice.stat));
-  const table = h(
-    'table',
-    { class: 'stat-table leader-table' },
-    h('caption', null, caption),
-    h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Rank'), h('th', { scope: 'col' }, 'Player'), value, h('th', { scope: 'col' }, 'Pos'), h('th', { scope: 'col' }, 'Team'), statHeader('G', 'Games played'))),
-    h('tbody', null, ...entries.map((e, i) => {
-      const p = league.players[e.playerId];
-      return h('tr', null, h('td', null, rank[i] ?? ''), h('th', { scope: 'row' }, p ? playerLink(p) : 'Former player'), h('td', { class: 'num' }, formatStat(e.value, format)), p ? h('td', null, p.position) : noneCell('Position not known'), teamCell(e.team), h('td', { class: 'num' }, String(e.games)));
-    }))
-  ); // prettier-ignore
-  return scrollRegion(caption, table);
-}
+  const columns: TableColumn<BoardEntry>[] = [
+    { id: 'rank', label: 'Rank', name: 'rank', type: 'number', first: 'asc', words: ['top first', 'bottom first'], value: e => place.get(e.playerId), cell: e => h('td', null, rank[place.get(e.playerId) ?? 0] ?? '') },
+    { id: 'player', label: 'Player', name: 'player', type: 'text', value: e => { const p = player(e); return p ? `${p.lastName} ${p.firstName}` : null; }, cell: e => { const p = player(e); return h('th', { scope: 'row' }, p ? playerLink(p) : 'Former player'); } },
+    { id: 'value', label: isRate(choice.stat) ? 'Rate' : 'Total', title: statName(choice.stat), name: spoken(statName(choice.stat)), type: 'number', numeric: true, value: e => e.value, cell: e => h('td', { class: 'num' }, formatStat(e.value, format)) },
+    { id: 'position', label: 'Pos', title: 'Position', name: 'position', type: 'text', value: e => player(e)?.position, cell: e => { const p = player(e); return p ? h('td', null, p.position) : noneCell('Position not known'); } },
+    { id: 'team', label: 'Team', name: 'team', type: 'text', value: e => e.team, cell: e => teamCell(e.team) },
+    { id: 'games', label: 'G', title: 'Games played', name: 'games played', type: 'number', numeric: true, value: e => e.games, cell: e => h('td', { class: 'num' }, String(e.games)) }
+  ];
+  return sortableTable({ key: 'stats.leaders', name: 'leaders', caption, className: 'stat-table leader-table', columns, rows: entries, rowId: e => e.playerId, defaultOrder: 'by rank', scroll: true, status }).element;
+} // prettier-ignore
 
 function statOptions(): HTMLElement[] {
   return CATEGORY_IDS.flatMap(category => {
@@ -235,7 +235,7 @@ function playersView(app: AppState, league: League, seasons: readonly number[]):
       mount(
         body,
         isRate(choice.stat) ? h('p', { class: 'hint' }, `Players with at least ${minimum.toLocaleString('en-US')} ${MINIMUM_WORDS[RATE_STATS[choice.stat]]} qualify.`) : null,
-        entries.length ? boardTable(league, entries, caption) : h('p', { class: 'empty' }, players.length ? 'No player matches these choices yet.' : 'No games have been played yet.')
+        entries.length ? boardTable(league, entries, caption, status) : h('p', { class: 'empty' }, players.length ? 'No player matches these choices yet.' : 'No games have been played yet.')
       );
       if (announce) status.textContent = `${caption}: ${entries.length} ${entries.length === 1 ? 'player' : 'players'}.`;
     } catch {
@@ -277,77 +277,74 @@ const perGame = (total: number, games: number): HTMLElement =>
 const rate = (made: number, tries: number): HTMLElement =>
   tries ? h('td', { class: 'num' }, formatStat((made / tries) * 100, 'pct')) : noneCell('No attempts', true);
 const count = (n: number): HTMLElement => h('td', { class: 'num' }, String(n));
+const ratio = (top: number, bottom: number): number | null => (bottom ? top / bottom : null);
+
+/** A team stats column: a per-game figure, a rate, or a count. */
+function teamColumn(
+  id: string,
+  label: string,
+  title: string,
+  value: (t: TeamSeasonStats) => number | null,
+  cell: (t: TeamSeasonStats) => HTMLElement,
+  first: 'asc' | 'desc' = 'desc'
+): TableColumn<TeamSeasonStats> {
+  return { id, label, title, name: spoken(title), type: 'number', numeric: true, first, value, cell };
+}
 
 /** Team offense or defense, one row per club, best first. */
 function teamTable(
   league: League,
   stats: readonly TeamSeasonStats[],
   side: 'offense' | 'defense',
-  season: number
+  season: number,
+  status: HTMLElement
 ): HTMLElement {
   const user = league.meta.start.userTeam;
+  const offense = side === 'offense';
   const rows = [...stats]
     .filter(t => t.games)
     .sort((a, b) =>
-      side === 'offense'
+      offense
         ? b.pointsFor / b.games - a.pointsFor / a.games
         : a.pointsAgainst / a.games - b.pointsAgainst / b.games
     );
-  const offense = side === 'offense';
-  const head = offense
-    ? [
-        statHeader('G', 'Games'),
-        statHeader('Pts/G', 'Points per game'),
-        statHeader('Yds/G', 'Yards per game'),
-        statHeader('Pass/G', 'Net passing yards per game'),
-        statHeader('Rush/G', 'Rushing yards per game'),
-        statHeader('3rd%', 'Third down conversion rate'),
-        statHeader('RZ%', 'Red zone touchdown rate'),
-        statHeader('TO', 'Turnovers')
-      ]
-    : [
-        statHeader('G', 'Games'),
-        statHeader('Pts/G', 'Points allowed per game'),
-        statHeader('Yds/G', 'Yards allowed per game'),
-        statHeader('Pass/G', 'Net passing yards allowed per game'),
-        statHeader('Rush/G', 'Rushing yards allowed per game'),
-        statHeader('Sk', 'Sacks'),
-        statHeader('TA', 'Takeaways')
-      ];
-  const cells = (t: TeamSeasonStats) => {
-    const o = t.offense;
-    const d = t.defense;
-    return offense
+  const games = teamColumn('games', 'G', 'Games', t => t.games, t => count(t.games));
+  const columns: TableColumn<TeamSeasonStats>[] = [
+    { id: 'team', label: 'Team', name: 'team', type: 'text', value: t => nick(t.team), cell: t => h('th', { scope: 'row' }, teamLink(t.team), t.team === user ? h('span', { class: 'sr-only' }, ' (your team)') : null) },
+    games,
+    ...(offense
       ? [
-          count(t.games),
-          perGame(t.pointsFor, t.games),
-          perGame(o.totalYards, t.games),
-          perGame(o.netPassYds, t.games),
-          perGame(o.rushYds, t.games),
-          rate(o.thirdDownConv, o.thirdDownAtt),
-          rate(o.redZoneTd, o.redZoneTrips),
-          count(o.turnovers)
+          teamColumn('points', 'Pts/G', 'Points per game', t => ratio(t.pointsFor, t.games), t => perGame(t.pointsFor, t.games)),
+          teamColumn('yards', 'Yds/G', 'Yards per game', t => ratio(t.offense.totalYards, t.games), t => perGame(t.offense.totalYards, t.games)),
+          teamColumn('pass', 'Pass/G', 'Net passing yards per game', t => ratio(t.offense.netPassYds, t.games), t => perGame(t.offense.netPassYds, t.games)),
+          teamColumn('rush', 'Rush/G', 'Rushing yards per game', t => ratio(t.offense.rushYds, t.games), t => perGame(t.offense.rushYds, t.games)),
+          teamColumn('third', '3rd%', 'Third down conversion rate', t => ratio(t.offense.thirdDownConv, t.offense.thirdDownAtt), t => rate(t.offense.thirdDownConv, t.offense.thirdDownAtt)),
+          teamColumn('redZone', 'RZ%', 'Red zone touchdown rate', t => ratio(t.offense.redZoneTd, t.offense.redZoneTrips), t => rate(t.offense.redZoneTd, t.offense.redZoneTrips)),
+          teamColumn('turnovers', 'TO', 'Turnovers', t => t.offense.turnovers, t => count(t.offense.turnovers), 'asc')
         ]
       : [
-          count(t.games),
-          perGame(t.pointsAgainst, t.games),
-          perGame(d.totalYards, t.games),
-          perGame(d.netPassYds, t.games),
-          perGame(d.rushYds, t.games),
-          count(d.sacked),
-          count(d.turnovers)
-        ];
-  };
-  const caption = `${season} team ${side}, ${offense ? 'most points first' : 'fewest points allowed first'}`;
-  const table = h(
-    'table',
-    { class: 'stat-table standings-table' },
-    h('caption', null, caption),
-    h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Team'), ...head)),
-    h('tbody', null, ...rows.map(t => h('tr', { class: t.team === user ? 'is-us' : null }, h('th', { scope: 'row' }, teamLink(t.team), t.team === user ? h('span', { class: 'sr-only' }, ' (your team)') : null), ...cells(t))))
-  ); // prettier-ignore
-  return scrollRegion(caption, table);
-}
+          teamColumn('points', 'Pts/G', 'Points allowed per game', t => ratio(t.pointsAgainst, t.games), t => perGame(t.pointsAgainst, t.games), 'asc'),
+          teamColumn('yards', 'Yds/G', 'Yards allowed per game', t => ratio(t.defense.totalYards, t.games), t => perGame(t.defense.totalYards, t.games), 'asc'),
+          teamColumn('pass', 'Pass/G', 'Net passing yards allowed per game', t => ratio(t.defense.netPassYds, t.games), t => perGame(t.defense.netPassYds, t.games), 'asc'),
+          teamColumn('rush', 'Rush/G', 'Rushing yards allowed per game', t => ratio(t.defense.rushYds, t.games), t => perGame(t.defense.rushYds, t.games), 'asc'),
+          teamColumn('sacks', 'Sk', 'Sacks', t => t.defense.sacked, t => count(t.defense.sacked)),
+          teamColumn('takeaways', 'TA', 'Takeaways', t => t.defense.turnovers, t => count(t.defense.turnovers))
+        ])
+  ];
+  return sortableTable({
+    key: `stats.teams.${side}`,
+    name: `team ${side}`,
+    caption: `${season} team ${side}`,
+    className: 'stat-table standings-table',
+    columns,
+    rows,
+    rowId: t => t.team,
+    rowAttrs: t => ({ class: t.team === user ? 'is-us' : null }),
+    defaultOrder: offense ? 'by points per game, most first' : 'by points allowed per game, fewest first',
+    scroll: true,
+    status
+  }).element;
+} // prettier-ignore
 
 function teamsView(app: AppState, league: League, seasons: readonly number[]): HTMLElement {
   const season = select(
@@ -370,7 +367,7 @@ function teamsView(app: AppState, league: League, seasons: readonly number[]): H
       mount(
         body,
         clubs
-          ? h('div', { class: 'stack' }, card('Offense', teamTable(league, stats, 'offense', shown)), card('Defense', teamTable(league, stats, 'defense', shown)))
+          ? h('div', { class: 'stack' }, card('Offense', teamTable(league, stats, 'offense', shown, status)), card('Defense', teamTable(league, stats, 'defense', shown, status)))
           : h('p', { class: 'empty' }, 'No games have been played yet.')
       );
       if (announce) status.textContent = `${shown} team stats: ${clubs} teams.`;

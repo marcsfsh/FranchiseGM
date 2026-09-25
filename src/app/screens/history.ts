@@ -18,7 +18,7 @@ import {
 import { h, mount } from '../dom';
 import { href } from '../router';
 import { CATEGORY_TITLES, STAT_NAMES, formatStat } from '../ui/stat-columns';
-import { scrollRegion } from '../ui/stat-table';
+import { sortableTable, type TableColumn } from '../ui/sortable';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
 
@@ -74,60 +74,27 @@ function entryTable(
 ): HTMLElement {
   const team = view === 'team';
   const rank = ranks(entries);
-  return h(
-    'table',
-    { class: 'stat-table record-table' },
-    h('caption', null, caption),
-    h(
-      'thead',
-      null,
-      h(
-        'tr',
-        null,
-        h('th', { scope: 'col' }, 'Rank'),
-        h('th', { scope: 'col' }, team ? 'Team' : 'Player'),
-        h('th', { scope: 'col' }, whenLabel(view, choice.teamRecord)),
-        h('th', { scope: 'col', class: 'num' }, 'Total')
-      )
-    ),
-    h(
-      'tbody',
-      null,
-      ...entries.map((e, i) => {
-        const player = e.playerId ? league.players[e.playerId] : undefined;
-        const who = team
-          ? h('th', { scope: 'row' }, teamFullName(e.team))
-          : h(
-              'th',
-              { scope: 'row' },
-              player
-                ? h(
-                    'a',
-                    {
-                      href: href('player', { id: player.id }),
-                      'data-player-link': player.id,
-                      on: {
-                        click: () => {
-                          opened = { playerId: player.id, scroll: window.scrollY };
-                        }
-                      }
-                    },
-                    fullName(player)
-                  )
-                : 'Former player'
-            );
-        return h(
-          'tr',
-          null,
-          h('td', null, rank[i] ?? ''),
-          who,
-          team ? h('td', null, String(e.season)) : h('td', null, teamCell(e.team), ` ${e.season}`),
-          h('td', { class: 'num' }, formatStat(e.value, 'int'))
-        );
-      })
-    )
-  );
-}
+  const place = new Map(entries.map((e, i) => [e, i]));
+  const player = (e: RecordEntry) => (e.playerId ? league.players[e.playerId] : undefined);
+  const who = (e: RecordEntry): HTMLElement => {
+    if (team) return h('th', { scope: 'row' }, teamFullName(e.team));
+    const p = player(e);
+    return h(
+      'th',
+      { scope: 'row' },
+      p
+        ? h('a', { href: href('player', { id: p.id }), 'data-player-link': p.id, on: { click: () => { opened = { playerId: p.id, scroll: window.scrollY }; } } }, fullName(p))
+        : 'Former player'
+    );
+  };
+  const columns: TableColumn<RecordEntry>[] = [
+    { id: 'rank', label: 'Rank', name: 'rank', type: 'number', first: 'asc', words: ['top first', 'bottom first'], value: e => place.get(e), cell: e => h('td', null, rank[place.get(e) ?? 0] ?? '') },
+    { id: 'who', label: team ? 'Team' : 'Player', name: team ? 'team' : 'player', type: 'text', value: e => { const p = player(e); return team ? teamFullName(e.team) : p ? `${p.lastName} ${p.firstName}` : null; }, cell: who },
+    { id: 'when', label: whenLabel(view, choice.teamRecord), name: 'season', type: 'number', first: 'asc', value: e => e.season, cell: e => (team ? h('td', null, String(e.season)) : h('td', null, teamCell(e.team), ` ${e.season}`)) },
+    { id: 'total', label: 'Total', name: 'total', type: 'number', numeric: true, value: e => e.value, cell: e => h('td', { class: 'num' }, formatStat(e.value, 'int')) }
+  ];
+  return sortableTable({ key: `records.${view}`, name: caption.toLowerCase(), caption, className: 'stat-table record-table', columns, rows: entries, rowId: e => String(place.get(e) ?? 0).padStart(3, '0'), defaultOrder: 'by rank', scroll: true }).element;
+} // prettier-ignore
 
 function recordsView(league: League, book: RecordsBook): { node: HTMLElement; restore(): void } {
   const scope = h(
@@ -176,7 +143,7 @@ function recordsView(league: League, book: RecordsBook): { node: HTMLElement; re
     mount(
       body,
       entries.length
-        ? scrollRegion(caption, entryTable(league, entries, caption, view))
+        ? entryTable(league, entries, caption, view)
         : h(
             'p',
             { class: 'empty' },

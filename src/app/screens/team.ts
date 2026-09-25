@@ -14,7 +14,7 @@ import { record } from '../format';
 import { href } from '../router';
 import { clubSeason } from '../ui/games';
 import { playerLink, statusTag, tierPlate } from '../ui/players';
-import { scrollRegion, statHeader } from '../ui/stat-table';
+import { sortableTable, type TableColumn } from '../ui/sortable';
 import { tabs } from '../ui/tabs';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
@@ -30,28 +30,39 @@ const RESERVE: readonly Player['status'][] = ['ir', 'pup', 'nfi', 'suspended'];
 /** The roster by position, best first within each; reserve lists and the practice squad after. */
 function rosterTable(league: League, abbr: TeamAbbr): HTMLElement {
   const today = calendarDay(league.date);
-  const byPosition = (a: Player, b: Player) =>
-    (ORDER.get(a.position) ?? 99) - (ORDER.get(b.position) ?? 99) || b.ovr - a.ovr || (a.id < b.id ? -1 : 1);
-  const players = Object.values(league.players).filter(p => p.team === abbr);
-  const groups: [string, Player[]][] = [
-    ['Active roster', players.filter(p => p.status === 'active').sort(byPosition)],
-    ['Reserve lists', players.filter(p => RESERVE.includes(p.status)).sort(byPosition)],
-    ['Practice squad', players.filter(p => p.status === 'practice').sort(byPosition)]
+  const GROUPS = ['Active roster', 'Reserve lists', 'Practice squad'];
+  const groupOf = (p: Player) => (p.status === 'active' ? 0 : RESERVE.includes(p.status) ? 1 : 2);
+  const players = Object.values(league.players)
+    .filter(p => p.team === abbr)
+    .sort(
+      (a, b) =>
+        groupOf(a) - groupOf(b) ||
+        (ORDER.get(a.position) ?? 99) - (ORDER.get(b.position) ?? 99) ||
+        b.ovr - a.ovr ||
+        (a.id < b.id ? -1 : 1)
+    );
+  const columns: TableColumn<Player>[] = [
+    { id: 'jersey', label: '#', title: 'Jersey number', name: 'jersey number', type: 'number', first: 'asc', numeric: true, value: p => p.jersey, cell: p => h('td', { class: 'num' }, String(p.jersey)) },
+    { id: 'player', label: 'Player', name: 'player', type: 'text', value: p => `${p.lastName} ${p.firstName}`, cell: p => h('th', { scope: 'row' }, playerLink(p)) },
+    { id: 'position', label: 'Pos', title: 'Position', name: 'position', type: 'number', first: 'asc', words: ['quarterbacks first', 'specialists first'], value: p => ORDER.get(p.position), cell: p => h('td', null, p.position) },
+    { id: 'age', label: 'Age', name: 'age', type: 'number', numeric: true, value: p => ageOn(p.birthDate, today), cell: p => h('td', { class: 'num' }, String(ageOn(p.birthDate, today))) },
+    { id: 'ovr', label: 'OVR', title: 'Overall', name: 'overall', type: 'rating', value: p => p.ovr, cell: p => h('td', null, tierPlate(p.ovr)) },
+    { id: 'status', label: 'Status', name: 'status', type: 'number', first: 'asc', words: ['active first', 'practice squad first'], value: groupOf, cell: p => h('td', null, statusTag(p.status)) }
   ];
-  const columns = 6;
-  const table = h(
-    'table',
-    { class: 'stat-table team-roster' },
-    h('caption', { class: 'sr-only' }, `${teamFullName(abbr)} roster`),
-    h('thead', null, h('tr', null, statHeader('#', 'Jersey number'), h('th', { scope: 'col' }, 'Player'), h('th', { scope: 'col' }, 'Pos'), statHeader('Age', 'Age'), h('th', { scope: 'col' }, 'OVR'), h('th', { scope: 'col' }, 'Status'))),
-    ...groups.filter(([, list]) => list.length).map(([label, list]) =>
-      h('tbody', null, h('tr', { class: 'group-row' }, h('th', { scope: 'rowgroup', colspan: String(columns) }, `${label} (${list.length})`)), ...list.map(p =>
-        h('tr', null, h('td', { class: 'num' }, String(p.jersey)), h('th', { scope: 'row' }, playerLink(p)), h('td', null, p.position), h('td', { class: 'num' }, String(ageOn(p.birthDate, today))), h('td', null, tierPlate(p.ovr)), h('td', null, statusTag(p.status)))
-      ))
-    )
-  ); // prettier-ignore
-  return scrollRegion(`${teamFullName(abbr)} roster`, table);
-}
+  return sortableTable({
+    key: 'team.roster',
+    name: `${teamFullName(abbr)} roster`,
+    caption: `${teamFullName(abbr)} roster`,
+    captionClass: 'sr-only',
+    className: 'stat-table team-roster',
+    columns,
+    rows: players,
+    rowId: p => p.id,
+    defaultOrder: 'by roster group and position',
+    group: { of: p => GROUPS[groupOf(p)] ?? '', heading: (group, count) => `${group} (${count})` },
+    scroll: true
+  }).element;
+} // prettier-ignore
 
 export function teamScreen(): Screen {
   return {

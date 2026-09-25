@@ -20,6 +20,7 @@ import {
 import { defaultExperiments, type RunPlan } from '../../engine/calibration/run';
 import type { MetricResult, Status, TargetsFile } from '../../engine/calibration/targets';
 import { devMenuOn } from '../dev-menu';
+import { sortableTable, type TableColumn } from '../ui/sortable';
 import { h, mount } from '../dom';
 import { showBusy, toast } from '../feedback';
 import type { AppState } from '../state';
@@ -160,62 +161,36 @@ const statusChip = (r: MetricResult) => {
  * One group of results: a table where there's room, labeled rows in narrow spaces and at large text
  * sizes (style guide 7.3). The heading names both.
  */
-function resultGroup(key: string, title: string, rows: readonly MetricResult[]): HTMLElement {
+/** Status order for sorting: failures first when high to low. */
+const STATUS_RANK: Record<Status, number> = { fail: 4, warn: 3, pass: 2, info: 1, pending: 0 };
+
+function resultGroup(key: string, title: string, rows: readonly MetricResult[], status: HTMLElement): HTMLElement {
   const id = `metrics-${key}`;
-  const table = h(
-    'table',
-    { class: 'stat-table metric-table' },
-    h('caption', { class: 'sr-only' }, title),
-    h(
-      'thead',
-      null,
-      h(
-        'tr',
-        null,
-        h('th', { scope: 'col' }, 'Metric'),
-        h('th', { scope: 'col', class: 'num' }, SOURCE_LABELS.replays),
-        h('th', { scope: 'col', class: 'num' }, SOURCE_LABELS.loop),
-        h('th', { scope: 'col' }, 'Target'),
-        h('th', { scope: 'col' }, 'Status')
-      )
-    ),
-    h(
-      'tbody',
-      null,
-      ...rows.map(r =>
-        h(
-          'tr',
-          null,
-          h('th', { scope: 'row' }, r.label),
-          h('td', { class: 'num' }, valueText(r, r.replays.value)),
-          h('td', { class: 'num' }, valueText(r, r.loop.value)),
-          h('td', null, targetText(r)),
-          h('td', null, statusChip(r))
-        )
-      )
-    )
-  );
-  const list = h(
-    'ul',
-    { class: 'metric-list', 'aria-labelledby': id },
-    ...rows.map(r =>
-      h(
-        'li',
-        { class: 'metric-row' },
+  const items = new Map(
+    rows.map(r => [
+      r.id,
+      h('li', { class: 'metric-row' },
         h('span', { class: 'metric-name' }, r.label),
         statusChip(r),
-        h(
-          'dl',
-          { class: 'metric-facts' },
+        h('dl', { class: 'metric-facts' },
           h('div', null, h('dt', null, SOURCE_LABELS.replays), h('dd', null, valueText(r, r.replays.value))),
           h('div', null, h('dt', null, SOURCE_LABELS.loop), h('dd', null, valueText(r, r.loop.value))),
           h('div', null, h('dt', null, 'Target'), h('dd', null, targetText(r)))
         )
       )
-    )
+    ])
   );
-  return h('div', { class: 'metric-region' }, h('h4', { class: 'metric-title', id }, title), table, list);
-}
+  const list = h('ul', { class: 'metric-list', 'aria-labelledby': id });
+  const columns: TableColumn<MetricResult>[] = [
+    { id: 'metric', label: 'Metric', name: 'metric', type: 'text', value: r => r.label, cell: r => h('th', { scope: 'row' }, r.label) },
+    { id: 'replays', label: SOURCE_LABELS.replays, name: 'replays', type: 'number', numeric: true, value: r => r.replays.value, cell: r => h('td', { class: 'num' }, valueText(r, r.replays.value)) },
+    { id: 'loop', label: SOURCE_LABELS.loop, name: 'weekly loop', type: 'number', numeric: true, value: r => r.loop.value, cell: r => h('td', { class: 'num' }, valueText(r, r.loop.value)) },
+    { id: 'target', label: 'Target', name: 'target', type: 'number', first: 'asc', value: r => r.target?.pass[0], cell: r => h('td', null, targetText(r)) },
+    { id: 'status', label: 'Status', name: 'status', type: 'number', words: ['passes first', 'failures first'], value: r => STATUS_RANK[r.status], cell: r => h('td', null, statusChip(r)) }
+  ];
+  const table = sortableTable({ key: `dev.${key}`, name: title.toLowerCase(), caption: title, captionClass: 'sr-only', className: 'stat-table metric-table', columns, rows, rowId: r => r.id, defaultOrder: 'in report order', status, onSort: ordered => list.replaceChildren(...ordered.map(r => items.get(r.id) as HTMLElement)) });
+  return h('div', { class: 'metric-region' }, h('h4', { class: 'metric-title', id }, title), table.element, list);
+} // prettier-ignore
 
 function saveReport(report: CalibrationReport): void {
   const blob = new Blob([reportMarkdown(report)], { type: 'text/markdown' });
@@ -230,7 +205,7 @@ function saveReport(report: CalibrationReport): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function reportView(report: CalibrationReport): HTMLElement {
+function reportView(report: CalibrationReport, status: HTMLElement): HTMLElement {
   const c = report.counts;
   const flagged = report.results.filter(r => r.status === 'warn' || r.status === 'fail');
   const groups = [...new Set(report.results.map(r => r.group))] as MetricGroup[];
@@ -256,12 +231,13 @@ function reportView(report: CalibrationReport): HTMLElement {
     ),
     h('p', { class: 'hint' }, 'The report lasts until you close the page. Save report keeps a copy.'),
     h('div', { class: 'btn-row' }, save),
-    flagged.length ? resultGroup('flagged', 'Warnings and failures', flagged) : null,
+    flagged.length ? resultGroup('flagged', 'Warnings and failures', flagged, status) : null,
     ...groups.map(g =>
       resultGroup(
         g,
         GROUP_TITLES[g],
-        report.results.filter(r => r.group === g)
+        report.results.filter(r => r.group === g),
+        status
       )
     )
   );
@@ -323,7 +299,7 @@ function calibrationCard({ app }: ScreenContext): HTMLElement {
   // The step line follows every replay; the status line announces only the start, each quarter, and the end.
   const step = h('p', { class: 'muted', hidden: true });
   const status = h('p', { class: 'muted', role: 'status' });
-  const results = h('div', { class: 'stack' }, visit.report ? reportView(visit.report) : noReport());
+  const results = h('div', { class: 'stack' }, visit.report ? reportView(visit.report, status) : noReport());
   let runIdle: (() => void) | null = null;
   let cancelIdle: (() => void) | null = null;
 
@@ -415,7 +391,7 @@ function calibrationCard({ app }: ScreenContext): HTMLElement {
   view = {
     sync,
     announce: message => (status.textContent = message),
-    showReport: report => mount(results, reportView(report))
+    showReport: report => mount(results, reportView(report, status))
   };
   sync();
   return card(

@@ -1,0 +1,108 @@
+/* Sortable tables (post-M23 section 1.2, style guide 7.3). Tokens only. */
+.sortable {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  min-width: 0;
+}
+.sort-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+}
+.sort-toggle {
+  gap: var(--s2);
+}
+.sort-summary {
+  font-size: var(--fs-small);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sort-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.sort-panel .field-label {
+  margin: 0;
+}
+.sort-levels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sort-level {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+.sort-level-n {
+  flex: 0 0 auto;
+  min-width: 4.5rem;
+  font-weight: 700;
+}
+.sort-level-pick {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  min-width: 0;
+}
+.sort-level-pick .select {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+.sort-level-moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+/* A sortable header is a button that looks like the header it sits in. */
+th:has(> .sort-btn) {
+  padding-block: 0;
+}
+.sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  min-height: var(--tap);
+  min-width: var(--tap);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-align: inherit;
+  cursor: pointer;
+}
+th.num > .sort-btn {
+  justify-content: flex-end;
+}
+.sort-btn:hover {
+  text-decoration: underline;
+}
+.sort-mark {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+}
+th.is-sorted {
+  box-shadow: inset 0 -3px 0 var(--selection-indicator);
+}
+@media (forced-colors: active) {
+  th.is-sorted {
+    border-bottom: 3px solid Highlight;
+  }
+}

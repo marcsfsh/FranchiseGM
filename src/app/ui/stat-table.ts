@@ -4,6 +4,8 @@
  * and a scroll region that becomes a labeled, focusable landmark only while its table overflows.
  */
 import { h } from '../dom';
+import type { TableColumn } from './sortable';
+import { spoken } from './sort-rows';
 import { formatStat, type StatColumn } from './stat-columns';
 
 /** A column header showing the short label, read out as the full name. */
@@ -69,4 +71,21 @@ export function scrollRegion(label: string, table: HTMLElement): HTMLElement {
   }
   requestAnimationFrame(update);
   return h('div', { class: 'stat-block' }, region, hint);
+}
+
+/** Stat columns as sortable table columns (post-M23 section 1.2), each reading its row's stat line. */
+export function sortableStats<Row>(
+  columns: readonly StatColumn[],
+  line: (row: Row) => Parameters<StatColumn['value']>[0]
+): TableColumn<Row>[] {
+  return columns.map((c, i) => ({
+    id: `stat${i}`,
+    label: c.label,
+    title: c.title,
+    name: spoken(c.title),
+    type: 'number',
+    numeric: true,
+    value: row => c.value(line(row)),
+    cell: row => statCell(c.value(line(row)), c.format)
+  }));
 }

@@ -19,7 +19,9 @@ import { href } from '../router';
 import { nick, weekLabel } from '../ui/games';
 import { playerLink } from '../ui/players';
 import { CATEGORY_TITLES, formatStat, STAT_COLUMNS } from '../ui/stat-columns';
-import { scrollRegion, statCell, statHeader, statKey } from '../ui/stat-table';
+import { sortableTable, type TableColumn } from '../ui/sortable';
+import { spoken } from '../ui/sort-rows';
+import { sortableStats, statKey } from '../ui/stat-table';
 import { tabs } from '../ui/tabs';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
@@ -56,19 +58,26 @@ const DRIVE_RESULTS: Record<DriveResult, string> = {
   endOfGame: 'End of game'
 };
 
+interface Side {
+  abbr: TeamAbbr;
+  points: readonly number[];
+  total: number;
+}
+
 /** The line score: points by quarter (and overtime) for each team. */
 function lineScore(record: GameRecord): HTMLElement {
   const periods = Math.max(record.quarters.home.length, record.quarters.away.length);
-  const row = (abbr: TeamAbbr, points: readonly number[], total: number) =>
-    h('tr', null, h('th', { scope: 'row' }, nick(abbr)), ...Array.from({ length: periods }, (_, i) => h('td', { class: 'num' }, String(points[i] ?? 0))), h('td', { class: 'num' }, h('strong', null, String(total)))); // prettier-ignore
-  return h(
-    'table',
-    { class: 'stat-table line-score' },
-    h('caption', { class: 'sr-only' }, 'Points by quarter'),
-    h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Team'), ...Array.from({ length: periods }, (_, i) => statHeader(shortQuarter(i + 1), quarterName(i + 1))), statHeader('T', 'Total'))),
-    h('tbody', null, row(record.away, record.quarters.away, record.score.away), row(record.home, record.quarters.home, record.score.home))
-  ); // prettier-ignore
-}
+  const sides: Side[] = [
+    { abbr: record.away, points: record.quarters.away, total: record.score.away },
+    { abbr: record.home, points: record.quarters.home, total: record.score.home }
+  ];
+  const columns: TableColumn<Side>[] = [
+    { id: 'team', label: 'Team', name: 'team', type: 'text', value: s => nick(s.abbr), cell: s => h('th', { scope: 'row' }, nick(s.abbr)) },
+    ...Array.from({ length: periods }, (_, i): TableColumn<Side> => ({ id: `q${i + 1}`, label: shortQuarter(i + 1), title: quarterName(i + 1), name: spoken(quarterName(i + 1)), type: 'number', numeric: true, value: s => s.points[i] ?? 0, cell: s => h('td', { class: 'num' }, String(s.points[i] ?? 0)) })),
+    { id: 'total', label: 'T', title: 'Total', name: 'total', type: 'number', numeric: true, value: s => s.total, cell: s => h('td', { class: 'num' }, h('strong', null, String(s.total))) }
+  ];
+  return sortableTable({ key: 'game.lineScore', name: 'line score', caption: 'Points by quarter', captionClass: 'sr-only', className: 'stat-table line-score', columns, rows: sides, rowId: s => s.abbr, defaultOrder: 'with the visitors first', scroll: true }).element;
+} // prettier-ignore
 
 function weatherText(record: GameRecord): string {
   const w = record.weather;
@@ -79,15 +88,17 @@ function weatherText(record: GameRecord): string {
 
 function scoringSummary(record: GameRecord): HTMLElement {
   if (!record.scoring.length) return h('p', { class: 'empty' }, 'Neither team scored.');
-  const table = h(
-    'table',
-    { class: 'stat-table scoring-table' },
-    h('caption', { class: 'sr-only' }, 'Scoring summary'),
-    h('thead', null, h('tr', null, statHeader('Qtr', 'Quarter', false), statHeader('Time', 'Time left in the quarter', false), h('th', { scope: 'col' }, 'Team'), h('th', { scope: 'col' }, 'Play'), statHeader(record.away, `${nick(record.away)} score`), statHeader(record.home, `${nick(record.home)} score`))),
-    h('tbody', null, ...record.scoring.map((s: ScoringPlay) => h('tr', null, h('td', null, shortQuarter(s.quarter)), h('td', null, clock(s.clock)), h('th', { scope: 'row' }, nick(s.team)), h('td', { class: 'play' }, s.description), h('td', { class: 'num' }, String(s.away)), h('td', { class: 'num' }, String(s.home)))))
-  ); // prettier-ignore
-  return scrollRegion('Scoring summary', table);
-}
+  const order = new Map(record.scoring.map((s, i) => [s, i]));
+  const columns: TableColumn<ScoringPlay>[] = [
+    { id: 'quarter', label: 'Qtr', title: 'Quarter', name: 'quarter', type: 'number', first: 'asc', value: s => s.quarter, cell: s => h('td', null, shortQuarter(s.quarter)) },
+    { id: 'time', label: 'Time', title: 'Time left in the quarter', name: 'time left in the quarter', type: 'number', value: s => s.clock, cell: s => h('td', null, clock(s.clock)) },
+    { id: 'team', label: 'Team', name: 'team', type: 'text', value: s => nick(s.team), cell: s => h('th', { scope: 'row' }, nick(s.team)) },
+    { id: 'play', label: 'Play', name: 'play', type: 'text', value: s => s.description, cell: s => h('td', { class: 'play' }, s.description) },
+    { id: 'away', label: record.away, title: `${nick(record.away)} score`, name: `${nick(record.away)} score`, type: 'number', numeric: true, value: s => s.away, cell: s => h('td', { class: 'num' }, String(s.away)) },
+    { id: 'home', label: record.home, title: `${nick(record.home)} score`, name: `${nick(record.home)} score`, type: 'number', numeric: true, value: s => s.home, cell: s => h('td', { class: 'num' }, String(s.home)) }
+  ];
+  return sortableTable({ key: 'game.scoring', name: 'scoring summary', caption: 'Scoring summary', captionClass: 'sr-only', className: 'stat-table scoring-table', columns, rows: record.scoring, rowId: s => String(order.get(s) ?? 0).padStart(3, '0'), defaultOrder: 'in the order they happened', scroll: true }).element;
+} // prettier-ignore
 
 function injuryList(league: League, record: GameRecord): HTMLElement | null {
   if (!record.injuries.length && !record.ejections.length) return null;
@@ -133,14 +144,23 @@ function teamStats(record: GameRecord): HTMLElement {
     ['Penalties, yards', t => `${t.penalties}, ${t.penaltyYds}`],
     ['Time of possession', t => clock(t.timeOfPossession)]
   ];
-  return h(
-    'table',
-    { class: 'stat-table team-stats' },
-    h('caption', { class: 'sr-only' }, 'Team stats'),
-    h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Stat'), h('th', { scope: 'col', class: 'num' }, nick(record.away)), h('th', { scope: 'col', class: 'num' }, nick(record.home)))),
-    h('tbody', null, ...rows.map(([label, value]) => h('tr', null, h('th', { scope: 'row' }, label), h('td', { class: 'num' }, value(a)), h('td', { class: 'num' }, value(b)))))
-  ); // prettier-ignore
-}
+  // Each figure sorts by its first number, or by the seconds in a clock time.
+  const numberIn = (text: string): number | null => {
+    const time = /^(\d+):(\d+)$/.exec(text);
+    if (time) return Number(time[1]) * 60 + Number(time[2]);
+    const first = /\d+/.exec(text);
+    return first ? Number(first[0]) : null;
+  };
+  type Line = (typeof rows)[number];
+  const side = (id: 'away' | 'home', abbr: TeamAbbr, totals: TeamTotals): TableColumn<Line> =>
+    ({ id, label: nick(abbr), name: nick(abbr), type: 'number', numeric: true, value: ([, value]) => numberIn(value(totals)), cell: ([, value]) => h('td', { class: 'num' }, value(totals)) });
+  const columns: TableColumn<Line>[] = [
+    { id: 'stat', label: 'Stat', name: 'stat', type: 'text', value: ([label]) => label, cell: ([label]) => h('th', { scope: 'row' }, label) },
+    side('away', record.away, a),
+    side('home', record.home, b)
+  ];
+  return sortableTable({ key: 'game.teamStats', name: 'team stats', caption: 'Team stats', captionClass: 'sr-only', className: 'stat-table team-stats', columns, rows, rowId: ([label]) => label, defaultOrder: 'in the box score order' }).element;
+} // prettier-ignore
 
 /** How each category's lines are ordered: the most involved players first. */
 const WEIGHT: Record<CategoryId, (v: Readonly<Record<string, number>>) => number> = {
@@ -163,18 +183,12 @@ const MORE: readonly CategoryId[] = ['blocking', 'participation'];
 function categoryTable(league: League, abbr: TeamAbbr, category: CategoryId, lines: readonly GameLine[]): HTMLElement | null {
   const rows = lines.filter(l => l.table === category).sort((x, y) => WEIGHT[category](y.row.values) - WEIGHT[category](x.row.values) || (x.row.playerId < y.row.playerId ? -1 : 1));
   if (!rows.length) return null;
-  const columns = STAT_COLUMNS[category];
-  const table = h(
-    'table',
-    { class: 'stat-table' },
-    h('caption', null, CATEGORY_TITLES[category]),
-    h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Player'), ...columns.map(c => statHeader(c.label, c.title)))),
-    h('tbody', null, ...rows.map(l => {
-      const p = league.players[l.row.playerId];
-      return h('tr', null, h('th', { scope: 'row' }, p ? playerLink(p) : 'Former player'), ...columns.map(c => statCell(c.value(l.row.values), c.format)));
-    }))
-  );
-  return scrollRegion(`${nick(abbr)} ${CATEGORY_TITLES[category].toLowerCase()}`, table);
+  const player = (l: GameLine) => league.players[l.row.playerId];
+  const columns: TableColumn<GameLine>[] = [
+    { id: 'player', label: 'Player', name: 'player', type: 'text', value: l => { const p = player(l); return p ? `${p.lastName} ${p.firstName}` : null; }, cell: l => { const p = player(l); return h('th', { scope: 'row' }, p ? playerLink(p) : 'Former player'); } },
+    ...sortableStats<GameLine>(STAT_COLUMNS[category], l => l.row.values)
+  ];
+  return sortableTable({ key: `game.${category}`, name: `${nick(abbr)} ${CATEGORY_TITLES[category].toLowerCase()}`, caption: CATEGORY_TITLES[category], className: 'stat-table', columns, rows, rowId: l => l.row.playerId, defaultOrder: 'with the most involved players first', scroll: true }).element;
 } // prettier-ignore
 
 /** One team's player lines, a table per category, and its accepted fouls. */
@@ -252,18 +266,21 @@ function boxPanel(league: League, record: GameRecord, lines: readonly GameLine[]
 function drivesPanel(record: GameRecord): HTMLElement {
   if (!record.drives.length)
     return card('Drives', h('p', { class: 'empty' }, 'No drives are stored for this game.'));
-  const table = h(
-    'table',
-    { class: 'stat-table drive-table' },
-    h('caption', { class: 'sr-only' }, 'Drive summaries'),
-    h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Team'), statHeader('Qtr', 'Quarter', false), statHeader('Start', 'Time left when the drive began', false), statHeader('Field', 'Starting field position', false), statHeader('Plays', 'Plays'), statHeader('Yds', 'Yards'), statHeader('Time', 'Time of possession'), h('th', { scope: 'col' }, 'Result'))),
-    h('tbody', null, ...record.drives.map((d: DriveSummary) => {
-      const other = d.team === record.home ? record.away : record.home;
-      return h('tr', null, h('th', { scope: 'row' }, nick(d.team)), h('td', null, shortQuarter(d.quarter)), h('td', null, clock(d.clock)), h('td', null, yardLine(d.start, d.team, other)), h('td', { class: 'num' }, String(d.plays)), h('td', { class: 'num' }, formatStat(d.yards, 'int')), h('td', { class: 'num' }, clock(d.seconds)), h('td', null, DRIVE_RESULTS[d.result]));
-    }))
-  ); // prettier-ignore
-  return card('Drive summaries', scrollRegion('Drive summaries', table));
-}
+  const order = new Map(record.drives.map((d, i) => [d, i]));
+  const other = (d: DriveSummary) => (d.team === record.home ? record.away : record.home);
+  const columns: TableColumn<DriveSummary>[] = [
+    { id: 'team', label: 'Team', name: 'team', type: 'text', value: d => nick(d.team), cell: d => h('th', { scope: 'row' }, nick(d.team)) },
+    { id: 'quarter', label: 'Qtr', title: 'Quarter', name: 'quarter', type: 'number', first: 'asc', value: d => d.quarter, cell: d => h('td', null, shortQuarter(d.quarter)) },
+    { id: 'start', label: 'Start', title: 'Time left when the drive began', name: 'time left when the drive began', type: 'number', value: d => d.clock, cell: d => h('td', null, clock(d.clock)) },
+    { id: 'field', label: 'Field', title: 'Starting field position', name: 'starting field position', type: 'number', value: d => d.start, cell: d => h('td', null, yardLine(d.start, d.team, other(d))) },
+    { id: 'plays', label: 'Plays', name: 'plays', type: 'number', numeric: true, value: d => d.plays, cell: d => h('td', { class: 'num' }, String(d.plays)) },
+    { id: 'yards', label: 'Yds', title: 'Yards', name: 'yards', type: 'number', numeric: true, value: d => d.yards, cell: d => h('td', { class: 'num' }, formatStat(d.yards, 'int')) },
+    { id: 'time', label: 'Time', title: 'Time of possession', name: 'time of possession', type: 'number', numeric: true, value: d => d.seconds, cell: d => h('td', { class: 'num' }, clock(d.seconds)) },
+    { id: 'result', label: 'Result', name: 'result', type: 'text', value: d => DRIVE_RESULTS[d.result], cell: d => h('td', null, DRIVE_RESULTS[d.result]) }
+  ];
+  const table = sortableTable({ key: 'game.drives', name: 'drive summaries', caption: 'Drive summaries', captionClass: 'sr-only', className: 'stat-table drive-table', columns, rows: record.drives, rowId: d => String(order.get(d) ?? 0).padStart(3, '0'), defaultOrder: 'in the order they happened', scroll: true });
+  return card('Drive summaries', table.element);
+} // prettier-ignore
 
 /** Before kickoff: when and where, and both records. */
 function preview(league: League, game: ScheduledGame): HTMLElement {
@@ -307,7 +324,7 @@ function played(
     'section',
     { class: 'card' },
     h('div', { class: 'signbar' }, h('h2', { class: 'signbar-title' }, `Final${record.overtime ? ', overtime' : ''}`)),
-    h('div', { class: 'card-body' }, scrollRegion('Points by quarter', lineScore(record)), h('p', { class: 'muted' }, `${where}${weatherText(record)}`))
+    h('div', { class: 'card-body' }, lineScore(record), h('p', { class: 'muted' }, `${where}${weatherText(record)}`))
   ); // prettier-ignore
   const gameTabs = tabs(
     'Game',

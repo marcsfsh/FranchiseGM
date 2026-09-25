@@ -22,7 +22,7 @@ import { record } from '../format';
 import { href } from '../router';
 import { clubSeason, gameCard, nick, teamLink, weekLabel } from '../ui/games';
 import { playerLink, signed } from '../ui/players';
-import { scrollRegion, statHeader } from '../ui/stat-table';
+import { sortableTable, type TableColumn } from '../ui/sortable';
 import { tabs } from '../ui/tabs';
 import { card, pageHead } from './common';
 import { statsPanel } from './league-stats';
@@ -103,116 +103,103 @@ function tiebreakNotes(
   );
 }
 
-const DIVISION_COLUMNS = [
-  ['W', 'Wins'], ['L', 'Losses'], ['T', 'Ties'], ['Pct', 'Winning percentage'], ['PF', 'Points for'],
-  ['PA', 'Points against'], ['Net', 'Point differential'], ['Home', 'Home record'], ['Road', 'Road record'],
-  ['Div', 'Division record'], ['Conf', 'Conference record'], ['Strk', 'Streak']
-] as const; // prettier-ignore
+/** A record's winning percentage for sorting; unknown before its first game. */
+const rateOf = (r: WinLoss): number | null => (r.wins + r.losses + r.ties ? winPct(r) : null);
+/** A streak for sorting: wins count up, losses down, ties as none; unknown before the first game. */
+const streakOf = (streak: string): number | null =>
+  streak ? (streak.startsWith('W') ? 1 : streak.startsWith('L') ? -1 : 0) * Number(streak.slice(1)) : null;
+const count = (n: number): HTMLElement => h('td', { class: 'num' }, String(n));
 
-function divisionTable(standings: LeagueStandings, division: LeagueStandings['divisions'][number], user: TeamAbbr): HTMLElement {
+/** A split record column (home, road, division, conference), sorted by its winning percentage. */
+function recordColumn<Row>(id: string, label: string, title: string, of: (row: Row) => WinLoss): TableColumn<Row> {
+  return { id, label, title, name: title.toLowerCase(), type: 'number', numeric: true, value: row => rateOf(of(row)), cell: row => h('td', { class: 'num' }, winLoss(of(row))) };
+} // prettier-ignore
+
+function divisionTable(standings: LeagueStandings, division: LeagueStandings['divisions'][number], user: TeamAbbr, status: HTMLElement): HTMLElement {
   const records = standings.table.records;
-  const table = h(
-    'table',
-    { class: 'stat-table standings-table' },
-    h('caption', null, division.division),
-    h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Team'), ...DIVISION_COLUMNS.map(([label, title]) => statHeader(label, title)))),
-    h(
-      'tbody',
-      null,
-      ...division.teams.map(({ abbr }) => {
-        const r = records[abbr];
-        const o = r.overall;
-        return h(
-          'tr',
-          { class: abbr === user ? 'is-us' : null },
-          teamHeader(abbr, user),
-          ...[o.wins, o.losses, o.ties].map(n => h('td', { class: 'num' }, String(n))),
-          h('td', { class: 'num' }, pct(o)),
-          h('td', { class: 'num' }, String(r.pointsFor)),
-          h('td', { class: 'num' }, String(r.pointsAgainst)),
-          h('td', { class: 'num' }, signed(r.pointsFor - r.pointsAgainst)),
-          ...[r.home, r.away, r.division, r.conference].map(x => h('td', { class: 'num' }, winLoss(x))),
-          r.streak ? h('td', { class: 'num' }, r.streak) : noneCell('No games yet')
-        );
-      })
-    )
-  );
-  return h('div', { class: 'stack' }, scrollRegion(`${division.division} standings`, table), tiebreakNotes(standings, [division.teams]));
+  const rec = (r: Ranked) => records[r.abbr];
+  const columns: TableColumn<Ranked>[] = [
+    { id: 'team', label: 'Team', name: 'team', type: 'text', value: r => nick(r.abbr), cell: r => teamHeader(r.abbr, user) },
+    { id: 'wins', label: 'W', title: 'Wins', name: 'wins', type: 'number', numeric: true, value: r => rec(r).overall.wins, cell: r => count(rec(r).overall.wins) },
+    { id: 'losses', label: 'L', title: 'Losses', name: 'losses', type: 'number', numeric: true, value: r => rec(r).overall.losses, cell: r => count(rec(r).overall.losses) },
+    { id: 'ties', label: 'T', title: 'Ties', name: 'ties', type: 'number', numeric: true, value: r => rec(r).overall.ties, cell: r => count(rec(r).overall.ties) },
+    { id: 'pct', label: 'Pct', title: 'Winning percentage', name: 'winning percentage', type: 'number', numeric: true, value: r => rateOf(rec(r).overall), cell: r => h('td', { class: 'num' }, pct(rec(r).overall)) },
+    { id: 'pf', label: 'PF', title: 'Points for', name: 'points for', type: 'number', numeric: true, value: r => rec(r).pointsFor, cell: r => count(rec(r).pointsFor) },
+    { id: 'pa', label: 'PA', title: 'Points against', name: 'points against', type: 'number', numeric: true, first: 'asc', value: r => rec(r).pointsAgainst, cell: r => count(rec(r).pointsAgainst) },
+    { id: 'net', label: 'Net', title: 'Point differential', name: 'point differential', type: 'number', numeric: true, value: r => rec(r).pointsFor - rec(r).pointsAgainst, cell: r => h('td', { class: 'num' }, signed(rec(r).pointsFor - rec(r).pointsAgainst)) },
+    recordColumn('home', 'Home', 'Home record', r => rec(r).home),
+    recordColumn('road', 'Road', 'Road record', r => rec(r).away),
+    recordColumn('div', 'Div', 'Division record', r => rec(r).division),
+    recordColumn('conf', 'Conf', 'Conference record', r => rec(r).conference),
+    { id: 'streak', label: 'Strk', title: 'Streak', name: 'streak', type: 'number', numeric: true, value: r => streakOf(rec(r).streak), cell: r => (rec(r).streak ? h('td', { class: 'num' }, rec(r).streak) : noneCell('No games yet')) }
+  ];
+  const table = sortableTable({ key: `standings.${division.division}`, name: `${division.division} standings`, caption: division.division, className: 'stat-table standings-table', columns, rows: division.teams, rowId: r => r.abbr, rowAttrs: r => ({ class: r.abbr === user ? 'is-us' : null }), defaultOrder: 'in tiebreaker order', scroll: true, status });
+  return h('div', { class: 'stack' }, table.element, tiebreakNotes(standings, [division.teams]));
 } // prettier-ignore
 
 function divisionsView(standings: LeagueStandings, user: TeamAbbr): HTMLElement {
+  const status = h('p', { class: 'sr-only', role: 'status' });
   return h(
     'div',
     { class: 'stack' },
+    status,
     ...CONFERENCES.map(conference =>
       card(
         `${conference} divisions`,
         ...standings.divisions
           .filter(d => d.conference === conference)
-          .map(d => divisionTable(standings, d, user))
+          .map(d => divisionTable(standings, d, user, status))
       )
     )
   );
 }
 
-const CONFERENCE_COLUMNS = [
-  ['Record', 'Record'], ['Pct', 'Winning percentage'], ['Div', 'Division record'], ['Conf', 'Conference record'],
-  ['SOV', 'Strength of victory'], ['SOS', 'Strength of schedule']
-] as const; // prettier-ignore
-
 /** Division winners come first in the seeds; the rest of the conference is ordered by the wild card rules. */
 const divisionCount = (standings: LeagueStandings, conference: Conference): number =>
   standings.divisions.filter(d => d.conference === conference).length;
 
-function conferenceTable(standings: LeagueStandings, conference: Conference, user: TeamAbbr): HTMLElement {
+const FIELD = ['Division leader', 'Wild card', ''] as const;
+
+function conferenceTable(standings: LeagueStandings, conference: Conference, user: TeamAbbr, status: HTMLElement): HTMLElement {
   const conf = standings.conferences.find(c => c.conference === conference);
   if (!conf) return h('p', { class: 'empty' }, 'No standings yet.');
   const records = standings.table.records;
   const winners = divisionCount(standings, conference);
-  const columns = CONFERENCE_COLUMNS.length + 3;
-  const row = (r: Ranked, rank: number, status: string) => {
-    const t = records[r.abbr];
-    return h(
-      'tr',
-      { class: r.abbr === user ? 'is-us' : null },
-      h('td', { class: 'num' }, String(rank)),
-      teamHeader(r.abbr, user),
-      status ? h('td', null, status) : noneCell('Outside the field'),
-      h('td', { class: 'num' }, winLoss(t.overall)),
-      h('td', { class: 'num' }, pct(t.overall)),
-      h('td', { class: 'num' }, winLoss(t.division)),
-      h('td', { class: 'num' }, winLoss(t.conference)),
-      h('td', { class: 'num' }, t.sov.toFixed(3).replace(/^0/, '')),
-      h('td', { class: 'num' }, t.sos.toFixed(3).replace(/^0/, ''))
-    );
-  };
-  const group = (label: string) =>
-    h('tr', { class: 'group-row' }, h('th', { scope: 'rowgroup', colspan: String(columns) }, label));
-  const table = h(
-    'table',
-    { class: 'stat-table standings-table' },
-    h('caption', null, `${conference} standings`),
-    h('thead', null, h('tr', null, statHeader('#', 'Rank'), h('th', { scope: 'col' }, 'Team'), h('th', { scope: 'col' }, 'Status'), ...CONFERENCE_COLUMNS.map(([label, title]) => statHeader(label, title)))),
-    h('tbody', null, group('In the playoff field'), ...conf.seeds.map((r, i) => row(r, i + 1, i < winners ? 'Division leader' : 'Wild card'))),
-    h('tbody', null, group('Outside the field'), ...conf.rest.map((r, i) => row(r, conf.seeds.length + i + 1, '')))
-  ); // prettier-ignore
+  const ranked = [...conf.seeds, ...conf.rest];
+  const rank = new Map(ranked.map((r, i) => [r.abbr, i + 1]));
+  const place = (r: Ranked) => { const i = (rank.get(r.abbr) ?? 99) - 1; return i < winners ? 0 : i < conf.seeds.length ? 1 : 2; };
+  const rec = (r: Ranked) => records[r.abbr];
+  const columns: TableColumn<Ranked>[] = [
+    { id: 'rank', label: '#', title: 'Rank', name: 'rank', type: 'number', numeric: true, first: 'asc', words: ['top first', 'bottom first'], value: r => rank.get(r.abbr), cell: r => h('td', { class: 'num' }, String(rank.get(r.abbr) ?? '')) },
+    { id: 'team', label: 'Team', name: 'team', type: 'text', value: r => nick(r.abbr), cell: r => teamHeader(r.abbr, user) },
+    { id: 'status', label: 'Status', name: 'status', type: 'number', first: 'asc', words: ['division leaders first', 'outside the field first'], value: place, cell: r => (FIELD[place(r)] ? h('td', null, FIELD[place(r)]) : noneCell('Outside the field')) },
+    recordColumn('record', 'Record', 'Record', r => rec(r).overall),
+    { id: 'pct', label: 'Pct', title: 'Winning percentage', name: 'winning percentage', type: 'number', numeric: true, value: r => rateOf(rec(r).overall), cell: r => h('td', { class: 'num' }, pct(rec(r).overall)) },
+    recordColumn('div', 'Div', 'Division record', r => rec(r).division),
+    recordColumn('conf', 'Conf', 'Conference record', r => rec(r).conference),
+    { id: 'sov', label: 'SOV', title: 'Strength of victory', name: 'strength of victory', type: 'number', numeric: true, value: r => rec(r).sov, cell: r => h('td', { class: 'num' }, rec(r).sov.toFixed(3).replace(/^0/, '')) },
+    { id: 'sos', label: 'SOS', title: 'Strength of schedule', name: 'strength of schedule', type: 'number', numeric: true, value: r => rec(r).sos, cell: r => h('td', { class: 'num' }, rec(r).sos.toFixed(3).replace(/^0/, '')) }
+  ];
+  const table = sortableTable({ key: `standings.${conference}`, name: `${conference} standings`, caption: `${conference} standings`, className: 'stat-table standings-table', columns, rows: ranked, rowId: r => r.abbr, rowAttrs: r => ({ class: r.abbr === user ? 'is-us' : null }), defaultOrder: 'by seed, then the wild card order', group: { of: r => (place(r) < 2 ? 'In the playoff field' : 'Outside the field'), heading: name => name }, scroll: true, status });
   return h(
     'div',
     { class: 'stack' },
-    scrollRegion(`${conference} standings`, table),
+    table.element,
     tiebreakNotes(standings, [conf.seeds.slice(0, winners), [...conf.seeds.slice(winners), ...conf.rest]])
   );
-}
+} // prettier-ignore
 
 function conferencesView(standings: LeagueStandings, user: TeamAbbr): HTMLElement {
+  const status = h('p', { class: 'sr-only', role: 'status' });
   return h(
     'div',
     { class: 'stack' },
+    status,
     ...CONFERENCES.map(c =>
       card(
         `${c} conference`,
         h('p', { class: 'hint' }, 'Division leaders take the top seeds; the wild cards follow by record.'),
-        conferenceTable(standings, c, user)
+        conferenceTable(standings, c, user, status)
       )
     )
   );

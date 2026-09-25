@@ -12,7 +12,8 @@ import { h, mount, type Child } from '../dom';
 import { href } from '../router';
 import { card } from '../screens/common';
 import { CATEGORY_TITLES, STAT_COLUMNS, type StatColumn } from './stat-columns';
-import { scrollRegion, statCell, statHeader, statKey } from './stat-table';
+import { sortableTable, type TableColumn } from './sortable';
+import { sortableStats, statCell, statKey } from './stat-table';
 
 /** Categories each position shows first; any other category with stats follows. */
 const PRIMARY: Partial<Record<Position, readonly CategoryId[]>> = {
@@ -52,19 +53,6 @@ function ordered(position: Position, shown: readonly CategoryId[]): CategoryId[]
 
 const team = (abbr: TeamAbbr) => h('abbr', { title: teamFullName(abbr) }, abbr);
 
-function head(columns: readonly StatColumn[], lead: readonly [string, string, boolean][]): HTMLElement {
-  return h(
-    'thead',
-    null,
-    h(
-      'tr',
-      null,
-      ...lead.map(([label, title, numeric]) => statHeader(label, title, numeric)),
-      ...columns.map(c => statHeader(c.label, c.title))
-    )
-  );
-}
-
 const cells = (columns: readonly StatColumn[], totals: Totals): HTMLElement[] =>
   columns.map(c => statCell(c.value(totals), c.format));
 
@@ -72,105 +60,48 @@ function seasonTable(
   category: CategoryId,
   lines: readonly SeasonLine[],
   career: SeasonLine,
-  playoffs: boolean
+  playoffs: boolean,
+  status: HTMLElement
 ): HTMLElement {
-  const columns = STAT_COLUMNS[category];
   const title = `${CATEGORY_TITLES[category]}${playoffs ? ', playoffs' : ''}`;
   const rows = lines.filter(l => has(l.totals, category));
-  const table = h(
-    'table',
-    { class: 'stat-table' },
-    h('caption', null, title),
-    head(columns, [
-      ['Season', 'Season and team', false],
-      ['G', 'Games played', true],
-      ['GS', 'Games started', true]
-    ]),
-    h(
-      'tbody',
-      null,
-      ...rows.map(l =>
-        h(
-          'tr',
-          null,
-          // A player traded mid-season has a row per team, so the team is part of the row's name.
-          h('th', { scope: 'row' }, `${l.season} `, team(l.team)),
-          h('td', { class: 'num' }, String(l.games)),
-          h('td', { class: 'num' }, String(l.starts)),
-          ...cells(columns, l.totals)
-        )
-      )
-    ),
+  const columns: TableColumn<SeasonLine>[] = [
+    // A player traded mid-season has a row per team, so the team is part of the row's name.
+    { id: 'season', label: 'Season', title: 'Season and team', name: 'season', type: 'number', first: 'asc', value: l => l.season, cell: l => h('th', { scope: 'row' }, `${l.season} `, team(l.team)) },
+    { id: 'games', label: 'G', title: 'Games played', name: 'games played', type: 'number', numeric: true, value: l => l.games, cell: l => h('td', { class: 'num' }, String(l.games)) },
+    { id: 'starts', label: 'GS', title: 'Games started', name: 'games started', type: 'number', numeric: true, value: l => l.starts, cell: l => h('td', { class: 'num' }, String(l.starts)) },
+    ...sortableStats<SeasonLine>(STAT_COLUMNS[category], l => l.totals)
+  ];
+  const foot =
     rows.length > 1
-      ? h(
-          'tfoot',
-          null,
-          h(
-            'tr',
-            null,
-            h('th', { scope: 'row' }, 'Career'),
-            h('td', { class: 'num' }, String(career.games)),
-            h('td', { class: 'num' }, String(career.starts)),
-            ...cells(columns, career.totals)
-          )
-        )
-      : null
-  );
-  return scrollRegion(`${title} by season`, table);
-}
+      ? h('tfoot', null, h('tr', null, h('th', { scope: 'row' }, 'Career'), h('td', { class: 'num' }, String(career.games)), h('td', { class: 'num' }, String(career.starts)), ...cells(STAT_COLUMNS[category], career.totals)))
+      : null;
+  return sortableTable({ key: `career.${category}.${playoffs ? 'playoffs' : 'regular'}`, name: `${title.toLowerCase()} by season`, caption: title, className: 'stat-table', columns, rows, rowId: l => `${l.season}-${l.team}`, defaultOrder: 'by season', foot, scroll: true, status }).element;
+} // prettier-ignore
+
+/** A game log week in order: the preseason before week 1, the playoffs after week 18. */
+const weekOrder = (e: GameLogEntry): number => (e.kind === 'preseason' ? e.week - 100 : e.week);
 
 function logTable(
   category: CategoryId,
   entries: readonly GameLogEntry[],
   season: number,
-  roundName: (week: number) => string
+  roundName: (week: number) => string,
+  status: HTMLElement
 ): HTMLElement {
   const weekLabel = (e: GameLogEntry): string =>
-    e.kind === 'playoffs'
-      ? roundName(e.week)
-      : e.kind === 'preseason'
-        ? `Preseason ${e.week}`
-        : String(e.week);
-  const columns = STAT_COLUMNS[category];
+    e.kind === 'playoffs' ? roundName(e.week) : e.kind === 'preseason' ? `Preseason ${e.week}` : String(e.week);
   const title = `${CATEGORY_TITLES[category]} game log, ${season}`;
   const result = (e: GameLogEntry) =>
     `${e.teamScore > e.opponentScore ? 'W' : e.teamScore < e.opponentScore ? 'L' : 'T'} ${e.teamScore}–${e.opponentScore}${e.overtime ? ' (OT)' : ''}`;
-  const table = h(
-    'table',
-    { class: 'stat-table' },
-    h('caption', null, title),
-    head(columns, [
-      ['Wk', 'Week', false],
-      ['Opp', 'Opponent', false],
-      ['Result', 'Result', false]
-    ]),
-    h(
-      'tbody',
-      null,
-      ...entries.map(e =>
-        h(
-          'tr',
-          null,
-          h('th', { scope: 'row' }, weekLabel(e)),
-          h(
-            'td',
-            null,
-            e.opponent
-              ? h(
-                  'abbr',
-                  { title: `${e.home ? 'Home against' : 'Away at'} ${teamFullName(e.opponent)}` },
-                  `${e.home ? '' : '@'}${e.opponent}`
-                )
-              : '—'
-          ),
-          h('td', null, h('a', { href: href('game', { id: e.gameId }) }, result(e))),
-          ...cells(columns, e.line)
-        )
-      )
-    )
-  );
-  return scrollRegion(title, table);
-}
+  const columns: TableColumn<GameLogEntry>[] = [
+    { id: 'week', label: 'Wk', title: 'Week', name: 'week', type: 'number', first: 'asc', value: weekOrder, cell: e => h('th', { scope: 'row' }, weekLabel(e)) },
+    { id: 'opponent', label: 'Opp', title: 'Opponent', name: 'opponent', type: 'text', value: e => e.opponent, cell: e => h('td', null, e.opponent ? h('abbr', { title: `${e.home ? 'Home against' : 'Away at'} ${teamFullName(e.opponent)}` }, `${e.home ? '' : '@'}${e.opponent}`) : '—') },
+    { id: 'result', label: 'Result', name: 'result', type: 'number', words: ['biggest losses first', 'biggest wins first'], value: e => e.teamScore - e.opponentScore, cell: e => h('td', null, h('a', { href: href('game', { id: e.gameId }) }, result(e))) },
+    ...sortableStats<GameLogEntry>(STAT_COLUMNS[category], e => e.line)
+  ];
+  return sortableTable({ key: `career.log.${category}`, name: title.toLowerCase(), caption: title, className: 'stat-table', columns, rows: entries, rowId: e => e.gameId, defaultOrder: 'by week', scroll: true, status }).element;
+} // prettier-ignore
 
 export interface CareerOptions {
   position: Position;
@@ -192,13 +123,17 @@ export function careerCard({ position, history, loadLog, roundName }: CareerOpti
   const categories = lines.length ? categoriesFor(position, lines) : ordered(position, CATEGORY_IDS);
   const careerRegular = careerTotals(history as PlayerHistory, 'regular');
   const careerPlayoffs = careerTotals(history as PlayerHistory, 'playoffs');
+  // One status region announces the card's sorts and game log changes, without reading tables aloud.
+  const status = h('p', { class: 'sr-only', role: 'status' });
   const tables: Child[] = lines.length
     ? []
     : [h('p', { class: 'muted' }, 'No regular-season or playoff games yet.')];
   for (const c of categories)
-    if (regular.some(l => has(l.totals, c))) tables.push(seasonTable(c, regular, careerRegular, false));
+    if (regular.some(l => has(l.totals, c)))
+      tables.push(seasonTable(c, regular, careerRegular, false, status));
   for (const c of categories)
-    if (playoffs.some(l => has(l.totals, c))) tables.push(seasonTable(c, playoffs, careerPlayoffs, true));
+    if (playoffs.some(l => has(l.totals, c)))
+      tables.push(seasonTable(c, playoffs, careerPlayoffs, true, status));
 
   // Game log: any stored season, one category at a time.
   const seasons = [...logSeasons].sort((a, b) => b - a);
@@ -213,8 +148,6 @@ export function careerCard({ position, history, loadLog, roundName }: CareerOpti
     ...categories.map(c => h('option', { value: c }, CATEGORY_TITLES[c]))
   );
   const logBody = h('div', { class: 'stack' });
-  // Announces what a change of season or category shows, without reading the table aloud.
-  const status = h('p', { class: 'sr-only', role: 'status' });
   let entries: GameLogEntry[] = [];
   let loadedSeason = 0;
   let request = 0;
@@ -226,7 +159,7 @@ export function careerCard({ position, history, loadLog, roundName }: CareerOpti
     mount(
       logBody,
       shown.length
-        ? logTable(category, shown, loadedSeason, roundName)
+        ? logTable(category, shown, loadedSeason, roundName, status)
         : h('p', { class: 'muted' }, `No ${name.toLowerCase()} stats in ${loadedSeason}.`)
     );
     if (announce)
@@ -270,6 +203,7 @@ export function careerCard({ position, history, loadLog, roundName }: CareerOpti
   const allColumns = categories.flatMap(c => STAT_COLUMNS[c]);
   return card(
     'Career stats',
+    status,
     ...tables,
     statKey([{ label: 'G', title: 'Games played' }, { label: 'GS', title: 'Games started' }, ...allColumns]),
     h('h3', null, 'Game log'),
@@ -279,7 +213,6 @@ export function careerCard({ position, history, loadLog, roundName }: CareerOpti
       h('div', { class: 'field' }, h('label', { for: 'logSeason' }, 'Season'), seasonSelect),
       h('div', { class: 'field' }, h('label', { for: 'logCategory' }, 'Stats'), categorySelect)
     ),
-    status,
     logBody
   );
 }

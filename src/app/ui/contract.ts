@@ -17,7 +17,7 @@ import { href } from '../router';
 import type { AppState } from '../state';
 import { card } from '../screens/common';
 import { openRosterMoves } from './moves';
-import { scrollRegion } from './stat-table';
+import { sortableTable, type TableColumn } from './sortable';
 
 const TYPE_LABELS: Record<ContractType, string> = {
   rookie: 'Rookie contract',
@@ -56,26 +56,54 @@ export function contractCard(app: AppState, league: League, player: Player, done
   const s = contractSummary(contract, league.date);
   const rows = contractView(contract, league.date, league.rules, capFacts(league, player.id));
   const current = leagueYear(league.date);
-  const head = (label: string, numeric = false) =>
-    h('th', { scope: 'col', class: numeric ? 'num' : null }, label);
-  const table = h(
-    'table',
-    { class: 'stat-table' },
-    h('caption', { class: 'sr-only' }, 'Contract by league year: cap hit, cash, and what a release would do'),
-    h('thead', null, h('tr', null, head('Year'), head('Cap hit', true), head('Base', true), head('Bonuses', true), head('Proration', true), head('Cash', true), head('Released before June 1'), head('Released after June 1'))),
-    h('tbody', null, ...rows.map(r =>
-      h('tr', null,
-        h('th', { scope: 'row' }, r.isVoid ? `${r.year} (void)` : String(r.year)),
-        h('td', { class: 'num' }, money(r.capHit)),
-        h('td', { class: 'num' }, money(r.base)),
-        h('td', { class: 'num' }, money(r.bonuses)),
-        h('td', { class: 'num' }, money(r.proration)),
-        h('td', { class: 'num' }, money(r.cash)),
-        h('td', null, r.isVoid ? 'Not applicable' : releaseText(r.cutEarly)),
-        h('td', null, r.isVoid ? 'Not applicable' : releaseText(r.cutLate))
-      )
-    ))
-  ); // prettier-ignore
+  type Year = (typeof rows)[number];
+  const cash = (id: string, label: string, amount: (r: Year) => number): TableColumn<Year> => ({
+    id,
+    label,
+    name: label.toLowerCase(),
+    type: 'money',
+    numeric: true,
+    value: amount,
+    cell: r => h('td', { class: 'num' }, money(amount(r)))
+  });
+  const release = (id: string, label: string, of: (r: Year) => ReleaseView | null): TableColumn<Year> => ({
+    id,
+    label,
+    name: `savings if ${label.toLowerCase()}`,
+    type: 'money',
+    value: r => (r.isVoid ? null : (of(r)?.savings ?? null)),
+    cell: r => h('td', null, r.isVoid ? 'Not applicable' : releaseText(of(r)))
+  });
+  const columns: TableColumn<Year>[] = [
+    {
+      id: 'year',
+      label: 'Year',
+      name: 'year',
+      type: 'number',
+      first: 'asc',
+      value: r => r.year,
+      cell: r => h('th', { scope: 'row' }, r.isVoid ? `${r.year} (void)` : String(r.year))
+    },
+    cash('capHit', 'Cap hit', r => r.capHit),
+    cash('base', 'Base', r => r.base),
+    cash('bonuses', 'Bonuses', r => r.bonuses),
+    cash('proration', 'Proration', r => r.proration),
+    cash('cash', 'Cash', r => r.cash),
+    release('early', 'Released before June 1', r => r.cutEarly),
+    release('late', 'Released after June 1', r => r.cutLate)
+  ];
+  const table = sortableTable({
+    key: 'contract.years',
+    name: 'contract by year',
+    caption: 'Contract by league year: cap hit, cash, and what a release would do',
+    captionClass: 'sr-only',
+    className: 'stat-table',
+    columns,
+    rows,
+    rowId: r => String(r.year),
+    defaultOrder: 'by year',
+    scroll: true
+  });
   const row = (label: string, value: string) =>
     h('div', { class: 'kv' }, h('span', { class: 'label' }, label), h('span', null, value));
   const moves =
@@ -92,7 +120,7 @@ export function contractCard(app: AppState, league: League, player: Player, done
       contract.weeklyPay ? row('Weekly pay', money(contract.weeklyPay, true)) : null,
       ...contract.restructures.map(r => row(`Restructured, ${PHASE_LABELS[r.date.phase]} ${r.date.season}`, `${money(r.amount)} of salary spread over ${plural(r.prorationYears.length, 'year')}`))
     ),
-    rows.length ? scrollRegion('Contract by year', table) : h('p', { class: 'muted' }, 'The contract has ended.'),
+    rows.length ? table.element : h('p', { class: 'muted' }, 'The contract has ended.'),
     h('p', { class: 'hint' }, 'A release after June 1 leaves this year its own proration and moves the rest to next year. A June 1 designation does the same, but its savings arrive on June 2.'),
     moves ? h('div', { class: 'btn-row' }, moves) : null
   ); // prettier-ignore

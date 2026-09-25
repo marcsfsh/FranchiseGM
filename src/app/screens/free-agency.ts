@@ -1,7 +1,7 @@
 /**
  * Free agency (spec 19.3, 19.4): the free agents with what each asks for, offers made in a contract dialog
  * that previews the cap effect and says whether he'll sign, practice squad signings, and the waiver wire
- * with claims. M12's market and negotiation build on this.
+ * with claims, each a sortable table (a list on phones). M12's market and negotiation build on this.
  */
 import { TEAM_COLORS, teamFullName } from '../../data/team-colors';
 import { capSheet } from '../../engine/cap/sheet';
@@ -11,7 +11,7 @@ import { freeAgents } from '../../engine/league/transactions';
 import type { League } from '../../engine/league/types';
 import { calendarDay, leagueYear } from '../../engine/model/calendar';
 import { ageOn, fullName, type Player } from '../../engine/model/player';
-import { POSITION_GROUP, type PositionGroup } from '../../engine/model/positions';
+import { POSITION_GROUP, POSITIONS, type PositionGroup } from '../../engine/model/positions';
 import { minimumSalary } from '../../engine/rules/ruleset';
 import { rosterCounts } from '../../engine/roster/rules';
 import { claimedContract } from '../../engine/roster/waivers';
@@ -23,6 +23,7 @@ import { href } from '../router';
 import type { AppState } from '../state';
 import { dollarField, openMoveDialog, placeOf, refocus, WAIT_FOR_GAMES } from '../ui/moves';
 import { playerLink, tierPlate } from '../ui/players';
+import { sortableTable, type TableColumn } from '../ui/sortable';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
 
@@ -133,45 +134,181 @@ export function freeAgencyScreen(): Screen {
           app.advancing ? h('p', { class: 'hint' }, WAIT_FOR_GAMES) : null
         ); // prettier-ignore
 
+        const byName = (p: Player) => `${p.lastName} ${p.firstName}`;
+        const positionOrder = (p: Player) => POSITIONS.indexOf(p.position);
+
         // The waiver wire: claims are awarded in waiver order when the week is played.
         const waivers = league.waivers.flatMap(w => {
           const p = league.players[w.playerId];
           const old = league.contracts[w.contractId];
-          return p && old ? [{ w, p, hit: capHit(claimedContract(old, abbr, 'preview', league.date, league.rules), year, league.rules) }] : [];
-        }); // prettier-ignore
+          return p && old
+            ? [
+                {
+                  w,
+                  p,
+                  hit: capHit(
+                    claimedContract(old, abbr, 'preview', league.date, league.rules),
+                    year,
+                    league.rules
+                  )
+                }
+              ]
+            : [];
+        });
+        type Waived = (typeof waivers)[number];
+        // Each call makes a fresh control: the table and the phone list both show one.
+        const waiverAction = ({ w, p, hit }: Waived): HTMLElement => {
+          const name = fullName(p);
+          if (w.from === abbr) return h('p', { class: 'hint' }, 'You released him.');
+          if (w.claims.includes(abbr))
+            return h('p', { class: 'hint' }, 'Claim placed. Claims are decided when the week is played.');
+          const claim = h(
+            'button',
+            { class: 'btn btn-outline', type: 'button', 'aria-label': `Claim ${name}` },
+            'Claim'
+          );
+          claim.addEventListener('click', () =>
+            openMoveDialog(
+              app,
+              {
+                id: 'claimDialog',
+                title: `Claim ${name}`,
+                intro: `Released by the ${TEAM_COLORS[w.from].name}. A claim takes over his contract: ${money(hit, true)} on your ${year} cap.`,
+                choices: [
+                  {
+                    label: 'Claim',
+                    confirm: `Claim ${name}`,
+                    move: () => ({ kind: 'claim', team: abbr, playerId: p.id })
+                  }
+                ]
+              },
+              claim,
+              after(claim, 'Claim ')
+            )
+          );
+          return claim;
+        };
+        const waiverList = h('ul', { class: 'roster-list', 'aria-label': 'Players on waivers' });
+        const waiverItems = new Map(
+          waivers.map(entry => [
+            entry.p.id,
+            h(
+              'li',
+              { class: 'list-row' },
+              h('span', { class: 'pos' }, entry.p.position),
+              h(
+                'div',
+                { class: 'list-main' },
+                playerLink(entry.p),
+                h(
+                  'p',
+                  { class: 'list-sub' },
+                  `Released by the ${teamFullName(entry.w.from)} · ${money(entry.hit)} on your ${year} cap`
+                )
+              ),
+              tierPlate(entry.p.ovr),
+              h('div', { class: 'btn-row' }, waiverAction(entry))
+            )
+          ])
+        );
+        const waiverColumns: TableColumn<Waived>[] = [
+          {
+            id: 'position',
+            label: 'Pos',
+            title: 'Position',
+            name: 'position',
+            type: 'number',
+            first: 'asc',
+            words: ['quarterbacks first', 'specialists first'],
+            className: 'pos-col',
+            value: e => positionOrder(e.p),
+            cell: e => h('td', null, e.p.position)
+          },
+          {
+            id: 'player',
+            label: 'Player',
+            name: 'player',
+            type: 'text',
+            value: e => byName(e.p),
+            cell: e => h('th', { scope: 'row' }, playerLink(e.p))
+          },
+          {
+            id: 'ovr',
+            label: 'OVR',
+            title: 'Overall',
+            name: 'overall',
+            type: 'rating',
+            className: 'ovr-col',
+            value: e => e.p.ovr,
+            cell: e => h('td', null, tierPlate(e.p.ovr))
+          },
+          {
+            id: 'from',
+            label: 'Released by',
+            name: 'team that released him',
+            type: 'text',
+            value: e => teamFullName(e.w.from),
+            cell: e => h('td', null, teamFullName(e.w.from))
+          },
+          {
+            id: 'hit',
+            label: `${year} cap hit`,
+            name: `${year} cap hit`,
+            type: 'money',
+            numeric: true,
+            className: 'cap-col',
+            value: e => e.hit,
+            cell: e => h('td', { class: 'num' }, money(e.hit))
+          },
+          {
+            id: 'claim',
+            label: 'Claim',
+            name: 'claim',
+            type: 'custom',
+            sortable: false,
+            hideLabel: true,
+            className: 'claim-col',
+            cell: e => h('td', null, waiverAction(e))
+          }
+        ];
+        const waiverTable = waivers.length
+          ? sortableTable({
+              key: 'fa.waivers',
+              name: 'waiver wire',
+              caption: 'Players on waivers',
+              captionClass: 'sr-only',
+              className: 'roster-table fa-table',
+              columns: waiverColumns,
+              rows: waivers,
+              rowId: e => e.p.id,
+              defaultOrder: 'in the order they were released',
+              status,
+              onSort: ordered =>
+                waiverList.replaceChildren(...ordered.map(e => waiverItems.get(e.p.id) as HTMLElement))
+            })
+          : null;
         const waiverCard = card(
           'Waiver wire',
-          waivers.length
-            ? h(
-                'ul',
-                { class: 'roster-list', 'aria-label': 'Players on waivers' },
-                ...waivers.map(({ w, p, hit }) => {
-                  const name = fullName(p);
-                  let action: HTMLElement;
-                  if (w.from === abbr) action = h('p', { class: 'hint' }, 'You released him.');
-                  else if (w.claims.includes(abbr)) action = h('p', { class: 'hint' }, 'Claim placed. Claims are decided when the week is played.');
-                  else {
-                    const claim = h('button', { class: 'btn btn-outline', type: 'button', 'aria-label': `Claim ${name}` }, 'Claim');
-                    claim.addEventListener('click', () =>
-                      openMoveDialog(app, { id: 'claimDialog', title: `Claim ${name}`, intro: `Released by the ${TEAM_COLORS[w.from].name}. A claim takes over his contract: ${money(hit, true)} on your ${year} cap.`, choices: [{ label: 'Claim', confirm: `Claim ${name}`, move: () => ({ kind: 'claim', team: abbr, playerId: p.id }) }] }, claim, after(claim, 'Claim '))
-                    );
-                    action = claim;
-                  }
-                  return h('li', { class: 'list-row' }, h('span', { class: 'pos' }, p.position), h('div', { class: 'list-main' }, playerLink(p), h('p', { class: 'list-sub' }, `Released by the ${teamFullName(w.from)} · ${money(hit)} on your ${year} cap`)), tierPlate(p.ovr), h('div', { class: 'btn-row' }, action));
-                })
+          waiverTable
+            ? h('div', { class: 'roster-region' }, waiverTable.element, waiverList)
+            : h(
+                'p',
+                { class: 'empty' },
+                'No one is on waivers. Players teams release show here before they can sign elsewhere.'
               )
-            : h('p', { class: 'empty' }, 'No one is on waivers. Players teams release show here before they can sign elsewhere.')
-        ); // prettier-ignore
+        );
 
-        // Free agents by overall, filtered by position group, a page at a time.
+        // Free agents, filtered by position group and sorted, a page at a time.
         const all = freeAgents(league).sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
         const filtered = group === 'all' ? all : all.filter(p => POSITION_GROUP[p.position] === group);
         const filter = h(
           'select',
           { class: 'select', id: 'fa-group' },
           h('option', { value: 'all', selected: group === 'all' }, 'All positions'),
-          ...(Object.keys(GROUP_LABELS) as PositionGroup[]).map(g => h('option', { value: g, selected: group === g }, GROUP_LABELS[g]))
-        ); // prettier-ignore
+          ...(Object.keys(GROUP_LABELS) as PositionGroup[]).map(g =>
+            h('option', { value: g, selected: group === g }, GROUP_LABELS[g])
+          )
+        );
         filter.addEventListener('change', () => {
           group = filter.value as PositionGroup | 'all';
           shown = PAGE;
@@ -180,16 +317,152 @@ export function freeAgencyScreen(): Screen {
           status.textContent = view.querySelector('.fa-count')?.textContent ?? '';
         });
         const squadOpen = SQUAD_PHASES.has(league.date.phase);
-        const rows = filtered.slice(0, shown).map(p => {
+        const asking = new Map(filtered.map(p => [p.id, askingSalary(league, p)]));
+        // Each call makes fresh controls: the table and the phone list both show them.
+        const actions = (p: Player): HTMLElement => {
           const name = fullName(p);
-          const offer = h('button', { class: 'btn btn-solid', type: 'button', 'aria-label': `${OFFER}${name}` }, 'Make an offer');
-          offer.addEventListener('click', () => openOffer(app, league, p, offer, after(offer, OFFER)));
-          const squad = squadOpen ? h('button', { class: 'btn btn-outline', type: 'button', 'aria-label': `Sign ${name} to the practice squad` }, 'Practice squad') : null;
-          squad?.addEventListener('click', () =>
-            openMoveDialog(app, { id: 'squadDialog', title: `Sign ${name} to the practice squad`, intro: `${name}, ${p.position}, age ${ageOn(p.birthDate, today)}. Practice squad players are paid weekly and can be elevated for games or signed to the roster.`, choices: [{ label: 'Practice squad', confirm: `Sign ${name} to the practice squad`, move: () => ({ kind: 'signPracticeSquad', team: abbr, playerId: p.id }) }] }, squad, after(squad, OFFER))
+          const offer = h(
+            'button',
+            { class: 'btn btn-solid', type: 'button', 'aria-label': `${OFFER}${name}` },
+            'Make an offer'
           );
-          return h('li', { class: 'list-row' }, h('span', { class: 'pos' }, p.position), h('div', { class: 'list-main' }, playerLink(p), h('p', { class: 'list-sub' }, `Age ${ageOn(p.birthDate, today)} · asks ${money(askingSalary(league, p))} a year`)), tierPlate(p.ovr), h('div', { class: 'btn-row' }, offer, squad));
-        }); // prettier-ignore
+          offer.addEventListener('click', () => openOffer(app, league, p, offer, after(offer, OFFER)));
+          const squad = squadOpen
+            ? h(
+                'button',
+                {
+                  class: 'btn btn-outline',
+                  type: 'button',
+                  'aria-label': `Sign ${name} to the practice squad`
+                },
+                'Practice squad'
+              )
+            : null;
+          squad?.addEventListener('click', () =>
+            openMoveDialog(
+              app,
+              {
+                id: 'squadDialog',
+                title: `Sign ${name} to the practice squad`,
+                intro: `${name}, ${p.position}, age ${ageOn(p.birthDate, today)}. Practice squad players are paid weekly and can be elevated for games or signed to the roster.`,
+                choices: [
+                  {
+                    label: 'Practice squad',
+                    confirm: `Sign ${name} to the practice squad`,
+                    move: () => ({ kind: 'signPracticeSquad', team: abbr, playerId: p.id })
+                  }
+                ]
+              },
+              squad,
+              after(squad, OFFER)
+            )
+          );
+          return h('div', { class: 'btn-row' }, offer, squad);
+        };
+        const agentList = h('ul', { class: 'roster-list fa-list', 'aria-label': 'Free agents' });
+        const agentItems = new Map<string, HTMLElement>();
+        const agentItem = (p: Player): HTMLElement => {
+          let item = agentItems.get(p.id);
+          if (!item) {
+            item = h(
+              'li',
+              { class: 'list-row' },
+              h('span', { class: 'pos' }, p.position),
+              h(
+                'div',
+                { class: 'list-main' },
+                playerLink(p),
+                h(
+                  'p',
+                  { class: 'list-sub' },
+                  `Age ${ageOn(p.birthDate, today)} · asks ${money(asking.get(p.id) ?? 0)} a year`
+                )
+              ),
+              tierPlate(p.ovr),
+              actions(p)
+            );
+            agentItems.set(p.id, item);
+          }
+          return item;
+        };
+        const agentColumns: TableColumn<Player>[] = [
+          {
+            id: 'position',
+            label: 'Pos',
+            title: 'Position',
+            name: 'position',
+            type: 'number',
+            first: 'asc',
+            words: ['quarterbacks first', 'specialists first'],
+            className: 'pos-col',
+            value: positionOrder,
+            cell: p => h('td', null, p.position)
+          },
+          {
+            id: 'player',
+            label: 'Player',
+            name: 'player',
+            type: 'text',
+            value: byName,
+            cell: p => h('th', { scope: 'row' }, playerLink(p))
+          },
+          {
+            id: 'age',
+            label: 'Age',
+            name: 'age',
+            type: 'number',
+            numeric: true,
+            className: 'age-col',
+            value: p => ageOn(p.birthDate, today),
+            cell: p => h('td', { class: 'num' }, ageOn(p.birthDate, today))
+          },
+          {
+            id: 'ovr',
+            label: 'OVR',
+            title: 'Overall',
+            name: 'overall',
+            type: 'rating',
+            className: 'ovr-col',
+            value: p => p.ovr,
+            cell: p => h('td', null, tierPlate(p.ovr))
+          },
+          {
+            id: 'asking',
+            label: 'Asks a year',
+            name: 'asking salary',
+            type: 'money',
+            numeric: true,
+            className: 'cap-col',
+            value: p => asking.get(p.id),
+            cell: p => h('td', { class: 'num' }, money(asking.get(p.id) ?? 0))
+          },
+          {
+            id: 'actions',
+            label: 'Offers',
+            name: 'offers',
+            type: 'custom',
+            sortable: false,
+            hideLabel: true,
+            className: 'fa-actions-col',
+            cell: p => h('td', null, actions(p))
+          }
+        ];
+        const agentTable = filtered.length
+          ? sortableTable({
+              key: 'fa.agents',
+              name: 'free agents',
+              caption: 'Free agents',
+              captionClass: 'sr-only',
+              className: 'roster-table fa-table',
+              columns: agentColumns,
+              rows: filtered,
+              rowId: p => p.id,
+              defaultOrder: 'by overall, best first',
+              status,
+              limit: shown,
+              onSort: ordered => agentList.replaceChildren(...ordered.map(agentItem))
+            })
+          : null;
         const more = h(
           'button',
           { class: 'btn btn-outline', type: 'button' },
@@ -199,20 +472,30 @@ export function freeAgencyScreen(): Screen {
           const first = shown;
           shown += PAGE;
           build();
-          view.querySelectorAll<HTMLElement>('.fa-list .list-row a')[first]?.focus();
+          const links = [...view.querySelectorAll<HTMLElement>('.fa-table tbody a, .fa-list .list-row a')];
+          links
+            .filter(a => a.getClientRects().length > 0)
+            .at(first)
+            ?.focus();
         });
-        const countText = `${filtered.length} free ${filtered.length === 1 ? 'agent' : 'agents'}${group === 'all' ? '' : ` among the ${GROUP_LABELS[group].toLowerCase()}`}, best first.`;
+        const countText = `${filtered.length} free ${filtered.length === 1 ? 'agent' : 'agents'}${group === 'all' ? '' : ` among the ${GROUP_LABELS[group].toLowerCase()}`}.`;
         const empty =
           group === 'all'
             ? 'No free agents are left. Players teams release show up here once they clear waivers.'
             : 'No free agents at this position. Choose another position to see the rest.';
         const agents = card(
           'Free agents',
-          h('div', { class: 'filterbar' }, h('div', { class: 'field' }, h('label', { for: 'fa-group' }, 'Position'), filter)),
+          h(
+            'div',
+            { class: 'filterbar' },
+            h('div', { class: 'field' }, h('label', { for: 'fa-group' }, 'Position'), filter)
+          ),
           h('p', { class: 'fa-count' }, countText),
-          filtered.length ? h('ul', { class: 'roster-list fa-list', 'aria-label': 'Free agents' }, ...rows) : h('p', { class: 'empty' }, empty),
+          agentTable
+            ? h('div', { class: 'roster-region' }, agentTable.element, agentList)
+            : h('p', { class: 'empty' }, empty),
           filtered.length > shown ? more : null
-        ); // prettier-ignore
+        );
 
         mount(
           content,

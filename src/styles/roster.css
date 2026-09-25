@@ -46,15 +46,6 @@
 .roster-table .wide {
   display: none;
 }
-.roster-table .sort-btn {
-  min-height: var(--tap);
-  padding: var(--s1);
-  background: transparent;
-  color: inherit;
-  border: 0;
-  font-weight: 700;
-  text-decoration: underline;
-}
 .roster-table td .tier {
   min-width: 0;
 }
@@ -122,8 +113,12 @@
 .card .list-row {
   padding: var(--s2);
 }
-.roster-table .moves-col {
+.roster-table .moves-col,
+.roster-table .claim-col {
   width: 7.5rem;
+}
+.roster-table .fa-actions-col {
+  width: 18rem;
 }
 .list-name {
   font-weight: 700;

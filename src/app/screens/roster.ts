@@ -2,7 +2,7 @@
  * Roster (style guide 4.2, 7.3, spec 19.3): the user's players, active first, then the reserve lists and
  * the practice squad, with overall, fit in the team's schemes (spec 7.7), this year's cap hit, and status.
  * Each player's roster moves open from here (spec 19.4). The table and the phone list come from the same
- * rows. Filters, sorting, and comparison arrive with the full roster screen in M9.
+ * rows in the same order, which the table's sort sets (post-M23 section 1.2).
  */
 import { teamFullName } from '../../data/team-colors';
 import { capFacts, capSheet } from '../../engine/cap/sheet';
@@ -11,7 +11,7 @@ import { rolesFor, type RoleRating } from '../../engine/fit/role-rating';
 import { leagueFitContext } from '../../engine/league/fit';
 import type { League } from '../../engine/league/types';
 import { calendarDay, leagueYear } from '../../engine/model/calendar';
-import { ageOn, fullName, type Player } from '../../engine/model/player';
+import { ageOn, DEV_TRAITS, fullName, type Player } from '../../engine/model/player';
 import { POSITIONS } from '../../engine/model/positions';
 import { rosterCounts } from '../../engine/roster/rules';
 import { resolveDefense, resolveOffense } from '../../engine/schemes/resolve';
@@ -22,6 +22,7 @@ import { href } from '../router';
 import { fitNode } from '../ui/fit';
 import { openRosterMoves, placeOf, refocus } from '../ui/moves';
 import { devTag, injuryTag, playerLink, statusTag, tierPlate } from '../ui/players';
+import { sortableTable, type TableColumn } from '../ui/sortable';
 import { pageHead } from './common';
 import type { Screen } from './types';
 
@@ -103,38 +104,155 @@ export function rosterScreen(): Screen {
           return button;
         }; // prettier-ignore
 
-        const body = h('tbody');
+        const roleOf = (best: RoleRating | undefined) => (best ? best.label : 'No role in these schemes');
+        const columns: TableColumn<Row>[] = [
+          {
+            id: 'position',
+            label: 'Pos',
+            title: 'Position',
+            name: 'position',
+            type: 'number',
+            first: 'asc',
+            words: ['quarterbacks first', 'specialists first'],
+            className: 'pos-col',
+            value: r => ORDER.get(r.player.position),
+            cell: r => h('td', null, r.player.position)
+          },
+          {
+            id: 'player',
+            label: 'Player',
+            name: 'player',
+            type: 'text',
+            value: r => `${r.player.lastName} ${r.player.firstName}`,
+            cell: r => h('th', { scope: 'row' }, playerLink(r.player))
+          },
+          {
+            id: 'age',
+            label: 'Age',
+            name: 'age',
+            type: 'number',
+            className: 'wide age-col',
+            numeric: true,
+            value: r => r.age,
+            cell: r => h('td', { class: 'wide num' }, r.age)
+          },
+          {
+            id: 'ovr',
+            label: 'OVR',
+            title: 'Overall',
+            name: 'overall',
+            type: 'rating',
+            className: 'ovr-col',
+            value: r => r.player.ovr,
+            cell: r => h('td', null, tierPlate(r.player.ovr))
+          },
+          {
+            id: 'dev',
+            label: 'Development',
+            name: 'development',
+            type: 'rating',
+            className: 'wide dev-col',
+            value: r => DEV_TRAITS.indexOf(r.player.dev),
+            cell: r => h('td', { class: 'wide' }, devTag(r.player.dev))
+          },
+          {
+            id: 'role',
+            label: 'Best role',
+            name: 'best role',
+            type: 'text',
+            className: 'wide',
+            value: r => r.best?.label,
+            cell: r => h('td', { class: 'wide' }, roleOf(r.best))
+          },
+          {
+            id: 'fit',
+            label: 'Fit',
+            name: 'fit',
+            type: 'number',
+            className: 'ovr-col',
+            value: r => r.best?.fit,
+            cell: r => h('td', { class: 'num' }, r.best ? fitNode(r.best.fit) : 'Not applicable')
+          },
+          {
+            id: 'cap',
+            label: `${year} cap hit`,
+            name: `${year} cap hit`,
+            type: 'money',
+            className: 'wide cap-col',
+            numeric: true,
+            value: r => r.hit,
+            cell: r => h('td', { class: 'wide num' }, money(r.hit))
+          },
+          {
+            id: 'status',
+            label: 'Status',
+            name: 'status',
+            type: 'number',
+            first: 'asc',
+            words: ['active first', 'practice squad first'],
+            className: 'status-col',
+            value: r => GROUP[r.player.status],
+            cell: r =>
+              h('td', null, statusTag(r.player.status), injuryTag(r.player) ? ' ' : null, injuryTag(r.player))
+          },
+          {
+            id: 'moves',
+            label: 'Roster moves',
+            name: 'roster moves',
+            type: 'custom',
+            sortable: false,
+            hideLabel: true,
+            className: 'moves-col',
+            cell: r => h('td', null, movesButton(r.player))
+          }
+        ];
+        // The phone list shows the same players, in the table's order.
         const list = h('ul', { class: 'roster-list', 'aria-label': 'Roster' });
-        for (const { player, age, best, hit } of rows) {
-          const role = best ? `${best.label}` : 'No role in these schemes';
-          body.append(
-            h('tr', null,
-              h('td', null, player.position),
-              h('th', { scope: 'row' }, playerLink(player)),
-              h('td', { class: 'wide num' }, age),
-              h('td', null, tierPlate(player.ovr)),
-              h('td', { class: 'wide' }, devTag(player.dev)),
-              h('td', { class: 'wide' }, role),
-              h('td', { class: 'num' }, best ? fitNode(best.fit) : 'Not applicable'),
-              h('td', { class: 'wide num' }, money(hit)),
-              h('td', null, statusTag(player.status), injuryTag(player) ? ' ' : null, injuryTag(player)),
-              h('td', null, movesButton(player))
-            )
-          );
-          list.append(
-            h('li', { class: 'list-row' },
+        const items = new Map(
+          rows.map(({ player, age, best, hit }) => [
+            player.id,
+            h(
+              'li',
+              { class: 'list-row' },
               h('span', { class: 'pos' }, player.position),
-              h('div', { class: 'list-main' },
+              h(
+                'div',
+                { class: 'list-main' },
                 playerLink(player),
-                h('p', { class: 'list-sub' }, `Age ${age} · ${role}`),
-                h('p', { class: 'list-sub' }, 'Fit ', best ? fitNode(best.fit) : 'not applicable', ` · ${year} cap hit ${money(hit)}`),
-                player.status === 'active' && !injuryTag(player) ? null : h('p', { class: 'list-sub' }, player.status === 'active' ? null : statusTag(player.status), injuryTag(player))
+                h('p', { class: 'list-sub' }, `Age ${age} · ${roleOf(best)}`),
+                h(
+                  'p',
+                  { class: 'list-sub' },
+                  'Fit ',
+                  best ? fitNode(best.fit) : 'not applicable',
+                  ` · ${year} cap hit ${money(hit)}`
+                ),
+                player.status === 'active' && !injuryTag(player)
+                  ? null
+                  : h(
+                      'p',
+                      { class: 'list-sub' },
+                      player.status === 'active' ? null : statusTag(player.status),
+                      injuryTag(player)
+                    )
               ),
               tierPlate(player.ovr),
               h('div', { class: 'btn-row' }, movesButton(player))
             )
-          );
-        } // prettier-ignore
+          ])
+        );
+        const table = sortableTable({
+          key: 'roster',
+          name: 'roster',
+          caption: 'Roster with overall ratings, best roles, fit in your schemes, cap hits, and status',
+          captionClass: 'sr-only',
+          className: 'roster-table',
+          columns,
+          rows,
+          rowId: r => r.player.id,
+          defaultOrder: 'by roster group, position, and overall',
+          onSort: ordered => list.replaceChildren(...ordered.map(r => items.get(r.player.id) as HTMLElement))
+        });
         const schemes = `${resolveOffense(league.teams[abbr].schemes.offense).name} offense and ${resolveDefense(league.teams[abbr].schemes.defense).name} defense`;
         const counts = rosterCounts(league, abbr);
         const space = capSheet(league, abbr).space;
@@ -145,27 +263,7 @@ export function rosterScreen(): Screen {
           h('p', null, `${counts.active} of ${counts.limit} on the active roster, ${counts.reserve} on reserve lists, and ${counts.practice} on the practice squad. ${year} cap space: ${money(space)}.`),
           h('div', { class: 'btn-row' }, h('a', { class: 'btn btn-outline', href: href('finances') }, 'Cap sheet'), h('a', { class: 'btn btn-outline', href: href('freeagency') }, 'Free agency')),
           rows.length === 0 ? h('p', { class: 'empty' }, 'Your roster is empty. Sign players in free agency to fill it.') : null,
-          h('div', { class: 'roster-region', hidden: rows.length === 0 },
-            h('table', { class: 'roster-table' },
-              h('caption', { class: 'sr-only' }, 'Roster with overall ratings, best roles, fit in your schemes, cap hits, and status'),
-              h('thead', null,
-                h('tr', null,
-                  h('th', { class: 'pos-col', scope: 'col' }, 'Pos'),
-                  h('th', { scope: 'col' }, 'Player'),
-                  h('th', { class: 'wide age-col', scope: 'col' }, 'Age'),
-                  h('th', { class: 'ovr-col', scope: 'col' }, 'OVR'),
-                  h('th', { class: 'wide dev-col', scope: 'col' }, 'Development'),
-                  h('th', { class: 'wide', scope: 'col' }, 'Best role'),
-                  h('th', { class: 'ovr-col', scope: 'col' }, 'Fit'),
-                  h('th', { class: 'wide cap-col num', scope: 'col' }, `${year} cap hit`),
-                  h('th', { class: 'status-col', scope: 'col' }, 'Status'),
-                  h('th', { class: 'moves-col', scope: 'col' }, h('span', { class: 'sr-only' }, 'Roster moves'))
-                )
-              ),
-              body
-            ),
-            list
-          )
+          h('div', { class: 'roster-region', hidden: rows.length === 0 }, table.element, list)
         ); // prettier-ignore
       };
       build();

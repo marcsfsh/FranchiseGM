@@ -11,7 +11,7 @@ import { h, mount } from '../dom';
 import { money } from '../format';
 import { href } from '../router';
 import { playerLink, statusTag } from '../ui/players';
-import { scrollRegion } from '../ui/stat-table';
+import { sortableTable, type TableColumn } from '../ui/sortable';
 import { tabs } from '../ui/tabs';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
@@ -57,54 +57,34 @@ function summaryCard(sheet: CapSheet): HTMLElement {
   );
 } // prettier-ignore
 
+/** A money column of a cap table. */
+const moneyColumn = (id: string, label: string, amount: (line: CapSheetLine) => number): TableColumn<CapSheetLine> =>
+  ({ id, label, name: label.toLowerCase(), type: 'money', numeric: true, value: amount, cell: line => h('td', { class: 'num' }, money(amount(line))) }); // prettier-ignore
+
 function rosterTable(league: League, sheet: CapSheet, lines: readonly CapSheetLine[]): HTMLElement {
-  const head = (label: string, numeric = false) => h('th', { scope: 'col', class: numeric ? 'num' : null }, label);
-  const table = h(
-    'table',
-    { class: 'stat-table' },
-    h('caption', { class: 'sr-only' }, `${sheet.year} cap hits for players on the roster, largest first`),
-    h('thead', null, h('tr', null, head('Player'), head('Pos'), head('Status'), head('Base', true), head('Bonuses', true), head('Proration', true), head('Cap hit', true))),
-    h(
-      'tbody',
-      null,
-      ...lines.map(line => {
-        const p = league.players[line.playerId];
-        const c = line.charge;
-        return h(
-          'tr',
-          null,
-          h('th', { scope: 'row' }, p ? playerLink(p) : line.playerId, line.counts ? null : h('span', { class: 'hint' }, ' (outside the top 51)')),
-          h('td', null, p?.position ?? ''),
-          h('td', null, line.status ? statusTag(line.status) : ''),
-          h('td', { class: 'num' }, money(c.base)),
-          h('td', { class: 'num' }, money(c.bonuses)),
-          h('td', { class: 'num' }, money(c.proration)),
-          h('td', { class: 'num' }, money(c.total))
-        );
-      })
-    )
-  );
-  return scrollRegion(`${sheet.year} cap hits`, table);
+  const player = (line: CapSheetLine) => league.players[line.playerId];
+  const columns: TableColumn<CapSheetLine>[] = [
+    { id: 'player', label: 'Player', name: 'player', type: 'text', value: line => { const p = player(line); return p ? `${p.lastName} ${p.firstName}` : line.playerId; }, cell: line => { const p = player(line); return h('th', { scope: 'row' }, p ? playerLink(p) : line.playerId, line.counts ? null : h('span', { class: 'hint' }, ' (outside the top 51)')); } },
+    { id: 'position', label: 'Pos', title: 'Position', name: 'position', type: 'text', value: line => player(line)?.position, cell: line => h('td', null, player(line)?.position ?? '') },
+    { id: 'status', label: 'Status', name: 'status', type: 'text', value: line => line.status, cell: line => h('td', null, line.status ? statusTag(line.status) : '') },
+    moneyColumn('base', 'Base', line => line.charge.base),
+    moneyColumn('bonuses', 'Bonuses', line => line.charge.bonuses),
+    moneyColumn('proration', 'Proration', line => line.charge.proration),
+    moneyColumn('total', 'Cap hit', line => line.charge.total)
+  ];
+  return sortableTable({ key: 'cap.roster', name: `${sheet.year} cap hits`, caption: `${sheet.year} cap hits for players on the roster`, captionClass: 'sr-only', className: 'stat-table', columns, rows: lines, rowId: line => line.playerId, defaultOrder: 'by cap hit, largest first', scroll: true }).element;
 } // prettier-ignore
 
 function deadTable(league: League, sheet: CapSheet, lines: readonly CapSheetLine[]): HTMLElement {
-  const table = h(
-    'table',
-    { class: 'stat-table' },
-    h('caption', { class: 'sr-only' }, `${sheet.year} charges for players no longer on the roster`),
-    h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Player'), h('th', { scope: 'col', class: 'num' }, 'Salary earned'), h('th', { scope: 'col', class: 'num' }, 'Proration'), h('th', { scope: 'col', class: 'num' }, 'Accelerated or owed'), h('th', { scope: 'col', class: 'num' }, 'Charge'))),
-    h(
-      'tbody',
-      null,
-      ...lines.map(line => {
-        const p = league.players[line.playerId];
-        const c = line.charge;
-        const held = line.held ? h('span', { class: 'hint' }, ' (June 1 release, in full until June 2)') : null;
-        return h('tr', null, h('th', { scope: 'row' }, p ? playerLink(p) : line.playerId, held), h('td', { class: 'num' }, money(c.base + c.bonuses)), h('td', { class: 'num' }, money(c.proration)), h('td', { class: 'num' }, money(c.dead)), h('td', { class: 'num' }, money(c.total)));
-      })
-    )
-  );
-  return scrollRegion(`${sheet.year} dead money`, table);
+  const player = (line: CapSheetLine) => league.players[line.playerId];
+  const columns: TableColumn<CapSheetLine>[] = [
+    { id: 'player', label: 'Player', name: 'player', type: 'text', value: line => { const p = player(line); return p ? `${p.lastName} ${p.firstName}` : line.playerId; }, cell: line => { const p = player(line); return h('th', { scope: 'row' }, p ? playerLink(p) : line.playerId, line.held ? h('span', { class: 'hint' }, ' (June 1 release, in full until June 2)') : null); } },
+    moneyColumn('earned', 'Salary earned', line => line.charge.base + line.charge.bonuses),
+    moneyColumn('proration', 'Proration', line => line.charge.proration),
+    moneyColumn('dead', 'Accelerated or owed', line => line.charge.dead),
+    moneyColumn('total', 'Charge', line => line.charge.total)
+  ];
+  return sortableTable({ key: 'cap.dead', name: `${sheet.year} dead money`, caption: `${sheet.year} charges for players no longer on the roster`, captionClass: 'sr-only', className: 'stat-table', columns, rows: lines, rowId: line => `${line.playerId}-${line.contractId ?? ''}`, defaultOrder: 'by charge, largest first', scroll: true }).element;
 } // prettier-ignore
 
 export function capScreen(): Screen {
