@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "mode": "full",
   "seed": 1,
   "seasons": 100,
@@ -7,13 +7,15 @@
   "perLeague": 10,
   "experiments": 10,
   "loopSeasons": 100,
+  "chains": 3,
+  "chainSeasons": 10,
   "created": "2026-09-25",
-  "seconds": 718.6734389100001,
+  "seconds": 1317.6860529230003,
   "counts": {
-    "pass": 62,
+    "pass": 76,
     "warn": 0,
     "fail": 0,
-    "info": 12,
+    "info": 14,
     "pending": 4
   },
   "results": [
@@ -47,8 +49,12 @@
         "n": 26300
       },
       "loop": {
-        "value": 0.5493726235741445,
+        "value": 0.5438212927756654,
         "n": 26300
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -81,8 +87,12 @@
         "n": 26300
       },
       "loop": {
-        "value": 1.7177566539923954,
+        "value": 1.524638783269962,
         "n": 26300
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -115,8 +125,12 @@
         "n": 27200
       },
       "loop": {
-        "value": 22.206617647058824,
+        "value": 22.328051470588235,
         "n": 27200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -149,8 +163,12 @@
         "n": 27200
       },
       "loop": {
-        "value": 0.49981617647058824,
+        "value": 0.5067647058823529,
         "n": 27200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -179,8 +197,12 @@
         "n": 27200
       },
       "loop": {
-        "value": 0.21356617647058823,
+        "value": 0.21838235294117647,
         "n": 27200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -213,8 +235,12 @@
         "n": 27200
       },
       "loop": {
-        "value": 0.25073529411764706,
+        "value": 0.24628676470588234,
         "n": 27200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -247,8 +273,12 @@
         "n": 27200
       },
       "loop": {
-        "value": 0.06235294117647059,
+        "value": 0.06363970588235295,
         "n": 27200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -277,8 +307,12 @@
         "n": 27200
       },
       "loop": {
-        "value": 0.0048529411764705885,
+        "value": 0.004595588235294118,
         "n": 27200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -311,8 +345,12 @@
         "n": 27200
       },
       "loop": {
-        "value": 0.2438970588235294,
+        "value": 0.24566176470588236,
         "n": 27200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -345,8 +383,12 @@
         "n": 27200
       },
       "loop": {
-        "value": 0.6949632352941176,
+        "value": 0.6945772058823529,
         "n": 27200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -375,8 +417,12 @@
         "n": 8450
       },
       "loop": {
-        "value": 0.5516233766233766,
-        "n": 7700
+        "value": 0.5489294627610666,
+        "n": 7613
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -405,8 +451,12 @@
         "n": 9520
       },
       "loop": {
-        "value": 0.6608176974750984,
-        "n": 8634
+        "value": 0.6652083813032466,
+        "n": 8686
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -435,8 +485,12 @@
         "n": 4890
       },
       "loop": {
-        "value": 0.765115267507612,
-        "n": 4598
+        "value": 0.7543328461056588,
+        "n": 4789
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -465,8 +519,12 @@
         "n": 4340
       },
       "loop": {
-        "value": 0.8666241225271218,
-        "n": 6268
+        "value": 0.8709096858638743,
+        "n": 6112
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -499,8 +557,12 @@
         "n": 27200
       },
       "loop": {
-        "value": 11.997818472396272,
+        "value": 11.96234220533565,
         "n": 27200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -518,8 +580,12 @@
         "n": 320
       },
       "loop": {
-        "value": 5.641833765700558,
+        "value": 5.629633862115565,
         "n": 3200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -527,7 +593,7 @@
       "group": "seasons",
       "label": "Team wins, sd",
       "format": "dec2",
-      "value": 3.0574703596273833,
+      "value": 3.058390099382353,
       "n": 3200,
       "status": "pass",
       "target": {
@@ -544,7 +610,7 @@
           4.1
         ],
         "source": "Harvard Sports Analysis Collective, \"This NFL season did not have as much parity as you think\": the sd of team wins was 3.20 in 2017 and mostly 2.6 to 3.4 in 16-game seasons, about 2.8 to 3.6 over 17 games.",
-        "note": "Pure chance alone gives about 2.06 over 17 games."
+        "note": "Judged on weekly-loop seasons (C-20). Pure chance alone gives about 2.06 over 17 games."
       },
       "decidedBy": "loop",
       "replays": {
@@ -552,8 +618,12 @@
         "n": 3200
       },
       "loop": {
-        "value": 3.0574703596273833,
+        "value": 3.058390099382353,
         "n": 3200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -561,7 +631,7 @@
       "group": "seasons",
       "label": "Most wins in a season (mean)",
       "format": "dec1",
-      "value": 14.48,
+      "value": 14.65,
       "n": 100,
       "status": "pass",
       "target": {
@@ -574,7 +644,7 @@
           16
         ],
         "source": "NFL standings 2021-2024 (Wikipedia season pages): the best records had 13, 14, 13, and 15 wins.",
-        "note": "The mean of each replay season's most wins, ties counting half."
+        "note": "The mean of each weekly-loop season's most wins, ties counting half (C-20)."
       },
       "decidedBy": "loop",
       "replays": {
@@ -582,8 +652,12 @@
         "n": 100
       },
       "loop": {
-        "value": 14.48,
+        "value": 14.65,
         "n": 100
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -591,7 +665,7 @@
       "group": "seasons",
       "label": "Fewest wins in a season (mean)",
       "format": "dec1",
-      "value": 2.575,
+      "value": 2.725,
       "n": 100,
       "status": "pass",
       "target": {
@@ -604,7 +678,7 @@
           4.7
         ],
         "source": "NFL standings 2021-2024 (Wikipedia season pages): the worst records had 3, 3, 2, and 3 wins.",
-        "note": "Ties count half."
+        "note": "Judged on weekly-loop seasons (C-20). Ties count half."
       },
       "decidedBy": "loop",
       "replays": {
@@ -612,8 +686,12 @@
         "n": 100
       },
       "loop": {
-        "value": 2.575,
+        "value": 2.725,
         "n": 100
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -621,7 +699,7 @@
       "group": "seasons",
       "label": "15-win teams per decade",
       "format": "dec1",
-      "value": 5.4,
+      "value": 7.8,
       "n": 100,
       "status": "pass",
       "target": {
@@ -634,7 +712,7 @@
           10
         ],
         "source": "NFL standings (Wikipedia season pages): 12 teams won 14 or more of 16 games in 2004-2020 (2004 PIT and NE, 2005 IND, 2006 SD, 2007 NE, 2009 IND, 2010 NE, 2011 GB, 2015 CAR, 2016 NE, 2019 BAL, 2020 KC), about 7 a decade; two won 15 of 17 in 2021-2024.",
-        "note": "14 of 16 is the 16-game equivalent of 15 of 17 (the same 88% of games)."
+        "note": "Per 10 weekly-loop seasons (C-20). 14 of 16 is the 16-game equivalent of 15 of 17 (the same 88% of games)."
       },
       "decidedBy": "loop",
       "replays": {
@@ -642,8 +720,12 @@
         "n": 100
       },
       "loop": {
-        "value": 5.4,
+        "value": 7.8,
         "n": 100
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -651,7 +733,7 @@
       "group": "seasons",
       "label": "2-or-fewer-win teams per decade",
       "format": "dec1",
-      "value": 5.8,
+      "value": 5.1,
       "n": 100,
       "status": "pass",
       "target": {
@@ -664,7 +746,7 @@
           13
         ],
         "source": "NFL standings 2004-2024 (Wikipedia season pages): 18 teams won 2 or fewer, about 8.6 a decade, though only one in the four 17-game seasons.",
-        "note": "Teams with 2 or fewer wins, per 10 replay seasons."
+        "note": "Teams with 2 or fewer wins, per 10 weekly-loop seasons (C-20)."
       },
       "decidedBy": "loop",
       "replays": {
@@ -672,8 +754,12 @@
         "n": 100
       },
       "loop": {
-        "value": 5.8,
+        "value": 5.1,
         "n": 100
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -681,7 +767,7 @@
       "group": "seasons",
       "label": "Perfect or winless teams per 100 seasons",
       "format": "dec1",
-      "value": 4,
+      "value": 5,
       "n": 100,
       "status": "pass",
       "target": {
@@ -694,7 +780,7 @@
           8
         ],
         "source": "Spec 23.2: perfect and winless seasons must be extremely rare, a handful per 100 simulated seasons at most. The NFL had four in 1976-2025 (1976 TB, 2007 NE, 2008 DET, 2017 CLE).",
-        "note": "Perfect means no losses or ties; winless means no wins, ties or not. Per 100 replay seasons."
+        "note": "Perfect means no losses or ties; winless means no wins, ties or not. Per 100 weekly-loop seasons (C-20): a rare event, so a full run plays 100 of them."
       },
       "decidedBy": "loop",
       "replays": {
@@ -702,8 +788,12 @@
         "n": 100
       },
       "loop": {
-        "value": 4,
+        "value": 5,
         "n": 100
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -736,8 +826,12 @@
         "n": 54400
       },
       "loop": {
-        "value": 32.373658088235295,
+        "value": 32.440606617647056,
         "n": 54400
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -770,8 +864,12 @@
         "n": 1779666
       },
       "loop": {
-        "value": 0.6464928423674159,
-        "n": 1761127
+        "value": 0.6486599662618734,
+        "n": 1764769
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -804,8 +902,12 @@
         "n": 1779666
       },
       "loop": {
-        "value": 7.03936854071285,
-        "n": 1761127
+        "value": 7.051472459001716,
+        "n": 1764769
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -834,8 +936,12 @@
         "n": 1779666
       },
       "loop": {
-        "value": 0.04291172641155351,
-        "n": 1761127
+        "value": 0.043045860393059944,
+        "n": 1764769
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -864,8 +970,12 @@
         "n": 1779666
       },
       "loop": {
-        "value": 0.021863272779305526,
-        "n": 1761127
+        "value": 0.02153596306372109,
+        "n": 1764769
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -894,8 +1004,12 @@
         "n": 1903694
       },
       "loop": {
-        "value": 0.06349383604294323,
-        "n": 1880529
+        "value": 0.06289165237809757,
+        "n": 1883207
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -928,8 +1042,12 @@
         "n": 54400
       },
       "loop": {
-        "value": 27.089080882352942,
+        "value": 27.059613970588234,
         "n": 54400
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -962,8 +1080,12 @@
         "n": 1468703
       },
       "loop": {
-        "value": 4.260445181542922,
-        "n": 1473646
+        "value": 4.2508303086254955,
+        "n": 1472043
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -992,8 +1114,12 @@
         "n": 650829
       },
       "loop": {
-        "value": 0.402718912435026,
-        "n": 650260
+        "value": 0.4034344664673532,
+        "n": 650232
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1022,8 +1148,12 @@
         "n": 54400
       },
       "loop": {
-        "value": 1.4109742647058823,
+        "value": 1.4095955882352942,
         "n": 54400
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1052,8 +1182,12 @@
         "n": 77136
       },
       "loop": {
-        "value": 0.515692379848092,
-        "n": 76757
+        "value": 0.5169140085026473,
+        "n": 76682
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1082,8 +1216,12 @@
         "n": 194125
       },
       "loop": {
-        "value": 0.5532515949486728,
-        "n": 190445
+        "value": 0.5549132342622556,
+        "n": 190974
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1112,8 +1250,12 @@
         "n": 54400
       },
       "loop": {
-        "value": 1.2329044117647059,
+        "value": 1.2296139705882352,
         "n": 54400
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1146,8 +1288,12 @@
         "n": 54400
       },
       "loop": {
-        "value": 6.219411764705883,
+        "value": 6.238106617647059,
         "n": 54400
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1176,8 +1322,12 @@
         "n": 54400
       },
       "loop": {
-        "value": 46.6696875,
+        "value": 46.87803308823529,
         "n": 54400
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1206,8 +1356,12 @@
         "n": 58317
       },
       "loop": {
-        "value": 0.9565179701451135,
-        "n": 57679
+        "value": 0.958039419087137,
+        "n": 57840
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1236,8 +1390,12 @@
         "n": 24984
       },
       "loop": {
-        "value": 0.7777910305343512,
-        "n": 25152
+        "value": 0.7799320407755347,
+        "n": 25015
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1266,8 +1424,12 @@
         "n": 26419
       },
       "loop": {
-        "value": 0.6907208817396485,
-        "n": 26856
+        "value": 0.6925621049536969,
+        "n": 27212
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1296,8 +1458,12 @@
         "n": 199097
       },
       "loop": {
-        "value": 46.9002075978819,
-        "n": 199424
+        "value": 46.91976960611701,
+        "n": 198790
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1326,8 +1492,12 @@
         "n": 286531
       },
       "loop": {
-        "value": 0.752533954100495,
-        "n": 282661
+        "value": 0.7517946586450063,
+        "n": 283898
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1356,8 +1526,12 @@
         "n": 215897
       },
       "loop": {
-        "value": 25.49761649554327,
-        "n": 212712
+        "value": 25.481204874597648,
+        "n": 213433
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1386,8 +1560,12 @@
         "n": 68717
       },
       "loop": {
-        "value": 10.132107047746555,
-        "n": 68717
+        "value": 10.163573492077388,
+        "n": 68538
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1420,8 +1598,12 @@
         "n": 100
       },
       "loop": {
-        "value": 5063.29,
+        "value": 5057.21,
         "n": 100
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1450,8 +1632,12 @@
         "n": 100
       },
       "loop": {
-        "value": 1717.26,
+        "value": 1735.26,
         "n": 100
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1480,8 +1666,12 @@
         "n": 100
       },
       "loop": {
-        "value": 1675.1,
+        "value": 1675,
         "n": 100
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1510,8 +1700,12 @@
         "n": 100
       },
       "loop": {
-        "value": 128.14,
+        "value": 128.37,
         "n": 100
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1540,8 +1734,12 @@
         "n": 100
       },
       "loop": {
-        "value": 18.75,
+        "value": 18.71,
         "n": 100
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1570,8 +1768,12 @@
         "n": 100
       },
       "loop": {
-        "value": 8.81,
+        "value": 8.49,
         "n": 100
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1600,8 +1802,12 @@
         "n": 100
       },
       "loop": {
-        "value": 6.99,
+        "value": 7.42,
         "n": 100
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1630,8 +1836,12 @@
         "n": 100
       },
       "loop": {
-        "value": 12.85,
+        "value": 12.83,
         "n": 100
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1660,8 +1870,12 @@
         "n": 100
       },
       "loop": {
-        "value": 21.77,
+        "value": 22.59,
         "n": 100
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1690,8 +1904,12 @@
         "n": 3200
       },
       "loop": {
-        "value": 0.2374111478682612,
+        "value": 0.23903872962002315,
         "n": 3200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1720,8 +1938,12 @@
         "n": 100
       },
       "loop": {
-        "value": 0.3198790875583403,
+        "value": 0.32338037609778,
         "n": 100
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1750,8 +1972,12 @@
         "n": 3200
       },
       "loop": {
-        "value": 0.4947465926172334,
+        "value": 0.4962272369847341,
         "n": 3200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1784,8 +2010,12 @@
         "n": 3200
       },
       "loop": {
-        "value": 22.5175,
+        "value": 22.5878125,
         "n": 3200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1803,8 +2033,12 @@
         "n": 3200
       },
       "loop": {
-        "value": 69.695,
+        "value": 70.0396875,
         "n": 3200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1822,8 +2056,12 @@
         "n": 3200
       },
       "loop": {
-        "value": 4.1146875,
+        "value": 4.0975,
         "n": 3200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1841,8 +2079,12 @@
         "n": 3200
       },
       "loop": {
-        "value": 40.645,
+        "value": 40.8771875,
         "n": 3200
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1877,6 +2119,10 @@
       "loop": {
         "value": null,
         "n": 0
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1894,6 +2140,10 @@
         "n": 4628
       },
       "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
         "value": null,
         "n": 0
       }
@@ -1915,6 +2165,10 @@
       "loop": {
         "value": null,
         "n": 0
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1932,6 +2186,10 @@
         "n": 18741
       },
       "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
         "value": null,
         "n": 0
       }
@@ -1953,6 +2211,10 @@
       "loop": {
         "value": null,
         "n": 0
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1972,6 +2234,10 @@
       "loop": {
         "value": null,
         "n": 0
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -1989,6 +2255,10 @@
         "n": 22751
       },
       "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
         "value": null,
         "n": 0
       }
@@ -2019,8 +2289,12 @@
         "n": 1083
       },
       "loop": {
-        "value": -2.957703754578752,
+        "value": -2.206282432844933,
         "n": 1152
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -2049,8 +2323,12 @@
         "n": 6538
       },
       "loop": {
-        "value": 1.5681964633260925,
+        "value": 1.7405010132879042,
         "n": 6549
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -2079,8 +2357,12 @@
         "n": 1701
       },
       "loop": {
-        "value": -0.7990205956557759,
+        "value": -1.0189896076863967,
         "n": 1688
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -2098,8 +2380,12 @@
         "n": 2514
       },
       "loop": {
-        "value": -1.7881915799266288,
+        "value": -1.6278149391437609,
         "n": 2477
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -2117,8 +2403,12 @@
         "n": 151
       },
       "loop": {
-        "value": -1.9690370483772206,
+        "value": -3.1647306197433025,
         "n": 142
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -2147,8 +2437,12 @@
         "n": 17739
       },
       "loop": {
-        "value": -0.053018436245552025,
-        "n": 20444
+        "value": -0.048453805238562464,
+        "n": 20565
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -2177,8 +2471,12 @@
         "n": 1126
       },
       "loop": {
-        "value": -0.1016100038230644,
-        "n": 1337
+        "value": -0.0683221419860669,
+        "n": 1317
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -2196,6 +2494,10 @@
         "n": 0
       },
       "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
         "value": null,
         "n": 0
       }
@@ -2217,6 +2519,10 @@
       "loop": {
         "value": null,
         "n": 0
+      },
+      "chain": {
+        "value": null,
+        "n": 0
       }
     },
     {
@@ -2234,6 +2540,10 @@
         "n": 0
       },
       "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
         "value": null,
         "n": 0
       }
@@ -2255,6 +2565,532 @@
       "loop": {
         "value": null,
         "n": 0
+      },
+      "chain": {
+        "value": null,
+        "n": 0
+      }
+    },
+    {
+      "id": "aging.meanAge",
+      "group": "aging",
+      "label": "Average age, week 1 active rosters",
+      "format": "dec2",
+      "value": 26.335059395434342,
+      "n": 50880,
+      "status": "pass",
+      "target": {
+        "pass": [
+          25.9,
+          26.8
+        ],
+        "warn": [
+          25.5,
+          27.2
+        ],
+        "source": "NFL Football Operations, \"A Look at 2024 NFL Kickoff Weekend Rosters\", \"A Look at 2025 NFL Kickoff Weekend Rosters\", and \"A Look at 2026 NFL Kickoff Weekend Rosters\": league average age 26.21 (2024), 26.36 (2025), and 26.43 (2026).",
+        "note": "Week 1 active rosters in leagues chained through the offseason, ages to the day on each season's opener; the band allows about a quarter year either side of the three seasons."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 26.335059395434342,
+        "n": 50880
+      }
+    },
+    {
+      "id": "aging.meanExperience",
+      "group": "aging",
+      "label": "Average seasons in the league, this one included, week 1 active rosters",
+      "format": "dec2",
+      "value": 4.718494496855346,
+      "n": 50880,
+      "status": "pass",
+      "target": {
+        "pass": [
+          4,
+          4.8
+        ],
+        "warn": [
+          3.6,
+          5.2
+        ],
+        "source": "NFL Football Operations, \"A Look at 2024 NFL Kickoff Weekend Rosters\", \"A Look at 2025 NFL Kickoff Weekend Rosters\", and \"A Look at 2026 NFL Kickoff Weekend Rosters\": league average experience 4.30 (2024), 4.44 (2025), and 4.47 (2026) seasons.",
+        "note": "Week 1 active rosters, counting the current season, so a rookie has one. The reports don't define experience, but their average age less average experience is about 21.9 for the league and for the youngest team alike (2025: 26.36 less 4.44; Green Bay 25.28 less 3.41), and rookies are 22 to 23 at kickoff, so the count includes the current season."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 4.718494496855346,
+        "n": 50880
+      }
+    },
+    {
+      "id": "aging.rookiesPerTeam",
+      "group": "aging",
+      "label": "Players in their first season, per week 1 roster",
+      "format": "dec1",
+      "value": 9.305208333333333,
+      "n": 960,
+      "status": "pass",
+      "target": {
+        "pass": [
+          8.5,
+          10.5
+        ],
+        "warn": [
+          7.5,
+          11.5
+        ],
+        "source": "NFL Football Operations, \"A Look at 2024 NFL Kickoff Weekend Rosters\", \"A Look at 2025 NFL Kickoff Weekend Rosters\", and \"A Look at 2026 NFL Kickoff Weekend Rosters\": 9.69 (2024), 9.47 (2025), and 9.06 (2026) rookies and first-year players per team.",
+        "note": "Players with no credited season on week 1 active rosters, per team."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 9.305208333333333,
+        "n": 960
+      }
+    },
+    {
+      "id": "aging.over30PerTeam",
+      "group": "aging",
+      "label": "Players 30 or older, per week 1 roster",
+      "format": "dec1",
+      "value": 7.907291666666667,
+      "n": 960,
+      "status": "pass",
+      "target": {
+        "pass": [
+          7.5,
+          9.8
+        ],
+        "warn": [
+          6.5,
+          11
+        ],
+        "source": "NFL Football Operations, \"A Look at 2024 NFL Kickoff Weekend Rosters\", \"A Look at 2025 NFL Kickoff Weekend Rosters\", and \"A Look at 2026 NFL Kickoff Weekend Rosters\": 7.91 (2024), 8.97 (2025), and 9.00 (2026) players aged 30 and over per team.",
+        "note": "Players 30 or older on the opener, week 1 active rosters, per team."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 7.907291666666667,
+        "n": 960
+      }
+    },
+    {
+      "id": "aging.ovrDrift",
+      "group": "aging",
+      "label": "League average overall, change over the run",
+      "format": "signed1",
+      "value": -0.2010613207547133,
+      "n": 3,
+      "status": "pass",
+      "target": {
+        "pass": [
+          -1.5,
+          1.5
+        ],
+        "warn": [
+          -3,
+          3
+        ],
+        "source": "Spec 23.3: rating inflation or deflation across decades is checked, and the league average overall by position must stay flat.",
+        "note": "Each chained league's week 1 active-roster average overall, first season to last, averaged over the leagues."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": -0.2010613207547133,
+        "n": 3
+      }
+    },
+    {
+      "id": "aging.groupDrift",
+      "group": "aging",
+      "label": "Largest position group overall change over the run",
+      "format": "dec1",
+      "value": 2.079586988304096,
+      "n": 3,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0,
+          2.5
+        ],
+        "warn": [
+          0,
+          4
+        ],
+        "source": "Spec 23.3: the league average overall by position must stay flat.",
+        "note": "The largest change among the eight position groups, first season to last."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 2.079586988304096,
+        "n": 3
+      }
+    },
+    {
+      "id": "aging.peakAge.QB",
+      "group": "aging",
+      "label": "Peak age, QB",
+      "format": "dec1",
+      "value": 29.734049353254704,
+      "n": 3369,
+      "status": "pass",
+      "target": {
+        "pass": [
+          27,
+          31
+        ],
+        "warn": [
+          25.5,
+          33
+        ],
+        "source": "Ty Schalter, \"When Does Age Catch Up to NFL Players?\" (Bleacher Report, June 8, 2018), approximate value by age and season: quarterback AV is nearly flat from 25 to 30 and falls after the tenth season (about age 32); Apex Fantasy Leagues peak-age studies: the average quarterback peak season comes at 28.5.",
+        "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 29.734049353254704,
+        "n": 3369
+      }
+    },
+    {
+      "id": "aging.peakAge.RB",
+      "group": "aging",
+      "label": "Peak age, RB",
+      "format": "dec1",
+      "value": 25.30136719148668,
+      "n": 4091,
+      "status": "pass",
+      "target": {
+        "pass": [
+          25,
+          27
+        ],
+        "warn": [
+          24,
+          28
+        ],
+        "source": "Tristan Bassett, \"Production Curves: Positional Breakouts, Prime Years, and Falloffs by Age\" (4for4, August 23, 2025): running backs peak at 26 and stay near it through 28; Apex Fantasy Leagues peak-age studies: average peak age 25.46; Ty Schalter, \"When Does Age Catch Up to NFL Players?\" (Bleacher Report, June 8, 2018), approximate value by age and season: AV highs at 27.",
+        "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 25.30136719148668,
+        "n": 4091
+      }
+    },
+    {
+      "id": "aging.peakAge.WR",
+      "group": "aging",
+      "label": "Peak age, WR",
+      "format": "dec1",
+      "value": 26.472811264113957,
+      "n": 7210,
+      "status": "pass",
+      "target": {
+        "pass": [
+          26,
+          28.5
+        ],
+        "warn": [
+          25,
+          30
+        ],
+        "source": "Tristan Bassett, \"Production Curves: Positional Breakouts, Prime Years, and Falloffs by Age\" (4for4, August 23, 2025): receivers are at their peak from 26 to 28 and fall off from 29; Apex Fantasy Leagues peak-age studies: average peak age 26.95.",
+        "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 26.472811264113957,
+        "n": 7210
+      }
+    },
+    {
+      "id": "aging.peakAge.TE",
+      "group": "aging",
+      "label": "Peak age, TE",
+      "format": "dec1",
+      "value": 27.509272387458513,
+      "n": 3820,
+      "status": "pass",
+      "target": {
+        "pass": [
+          26,
+          30
+        ],
+        "warn": [
+          25,
+          32
+        ],
+        "source": "Tristan Bassett, \"Production Curves: Positional Breakouts, Prime Years, and Falloffs by Age\" (4for4, August 23, 2025): tight ends reach their prime at 26 and produce close to their peak through 32.",
+        "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 27.509272387458513,
+        "n": 3820
+      }
+    },
+    {
+      "id": "aging.peakAge.OL",
+      "group": "aging",
+      "label": "Peak age, OL",
+      "format": "dec1",
+      "value": 28.09159666020015,
+      "n": 12955,
+      "status": "pass",
+      "target": {
+        "pass": [
+          26.5,
+          30
+        ],
+        "warn": [
+          25.5,
+          31
+        ],
+        "source": "Ty Schalter, \"When Does Age Catch Up to NFL Players?\" (Bleacher Report, June 8, 2018), approximate value by age and season: linemen peak in their seventh season, about age 28 to 29.",
+        "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 28.09159666020015,
+        "n": 12955
+      }
+    },
+    {
+      "id": "aging.peakAge.DL",
+      "group": "aging",
+      "label": "Peak age, DL",
+      "format": "dec1",
+      "value": 28.11042008726801,
+      "n": 10749,
+      "status": "pass",
+      "target": {
+        "pass": [
+          26.5,
+          30
+        ],
+        "warn": [
+          25.5,
+          31
+        ],
+        "source": "Ty Schalter, \"When Does Age Catch Up to NFL Players?\" (Bleacher Report, June 8, 2018), approximate value by age and season: linemen peak in their seventh season, about age 28 to 29, and decline quickly after.",
+        "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 28.11042008726801,
+        "n": 10749
+      }
+    },
+    {
+      "id": "aging.peakAge.LB",
+      "group": "aging",
+      "label": "Peak age, LB",
+      "format": "dec1",
+      "value": 27.55080176568623,
+      "n": 7937,
+      "status": "pass",
+      "target": {
+        "pass": [
+          24.5,
+          28
+        ],
+        "warn": [
+          23.5,
+          29
+        ],
+        "source": "Ty Schalter, \"When Does Age Catch Up to NFL Players?\" (Bleacher Report, June 8, 2018), approximate value by age and season: linebackers peak in their third season, about age 25, and hold for two more.",
+        "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 27.55080176568623,
+        "n": 7937
+      }
+    },
+    {
+      "id": "aging.peakAge.DB",
+      "group": "aging",
+      "label": "Peak age, DB",
+      "format": "dec1",
+      "value": 26.603371338232392,
+      "n": 12040,
+      "status": "pass",
+      "target": {
+        "pass": [
+          24.5,
+          28
+        ],
+        "warn": [
+          23.5,
+          29
+        ],
+        "source": "Ty Schalter, \"When Does Age Catch Up to NFL Players?\" (Bleacher Report, June 8, 2018), approximate value by age and season: defensive backs peak in their third season, about age 25, and decline steadily after.",
+        "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 26.603371338232392,
+        "n": 12040
+      }
+    },
+    {
+      "id": "aging.retireAge",
+      "group": "aging",
+      "label": "Average age at retirement",
+      "format": "dec1",
+      "value": 30.76155649489612,
+      "n": 7274,
+      "status": "info",
+      "target": null,
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 30.76155649489612,
+        "n": 7274
+      }
+    },
+    {
+      "id": "aging.retireExperience",
+      "group": "aging",
+      "label": "Average credited seasons at retirement",
+      "format": "dec1",
+      "value": 7.099670057739895,
+      "n": 7274,
+      "status": "info",
+      "target": null,
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 7.099670057739895,
+        "n": 7274
       }
     }
   ]

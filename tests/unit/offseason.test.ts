@@ -273,6 +273,20 @@ describe('stand-in draft and rosters (D-27)', () => {
     expect(offseasonBlock(league)).toBeNull();
   });
 
+  it("keeps a recent draft pick over a veteran who's a little better now", () => {
+    const league = fresh(at(2026, 'cutdown'));
+    const wrs = roster(league, 'KC').filter(p => p.position === 'WR');
+    const weakest = wrs.reduce((a, b) => (b.ovr < a.ovr ? b : a));
+    const pick = Object.values(league.players).find(p => p.status === 'freeAgent' && p.position === 'WR') as Player;
+    // A first-round rookie a point short of what the team's investment in him covers.
+    const ovr = weakest.ovr - (TUNING.offseason.cutDraftBonus[0] ?? 0) + 1;
+    Object.assign(pick, { team: 'KC', status: 'active', experience: 0, ovr, potential: ovr, injury: null, draft: { year: 2026, round: 1, pick: 20, team: 'KC' } });
+    const cut = cutdown(league, 'KC', stream(5, 'cut'));
+    expect(cut).toHaveLength(1);
+    expect(cut[0]?.id).toBe(weakest.id);
+    expect(pick.team).toBe('KC');
+  }); // prettier-ignore
+
   it('plays a whole offseason into the next season with legal rosters and a new schedule', () => {
     const league = fresh(at(2026, 'staff'));
     league.settings.auto.roster = true;

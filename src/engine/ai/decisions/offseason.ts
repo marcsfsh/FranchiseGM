@@ -139,10 +139,19 @@ export function offseasonClaims(league: League, player: Player, from: TeamAbbr, 
     .map(([abbr]) => abbr); // prettier-ignore
 }
 
-/** What a player is worth keeping: his overall, and for a young player part of the way to his potential. */
+/**
+ * What a player is worth keeping: his overall, for a young player part of the way to his potential, and for
+ * a recent draft pick the team's investment in him.
+ */
 function keepValue(league: League, p: Player): number {
   const age = ageOn(p.birthDate, calendarDay(league.date));
-  return p.ovr + (age <= O.cutYoungAge ? O.cutPotentialWeight * Math.max(0, p.potential - p.ovr) : 0);
+  const recent = p.experience < O.cutDraftSeasons;
+  const pick = !recent
+    ? 0
+    : 'round' in p.draft
+      ? (O.cutDraftBonus[p.draft.round - 1] ?? 0)
+      : O.cutUndraftedBonus;
+  return p.ovr + (age <= O.cutYoungAge ? O.cutPotentialWeight * Math.max(0, p.potential - p.ovr) : 0) + pick;
 }
 
 /**

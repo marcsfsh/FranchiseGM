@@ -13,7 +13,7 @@ import type { League } from '../league/types';
 import { leagueYear } from '../model/calendar';
 import { pickJersey } from '../model/jerseys';
 import { fullName, type Player } from '../model/player';
-import type { Position } from '../model/positions';
+import { POSITION_GROUP, type Position } from '../model/positions';
 import type { Rng } from '../rng';
 import { minimumSalary } from '../rules/ruleset';
 import { PLAYOFF_PHASES, leagueStandings } from '../season/state';
@@ -87,7 +87,7 @@ function prospects(league: League, names: NameData, rng: Rng): Player[] {
     const position = rng.weighted(positions, weights) as Position;
     const player = generatePlayer(ctx, {
       position,
-      quality: rng.normal(mean, spread),
+      quality: rng.normal(mean + O.classQualityByGroup[POSITION_GROUP[position]], spread),
       age: rng.int(O.classAge[0], O.classAge[1]),
       team: null,
       status: 'freeAgent'

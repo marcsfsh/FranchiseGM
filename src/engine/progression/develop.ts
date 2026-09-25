@@ -87,7 +87,7 @@ export function developPlayer(
   const today = calendarDay(league.date);
   const age = ageOn(player.birthDate, today);
   const group = POSITION_GROUP[player.position];
-  const years = age - TUNING.generation.peakAge[group];
+  const years = age - P.peakAge[group];
   const s = league.settings.development;
   const team = player.team;
   const plan = team ? league.teams[team].training : null;

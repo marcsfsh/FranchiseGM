@@ -5,7 +5,7 @@
  * yardage) live in the rule set (spec 16), not here. Calibration runs (spec 23) change these values,
  * and each change is logged in docs/CALIBRATION.md.
  */
-import type { Position } from './model/positions';
+import type { Position, PositionGroup } from './model/positions';
 import type { StatKey } from './sim/stats';
 
 export const TUNING = {
@@ -444,11 +444,13 @@ export const TUNING = {
   },
   /**
    * Progression and regression (spec 10.5). Each rating belongs to a class with its own age curve, in rating
-   * points a year by years from the position group's peak age (generation.peakAge): growth of `growth` that
-   * fades past `growthEnd`, and decline of up to `decline` that builds past `declineStart`, both through a
+   * points a year by years from the position group's curve peak (`peakAge`): growth of `growth` that fades
+   * past `growthEnd`, and decline of up to `decline` that builds past `declineStart`, both through a
    * logistic of width `curveWidth`. Speed fades first, the mind keeps growing longest.
    */
   progression: {
+    /** Each position group's curve peak; the aging calibration (spec 23.3) sets them. */
+    peakAge: { QB: 27, RB: 25, WR: 26, TE: 26, OL: 27, DL: 27, LB: 26, DB: 26, ST: 30 },
     curves: {
       speed: { growth: 2, growthEnd: -3, decline: 3, declineStart: 2.5 },
       body: { growth: 2.5, growthEnd: -2, decline: 2.5, declineStart: 4 },
@@ -469,8 +471,8 @@ export const TUNING = {
     /** Random spread per rating at camp, in points (weekly steps scale it by their share). */
     noise: 1,
     /** Growth scales with the room left to potential: full at this many points, within these bounds. */
-    potentialRoom: 8,
-    potentialBounds: [0.25, 1.5],
+    potentialRoom: 12,
+    potentialBounds: [0, 1.5],
     /** Development traits (spec 10.6) speed growth and slow decline. */
     devGrowth: { Normal: 1, Star: 1.25, Superstar: 1.5, 'X-Factor': 1.75 },
     devDecline: { Normal: 1, Star: 0.92, Superstar: 0.86, 'X-Factor': 0.8 },
@@ -525,7 +527,7 @@ export const TUNING = {
    */
   retirement: {
     /** Usual retirement age by position group, before the retirement-age setting. */
-    age: { QB: 37, RB: 31, WR: 33, TE: 33, OL: 34, DL: 33, LB: 32, DB: 32, ST: 38 },
+    age: { QB: 37, RB: 30.5, WR: 32.5, TE: 32.5, OL: 33.5, DL: 32.5, LB: 31.5, DB: 31.5, ST: 38 },
     ageSpread: 1.6,
     /** Per 10 overall points below his peak (his potential), a sign of decline. */
     decline: 0.8,
@@ -560,6 +562,21 @@ export const TUNING = {
     classSize: 450,
     classAge: [21, 23],
     classQuality: [-1.2, 0.8],
+    /**
+     * Added to a prospect's latent quality by position group, so each group's league average holds over the
+     * seasons (spec 23.3) until M11's draft classes replace this stand-in.
+     */
+    classQualityByGroup: {
+      QB: -0.8,
+      RB: 0.6,
+      WR: 0,
+      TE: -0.3,
+      OL: 0.2,
+      DL: 0,
+      LB: 0,
+      DB: 0.2,
+      ST: 0
+    } as Record<PositionGroup, number>,
     /** Draft value: potential and current overall blended, with scouting noise. */
     draftPotentialWeight: 0.6,
     draftNoise: 2,
@@ -568,7 +585,15 @@ export const TUNING = {
     udfaBonus: [5_000, 25_000],
     /** In the cutdown, young players are kept for this share of the gap to their potential. */
     cutPotentialWeight: 0.5,
-    cutYoungAge: 25
+    cutYoungAge: 25,
+    /**
+     * A draft pick in his first `cutDraftSeasons` seasons is worth this many more points to keep, by round:
+     * the team's investment in him (NFL teams keep nearly every pick from the first four rounds).
+     */
+    cutDraftBonus: [16, 14, 12, 10, 9, 8, 7],
+    /** An undrafted rookie the team signed, in the same seasons. */
+    cutUndraftedBonus: 6,
+    cutDraftSeasons: 2
   },
   /**
    * The AI in the re-sign window (spec 11.4, 11.5; D-29 stand-in until M12 and M14): players older than
@@ -577,7 +602,7 @@ export const TUNING = {
    * players of this overall or better.
    */
   resign: {
-    maxAge: 32,
+    maxAge: 30,
     optionValue: 0.9,
     freeAgencyRoom: 0.04,
     tagOvr: 80
