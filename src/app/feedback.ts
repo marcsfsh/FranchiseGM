@@ -126,6 +126,22 @@ export function toast(
 }
 
 /**
+ * Marks a button busy and shows `label`. The idle label stays in place, invisible, so the button keeps
+ * its width (style guide 7.1). Returns the function that restores the idle label.
+ */
+export function showBusy(button: HTMLButtonElement, label: string): () => void {
+  const idle = button.textContent ?? '';
+  button.setAttribute('aria-busy', 'true');
+  button.classList.add('btn-steady');
+  button.replaceChildren(h('span', { class: 'btn-idle' }, idle), h('span', null, label));
+  return () => {
+    button.removeAttribute('aria-busy');
+    button.classList.remove('btn-steady');
+    button.textContent = idle;
+  };
+}
+
+/**
  * Runs a task behind a button: marks it busy, shows `label` while it runs, and ignores clicks until the
  * task ends. The button stays enabled so it keeps focus (style guide 7.1).
  */
@@ -135,13 +151,10 @@ export async function whileBusy<T>(
   task: () => Promise<T>
 ): Promise<T | undefined> {
   if (button.getAttribute('aria-busy') === 'true') return undefined;
-  const idle = button.textContent ?? '';
-  button.setAttribute('aria-busy', 'true');
-  button.textContent = label;
+  const idle = showBusy(button, label);
   try {
     return await task();
   } finally {
-    button.removeAttribute('aria-busy');
-    button.textContent = idle;
+    idle();
   }
 }

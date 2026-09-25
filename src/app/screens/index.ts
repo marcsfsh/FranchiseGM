@@ -1,4 +1,5 @@
 import type { RouteName } from '../router';
+import { devScreen } from './dev';
 import { placeholderScreen } from './placeholder';
 import { historyScreen } from './history';
 import { homeScreen } from './home';
@@ -28,5 +29,6 @@ export const SCREENS: Record<RouteName, () => Screen> = {
   player: playerScreen,
   team: () => placeholderScreen('Team', "Another team's roster and results."),
   start: startScreen,
-  newLeague: newLeagueScreen
+  newLeague: newLeagueScreen,
+  dev: devScreen
 };

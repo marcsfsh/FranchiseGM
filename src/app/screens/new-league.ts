@@ -7,7 +7,7 @@ import { defaultStartOptions } from '../../engine/league/create';
 import type { Permission, StartOptions } from '../../engine/league/types';
 import { freshSeed } from '../../engine/rng';
 import { h } from '../dom';
-import { toast } from '../feedback';
+import { showBusy, toast } from '../feedback';
 import { exportToDevice } from '../state';
 import { JobError } from '../worker-client';
 import { pageHead } from './common';
@@ -216,16 +216,14 @@ export function newLeagueScreen(): Screen {
           styleDrift: checked('leagueDrift'),
           aiOwnersProposeRules: checked('leagueRules')
         };
-        submit.setAttribute('aria-busy', 'true');
-        submit.textContent = 'Creating league…';
+        const idle = showBusy(submit, 'Creating league…');
         progress.hidden = false;
         // The status line announces phases; the progress bar carries the counts.
         status.textContent = 'Building teams, staff, and contracts.';
         const controller = new AbortController();
         building = controller;
         const reset = () => {
-          submit.removeAttribute('aria-busy');
-          submit.textContent = 'Create league';
+          idle();
           progress.hidden = true;
           status.textContent = '';
         };

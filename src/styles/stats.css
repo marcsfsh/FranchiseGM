@@ -84,3 +84,70 @@
 .stat-key dd {
   margin: 0;
 }
+/* The calibration report (spec 23.1): a table where there's room, labeled rows in narrow spaces and at
+   large text sizes. */
+.metric-region {
+  container-type: inline-size;
+  container-name: metrics;
+  display: grid;
+  gap: var(--s2);
+  min-width: 0;
+}
+.metric-title {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 800;
+}
+.metric-table {
+  display: none;
+}
+.metric-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.metric-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s1) var(--s3);
+  align-items: start;
+  padding: var(--row-pad) 0;
+  border-bottom: 1px solid var(--line);
+}
+.metric-name {
+  min-width: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.metric-facts {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s4);
+  margin: 0;
+  font-size: var(--fs-small);
+}
+.metric-facts div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  min-width: 0;
+}
+.metric-facts dt {
+  color: var(--text-2);
+}
+.metric-facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+@container metrics (min-width: 40rem) {
+  .metric-table {
+    display: table;
+  }
+  .metric-list {
+    display: none;
+  }
+}

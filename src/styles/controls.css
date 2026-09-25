@@ -67,6 +67,17 @@
 .btn[aria-busy='true'] {
   cursor: progress;
 }
+/* A busy button keeps its idle width: the idle label stays in the same grid cell, invisible (7.1). */
+.btn-steady {
+  display: inline-grid;
+  place-items: center;
+}
+.btn-steady > * {
+  grid-area: 1 / 1;
+}
+.btn-steady > .btn-idle {
+  visibility: hidden;
+}
 .btn-block {
   width: 100%;
 }
@@ -243,6 +254,17 @@ fieldset.field .seg label {
   width: 100%;
   height: var(--s3);
   accent-color: var(--selection-indicator);
+}
+/* The version line in Settings: quiet text, but a real button for the hidden developer tools (spec 23.5). */
+.version-tap {
+  min-height: var(--tap);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-small);
+  cursor: default;
 }
 /* Narrow screens with large text: legends, radio labels, and menus wrap or shrink instead of overflowing. */
 fieldset.field > legend {

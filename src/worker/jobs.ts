@@ -1,6 +1,10 @@
-/** The worker's job table. Later milestones add season sims, calibration runs, and AI batches. */
+/** The worker's job table. Later milestones add season sims and AI batches. */
 import { hashWords, stream } from '../engine/rng';
 import type { ClimateTable } from '../data/climate';
+import type { RunSample } from '../engine/calibration/metrics';
+import type { CalibrationData } from '../engine/calibration/replay';
+import { finishRun, jobLeague, planJobs, runJob, type RunPlan } from '../engine/calibration/run';
+import type { Mode, TargetsFile } from '../engine/calibration/targets';
 import { createLeague, type NewLeagueInput } from '../engine/league/create';
 import type { League } from '../engine/league/types';
 import { simLeagueGame } from '../engine/sim';
@@ -33,6 +37,40 @@ export const JOBS: Record<string, JobHandler> = {
     const started = performance.now();
     const result = simLeagueGame(league, gameId, climate);
     return { result, ms: performance.now() - started };
+  },
+
+  /**
+   * A calibration run for the dev menu (spec 23.1): the same replays as `npm run calibrate`, one at a time,
+   * with progress after each and a chance to cancel between them. Returns the report.
+   */
+  calibrate: async (payload, ctx) => {
+    const { data, plan, targets, mode } = payload as {
+      data: CalibrationData;
+      plan: RunPlan;
+      targets: TargetsFile;
+      mode: Mode;
+    };
+    const jobs = planJobs(plan);
+    const started = performance.now();
+    const samples: RunSample[] = [];
+    // Jobs come league by league, so each league is generated once.
+    let league: League | null = null;
+    let leagueIndex = -1;
+    for (const [i, job] of jobs.entries()) {
+      const step = job.experiment
+        ? `Fit experiment ${i - plan.seasons + 1} of ${plan.experiments}`
+        : `Season ${i + 1} of ${plan.seasons}`;
+      ctx.progress(i, jobs.length, step);
+      await ctx.checkpoint();
+      if (!league || leagueIndex !== job.league) {
+        league = jobLeague(data, plan.seed, job.league);
+        leagueIndex = job.league;
+      }
+      samples.push(runJob(data, plan.seed, job, league));
+    }
+    ctx.progress(jobs.length, jobs.length);
+    const created = new Date().toISOString().slice(0, 10);
+    return finishRun(plan, samples, targets, mode, created, (performance.now() - started) / 1000);
   },
 
   /** Draws from a seeded stream in chunks, reporting progress. Proves the worker and the PRNG work. */

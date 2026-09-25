@@ -17,7 +17,8 @@ export type RouteName =
   | 'player'
   | 'team'
   | 'start'
-  | 'newLeague';
+  | 'newLeague'
+  | 'dev';
 
 export interface Route {
   name: RouteName;
@@ -46,7 +47,8 @@ const ROUTES: readonly RouteDef[] = [
   { name: 'player', path: 'player/:id' },
   { name: 'team', path: 'team/:abbr/:tab' },
   { name: 'start', path: 'leagues' },
-  { name: 'newLeague', path: 'leagues/new' }
+  { name: 'newLeague', path: 'leagues/new' },
+  { name: 'dev', path: 'dev' }
 ];
 
 const PARAM = /^[A-Za-z0-9_-]{1,64}$/;
@@ -122,7 +124,8 @@ export const DESTINATIONS: readonly Destination[] = [
 ];
 
 /** Routes that need an open league. */
-export const needsLeague = (name: RouteName): boolean => !['start', 'newLeague', 'settings'].includes(name);
+export const needsLeague = (name: RouteName): boolean =>
+  !['start', 'newLeague', 'settings', 'dev'].includes(name);
 
 /** The phone tab bar shows these, then More (style guide 4.4). Without a league: Leagues and Settings. */
 export const PHONE_TABS: readonly RouteName[] = ['home', 'roster', 'staff', 'scouting', 'start'];
@@ -132,5 +135,6 @@ export function sectionOf(route: Route): RouteName {
   if (route.name === 'player') return 'roster';
   if (route.name === 'team') return 'league';
   if (route.name === 'newLeague') return 'start';
+  if (route.name === 'dev') return 'settings';
   return route.name;
 }

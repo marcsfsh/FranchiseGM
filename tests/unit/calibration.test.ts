@@ -200,8 +200,11 @@ describe('calibration targets and reports (spec 23.2)', () => {
     ).toBe(report.results.length);
     const markdown = reportMarkdown(report);
     expect(markdown).toContain('# Calibration report');
+    expect(markdown).toContain(
+      '- Replays: 1 season (1 generated league, up to 10 replays each) and 0 fit experiment seasons.'
+    );
     expect(markdown).toContain('## Targets and sources');
-    expect(summaryLines(report)[0]).toMatch(/^Calibration \(full, 1 seasons, seed 1\): \d+ pass/);
+    expect(summaryLines(report)[0]).toMatch(/^Calibration \(full, 1 season, seed 1\): \d+ pass/);
     expect(formatValue(0.6512, 'pct')).toBe('65.1%');
     expect(formatValue(-0.031, 'pctPoints')).toBe('−3.1 pts');
     expect(formatValue(5316.4, 'int')).toBe('5,316');

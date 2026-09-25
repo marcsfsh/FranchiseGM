@@ -47,11 +47,14 @@ export function createJobRunner(
       return;
     }
     let lastPercent = -1;
+    let lastLabel: string | undefined;
     const ctx: JobContext = {
       progress(done, total, label) {
         const percent = total > 0 ? Math.floor((done / total) * 100) : 0;
-        if (percent === lastPercent && done !== total) return;
+        // Whole percents only, but a new label (the step in progress) always goes through.
+        if (percent === lastPercent && done !== total && label === lastLabel) return;
         lastPercent = percent;
+        lastLabel = label;
         post({ kind: 'progress', id, done, total, ...(label === undefined ? {} : { label }) });
       },
       async checkpoint() {

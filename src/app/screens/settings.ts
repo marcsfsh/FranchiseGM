@@ -4,6 +4,7 @@ import { savedAgo } from '../format';
 import { EXPORT_REMINDER, clearsSiteData } from '../platform';
 import { dateLine } from '../shell';
 import { exportToDevice, type AppState } from '../state';
+import { devMenuOn, tapVersion } from '../dev-menu';
 import { h } from '../dom';
 import { layoutNote } from '../theme/prefs';
 import type { PrefsController } from '../theme/controller';
@@ -191,6 +192,40 @@ function leagueSettings(ctx: ScreenContext): { node: HTMLElement; sync: () => vo
   return { node, sync };
 }
 
+/** The developer tools entry (spec 23.5), shown once the menu is on. */
+const devCard = () =>
+  card(
+    'Developer tools',
+    h('p', { class: 'muted' }, 'Calibration runs and reports.'),
+    h(
+      'div',
+      { class: 'btn-row' },
+      h('a', { class: 'btn btn-outline', href: '#/dev' }, 'Open developer tools')
+    )
+  );
+
+/** The version line: tapping it seven times turns on the developer tools (spec 23.5). */
+function versionLine(cards: HTMLElement): HTMLElement {
+  const status = h('p', { class: 'sr-only', role: 'status' });
+  const version = h(
+    'button',
+    { class: 'version-tap', type: 'button' },
+    `Franchise GM version ${__GM_VERSION__}`
+  );
+  version.addEventListener('click', () => {
+    if (devMenuOn()) return;
+    const left = tapVersion();
+    if (left === 0) {
+      cards.append(devCard());
+      // The toast announces it; the tap count clears so it isn't read again.
+      status.textContent = '';
+      toast('Developer tools are on.');
+    } else if (left <= 3)
+      status.textContent = `${left} more ${left === 1 ? 'tap' : 'taps'} to turn on developer tools.`;
+  });
+  return h('div', null, version, status);
+}
+
 export function settingsScreen(): Screen {
   const offs: (() => void)[] = [];
   return {
@@ -200,12 +235,19 @@ export function settingsScreen(): Screen {
       offs.push(ctx.prefs.onChange(display.sync));
       const league = leagueSettings(ctx);
       if (league) offs.push(ctx.app.onChange(league.sync));
+      const cards = h(
+        'div',
+        { class: 'cards' },
+        league?.node ?? null,
+        display.node,
+        devMenuOn() ? devCard() : null
+      );
       return h(
         'section',
         { class: 'view' },
         pageHead('Settings'),
-        h('div', { class: 'cards-host' }, h('div', { class: 'cards' }, league?.node ?? null, display.node)),
-        h('p', { class: 'muted small' }, `Franchise GM version ${__GM_VERSION__}`)
+        h('div', { class: 'cards-host' }, cards),
+        versionLine(cards)
       );
     },
     dispose: () => offs.forEach(off => off())

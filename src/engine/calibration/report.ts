@@ -80,12 +80,16 @@ export const formatBand = (band: Band, format: MetricFormat): string =>
 const judged = (r: MetricResult, mode: Mode): Band | null =>
   r.target ? (mode === 'ci' ? (r.target.ci ?? null) : r.target.pass) : null;
 
+/** A count with its noun, singular for one: "1 season", "25 seasons". */
+export const count = (n: number, one: string, many = `${one}s`): string =>
+  `${thousands(n)} ${n === 1 ? one : many}`;
+
 /** A one-line summary and a line per warning or failure, for the command line. */
 export function summaryLines(report: CalibrationReport): string[] {
   const c = report.counts;
   const lines = [
-    `Calibration (${report.mode}, ${report.seasons} seasons, seed ${report.seed}): ${c.pass} pass, ${c.warn} warn, ` +
-      `${c.fail} fail, ${c.info} info, ${c.pending} not measured yet.`
+    `Calibration (${report.mode}, ${count(report.seasons, 'season')}, seed ${report.seed}): ` +
+      `${c.pass} pass, ${c.warn} warn, ${c.fail} fail, ${c.info} info, ${c.pending} not measured yet.`
   ];
   for (const r of report.results) {
     if (r.status !== 'warn' && r.status !== 'fail') continue;
@@ -120,8 +124,8 @@ export function reportMarkdown(report: CalibrationReport): string {
     '',
     `- Run: ${report.created}, ${report.mode === 'ci' ? 'CI subset with wide bands' : 'full'}, seed ${report.seed}, ` +
       `${report.seconds.toFixed(0)} s.`,
-    `- Replays: ${report.seasons} seasons (${report.leagues} generated leagues, up to ${report.perLeague} replays ` +
-      `each) and ${report.experiments} fit experiment seasons.`,
+    `- Replays: ${count(report.seasons, 'season')} (${count(report.leagues, 'generated league')}, up to ` +
+      `${count(report.perLeague, 'replay')} each) and ${count(report.experiments, 'fit experiment season')}.`,
     `- Result: ${c.pass} pass, ${c.warn} warn, ${c.fail} fail, ${c.info} info, ${c.pending} not measured yet.`
   ];
   const flagged = report.results.filter(r => r.status === 'warn' || r.status === 'fail');

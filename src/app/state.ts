@@ -3,11 +3,15 @@
  * changes; the engine does the work and the store does the saving.
  */
 import type { BaseDb } from '../data/base-db';
+import type { CalibrationData } from '../engine/calibration/replay';
+import type { CalibrationReport } from '../engine/calibration/report';
+import type { RunPlan } from '../engine/calibration/run';
+import type { TargetsFile } from '../engine/calibration/targets';
 import type { League, LeagueSummary, StartOptions } from '../engine/league/types';
 import type { NewLeagueInput } from '../engine/league/create';
 import type { SaveStore } from '../storage/saves';
 import { exportFileName, exportFileNameFor, exportLeague, readLeagueFile } from '../storage/saves';
-import type { Progress, WorkerClient } from './worker-client';
+import { JobError, type Progress, type WorkerClient } from './worker-client';
 
 export type SaveStatus =
   | { state: 'saved'; at: number }
@@ -71,6 +75,37 @@ export class AppState {
     this.saveStatus = { state: 'none' };
     await this.rememberLeague(null);
     this.emit();
+  }
+
+  /**
+   * Runs a calibration in the worker (spec 23.1, the dev menu). Returns null if `signal` aborts first.
+   */
+  async calibrate(
+    plan: RunPlan,
+    targets: TargetsFile,
+    onProgress: (p: Progress) => void,
+    signal?: AbortSignal
+  ): Promise<CalibrationReport | null> {
+    const data: CalibrationData = {
+      names: this.baseDb.names,
+      schedule: this.baseDb.schedule,
+      climate: this.baseDb.climate
+    };
+    const job = this.worker.run<CalibrationReport>(
+      'calibrate',
+      { data, plan, targets, mode: 'full' },
+      onProgress
+    );
+    const cancel = () => this.worker.cancel(job.id);
+    signal?.addEventListener('abort', cancel, { once: true });
+    try {
+      return await job.result;
+    } catch (error) {
+      if (error instanceof JobError && error.cancelled) return null;
+      throw error;
+    } finally {
+      signal?.removeEventListener('abort', cancel);
+    }
   }
 
   /**
