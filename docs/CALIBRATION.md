@@ -73,3 +73,7 @@ Tuning changes, newest last. Each entry names the constants in `src/engine/tunin
 ## C-18: Rosters and the cap (M8 close, 2026-09-25)
 - Change: none to the sim or the replays. M8's contracts, cap, and roster moves happen in the season loop, and replays make no roster moves.
 - Effect: the seed 1 100-season run matches C-17's report metric for metric: 61 of 62 targets pass, and perfect or winless teams (6.0 per 100 seasons) still warn.
+
+## C-19: Situational run and pass balance (M9, 2026-09-25)
+- Change: play calls add the game plan's lean for the down and distance, or for the red zone or two-minute drill (spec 8.7). AI coordinators leave every situation neutral until M14, and the sliders default to 100%.
+- Effect: none. The seed 1 100-season run matches C-17's report metric for metric (61 of 62 targets pass; perfect or winless teams, 6.0 per 100 seasons, still warn).
