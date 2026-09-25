@@ -69,3 +69,7 @@ Tuning changes, newest last. Each entry names the constants in `src/engine/tunin
 ## C-17: Backups dress for hurt players, and the passing game (M7 close, 2026-09-25)
 - Change: replays set hurt players aside before teams dress and plan, so their backups dress and the depth chart fills around them (they had dressed and sat, leaving a team short at the position). `yac` 4% lower (short and deep 3.9 to 3.74, intermediate 2.55 to 2.45, screens 5.2 to 4.99), `checkdownFavor` 2.6 to 3.4, and `deepFavor` for the outside receivers 2 to 2.4. The AI's rotation also names a goal-line back and a dime linebacker (spec 12.3).
 - Effect: in 100-season runs seed 1 passes 61 of 62 targets (perfect or winless teams 6.0 per 100 seasons warns, against 5 at most) and seed 2 passes 61 (receptions leader 139 warns, against 138); both sit within a run's sampling noise. Since C-16: rushing leader 1,914 to 1,730 (seed 1), passing leader 5,191 to 5,121 and receptions 140 to 139 (seed 2); completions 64.6-64.8%, 7.07-7.08 yards per attempt, 4.24-4.26 per carry, and 22.5-22.7 points per team game.
+
+## C-18: Rosters and the cap (M8 close, 2026-09-25)
+- Change: none to the sim or the replays. M8's contracts, cap, and roster moves happen in the season loop, and replays make no roster moves.
+- Effect: the seed 1 100-season run matches C-17's report metric for metric: 61 of 62 targets pass, and perfect or winless teams (6.0 per 100 seasons) still warn.
