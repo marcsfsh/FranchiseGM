@@ -9,3 +9,4 @@ CLAUDE.md
 README.md
 tools/doc.mjs
 src/data/archetypes.json
+src/data/situation-profiles.json
