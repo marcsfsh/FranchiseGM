@@ -2702,7 +2702,7 @@ class GameSim {
             this.long(off, punter, 'puntLong', gross);
             // The return is the receiving team's possession, starting where the returner caught it.
             this.offense = def;
-            this.ball = catchAt;
+            this.ball = clamp(catchAt, 1, 99);
             this.startDrive(def);
             this.touchdown(def, `${returner.short} punt return`);
             return;
@@ -2799,7 +2799,8 @@ class GameSim {
       this.tick(K.returnSeconds);
       if (start >= 100) {
         this.add(receiver, returner, 'kickReturnTd');
-        this.ball = caught;
+        // A return from the end zone counts as a drive from the 1, like one tackled there.
+        this.ball = clamp(caught, 1, 99);
         this.startDrive(receiver);
         this.touchdown(receiver, `${returner.short} kickoff return`);
         return;
