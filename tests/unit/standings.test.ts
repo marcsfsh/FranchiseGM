@@ -78,6 +78,23 @@ describe('standings (spec 5.3)', () => {
     expect(teams[0]?.tiebreak).toBe('Division record');
   });
 
+  it('goes to common games when head-to-head and the division record are even', () => {
+    // MIN and GB finish 3-2, split their games, and went 1-1 in the division. Both played KC and LV:
+    // MIN won both, GB split them.
+    const s = season()
+      .win('MIN', 'GB')
+      .win('GB', 'MIN')
+      .win('MIN', 'KC')
+      .win('MIN', 'LV')
+      .win('DAL', 'MIN')
+      .win('GB', 'KC')
+      .win('LV', 'GB')
+      .win('GB', 'NYG');
+    const teams = division(s.games, 'NFC North');
+    expect(order(teams).slice(0, 2)).toEqual(['MIN', 'GB']);
+    expect(teams[0]?.tiebreak).toBe('Common games');
+  });
+
   it('separates three tied clubs by their games among each other, then starts over with two', () => {
     // MIN, GB, and CHI all finish 2-2; MIN went 2-0 against the other two, who split.
     const s = season()
@@ -137,6 +154,73 @@ describe('standings (spec 5.3)', () => {
     expect(pos('ARI')).toBeLessThan(pos('NO'));
     expect(pos('ARI')).toBeLessThan(pos('WAS'));
     expect(ranked[pos('ARI')]?.tiebreak).toBe('Head-to-head sweep');
+  });
+
+  describe('seeding tied division winners by the wild card procedure', () => {
+    // ARI and NO win their divisions playing AFC clubs only and never meeting, so head-to-head doesn't
+    // apply and their conference records are even.
+    const topSeeds = (games: GameScore[]) =>
+      rankLeague(games, 5, 7)
+        .conferences.find(c => c.conference === 'NFC')
+        ?.seeds.slice(0, 2) ?? [];
+
+    it('uses common games when both clubs played at least four of them', () => {
+      // Common opponents KC, LV, LAC, and DEN: ARI went 3-1 against them, NO 2-2.
+      const s = season()
+        .win('ARI', 'KC')
+        .win('ARI', 'LV')
+        .win('ARI', 'LAC')
+        .win('DEN', 'ARI')
+        .win('NE', 'ARI')
+        .win('NO', 'KC')
+        .win('NO', 'LV')
+        .win('LAC', 'NO')
+        .win('DEN', 'NO')
+        .win('NO', 'NYJ');
+      const seeds = topSeeds(s.games);
+      expect(order(seeds)).toEqual(['ARI', 'NO']);
+      expect(seeds[0]?.tiebreak).toBe('Common games');
+    });
+
+    it('skips common games under the four-game minimum and goes to strength of victory', () => {
+      // Three common opponents (DEN, LV, LAC): ARI went 2-1 against them and NO 1-2, but that doesn't
+      // count. NO's wins came against better clubs: NYJ finishes 2-1.
+      const s = season()
+        .win('ARI', 'DEN')
+        .win('ARI', 'LV')
+        .win('LAC', 'ARI')
+        .win('KC', 'ARI')
+        .win('DEN', 'NO')
+        .win('NO', 'LV')
+        .win('LAC', 'NO')
+        .win('NO', 'NYJ')
+        .win('NYJ', 'MIA')
+        .win('NYJ', 'BUF');
+      const seeds = topSeeds(s.games);
+      expect(order(seeds)).toEqual(['NO', 'ARI']);
+      expect(seeds[0]?.tiebreak).toBe('Strength of victory');
+      const records = buildStandings(s.games).records;
+      expect(records.NO.sov).toBeCloseTo(2 / 5, 10);
+      expect(records.ARI.sov).toBeCloseTo(1 / 4, 10);
+      // Under a rule set that asks for three common games, they decide it.
+      const three = rankLeague(s.games, 5, 7, 3).conferences.find(c => c.conference === 'NFC')?.seeds ?? [];
+      expect(three[0]?.abbr).toBe('ARI');
+      expect(three[0]?.tiebreak).toBe('Common games');
+    });
+
+    it('goes to strength of schedule when strength of victory is even', () => {
+      // ARI and NO each beat a 0-1 club; ARI lost to a 2-0 club and NO to a 1-1 club.
+      const s = season()
+        .win('ARI', 'KC')
+        .win('DEN', 'ARI')
+        .win('DEN', 'LAC')
+        .win('NO', 'LV')
+        .win('NYJ', 'NO')
+        .win('MIA', 'NYJ');
+      const seeds = topSeeds(s.games);
+      expect(order(seeds)).toEqual(['ARI', 'NO']);
+      expect(seeds[0]?.tiebreak).toBe('Strength of schedule');
+    });
   });
 
   it('ends a tie nothing else separates with a coin toss drawn from the seed', () => {
