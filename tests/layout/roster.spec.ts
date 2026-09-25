@@ -13,13 +13,19 @@ test('lists the roster with fit and opens a player with the fit breakdown', asyn
   await expect(rows).toHaveCount(69);
   await expect(phone ? page.locator('.roster-table') : page.locator('.roster-list')).toBeHidden();
   await expectNoHorizontalOverflow(page);
-  await expectTouchTargets(page, 'main', 24);
+  const target = phone ? 48 : 44;
+  await expectTouchTargets(page, 'main', target);
 
-  const first = rows.first().locator('a');
-  const name = (await first.textContent()) ?? '';
-  await first.click();
+  // Open a player from partway down the roster.
+  const row = rows.nth(30).locator('a');
+  const name = (await row.textContent()) ?? '';
+  await row.scrollIntoViewIfNeeded();
+  const scroll = await page.evaluate(() => window.scrollY);
+  await row.click();
   await expect(page.locator('main h1')).toHaveText(name);
   await expect(page.locator('main h1')).toBeFocused();
+  await expect(page).toHaveTitle(`${name} · Franchise GM`);
+  await expectTouchTargets(page, 'main', target);
   const fit = page.locator('main section.card', { hasText: 'Scheme fit' });
   await expect(fit).toContainText(/(Good|Fair|Poor) fit for /);
   await expect(fit.getByRole('list', { name: 'Roles he can play' }).locator('li').first()).toBeVisible();
@@ -38,6 +44,16 @@ test('lists the roster with fit and opens a player with the fit breakdown', asyn
   );
   await expect(page.locator('#allRatings')).toContainText('Kick return');
   await expectNoHorizontalOverflow(page);
+  // Rating rows reflow at 200% text.
+  await page.evaluate(() => (document.documentElement.style.fontSize = '200%'));
+  await expectNoHorizontalOverflow(page);
+  await page.evaluate(() => (document.documentElement.style.fontSize = ''));
+
+  // Back on the roster: the same place, with focus on the player just viewed.
+  await page.goBack();
+  await expect(page.locator('main h1')).toHaveText('Roster');
+  await expect(rows.nth(30).locator('a')).toBeFocused();
+  expect(Math.abs((await page.evaluate(() => window.scrollY)) - scroll)).toBeLessThanOrEqual(2);
 });
 
 test('shows a clear message for an unknown player', async ({ page }, info) => {

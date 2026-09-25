@@ -9,7 +9,14 @@ import { TEAM_ABBRS } from '../../data/team-colors';
 import type { Rng } from '../rng';
 import { HANDED, POSITION_GROUP, type Position } from '../model/positions';
 import { RATING_KEYS, clampRating, emptyRatings, type RatingKey, type Ratings } from '../model/ratings';
-import { DEV_TRAITS, type DevTrait, type Personality, type Player, type RosterStatus } from '../model/player';
+import {
+  DEV_TRAITS,
+  INTERNATIONAL_PATHWAY,
+  type DevTrait,
+  type Personality,
+  type Player,
+  type RosterStatus
+} from '../model/player';
 import { DEFAULT_TRAITS, type Traits } from '../model/traits';
 import { overall } from '../ratings/overall';
 import { TUNING } from '../tuning';
@@ -318,14 +325,14 @@ export function generatePlayer(ctx: GenContext, req: PlayerRequest): Player {
   const { hometown, international } = pickHometown(rng, ctx.names.hometowns);
   const college =
     international && rng.chance(G.internationalPathwayShare)
-      ? ''
+      ? INTERNATIONAL_PATHWAY
       : pickCollege(rng, ctx.names.colleges, req.quality);
 
   const experience = Math.max(0, age - G.entryAge + (rng.chance(G.lateStartShare) ? -1 : 0));
   const draftScore = req.quality * G.draftScoreQualityWeight + rng.normal(0, G.draftScoreNoise);
   const draftYear = ctx.season - experience;
   const draft =
-    college === '' || draftScore < G.undraftedBelow
+    college === INTERNATIONAL_PATHWAY || draftScore < G.undraftedBelow
       ? { year: draftYear, undrafted: true as const }
       : (() => {
           const round = Math.max(

@@ -74,3 +74,6 @@ export function ageOn(birthDate: string, date: string): number {
 }
 
 export const fullName = (p: Pick<Player, 'firstName' | 'lastName'>): string => `${p.firstName} ${p.lastName}`;
+
+/** The college entry for players who came through the NFL's International Player Pathway. */
+export const INTERNATIONAL_PATHWAY = 'International Player Pathway';

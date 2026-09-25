@@ -12,7 +12,8 @@ import { resolveDefense, resolveOffense } from '../../engine/schemes/resolve';
 import { FIT_SLOTS } from '../../engine/schemes/slots';
 import { calendarDay } from '../../engine/model/calendar';
 import { h } from '../dom';
-import { fitNode, playerLink, statusTag, tierPlate } from '../ui/players';
+import { fitNode } from '../ui/fit';
+import { devTag, playerLink, statusTag, tierPlate } from '../ui/players';
 import { pageHead } from './common';
 import type { Screen } from './types';
 
@@ -60,8 +61,9 @@ export function rosterScreen(): Screen {
             h('th', { scope: 'row' }, playerLink(player)),
             h('td', { class: 'wide num' }, age),
             h('td', null, tierPlate(player.ovr)),
+            h('td', { class: 'wide' }, devTag(player.dev)),
             h('td', { class: 'wide' }, role),
-            h('td', { class: 'num' }, best ? fitNode(best.fit) : '—'),
+            h('td', { class: 'num' }, best ? fitNode(best.fit) : 'Not applicable'),
             h('td', null, statusTag(player.status))
           )
         );
@@ -79,7 +81,7 @@ export function rosterScreen(): Screen {
                 'p',
                 { class: 'list-sub' },
                 'Fit ',
-                best ? fitNode(best.fit) : '—',
+                best ? fitNode(best.fit) : 'not applicable',
                 player.status === 'practice' ? ' · Practice squad' : ''
               )
             ),
@@ -89,6 +91,8 @@ export function rosterScreen(): Screen {
       }
       const schemes = `${resolveOffense(league.teams[abbr].schemes.offense).name} offense and ${resolveDefense(league.teams[abbr].schemes.defense).name} defense`;
       const active = rows.filter(r => r.player.status === 'active').length;
+      const practice = rows.length - active;
+      const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
       return h(
         'section',
         { class: 'view' },
@@ -100,12 +104,15 @@ export function rosterScreen(): Screen {
         ),
         h(
           'p',
-          { role: 'status' },
-          `${active} active players and ${rows.length - active} on the practice squad.`
+          null,
+          `${plural(active, 'active player', 'active players')} and ${practice} on the practice squad.`
         ),
+        rows.length === 0
+          ? h('p', { class: 'empty' }, 'Your roster is empty. Sign players in free agency to fill it.')
+          : null,
         h(
           'div',
-          { class: 'roster-region' },
+          { class: 'roster-region', hidden: rows.length === 0 },
           h(
             'table',
             { class: 'roster-table' },
@@ -124,6 +131,7 @@ export function rosterScreen(): Screen {
                 h('th', { scope: 'col' }, 'Player'),
                 h('th', { class: 'wide age-col', scope: 'col' }, 'Age'),
                 h('th', { class: 'ovr-col', scope: 'col' }, 'OVR'),
+                h('th', { class: 'wide dev-col', scope: 'col' }, 'Development'),
                 h('th', { class: 'wide', scope: 'col' }, 'Best role'),
                 h('th', { class: 'ovr-col', scope: 'col' }, 'Fit'),
                 h('th', { class: 'status-col', scope: 'col' }, 'Status')

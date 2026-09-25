@@ -18,20 +18,23 @@ const TIER_NAMES: Record<Exclude<Tier, 'unknown'>, string> = {
   elite: 'Elite',
   starter: 'Starter',
   depth: 'Depth',
-  low: 'Low overall'
+  low: 'Low'
 };
 
-/** An overall rating plate; `what` names the rating for screen readers ("Overall", "Role rating"). */
+/**
+ * An overall rating plate. It is an image to assistive technology, named by `what` ("Overall", "Role
+ * rating") with the number and tier, since a bare number means nothing out of context.
+ */
 export function tierPlate(value: unknown, { large = false, what = 'Overall' } = {}): HTMLElement {
   const n = knownRating(value);
   const tier = tierOf(value);
+  const name =
+    n === null
+      ? `${what} not known`
+      : `${what} ${n}, ${TIER_NAMES[tier as Exclude<Tier, 'unknown'>]}${tier === 'low' && what === 'Overall' ? ' overall' : ''}`;
   return h(
     'span',
-    {
-      class: `tier tier-${tier}${large ? ' tier-lg' : ''}`,
-      'aria-label':
-        n === null ? `${what} not known` : `${what} ${n}, ${TIER_NAMES[tier as Exclude<Tier, 'unknown'>]}`
-    },
+    { class: `tier tier-${tier}${large ? ' tier-lg' : ''}`, role: 'img', 'aria-label': name },
     n === null ? '—' : n
   );
 }
@@ -90,20 +93,13 @@ export const stat = (label: string, value: Node | string | number): HTMLElement 
     value instanceof Node ? value : h('span', { class: 'value' }, value)
   );
 
+/** A link to a player page. `data-player-link` lets the roster return focus to it (style guide 13.5). */
 export const playerLink = (p: Pick<Player, 'id' | 'firstName' | 'lastName'>): HTMLAnchorElement =>
-  h('a', { class: 'list-name', href: href('player', { id: p.id }) }, fullName(p));
+  h('a', { class: 'list-name', href: href('player', { id: p.id }), 'data-player-link': p.id }, fullName(p));
 
 /** A signed number of points: "+3", "−2", or "0". */
 export const signed = (points: number): string =>
   points > 0 ? `+${points}` : points < 0 ? `−${Math.abs(points)}` : '0';
-
-/** A fit value, colored by meaning (a positive fit is good for the team). */
-export const fitNode = (fit: number, label?: string): HTMLElement =>
-  h(
-    'span',
-    { class: fit > 0 ? 'delta-good' : fit < 0 ? 'delta-bad' : 'muted', 'aria-label': label ?? null },
-    signed(fit)
-  );
 
 /** Height in feet and inches: 6'3". */
 export const heightText = (inches: number): string => `${Math.floor(inches / 12)}'${inches % 12}"`;

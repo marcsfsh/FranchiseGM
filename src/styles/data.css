@@ -120,7 +120,8 @@
 }
 .attr {
   display: grid;
-  grid-template-columns: minmax(7rem, 1fr) minmax(3rem, 2fr) auto;
+  /* The label column gives way at large text sizes so the row never scrolls sideways (style guide 8). */
+  grid-template-columns: minmax(min(7rem, 40%), 1fr) minmax(0, 2fr) auto;
   gap: var(--s3);
   align-items: center;
 }

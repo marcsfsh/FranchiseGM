@@ -17,8 +17,8 @@ import { CONTEXT_TRIGGERS, TRIGGER_LABELS } from '../../engine/schemes/situation
 import { DEFENSE_SLOTS, DUTY_SLOTS, FIT_SLOTS, OFFENSE_SLOTS } from '../../engine/schemes/slots';
 import { h, mount } from '../dom';
 import { href } from '../router';
-import { fitSentence } from '../ui/fit';
-import { attributeRow, devTag, fitNode, heightText, stat, statusTag, tierPlate } from '../ui/players';
+import { fitNode, fitSentence } from '../ui/fit';
+import { attributeRow, devTag, heightText, stat, statusTag, tierPlate } from '../ui/players';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
 
@@ -103,11 +103,13 @@ function schemeLine(ctx: FitContext): string {
 }
 
 export function playerScreen(): Screen {
-  return {
+  const screen: Screen = {
     title: 'Player',
     render: ({ app, route }) => {
       const league = app.league;
       const player = league?.players[route.params.id ?? ''];
+      // The document title follows the page heading (WCAG 2.4.2).
+      screen.title = player ? fullName(player) : 'Player not found';
       if (!league || !player) {
         return h(
           'section',
@@ -118,7 +120,7 @@ export function playerScreen(): Screen {
             { class: 'empty' },
             "This player isn't in the league. Go back to the roster to choose another."
           ),
-          h('p', null, h('a', { href: href('roster') }, 'Back to roster'))
+          h('p', null, h('a', { class: 'btn btn-outline', href: href('roster') }, 'Back to roster'))
         );
       }
       const userTeam = league.meta.start.userTeam;
@@ -160,7 +162,7 @@ export function playerScreen(): Screen {
                 ? 'Rookie'
                 : `${player.experience} ${player.experience === 1 ? 'season' : 'seasons'}`
             ),
-            stat('College', player.college || 'None (International Pathway)'),
+            stat('College', player.college || '— · Not known'),
             stat('Status', statusTag(player.status))
           )
         )
@@ -249,7 +251,7 @@ export function playerScreen(): Screen {
       });
       const ratingsCard = card(
         'Ratings',
-        h('h3', null, `Key ratings for a ${player.position}`),
+        h('h3', null, `Key ratings for his position (${player.position})`),
         h('div', { class: 'stack' }, ...key.map(k => attributeRow(RATING_LABELS[k], player.ratings[k]))),
         toggle,
         all
@@ -287,9 +289,10 @@ export function playerScreen(): Screen {
       return h(
         'section',
         { class: 'view' },
-        h('p', null, h('a', { href: href('roster') }, 'Back to roster')),
+        h('p', null, h('a', { class: 'btn btn-outline', href: href('roster') }, 'Back to roster')),
         h('div', { class: 'stack' }, head, fitCard, ratingsCard, traitsCard)
       );
     }
   };
+  return screen;
 }

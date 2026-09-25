@@ -2,13 +2,25 @@
 import type { RoleRating } from '../../engine/fit/role-rating';
 import { RATING_LABELS } from '../../engine/model/ratings';
 import { TUNING } from '../../engine/tuning';
+import { h } from '../dom';
 import { signed } from './players';
 
 const F = TUNING.fit;
 
+/** Fit this far from zero either way is a good or poor fit; closer is fair (the copy and colors agree). */
+const CLEAR_FIT = 3;
+
 export function fitVerdict(fit: number): string {
-  return fit >= 3 ? 'Good fit' : fit <= -3 ? 'Poor fit' : 'Fair fit';
+  return fit >= CLEAR_FIT ? 'Good fit' : fit <= -CLEAR_FIT ? 'Poor fit' : 'Fair fit';
 }
+
+/** A fit value. Color follows the verdict, not the sign: a fair fit stays neutral (style guide 9). */
+export const fitNode = (fit: number): HTMLElement =>
+  h(
+    'span',
+    { class: fit >= CLEAR_FIT ? 'delta-good' : fit <= -CLEAR_FIT ? 'delta-bad' : 'muted' },
+    signed(fit)
+  );
 
 function frequency(ratio: number): string {
   if (ratio >= F.oftenRatio) return 'triggers often here';

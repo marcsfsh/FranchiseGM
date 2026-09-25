@@ -43,7 +43,12 @@ Object.assign(globalThis, { __gm: gm });
 
 let app: AppState | null = null;
 let current: Screen | null = null;
+let currentRoute: Route | null = null;
 let first = true;
+/** Where the roster was when a player page opened from it, so returning restores it (style guide 13.5). */
+let rosterReturn: { scroll: number; playerId: string } | null = null;
+
+const visible = (node: HTMLElement) => node.getClientRects().length > 0;
 
 function go(hash: string): void {
   if (location.hash === hash) show(parseHash(hash));
@@ -60,16 +65,34 @@ function show(route: Route): void {
     history.replaceState(null, '', '#/');
     route = parseHash('#/');
   }
+  if (currentRoute?.name === 'roster' && route.name === 'player')
+    rosterReturn = { scroll: window.scrollY, playerId: route.params.id ?? '' };
+  else if (route.name !== 'roster' && route.name !== 'player') rosterReturn = null;
   current?.dispose?.();
   current = SCREENS[route.name]();
   shell.main.replaceChildren(current.render({ route, prefs, app, go }));
   shell.setCurrent(route);
   document.title = `${current.title} · Franchise GM`;
-  if (!first) {
-    window.scrollTo(0, 0);
-    shell.main.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true });
+  currentRoute = route;
+  if (first) {
+    first = false;
+    return;
   }
-  first = false;
+  // Back on the roster from a player page: the same scroll position, with focus on that player's link.
+  const back = route.name === 'roster' ? rosterReturn : null;
+  const link = back
+    ? [...shell.main.querySelectorAll<HTMLElement>(`[data-player-link="${CSS.escape(back.playerId)}"]`)].find(
+        visible
+      )
+    : undefined;
+  rosterReturn = route.name === 'roster' ? null : rosterReturn;
+  if (back && link) {
+    window.scrollTo(0, back.scroll);
+    link.focus({ preventScroll: true });
+    return;
+  }
+  window.scrollTo(0, 0);
+  shell.main.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true });
 }
 
 async function boot(): Promise<void> {
