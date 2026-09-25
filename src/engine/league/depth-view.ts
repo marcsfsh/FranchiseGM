@@ -113,3 +113,32 @@ export function moveInDepth(league: League, abbr: TeamAbbr, slot: Slot, id: stri
   }
   return { order, starter, notes };
 }
+
+/** A starter the head coach would pick where the user's chart has someone else (spec 19.3's advisor). */
+export interface DepthAdvice {
+  slot: Slot;
+  playerId: string;
+  /** The user's starter there now, or null if the slot has nobody who can play. */
+  replaces: string | null;
+}
+
+/**
+ * The head coach's suggestions for the user's depth chart: `coach` holds the starters he'd choose from the
+ * players who can play this week (ai/decisions/depth-chart.ts); each slot where they differ from the
+ * user's current starter is a suggestion, in the order the slots are listed.
+ */
+export function depthAdvice(
+  league: League,
+  abbr: TeamAbbr,
+  coach: Partial<Record<Slot, string>>
+): DepthAdvice[] {
+  const rows = depthRows(league, abbr);
+  const advice: DepthAdvice[] = [];
+  for (const slot of [...OFFENSE_SLOTS, ...DEFENSE_SLOTS] as Slot[]) {
+    const pick = coach[slot];
+    if (!pick) continue;
+    const current = rows[slot]?.find(r => r.available)?.id ?? null;
+    if (current !== pick) advice.push({ slot, playerId: pick, replaces: current });
+  }
+  return advice;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { startersOf } from '../../src/engine/league/depth';
-import { depthRows, moveInDepth } from '../../src/engine/league/depth-view';
+import { depthAdvice, depthRows, moveInDepth } from '../../src/engine/league/depth-view';
 import type { League } from '../../src/engine/league/types';
 import { situationLeague } from '../helpers/situations';
 
@@ -56,4 +56,17 @@ describe('the depth chart view (spec 12.2, style guide 7.4)', () => {
     expect(move.order.CB1?.slice(0, 3)).toEqual([first, third, second]);
     expect(move.notes).toEqual([]);
   });
+
+  it("lists the head coach's starters where they differ from the user's (spec 19.3's advisor)", () => {
+    const league = fresh();
+    const rows = depthRows(league, TEAM);
+    const [starter, backup] = rows.QB.filter(r => r.available).map(r => r.id);
+    if (!starter || !backup) throw new Error('two quarterbacks');
+    // The coach agrees with the chart: no advice.
+    expect(depthAdvice(league, TEAM, { QB: starter })).toEqual([]);
+    // He'd start the backup instead.
+    expect(depthAdvice(league, TEAM, { QB: backup })).toEqual([{ slot: 'QB', playerId: backup, replaces: starter }]);
+    // Special teams aren't advised on.
+    expect(depthAdvice(league, TEAM, { K: 'nobody' })).toEqual([]);
+  }); // prettier-ignore
 });

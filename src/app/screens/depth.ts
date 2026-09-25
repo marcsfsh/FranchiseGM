@@ -7,7 +7,9 @@
 import { teamFullName } from '../../data/team-colors';
 import { coachProfile, staffIn } from '../../engine/ai/profile';
 import { recipeFor } from '../../engine/fit/role-rating';
-import { depthRows, moveInDepth, type DepthRow } from '../../engine/league/depth-view';
+import { decideDepthChart } from '../../engine/ai/decisions/depth-chart';
+import { dressable } from '../../engine/ai/weekly';
+import { depthAdvice, depthRows, moveInDepth, type DepthRow } from '../../engine/league/depth-view';
 import { leagueFitContext } from '../../engine/league/fit';
 import type { League } from '../../engine/league/types';
 import { calendarDay } from '../../engine/model/calendar';
@@ -19,11 +21,14 @@ import {
   SPECIAL_SLOTS,
   type Slot
 } from '../../engine/schemes/slots';
+import { stream } from '../../engine/rng';
 import { designation } from '../../engine/season/injuries';
+import { gameWeek } from '../../engine/season/state';
 import { PLAN_LIMITS, type Rotation, type SituationalSubs } from '../../engine/sim/plan';
 import { joinList } from '../../engine/text';
 import { TUNING } from '../../engine/tuning';
 import { h } from '../dom';
+import { icon } from '../icons';
 import { playerLink, tierPlate } from '../ui/players';
 import { tabs } from '../ui/tabs';
 import { pageHead } from './common';
@@ -119,6 +124,7 @@ export function depthScreen(): Screen {
           l.teams[abbr].depth.auto = !l.teams[abbr].depth.auto;
         });
         syncAuto();
+        drawAdvice();
         announce(
           team.depth.auto
             ? 'Your head coach will set the depth chart before the next game.'
@@ -153,6 +159,7 @@ export function depthScreen(): Screen {
         });
         if (to >= SHOWN) visit.expanded.add(slot);
         panels.refresh();
+        drawAdvice();
         const label = SLOT_LABELS[slot].toLowerCase();
         const name = fullName(player);
         const starter = result.starter ? league.players[result.starter] : undefined;
@@ -172,6 +179,71 @@ export function depthScreen(): Screen {
         (buttons.find(b => !b.disabled && b.dataset.dir === dir) ?? buttons.find(b => !b.disabled))?.focus();
       }; // prettier-ignore
 
+      /** A drag in progress: the row, where it started, and the row it would land on. */
+      const startDrag = (event: PointerEvent, handle: HTMLElement, list: HTMLElement, slot: Slot, id: string, from: number) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        handle.setPointerCapture(event.pointerId);
+        const rows = () => [...list.querySelectorAll<HTMLElement>(':scope > li.depth-slot')];
+        const dragged = rows()[from];
+        dragged?.classList.add('is-dragging');
+        let over: number | null = null;
+        const mark = (index: number | null) => {
+          rows().forEach((li, i) => li.classList.toggle('is-drop-target', i === index && index !== from));
+          over = index;
+        };
+        const onMove = (e: PointerEvent) => {
+          const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('li.depth-slot');
+          const index = target && target.parentElement === list ? rows().indexOf(target as HTMLElement) : null;
+          if (index !== null && index >= 0) mark(index);
+        };
+        const end = (drop: boolean) => {
+          handle.removeEventListener('pointermove', onMove);
+          dragged?.classList.remove('is-dragging');
+          const to = over;
+          mark(null);
+          if (drop && to !== null && to !== from) move(slot, id, to, null);
+        };
+        handle.addEventListener('pointermove', onMove);
+        handle.addEventListener('pointerup', () => end(true), { once: true });
+        handle.addEventListener('pointercancel', () => end(false), { once: true });
+      }; // prettier-ignore
+
+      /** The head coach's suggestions while the user has the chart (spec 19.3's advisor). */
+      const adviceHost = h('div');
+      const drawAdvice = () => {
+        if (team.depth.auto) {
+          adviceHost.replaceChildren();
+          return;
+        }
+        const playing = dressable(league, abbr).filter(p => !team.resting.includes(p.id));
+        // A stream fixed for the team and week, so the advice holds still while the user reads it.
+        const coach = decideDepthChart(league, abbr, playing, stream(league.random.baseSeed, 'advice', abbr, league.season.season, gameWeek(league) ?? 0));
+        const advice = depthAdvice(league, abbr, coach.starters);
+        if (!advice.length) {
+          adviceHost.replaceChildren(h('p', { class: 'muted advice-none' }, 'Your head coach would start the same players.'));
+          return;
+        }
+        const items = advice.map((a, i) => {
+          const p = league.players[a.playerId];
+          const other = a.replaces ? league.players[a.replaces] : undefined;
+          if (!p) return null;
+          const where = SLOT_LABELS[a.slot].toLowerCase();
+          const apply = h('button', { class: 'btn btn-outline', type: 'button', id: `advice-${i}`, 'aria-label': `Start ${fullName(p)} at ${where}` }, 'Apply');
+          apply.addEventListener('click', () => move(a.slot, a.playerId, 0, null, `advice-${i}`));
+          return h('li', null, h('span', { class: 'list-main' }, `Start ${fullName(p)} (${p.position}) at ${where}`, other ? `, ahead of ${fullName(other)}` : '', '.'), apply);
+        });
+        adviceHost.replaceChildren(
+          h('section', { class: 'card' },
+            h('div', { class: 'signbar' }, h('h2', { class: 'signbar-title' }, "Your head coach's suggestions")),
+            h('div', { class: 'card-body' },
+              h('p', { class: 'muted' }, `${coachStyle(league, abbr)} These are the starters he'd pick from who can play this week.`),
+              h('ul', { class: 'preview-list advice-list' }, ...items)
+            )
+          )
+        );
+      }; // prettier-ignore
+
       const slotSection = (slot: Slot, rows: DepthRow[]): HTMLElement => {
         const label = SLOT_LABELS[slot];
         const role = recipeFor(leagueFitContext(league, abbr), slot).label;
@@ -188,6 +260,13 @@ export function depthScreen(): Screen {
           const down = h('button', { class: 'btn btn-outline', type: 'button', 'data-dir': 'down', disabled: i === rows.length - 1, 'aria-label': `Move ${name} down at ${label.toLowerCase()}` }, 'Down'); // prettier-ignore
           up.addEventListener('click', () => move(slot, row.id, i - 1, 'up'));
           down.addEventListener('click', () => move(slot, row.id, i + 1, 'down'));
+          // Dragging by the handle is a shortcut for pointers (style guide 7.4); Up and Down do the same.
+          const handle = h(
+            'span',
+            { class: 'drag-handle', 'aria-hidden': 'true', title: 'Drag to move' },
+            icon('grip', { size: 20, stroke: 3 })
+          );
+          handle.addEventListener('pointerdown', event => startDrag(event, handle, list, slot, row.id, i));
           const note = [
             player.position,
             reason ?? (i === starterIndex ? 'Starts' : null),
@@ -200,6 +279,7 @@ export function depthScreen(): Screen {
                 class: `depth-slot${i === starterIndex ? ' is-starter' : ''}${reason ? ' is-out' : ''}`,
                 'data-player': row.id
               },
+              handle,
               h('span', { class: 'depth-rank' }, i + 1),
               h(
                 'div',
@@ -304,6 +384,7 @@ export function depthScreen(): Screen {
               const resting = l.teams[abbr].resting.filter(id => id !== p.id);
               l.teams[abbr].resting = box.checked ? [...resting, p.id] : resting;
             });
+            drawAdvice();
             announce(`${fullName(p)} ${box.checked ? 'rests' : 'plays hurt'} this week.${tookOver}`);
           });
           return h('label', { class: 'check-target check-left' }, box, `Rest ${fullName(p)} (${p.position}, OVR ${p.ovr})`);
@@ -323,6 +404,7 @@ export function depthScreen(): Screen {
         );
       }; // prettier-ignore
       drawRest();
+      drawAdvice();
 
       const unitPanel = (slots: readonly Slot[]) => () => {
         const rows = depthRows(league, abbr);
@@ -358,6 +440,7 @@ export function depthScreen(): Screen {
         const key = focusKey(panels.element) ?? focusKey(restHost);
         syncAuto();
         drawRest();
+        drawAdvice();
         panels.refresh();
         if (key)
           (
@@ -385,6 +468,7 @@ export function depthScreen(): Screen {
           ),
           autoHint
         ),
+        adviceHost,
         restHost,
         panels.element,
         status

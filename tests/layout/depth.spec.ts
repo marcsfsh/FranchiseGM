@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { createLeague, expectNoHorizontalOverflow, expectTouchTargets, openGame } from './helpers';
 
-// M7: the depth chart with keyboard moves, the auto switch, and packages (spec 12.2, 12.3, style 7.4).
+// M7 and M9: the depth chart with keyboard moves, dragging, the head coach's suggestions, the auto switch, and
+// packages (spec 12.2, 12.3, 19.3, style 7.4).
 test('moves players by keyboard, takes the chart back from the coach, and sets a situational sub', async ({
   page
 }, info) => {
@@ -42,6 +43,32 @@ test('moves players by keyboard, takes the chart back from the coach, and sets a
   await expect(
     page.getByRole('button', { name: 'Make the chosen player first at quarterback' })
   ).toBeFocused();
+
+  // With the chart in the user's hands, the head coach suggests where he'd start someone else.
+  await page.getByRole('button', { name: `Move ${first} down at quarterback` }).click();
+  const advice = page.locator('main section.card', { hasText: "Your head coach's suggestions" });
+  const apply = advice.getByRole('button', { name: `Start ${first} at quarterback` });
+  await expect(apply).toBeVisible();
+  await apply.click();
+  await expect(quarterbacks.nth(0).locator('a')).toHaveText(first);
+  await expect(advice.getByRole('button', { name: `Start ${first} at quarterback` })).toHaveCount(0);
+
+  // Dragging a row by its handle moves him too (a pointer shortcut beside Up and Down).
+  const handle = quarterbacks.nth(1).locator('.drag-handle');
+  const target = quarterbacks.nth(0);
+  // Both rows on screen: the mouse works in viewport coordinates.
+  await page.evaluate(() => document.querySelector('[data-slot="QB"]')?.scrollIntoView({ block: 'center' }));
+  const from = await handle.boundingBox();
+  const to = await target.boundingBox();
+  if (!from || !to) throw new Error('no rows to drag');
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x + to.width / 2, to.y + 4, { steps: 5 });
+  await page.mouse.up();
+  await expect(quarterbacks.nth(0).locator('a')).toHaveText(second);
+  await expect(page.locator('main [role="status"]')).toContainText(`${second} is first at quarterback.`);
+  await page.getByRole('button', { name: `Move ${second} down at quarterback` }).click();
+  await expect(quarterbacks.nth(0).locator('a')).toHaveText(first);
 
   // Opening a player and coming back returns to the same place (style guide 7.3).
   const link = page.locator('[data-slot="QB"] .depth-slot a').first();
