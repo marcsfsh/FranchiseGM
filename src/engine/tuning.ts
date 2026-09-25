@@ -182,6 +182,140 @@ export const TUNING = {
     udfaBonus: [0, 25_000]
   },
 
+  /** The AI decision framework (spec 14.1, 14.5). */
+  ai: {
+    /** Softmax temperature at competence 100 and 0: how far a decision-maker wanders from the best option. */
+    temperature: [0.01, 0.08],
+    /** Options the softmax chooses among, and rejected options kept in the log. */
+    topOptions: 5,
+    loggedRejections: 3,
+    /** A consideration score of 0 counts as this, so the geometric mean stays defined (still a veto). */
+    floor: 0.001,
+    /**
+     * Auto depth charts (spec 12.2). Merit scores 1 for the best role rating and 0 at meritSpan points
+     * behind it. Each style consideration scores from styleFloor to 1 and weighs styleScale times the
+     * coach's share of that style, merit weighing 1: a coach who is half developer starts a young
+     * high-potential player about 4 points worse than the best, a typical coach about 1. Every coach also
+     * weighs last week's starter by `continuity` (about 2 points), so lineups don't churn on noise. A meritocrat's share
+     * starts at meritBase and grows with his analytics lean. Experience scores fully at experienceYears
+     * seasons, and upside (potential over current rating) at upsideSpan points for players youngAge or under.
+     */
+    depth: {
+      meritSpan: 20,
+      styleFloor: 0.6,
+      styleScale: 0.9,
+      continuity: 0.2,
+      meritBase: 0.5,
+      experienceYears: 6,
+      youngAge: 25,
+      upsideSpan: 12,
+      /** Loyalty and rigidity (0 to 100, averaged) above this start the loyalist share. */
+      loyalFrom: 40,
+      /** Personnel power (0 to 100) below this starts the contract-minded share. */
+      contractFrom: 60
+    },
+    /**
+     * Playing a questionable player or resting him (spec 10.8). Playing him scores 0 when he's
+     * edgeSpan[0] points or less better than his backup and 1 from edgeSpan[1]; his injury risk multiplier
+     * scores 1 at riskSpan[1] and 0 at riskSpan[0], weighed by riskWeight at a risk tolerance of 0 and
+     * nothing at 100. Stakes (1 in the playoffs, regularStakes before) push toward playing.
+     */
+    rest: {
+      edgeSpan: [-2, 8],
+      riskSpan: [2.5, 1],
+      riskWeight: 1.5,
+      regularStakes: 0.5,
+      stakesWeight: 0.5,
+      /** A player who isn't starting counts as this many points worse than the man ahead of him. */
+      benchEdge: -5
+    },
+    /**
+     * Opponent game plans (spec 8.7, 14.11). The staff reads the scouting report with noise of readNoise
+     * points at competence 0 and none at 100. Ideal settings: passLean moves leanPerPoint per point that the
+     * passing matchup beats the running matchup; blitz rises blitzPerPoint per point their protection
+     * trails our rush and falls poisePerPoint per point of their quarterback's poise; man and press move
+     * coverPerPoint per point that man coverage beats zone and pressPerPoint per point our corners out-rate
+     * their receivers off the line; nickel moves nickelPerShare per share of three-receiver personnel above
+     * spreadShare. Each dial's options are scored by how close they sit to the ideal, and by how close to
+     * the scheme's normal (weight: the head coach's rigidity out of 100).
+     */
+    plan: {
+      readNoise: 6,
+      leanPerPoint: 0.005,
+      blitzPerPoint: 0.04,
+      poisePerPoint: 0.02,
+      coverPerPoint: 0.03,
+      pressPerPoint: 0.03,
+      nickelPerShare: 1,
+      /** Personnel lean per unit of pass lean, and two-high shells per point of their deep passing threat. */
+      spreadPerLean: 2,
+      twoHighPerPoint: 0.03,
+      spreadShare: 0.55,
+      /** Options per dial, evenly spaced across its limits. */
+      steps: 5,
+      /**
+       * Player focus: a playmaker featureFrom points better than our other receivers, a receiver
+       * shadowFrom or doubleFrom points better than theirs (a shadow also needs our best corner cornerFrom
+       * points better than our others in man coverage), a rusher chipFrom points better than our line
+       * blocks, and a quarterback whose escape rating is spyFrom above the reference. A case scores 0.5 at
+       * its threshold, over a logistic width of focusWidth points; going without scores 0.5. Measured on
+       * generated leagues, the thresholds sit near the 70th (feature, chip), 75th (shadow), 85th (double),
+       * and 90th (spy) percentiles.
+       */
+      featureFrom: 11,
+      shadowFrom: 10.5,
+      cornerFrom: 3,
+      doubleFrom: 12,
+      chipFrom: 10,
+      spyFrom: 8,
+      focusWidth: 2
+    },
+    /**
+     * Rotations on auto (spec 12.3). The lead back's share is the scheme default (situations.rb1Share) when
+     * his role rating beats the second back's by backfieldGap, the median in generated leagues, and moves
+     * backfieldPerPoint per point either way, on a dial across backfieldRange. The line rotates fully when its best backups are within
+     * lineCloseGap overall points of the starters and not at all from lineFarGap points behind. A
+     * situational sub needs subFrom points over the man he replaces at the job: a back's receiving and
+     * blocking, a rusher's pass rush, a target's contested catching. Players back from an injury play at
+     * most returnLimit of their unit's snaps. A young backup (youngAge or under, devUpsideFrom points of
+     * upside) gets devSnapScale times the coach's developer share of his slot's snaps.
+     */
+    rotation: {
+      backfieldGap: 8,
+      backfieldPerPoint: 0.006,
+      backfieldRange: [0.45, 0.75],
+      lineCloseGap: 2,
+      lineFarGap: 10,
+      subFrom: 3,
+      returnLimit: { questionable: 0.6, probable: 0.8 },
+      devUpsideFrom: 8,
+      devSnapScale: 0.6
+    },
+    /**
+     * Injury signings (spec 14.11 in season): need counts the players missing from a position group
+     * against the standard roster; quality scores 0 at qualitySpan[0] overall and 1 at qualitySpan[1]; youth
+     * scores from youthFloor at youthSpan[0] years old to 1 at youthSpan[1]. The GM looks at the best
+     * candidatesPerGroup free agents in each group and every player on his own practice squad.
+     */
+    signing: {
+      needWeight: 2,
+      needFloor: 0.05,
+      qualitySpan: [35, 75],
+      youthSpan: [34, 24],
+      youthFloor: 0.7,
+      youthWeight: 0.3,
+      candidatesPerGroup: 3,
+      /** A free agent's score on familiarity; the team's own practice squad players score 1. */
+      strangerScore: 0.9,
+      /**
+       * Healthy players a team keeps in each group even through short injuries, signing someone for the
+       * week when it falls short: a starting lineup's worth, with the line's groups at full strength.
+       */
+      minHealthy: {
+        QB: 1, RB: 1, WR: 3, TE: 1, OT: 2, OG: 2, C: 1, DE: 1, DT: 1, OLB: 1, MLB: 1, CB: 2, S: 2, K: 1, P: 1, LS: 1
+      } as Record<string, number> // prettier-ignore
+    }
+  },
   /** Injuries between games (spec 10.8). */
   injuries: {
     /** Weeks he plays at reduced ratings after returning, by severity (lingering effects). */
@@ -504,9 +638,13 @@ export const TUNING = {
     formSd: 2.0,
     /** Halftime adjustments need at least this many dropbacks and runs to judge by. */
     halftimeMinPlays: 5,
-    /** Pass protection: pressure base rate, blitz and simulated pressure boosts (log-odds). */
-    pressureBase: 0.31,
-    blitzPressure: 0.45,
+    /**
+     * Pass protection: pressure base rate, blitz and simulated pressure boosts (log-odds). The rush is rated
+     * by its best four, so a blitz adds pressure through blitzPressure: about 9 points more pressure on a
+     * blitz than on a four-man rush, near the NFL's gap (C-16).
+     */
+    pressureBase: 0.3,
+    blitzPressure: 0.3,
     simPressure: 0.2,
     sackGivenPressure: 0.2,
     scrambleGivenPressure: 0.08,
@@ -608,6 +746,8 @@ export const TUNING = {
     tiredAt: 85,
     tiredPoints: 0.15,
     subAt: { QB: 20, RB: 62, WR: 52, TE: 58, OL: 35, DL: 68, LB: 58, DB: 52, ST: 10 },
+    /** Game-day actives (spec 12.1): defensive groups dressed at least, for a rotating line and dime with backups. */
+    dressDefense: { DL: 6, LB: 4, DB: 8 },
     /** Home field (spec 17.3): rating points for the home team from the crowd, travel per time zone, and
      * rest; the combined effect is about 1.5 to 2.5 points a game. */
     homeCrowd: 0.65,
@@ -702,6 +842,30 @@ export const TUNING = {
       deepLateBoost: 1.35,
       deepShortYardage: 0.5,
       screenThirdLong: 0.5,
+      /**
+       * Game plan effects (spec 8.7, 12.3). At full rotation the defensive line subs out lineRotationSpread / 2
+       * energy sooner, and that much later when it rides its starters. A featured player's target share grows
+       * by featureTargets, and a featured back's share of the backfield by featureCarries. A doubled receiver
+       * loses doubleSeparation points of separation and every other receiver gains doubleOthers; a chipped
+       * pass rusher loses chipRush points and the chipping backs lose chipRoute. A spy costs the rush
+       * spyPressure (logit) and cuts scrambles to spyScramble of their rate.
+       */
+      lineRotationSpread: 20,
+      /**
+       * Rotation plans (spec 12.3): snap limits apply once a unit has played snapLimitFrom snaps; a
+       * pass-rush specialist comes in on second and passRushDown.second or more, and on third or fourth and
+       * passRushDown.third or more.
+       */
+      snapLimitFrom: 10,
+      passRushDown: { second: 9, third: 5 },
+      featureTargets: 0.1,
+      featureCarries: 0.1,
+      doubleSeparation: 10,
+      doubleOthers: 1.5,
+      chipRush: 4,
+      chipRoute: 3,
+      spyPressure: 0.12,
+      spyScramble: 0.6,
       /**
        * Throwing to the sticks: on third and fourth down from sticksFrom yards to go, the intermediate share
        * grows by up to sticksShift, all of it by sticksFrom + sticksRamp - 1 yards.

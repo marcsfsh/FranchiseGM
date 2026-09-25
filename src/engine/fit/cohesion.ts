@@ -73,6 +73,35 @@ export function autoLineup(
   return lineup;
 }
 
+/**
+ * The lineup with chosen starters in place (spec 12.2: the head coach's or the user's depth chart) and the
+ * best remaining players in the other slots, as autoLineup fills them. A pick who isn't on the list, can't
+ * play the slot, or is already starting elsewhere is ignored.
+ */
+export function chosenLineup(
+  players: readonly LineupPlayer[],
+  ctx: FitContext,
+  starters: Partial<Record<Slot, string>>,
+  slots: readonly Slot[] = [...OFFENSE_SLOTS, ...DEFENSE_SLOTS]
+): Map<Slot, LineupEntry> {
+  const byId = new Map(players.map(p => [p.id, p]));
+  const lineup = new Map<Slot, LineupEntry>();
+  const taken = new Set<string>();
+  for (const slot of slots) {
+    const player = byId.get(starters[slot] ?? '');
+    if (!player || taken.has(player.id) || !recipeFor(ctx, slot).eligible.includes(player.position)) continue;
+    lineup.set(slot, { player, role: roleRating(player, slot, ctx) });
+    taken.add(player.id);
+  }
+  const rest = autoLineup(
+    players.filter(p => !taken.has(p.id)),
+    ctx,
+    slots.filter(s => !lineup.has(s))
+  );
+  for (const [slot, entry] of rest) lineup.set(slot, entry);
+  return lineup;
+}
+
 export interface SideCohesion {
   /** Snap-weighted average fit of the starters, in points. */
   fit: number;

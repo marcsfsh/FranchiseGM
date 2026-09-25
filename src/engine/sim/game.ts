@@ -34,6 +34,7 @@ import { isBadWeather } from './weather';
 
 const S = TUNING.sim;
 const C = S.calls;
+const TWO_HIGH: readonly Shell[] = ['cover2', 'cover4', 'cover6'];
 const K = S.clock;
 const B = C.airBands;
 
@@ -200,6 +201,11 @@ class GameSim {
   private redZoneCounted = false;
   /** Players on the field this play, by side and slot. */
   private field: Record<Side, OnField> = { home: new Map(), away: new Map() };
+  /** Each team's offensive and defensive snaps so far, for snap limits (spec 12.3). */
+  private readonly unitSnaps: Record<Side, { offense: number; defense: number }> = {
+    home: { offense: 0, defense: 0 },
+    away: { offense: 0, defense: 0 }
+  };
   private contexts: ContextTrigger[] = [];
   /** Whether each side's offense and defense have taken their first snap (spec 9.2 games started). */
   private readonly startersMarked: Record<Side, { offense: boolean; defense: boolean }> = {
@@ -371,8 +377,38 @@ class GameSim {
     return null;
   }
 
-  /** Healthy, rested enough, and not already used this play. */
-  private pick(side: Side, slot: Slot, used: Set<SimPlayer>, depthIndex = 0): SimPlayer | null {
+  /** A listed player who can go in: on this team, healthy, and not already on the field. */
+  private ready(side: Side, id: string | null, used: Set<SimPlayer>): SimPlayer | null {
+    const p = id ? this.teams[side].players[id] : undefined;
+    return p && !p.out && !used.has(p) ? p : null;
+  }
+
+  /** The lead back's share of the backfield snaps: the rotation's split, tilted toward a featured back. */
+  private rb1Share(side: Side): number {
+    const team = this.teams[side];
+    const feature = team.plan.feature;
+    const tilt =
+      feature === null
+        ? 0
+        : team.depth.RB1?.[0] === feature
+          ? C.featureCarries
+          : team.depth.RB2?.[0] === feature
+            ? -C.featureCarries
+            : 0;
+    return clamp(team.rotation.rb1Share + tilt, 0, 1);
+  }
+
+  /**
+   * Healthy, rested enough, and not already used this play. Filling a scrimmage lineup (`rotate`) also
+   * follows the planned rotation: development snaps for a young backup and snap limits (spec 12.3).
+   */
+  private pick(
+    side: Side,
+    slot: Slot,
+    used: Set<SimPlayer>,
+    depthIndex = 0,
+    rotate = false
+  ): SimPlayer | null {
     const team = this.teams[side];
     const ids = team.depth[slot] ?? [];
     const available = ids
@@ -380,10 +416,25 @@ class GameSim {
       .filter((p): p is SimPlayer => !!p && !p.out && !used.has(p));
     const first = available[depthIndex] ?? available[0];
     if (!first) return null;
-    // Rotation (spec 8.4, 12.3): a tired starter sits for a fresher backup.
+    const next = available[depthIndex + 1];
+    if (rotate && next) {
+      const dev = team.rotation.devSnaps[next.id];
+      if (dev && this.rng.chance(dev)) return next;
+      const limit = team.rotation.snapLimits[first.id];
+      if (limit !== undefined) {
+        const unit = side === this.offense ? 'offense' : 'defense';
+        const total = this.unitSnaps[side][unit];
+        const played = this.line(side, first)[unit === 'offense' ? 'snapsOffense' : 'snapsDefense'];
+        if (total >= C.snapLimitFrom && played >= limit * total) return next;
+      }
+    }
+    // Rotation (spec 8.4, 12.3): a tired starter sits for a fresher backup. The defensive line rotates
+    // sooner or later by the team's rotation setting.
     const group = POSITION_GROUP[first.position];
-    const backup = available[depthIndex + 1];
-    if (backup && first.energy < S.subAt[group] && backup.energy > first.energy + K.subMargin) return backup;
+    const backup = next;
+    const subAt =
+      S.subAt[group] + (group === 'DL' ? (team.rotation.lineRotation - 0.5) * C.lineRotationSpread : 0);
+    if (backup && first.energy < subAt && backup.energy > first.energy + K.subMargin) return backup;
     return first;
   }
 
@@ -626,10 +677,13 @@ class GameSim {
   // Personnel
 
   private personnel(): Personnel {
-    const t = this.teams[this.offense].tendencies.offense;
+    const team = this.teams[this.offense];
+    const t = team.tendencies.offense;
+    const spread = team.plan.spread;
     const weights = (Object.keys(t.personnel) as Personnel[]).map(p => {
-      let w = t.personnel[p];
       const heavy = p === '12' || p === '13' || p === '21' || p === '22';
+      // The game plan's personnel lean (spec 8.7).
+      let w = t.personnel[p] * (heavy ? 1 - spread : 1 + spread);
       if (100 - this.ball <= C.goalLineYards && heavy) w *= C.goalLineHeavy;
       if ((this.down === 3 && this.distance >= C.longYardage) || this.hurry())
         w *= heavy ? C.passingDownHeavy : 1;
@@ -639,14 +693,21 @@ class GameSim {
   }
 
   private defensePackage(personnel: Personnel): Package {
-    const t = this.teams[other(this.offense)].tendencies.defense;
+    const defense = this.teams[other(this.offense)];
+    const t = defense.tendencies.defense;
     const heavy = personnel === '12' || personnel === '13' || personnel === '21' || personnel === '22';
     if (heavy && 100 - this.ball <= C.goalLineYards && this.rng.chance(C.goalLinePackage)) return 'goalLine';
     const receivers = 5 - Number(personnel[0]) - Number(personnel[1]);
     const factor = C.packageByReceivers[Math.min(4, Math.max(1, receivers)) as 1 | 2 | 3 | 4];
+    // The game plan's package lean trades base snaps for nickel and dime snaps (spec 12.3).
+    const lean = defense.plan.nickel;
     return this.rng.weighted<Package>(
       ['base', 'nickel', 'dime'],
-      [t.packages.base * factor[0], t.packages.nickel * factor[1], t.packages.dime * factor[2]]
+      [
+        t.packages.base * factor[0] * (1 - lean),
+        t.packages.nickel * factor[1] * (1 + lean),
+        t.packages.dime * factor[2] * (1 + lean)
+      ]
     );
   }
 
@@ -654,13 +715,26 @@ class GameSim {
     const off: OnField = new Map();
     const used = new Set<SimPlayer>();
     const offense = this.offense;
+    const rb1Share = this.rb1Share(offense);
+    const subs = this.teams[offense].rotation.subs;
+    const thirdDownBack = this.down >= 3 ? this.ready(offense, subs.thirdDownBack, used) : null;
+    const redZone = this.inRedZone ? this.ready(offense, subs.redZoneTarget, used) : null;
+    const redZoneSlot: Slot | null = redZone ? (redZone.position === 'TE' ? 'TE1' : 'SLOT') : null;
     for (const slot of PERSONNEL_SLOTS[personnel]) {
-      // The lead back splits snaps with the change-of-pace back by the scheme's share (spec 12.3).
-      const s: Slot = slot === 'RB1' && !this.rng.chance(TUNING.situations.rb1Share) ? 'RB2' : slot;
+      // The lead back splits snaps with the change-of-pace back by the team's rotation (spec 12.3).
+      const s: Slot = slot === 'RB1' && !this.rng.chance(rb1Share) ? 'RB2' : slot;
+      // Situational subs (spec 12.3): the third-down back, and a big target in the red zone.
+      const sub =
+        slot === 'RB1' && thirdDownBack && !used.has(thirdDownBack)
+          ? thirdDownBack
+          : s === redZoneSlot && redZone && !used.has(redZone)
+            ? redZone
+            : null;
       const p =
-        slot === 'QB'
+        sub ??
+        (slot === 'QB'
           ? this.quarterback(offense, used)
-          : (this.pick(offense, s, used) ?? this.pick(offense, slot, used));
+          : (this.pick(offense, s, used, 0, true) ?? this.pick(offense, slot, used, 0, true)));
       if (p) {
         off.set(s, p);
         used.add(p);
@@ -678,10 +752,28 @@ class GameSim {
     const def: OnField = new Map();
     const dUsed = new Set<SimPlayer>();
     for (const slot of PACKAGE_SLOTS[pkg]) {
-      const p = this.pick(other(offense), slot, dUsed);
+      const p = this.pick(other(offense), slot, dUsed, 0, true);
       if (p) {
         def.set(slot, p);
         dUsed.add(p);
+      }
+    }
+    // On passing downs a pass-rush specialist comes in for the weaker edge rusher (spec 12.3).
+    const passingDown =
+      (this.down === 2 && this.distance >= C.passRushDown.second) ||
+      (this.down >= 3 && this.distance >= C.passRushDown.third);
+    const rusher = passingDown
+      ? this.ready(other(offense), this.teams[other(offense)].rotation.subs.passRusher, dUsed)
+      : null;
+    if (rusher) {
+      const edges = (['LEDGE', 'REDGE'] as const).flatMap(slot => {
+        const p = def.get(slot);
+        return p ? [{ slot, p }] : [];
+      });
+      const weaker = edges.sort((a, b) => a.p.edges.passRush - b.p.edges.passRush)[0];
+      if (weaker && weaker.p.edges.passRush < rusher.edges.passRush) {
+        def.set(weaker.slot, rusher);
+        dUsed.add(rusher);
       }
     }
     if (pkg === 'goalLine') {
@@ -698,6 +790,7 @@ class GameSim {
     for (const side of ['home', 'away'] as const) {
       const team = this.teams[side];
       const onField = new Set(this.field[side].values());
+      this.unitSnaps[side][side === this.offense ? 'offense' : 'defense']++;
       const hurry = side === this.offense && this.hurry() ? K.hurryFatigue : 0;
       const altitude = side !== 'home' && w.altitudeFt >= K.altitudeFt ? S.altitudeFatigue : 0;
       for (const p of Object.values(team.players)) {
@@ -1160,6 +1253,7 @@ class GameSim {
       t.passRate[DOWN_BUCKETS(this.down, this.distance)] +
       S.passRateShift +
       team.lean +
+      team.plan.passLean +
       this.adjust[this.offense];
     const goal = 100 - this.ball;
     const deficit = -this.margin;
@@ -1212,16 +1306,21 @@ class GameSim {
   }
 
   private defenseCall(): DefenseCall {
-    const t = this.teams[other(this.offense)].tendencies.defense;
+    const defense = this.teams[other(this.offense)];
+    const t = defense.tendencies.defense;
+    const plan = defense.plan;
     // A defense protecting a lead plays soft and rarely blitzes.
     const soft = this.protecting(other(this.offense));
-    const blitz = this.rng.chance(t.blitz * (this.down === 3 ? C.blitzThirdDown : 1) * (1 - soft));
+    const blitz = this.rng.chance(
+      t.blitz * plan.blitz * (this.down === 3 ? C.blitzThirdDown : 1) * (1 - soft)
+    );
     const shells = Object.keys(t.shells) as Shell[];
     return {
-      man: this.rng.chance(t.man),
+      man: this.rng.chance(clamp(t.man + plan.man, 0, 1)),
+      // The game plan's shell lean: two-high shells against single-high (spec 8.7).
       shell: this.rng.weighted(
         shells,
-        shells.map(s => t.shells[s])
+        shells.map(s => t.shells[s] * (TWO_HIGH.includes(s) ? 1 + plan.twoHigh : 1 - plan.twoHigh))
       ),
       blitz,
       simPressure: !blitz && this.rng.chance(t.simPressure * (1 - soft)),
@@ -1303,9 +1402,19 @@ class GameSim {
       ...(dcall.blitz ? (['facingBlitz'] as const) : []),
       ...(call.playAction ? (['playAction'] as const) : [])
     );
-    const rush =
-      rushers.reduce((sum, [slot, p]) => sum + this.edge(def, p, slot, 'passRush', ['passRush']), 0) /
-      Math.max(1, rushers.length);
+    // A pass rusher the game plan doubles gets chipped on the way in; a spy on the quarterback is one fewer
+    // man in the rush (spec 8.7 player focus).
+    const chipped = this.teams[off].plan.doubleRusher;
+    const spy = this.teams[def].plan.spy;
+    // The rush is as strong as its best four: a blitzer adds a man to block (blitzPressure) without
+    // watering down the rating of the rush.
+    const rushEdges = rushers
+      .map(
+        ([slot, p]) => this.edge(def, p, slot, 'passRush', ['passRush']) - (p.id === chipped ? C.chipRush : 0)
+      )
+      .sort((a, b) => b - a)
+      .slice(0, C.baseRushers);
+    const rush = rushEdges.reduce((sum, e) => sum + e, 0) / Math.max(1, rushEdges.length);
     const block =
       blockers.reduce(
         (sum, [slot, p]) =>
@@ -1325,7 +1434,8 @@ class GameSim {
         blitzEdge -
         cohesion * C.cohesionLogit -
         (passBlockSlider - 1) * C.sliderLogit -
-        dcall.soft * C.softPressureLogit
+        dcall.soft * C.softPressureLogit -
+        (spy ? C.spyPressure : 0)
     );
     if (call.depth === 'screen') pPressure *= C.screenPressure;
     if (call.playAction) pPressure *= C.playActionPressure;
@@ -1352,14 +1462,15 @@ class GameSim {
       }
       if (this.rng.chance(C.hitShare)) this.add(def, rusher, 'qbHits');
       const scrambleP =
-        S.scrambleGivenPressure +
-        S.scrambleTendency *
-          this.teams[off].tendencies.offense.scramble *
-          (qb.traits.qbStyle === 'scrambling'
-            ? C.scramblerFactor
-            : qb.traits.qbStyle === 'pocket'
-              ? C.pocketFactor
-              : 1);
+        (S.scrambleGivenPressure +
+          S.scrambleTendency *
+            this.teams[off].tendencies.offense.scramble *
+            (qb.traits.qbStyle === 'scrambling'
+              ? C.scramblerFactor
+              : qb.traits.qbStyle === 'pocket'
+                ? C.pocketFactor
+                : 1)) *
+        (spy ? C.spyScramble : 1);
       if (this.rng.chance(scrambleP)) return this.scramble(qb, base);
       const throwAway =
         S.throwAwayGivenPressure +
@@ -1517,13 +1628,21 @@ class GameSim {
     const off = this.offense;
     const def = other(off);
     const t = this.teams[off].tendencies.offense;
+    const offPlan = this.teams[off].plan;
+    const defPlan = this.teams[def].plan;
     // Receivers running routes, and who covers each (spec 8.3 step 5: target selection).
     const routes: { slot: Slot; tslot: TargetSlot | 'EXTRA'; player: SimPlayer; share: number }[] = [];
     for (const [slot, player] of this.field[off]) {
       const tslot = slot.endsWith('+') ? 'EXTRA' : (slot as TargetSlot);
       if (!(tslot in COVERAGE)) continue;
-      const share = tslot === 'EXTRA' ? t.targets.SLOT : t.targets[tslot];
-      routes.push({ slot, tslot, player, share: share + C.minTargetShare });
+      const share = (tslot === 'EXTRA' ? t.targets.SLOT : t.targets[tslot]) + C.minTargetShare;
+      // The game plan's featured player draws a bigger share of the looks (spec 8.7).
+      routes.push({
+        slot,
+        tslot,
+        player,
+        share: share * (player.id === offPlan.feature ? 1 + C.featureTargets : 1)
+      });
     }
     if (!routes.length) return base;
     const back = (tslot: TargetSlot | 'EXTRA') => tslot === 'RB1' || tslot === 'RB2' || tslot === 'FB';
@@ -1531,8 +1650,20 @@ class GameSim {
     const depthTrig: PlayTrigger = call.depth === 'deep' ? 'deepPass' : 'shortPass';
     const routeId: CompositeId =
       call.depth === 'deep' ? 'routeDeep' : call.depth === 'intermediate' ? 'routeMid' : 'routeShort';
+    const matchups = new Map<SimPlayer, DefenseSlot | null>(
+      routes.map(r => [r.player, COVERAGE[r.tslot].find(s => this.at(def, s)) ?? null])
+    );
+    // A shadow corner follows his man, and whoever that corner would have covered takes the shadowed
+    // receiver's usual defender (spec 8.7).
+    const shadowed = routes.find(r => r.player.id === defPlan.shadow)?.player;
+    if (shadowed && this.at(def, 'CB1') && matchups.get(shadowed) !== 'CB1') {
+      const swap = [...matchups].find(([, s]) => s === 'CB1')?.[0];
+      if (swap) matchups.set(swap, matchups.get(shadowed) ?? null);
+      matchups.set(shadowed, 'CB1');
+    }
+    const doubled = routes.some(r => r.player.id === defPlan.doubleReceiver);
     const scored = routes.map(r => {
-      const defSlot = COVERAGE[r.tslot].find(s => this.at(def, s)) ?? null;
+      const defSlot = matchups.get(r.player) ?? null;
       const defender = defSlot ? this.at(def, defSlot) : null;
       const route = this.edge(off, r.player, r.slot, routeId, [coverTrig, depthTrig]);
       const cover =
@@ -1543,10 +1674,19 @@ class GameSim {
               'coverage'
             ])
           : -C.uncovered;
+      const pressRate = clamp(this.teams[def].tendencies.defense.press + defPlan.press, 0, 1);
       const press =
-        dcall.man && defender && this.rng.chance(this.teams[def].tendencies.defense.press)
+        dcall.man && defender && this.rng.chance(pressRate)
           ? C.pressWeight * (r.player.edges.routeShort - defender.edges.manCover)
           : 0;
+      // Safety help on a doubled receiver leaves a little more room for everyone else.
+      const help = !doubled
+        ? 0
+        : r.player.id === defPlan.doubleReceiver
+          ? -C.doubleSeparation
+          : C.doubleOthers;
+      // A back who chips a pass rusher gets into his route late.
+      const chip = offPlan.doubleRusher && back(r.tslot) ? -C.chipRoute : 0;
       const reaction = (this.slider(def, 'passDefenseReaction') - 1) * C.sliderPoints;
       const sep =
         route -
@@ -1555,7 +1695,9 @@ class GameSim {
         press +
         (call.playAction ? C.playActionSeparation : 0) +
         (dcall.blitz ? C.blitzSeparation : 0) +
-        (back(r.tslot) ? C.backfieldSeparation : 0) -
+        (back(r.tslot) ? C.backfieldSeparation : 0) +
+        help +
+        chip -
         this.teams[def].cohesion.defense.execution * C.cohesionSeparation;
       return { ...r, defender, defSlot, sep };
     });

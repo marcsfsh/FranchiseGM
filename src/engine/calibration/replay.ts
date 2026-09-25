@@ -1,18 +1,23 @@
 /**
  * Calibration replays (spec 23.1): a generated league plays the 2026 regular season from a seeded stream,
- * and the replay keeps only the facts the metrics need (spec 23.3). Until the offseason (M10) and the season
- * loop (M7) exist, rosters stay as generated and depth charts don't change; a player hurt for some weeks
- * sits out his team's games in those weeks and his backups play, which stands in for M7's weekly injury
- * updates (D-17).
+ * and the replay keeps only the facts the metrics need (spec 23.3). Each head coach sets his auto depth
+ * chart once, and his staff builds a game plan for every opponent (spec 8.7). Rosters stay as generated: a
+ * player hurt for some weeks sits out his team's games in those weeks and his backups play, which stands in
+ * for the weekly loop's injured reserve and signings, so every game stays independent of the others (D-17).
  */
 import type { ClimateTable } from '../../data/climate';
+import { decideDepthChart } from '../ai/decisions/depth-chart';
+import { decideGamePlan } from '../ai/decisions/game-plan';
+import { decideRotation } from '../ai/decisions/rotation';
+import { dressable } from '../ai/weekly';
 import type { ScheduledGame } from '../../data/schedule';
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import type { NameData } from '../generate/player';
 import { createLeague, defaultStartOptions } from '../league/create';
+import { orderOf } from '../league/depth';
 import type { League } from '../league/types';
 import type { Position } from '../model/positions';
-import type { Rng } from '../rng';
+import { stream, type Rng } from '../rng';
 import { simulateGame } from '../sim/game';
 import { gameSetup, type TeamSetups } from '../sim/setup';
 import { emptyTotals, TEAM_KEYS, type StatKey, type TeamTotals } from '../sim/stats';
@@ -25,9 +30,9 @@ export interface CalibrationData {
   climate: ClimateTable | null;
 }
 
-/** A generated fictional league for calibration; the seed picks the league. */
+/** A generated fictional league for calibration with every team's auto depth chart and rotation; the seed picks the league. */
 export function calibrationLeague(data: CalibrationData, seed: number): League {
-  return createLeague({
+  const league = createLeague({
     id: `calibration-${seed}`,
     name: 'Calibration',
     start: defaultStartOptions(TEAM_ABBRS[0] as TeamAbbr, seed),
@@ -36,6 +41,23 @@ export function calibrationLeague(data: CalibrationData, seed: number): League {
     schedule: data.schedule,
     fixed: true
   });
+  for (const abbr of TEAM_ABBRS) {
+    const depth = decideDepthChart(
+      league,
+      abbr,
+      dressable(league, abbr),
+      stream(seed, 'calibration', 'depth', abbr)
+    );
+    league.teams[abbr].depth.order = orderOf(depth.starters);
+    league.teams[abbr].rotation = decideRotation(
+      league,
+      abbr,
+      dressable(league, abbr),
+      depth.starters,
+      stream(seed, 'calibration', 'rotation', abbr)
+    ).rotation;
+  }
+  return league;
 }
 
 export interface GameFact {
@@ -176,6 +198,8 @@ export function replaySeason(
   for (const game of [...schedule].sort((a, b) => a.week - b.week || (a.id < b.id ? -1 : 1))) {
     const g = rng.fork('game', game.id);
     const setup = gameSetup(league, game, climate, g.fork('setup'), cache);
+    setup.home.plan = decideGamePlan(league, game.home, game.away, g.fork('homePlan')).plan;
+    setup.away.plan = decideGamePlan(league, game.away, game.home, g.fork('awayPlan')).plan;
     for (const side of ['home', 'away'] as const)
       for (const player of Object.values(setup[side].players))
         if ((outThrough.get(player.id) ?? 0) >= game.week) {

@@ -2,8 +2,11 @@
  * The season in progress (spec 4.1, 5.3): finished games, playoff seeds, and the champion. Box scores and
  * stat lines live in history storage (spec 9.3); results here are what standings and the bracket need.
  */
+import type { ScheduledGame } from '../../data/schedule';
 import type { Conference, TeamAbbr } from '../../data/teams';
+import type { Transaction } from '../league/transactions';
 import type { League } from '../league/types';
+import type { Phase } from '../model/calendar';
 import { stream } from '../rng';
 import { rankLeague, type GameScore, type LeagueStandings } from './standings';
 
@@ -20,14 +23,39 @@ export interface SeasonState {
   /** Each conference's playoff seeds, best first, once the regular season ends. */
   seeds: Record<Conference, TeamAbbr[]> | null;
   champion: TeamAbbr | null;
+  /** Roster moves this season, oldest first (spec 12.1). */
+  transactions: Transaction[];
 }
 
 export const emptySeason = (season: number): SeasonState => ({
   season,
   results: {},
   seeds: null,
-  champion: null
+  champion: null,
+  transactions: []
 });
+
+/** Playoff phases in order: round 1 is the Wild Card round, the last is the Super Bowl. */
+export const PLAYOFF_PHASES = [
+  'wildCard',
+  'divisional',
+  'conference',
+  'superBowl'
+] as const satisfies readonly Phase[];
+
+/** The schedule week the league is in (playoff rounds follow the regular season's weeks), or null. */
+export function gameWeek(league: League): number | null {
+  const { phase, week } = league.date;
+  if (phase === 'regularSeason') return week;
+  const round = (PLAYOFF_PHASES as readonly Phase[]).indexOf(phase) + 1;
+  return round > 0 ? league.rules.season.weeks + round : null;
+}
+
+/** This week's games still to play. */
+export function weekGames(league: League): ScheduledGame[] {
+  const week = gameWeek(league);
+  return week === null ? [] : league.schedule.filter(g => g.week === week && !league.season.results[g.id]);
+}
 
 /** The coin toss that ends a tie nothing else breaks, fixed for the league and season. */
 export const coinSeed = (league: League): number =>

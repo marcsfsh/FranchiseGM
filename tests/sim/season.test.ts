@@ -2,8 +2,10 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseClimate } from '../../src/data/climate';
 import { parseSchedule } from '../../src/data/schedule';
+import { TEAM_ABBRS } from '../../src/data/team-colors';
 import { team } from '../../src/data/teams';
 import { createLeague, defaultStartOptions } from '../../src/engine/league/create';
+import { startersOf } from '../../src/engine/league/depth';
 import type { League } from '../../src/engine/league/types';
 import { advanceWeek, gameWeek, weekGames } from '../../src/engine/season/advance';
 import { leagueStandings } from '../../src/engine/season/state';
@@ -24,6 +26,27 @@ const league = (): League =>
   });
 const input = { actions: 0, entropy: 0 };
 
+/**
+ * A legal league after a week (spec 12.1): every roster at or under the active limit (AI teams fill theirs),
+ * every active player under contract with his team, and every team that played fielded its core lineup.
+ */
+const CORE = ['QB', 'RB1', 'X', 'Z', 'LT', 'LG', 'C', 'RG', 'RT', 'LEDGE', 'REDGE', 'DT1', 'MIKE', 'CB1', 'CB2', 'FS', 'SS'] as const; // prettier-ignore
+
+function expectLegal(l: League, played: ReadonlySet<string>): void {
+  const limit = l.rules.roster.active;
+  for (const abbr of TEAM_ABBRS) {
+    const active = Object.values(l.players).filter(p => p.team === abbr && p.status === 'active');
+    if (abbr === l.meta.start.userTeam) expect(active.length).toBeLessThanOrEqual(limit);
+    else expect(active.length, abbr).toBe(limit);
+    for (const p of active) expect(l.contracts[p.contractId ?? '']?.team, p.id).toBe(abbr);
+    if (!played.has(abbr)) continue;
+    // A thin group (a lone fullback, say) can be empty for a week; the core of the lineup never is.
+    const starters = startersOf(l.teams[abbr].depth.order);
+    for (const slot of CORE) expect(starters[slot], `${abbr} ${slot}`).toBeDefined();
+    expect(new Set(Object.values(starters)).size).toBe(Object.values(starters).length);
+  }
+}
+
 // A whole season is the slowest test in the suite.
 describe('the season loop (spec 4.2, 5.3)', { timeout: 120_000 }, () => {
   it('replays a week exactly in a fixed-seed league', () => {
@@ -37,8 +60,17 @@ describe('the season loop (spec 4.2, 5.3)', { timeout: 120_000 }, () => {
 
   it('plays week 1 through the Super Bowl: seeds, byes, re-seeding, and one champion', () => {
     const l = league();
-    while (l.date.phase === 'regularSeason') advanceWeek(l, climate, input);
+    const week = () => {
+      const played = new Set(weekGames(l).flatMap(g => [g.home, g.away]));
+      advanceWeek(l, climate, input);
+      expectLegal(l, played);
+    };
+    while (l.date.phase === 'regularSeason') week();
     expect(Object.values(l.season.results)).toHaveLength(272);
+    // AI teams moved long injuries to injured reserve and signed replacements.
+    const moves = l.season.transactions;
+    expect(moves.some(t => t.kind === 'injuredReserve')).toBe(true);
+    expect(moves.some(t => t.kind === 'signed')).toBe(true);
     expect(l.date).toMatchObject({ phase: 'wildCard', week: 1 });
     const standings = leagueStandings(l);
     for (const conference of ['AFC', 'NFC'] as const) {
@@ -58,7 +90,7 @@ describe('the season loop (spec 4.2, 5.3)', { timeout: 120_000 }, () => {
       expect(seeds.indexOf(g.home)).toBeLessThan(seeds.indexOf(g.away));
       expect(seeds.indexOf(g.home)).toBeGreaterThan(0);
     }
-    while (l.date.phase !== 'staff') advanceWeek(l, climate, input);
+    while (l.date.phase !== 'staff') week();
     const playoffs = Object.values(l.season.results).filter(g => g.playoff);
     expect(playoffs).toHaveLength(13);
     expect(playoffs.every(g => g.homeScore !== g.awayScore)).toBe(true);

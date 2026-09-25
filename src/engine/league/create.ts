@@ -3,6 +3,7 @@
  * franchises with generated players, coaches, staff, and owners. The league starts at week 1 of the
  * 2026 regular season with rosters set.
  */
+import { defaultRotation, NEUTRAL_PLAN } from '../sim/plan';
 import { emptySeason } from '../season/state';
 import type { ScheduledGame } from '../../data/schedule';
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
@@ -87,7 +88,16 @@ export function createLeague(input: NewLeagueInput): League {
       const mismatch = coordinatorFit(member, schemes);
       if (mismatch) member.morale = Math.max(0, member.morale + mismatch.morale);
     }
-    teams[abbr] = { abbr, ownerId: owner.id, staff, schemes, resting: [] };
+    teams[abbr] = {
+      abbr,
+      ownerId: owner.id,
+      staff,
+      schemes,
+      resting: [],
+      depth: { auto: true, order: {} },
+      plan: { auto: true, plan: { ...NEUTRAL_PLAN } },
+      rotation: defaultRotation(TUNING.situations.rb1Share)
+    };
   }
 
   return {

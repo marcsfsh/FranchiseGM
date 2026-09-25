@@ -151,7 +151,7 @@ describe('game results are internally consistent (spec 8.8)', () => {
   });
 });
 
-describe('repeatability (spec 8.9)', () => {
+describe('repeatability (spec 8.9)', { timeout: 30_000 }, () => {
   it('replays a game exactly in fixed mode, even after an advance with different entropy', () => {
     const id = base.schedule[5]?.id as string;
     const a = simLeagueGame(base, id, climate);

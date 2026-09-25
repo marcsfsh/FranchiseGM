@@ -8,17 +8,19 @@ import type { Contract } from '../contracts/types';
 import type { GameDate } from '../model/calendar';
 import type { Player } from '../model/player';
 import type { Owner, StaffMember, StaffRole } from '../model/staff';
+import type { DepthOrder } from './depth';
 import type { LeagueRandom } from '../rng';
 import type { RuleSet } from '../rules/ruleset';
 import type { TeamSchemes } from '../schemes/resolve';
 import type { SeasonState } from '../season/state';
+import type { GamePlan, Rotation } from '../sim/plan';
 import type { SimSliders } from '../sim/sliders';
 
 /**
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 5;
+export const SAVE_SCHEMA_VERSION = 6;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -55,6 +57,16 @@ export interface TeamState {
   schemes: TeamSchemes;
   /** Questionable players the coach is resting this week instead of playing them hurt (spec 10.8). */
   resting: string[];
+  /**
+   * Depth chart choices (spec 12.2): each slot's players in order, by the head coach while `auto` is on
+   * (starters only) or by the user. A listed player who can't play is skipped; players not listed follow
+   * by role rating.
+   */
+  depth: { auto: boolean; order: DepthOrder };
+  /** This week's game plan (spec 8.7), made by the coaching staff while `auto` is on or by the user. */
+  plan: { auto: boolean; plan: GamePlan };
+  /** Rotations and packages (spec 12.3). */
+  rotation: Rotation;
 }
 
 /** League settings that can change mid-save (spec 22). Sections are added as their features arrive. */

@@ -1,4 +1,5 @@
 /** Game simulation inputs and outputs (spec 8.2, 8.8). */
+import type { GamePlan, Rotation } from './plan';
 import type { TeamAbbr } from '../../data/team-colors';
 import type { Venue } from '../../data/stadiums';
 import type { Cohesion } from '../fit/cohesion';
@@ -80,6 +81,10 @@ export interface TeamSetup {
    * limit the head coach's flexibility allows.
    */
   lean: number;
+  /** This week's game plan (spec 8.7). */
+  plan: GamePlan;
+  /** Rotations and packages (spec 12.3). */
+  rotation: Rotation;
 }
 
 export type Precipitation = 'none' | 'rain' | 'snow';

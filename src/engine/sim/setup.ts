@@ -1,8 +1,8 @@
 /**
- * Game setup (spec 8.2): turns a league's teams into sim inputs. Depth charts come from snap-ordered
- * lineups with backups by role rating (the M7 depth chart screen and AI weekly management replace this);
- * tendencies bend toward the roster by the head coach's flexibility; weather, home field, and form are
- * drawn for the day.
+ * Game setup (spec 8.2): turns a league's teams into sim inputs. Depth charts start from the starters the
+ * head coach or the user chose (spec 12.2), with the snap-ordered lineup filling any gaps and backups by
+ * role rating; the week's game plan and rotations come along (spec 8.7, 12.3); tendencies bend toward the
+ * roster by the head coach's flexibility; weather, home field, and form are drawn for the day.
  */
 import type { ClimateTable } from '../../data/climate';
 import type { ScheduledGame } from '../../data/schedule';
@@ -10,15 +10,20 @@ import { venueById, type Venue } from '../../data/stadiums';
 import { divisionOf, homeStadium } from '../../data/teams';
 import { teamFullName, type TeamAbbr } from '../../data/team-colors';
 import { ability } from '../abilities/catalog';
-import { adaptedTendencies, autoLineup, teamCohesion, type LineupPlayer } from '../fit/cohesion';
+import { adaptedTendencies, chosenLineup, teamCohesion, type LineupPlayer } from '../fit/cohesion';
 import { recipeFor, roleRating, type FitContext } from '../fit/role-rating';
+import { startersOf, type DepthOrder } from '../league/depth';
 import { leagueFitContext, teamStaff } from '../league/fit';
 import type { League } from '../league/types';
 import { fullName, type Player } from '../model/player';
+import { POSITION_GROUP, type Position, type PositionGroup } from '../model/positions';
 import type { Rng } from '../rng';
+import type { RosterRules } from '../rules/ruleset';
 import { DEFENSE_SLOTS, OFFENSE_SLOTS, SPECIAL_SLOTS, type Slot } from '../schemes/slots';
+import { PERSONNEL, type Personnel } from '../schemes/tendencies';
 import { TUNING } from '../tuning';
 import { cannotPlay, designation, hurtEffects } from '../season/injuries';
+import { defaultRotation, NEUTRAL_PLAN } from './plan';
 import { abilityEdges, compositeEdges } from './composites';
 import type { SimSliders } from './sliders';
 import type { CoachStyle, GameSetup, GameWeather, SimAbility, SimPlayer, TeamSetup } from './types';
@@ -63,15 +68,20 @@ export function simPlayer(player: Player): SimPlayer {
 }
 
 /**
- * Depth chart: the snap-ordered lineup's starters (spec 7.6), then every other eligible player by role
- * rating. Special teams slots take the best role ratings. Fit per slot is recorded on each player.
+ * Depth chart: the starters (spec 7.6, 12.2), from the coach's or the user's order with the snap-ordered
+ * lineup filling any gaps, then the rest of that order, then every other eligible player by role rating.
+ * Special teams slots take the order first, then the best role ratings. Fit per slot is recorded on each
+ * player.
  */
 export function depthChart(
   roster: readonly Player[],
   ctx: FitContext,
-  players: Record<string, SimPlayer>
+  players: Record<string, SimPlayer>,
+  order: DepthOrder = {}
 ): Record<Slot, string[]> {
-  const lineup = autoLineup(roster as readonly LineupPlayer[], ctx);
+  const ids = new Set(roster.map(p => p.id));
+  const starters = startersOf(order, id => ids.has(id));
+  const lineup = chosenLineup(roster as readonly LineupPlayer[], ctx, starters);
   const depth = {} as Record<Slot, string[]>;
   for (const slot of ALL_SLOTS) {
     const eligible = recipeFor(ctx, slot).eligible;
@@ -83,10 +93,16 @@ export function depthChart(
       const sim = players[r.id];
       if (sim) sim.fit[slot] = r.role.fit;
     }
-    const starter = lineup.get(slot)?.player.id;
-    depth[slot] = starter
-      ? [starter, ...rated.map(r => r.id).filter(id => id !== starter)]
-      : rated.map(r => r.id);
+    const pick = starters[slot];
+    const special = (SPECIAL_SLOTS as readonly Slot[]).includes(slot);
+    const starter =
+      lineup.get(slot)?.player.id ?? (special && rated.some(r => r.id === pick) ? pick : undefined);
+    const listed = (order[slot] ?? []).filter(id => id !== starter && rated.some(r => r.id === id));
+    depth[slot] = [
+      ...(starter ? [starter] : []),
+      ...listed,
+      ...rated.map(r => r.id).filter(id => id !== starter && !listed.includes(id))
+    ];
   }
   return depth;
 }
@@ -133,15 +149,100 @@ export function available(league: League, player: Player): boolean {
   return !(league.teams[player.team as TeamAbbr]?.resting ?? []).includes(player.id);
 }
 
+const LINEMEN: readonly Position[] = ['LT', 'LG', 'C', 'RG', 'RT'];
+
+/**
+ * How many players of each group a team dresses at least, for the personnel it uses: the most backs,
+ * receivers, and tight ends any of its groupings puts on the field, a receiver and a back to spare, and a
+ * defense that can play dime with backups.
+ */
+function dressNeeds(personnel: Record<Personnel, number>): Partial<Record<PositionGroup, number>> {
+  const used = PERSONNEL.filter(p => personnel[p] > 0);
+  const most = (count: (p: Personnel) => number) => Math.max(0, ...used.map(count));
+  return {
+    QB: 2,
+    RB: most(p => Number(p[0])) + 1,
+    WR: most(p => 5 - Number(p[0]) - Number(p[1])) + 1,
+    TE: most(p => Number(p[1])),
+    ...S.dressDefense
+  };
+}
+
+/**
+ * Game-day actives (spec 12.1): 48 of the players who can play, 47 without at least 8 offensive linemen
+ * among them, plus an emergency third quarterback where the rules allow one. Every starter dresses (special
+ * teams included) with the players the rotation plans to use, then enough linemen and enough players at
+ * each group for the team's personnel, then the rest by overall.
+ */
+export function gameDayActives(
+  roster: readonly Player[],
+  depth: Record<Slot, string[]>,
+  rules: RosterRules,
+  personnel: Record<Personnel, number>,
+  planned: readonly string[] = []
+): Set<string> {
+  const byId = new Map(roster.map(p => [p.id, p]));
+  const dressed = new Set<string>();
+  for (const ids of Object.values(depth)) if (ids[0] && byId.has(ids[0])) dressed.add(ids[0]);
+  for (const id of planned) if (byId.has(id)) dressed.add(id);
+  const rest = roster.filter(p => !dressed.has(p.id)).sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
+  const count = (test: (p: Player) => boolean) =>
+    [...dressed].filter(id => test(byId.get(id) as Player)).length;
+  const fill = (test: (p: Player) => boolean, want: number) => {
+    let have = count(test);
+    for (const p of rest) {
+      if (have >= want) break;
+      if (test(p) && !dressed.has(p.id)) {
+        dressed.add(p.id);
+        have++;
+      }
+    }
+  };
+  fill(p => LINEMEN.includes(p.position), rules.gameDayMinOl);
+  const linemen = count(p => LINEMEN.includes(p.position));
+  const limit = linemen >= rules.gameDayMinOl ? rules.gameDayActives : rules.gameDayActivesShortOl;
+  for (const [group, want] of Object.entries(dressNeeds(personnel)))
+    fill(
+      p => POSITION_GROUP[p.position] === group,
+      Math.min(want ?? 0, limit - dressed.size + count(p => POSITION_GROUP[p.position] === group))
+    );
+  for (const p of rest) {
+    if (dressed.size >= limit) break;
+    dressed.add(p.id);
+  }
+  const third = rules.emergencyThirdQb
+    ? rest.find(p => p.position === 'QB' && !dressed.has(p.id))
+    : undefined;
+  if (third) dressed.add(third.id);
+  return dressed;
+}
+
 export function teamSetup(league: League, abbr: TeamAbbr, boost: number): TeamSetup {
+  const team = league.teams[abbr];
   const roster = Object.values(league.players).filter(p => p.team === abbr && available(league, p));
   const ctx = leagueFitContext(league, abbr);
   const players: Record<string, SimPlayer> = {};
   for (const p of roster) players[p.id] = simPlayer(p);
-  const depth = depthChart(roster, ctx, players);
+  const order = team?.depth.order ?? {};
+  const depth = depthChart(roster, ctx, players, order);
+  const starters = startersOf(order, id => !!players[id]);
+  // Inactive players leave the game's roster and every depth list.
+  const rotation = team?.rotation;
+  const planned = rotation
+    ? [...Object.values(rotation.subs), ...Object.keys(rotation.devSnaps)].filter((id): id is string => !!id)
+    : [];
+  const dressed = gameDayActives(
+    roster,
+    depth,
+    league.rules.roster,
+    ctx.offense.tendencies.personnel,
+    planned
+  );
+  for (const id of Object.keys(players)) if (!dressed.has(id)) delete players[id];
+  for (const slot of Object.keys(depth) as Slot[]) depth[slot] = depth[slot].filter(id => dressed.has(id));
   const hc = teamStaff(league, abbr).find(s => s.role === 'HC');
   const flexibility = hc?.ratings.flexibility ?? 50;
-  const lineup = autoLineup(roster as readonly LineupPlayer[], ctx);
+  const lineup = chosenLineup(roster as readonly LineupPlayer[], ctx, starters);
   const adapted = adaptedTendencies(roster as readonly LineupPlayer[], ctx, flexibility);
   return {
     abbr,
@@ -156,7 +257,11 @@ export function teamSetup(league: League, abbr: TeamAbbr, boost: number): TeamSe
     cohesion: teamCohesion(lineup, ctx, flexibility),
     boost,
     lean:
-      Math.max(-1, Math.min(1, passRunBalance(players, depth) / S.leanScale)) * S.leanMax * (flexibility / 99)
+      Math.max(-1, Math.min(1, passRunBalance(players, depth) / S.leanScale)) *
+      S.leanMax *
+      (flexibility / 99),
+    plan: structuredClone(team?.plan.plan ?? NEUTRAL_PLAN),
+    rotation: structuredClone(team?.rotation ?? defaultRotation(TUNING.situations.rb1Share))
   };
 }
 

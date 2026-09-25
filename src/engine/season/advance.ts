@@ -4,11 +4,12 @@
  * games as the one before it finishes (spec 5.3). The Super Bowl crowns a champion and opens the offseason.
  */
 import type { ClimateTable } from '../../data/climate';
-import type { ScheduledGame } from '../../data/schedule';
+import type { DecisionLog } from '../ai/framework';
+import { manageWeek } from '../ai/weekly';
 import type { Conference, TeamAbbr } from '../../data/teams';
 import type { League } from '../league/types';
 import type { Phase } from '../model/calendar';
-import { advanceLeagueRandom, leagueStream, type AdvanceInput } from '../rng';
+import { advanceLeagueRandom, leagueStream, stream, type AdvanceInput } from '../rng';
 import { simLeagueGame } from '../sim';
 import type { TeamTotals } from '../sim/stats';
 import type { GameResult } from '../sim/types';
@@ -16,15 +17,10 @@ import type { GameMeta } from '../stats/record';
 import { applyInjuries, healWeek } from './injuries';
 import { conferenceRound, superBowl, type Seed } from './playoffs';
 import { playoffSchedule } from './schedule';
-import { leagueStandings, type GameOutcome } from './state';
+import { gameWeek, leagueStandings, PLAYOFF_PHASES, weekGames, type GameOutcome } from './state';
 
-/** Playoff phases in order: round 1 is the Wild Card round, the last is the Super Bowl. */
-const PLAYOFF_PHASES = [
-  'wildCard',
-  'divisional',
-  'conference',
-  'superBowl'
-] as const satisfies readonly Phase[];
+export { gameWeek, weekGames } from './state';
+
 const CONFERENCES: readonly Conference[] = ['AFC', 'NFC'];
 
 export interface WeekOutcome {
@@ -32,20 +28,8 @@ export interface WeekOutcome {
   league: League;
   /** The week's games for history storage (spec 9.3). */
   games: { result: GameResult; meta: GameMeta }[];
-}
-
-/** The schedule week the league is in (playoff rounds follow the regular season's weeks), or null. */
-export function gameWeek(league: League): number | null {
-  const { phase, week } = league.date;
-  if (phase === 'regularSeason') return week;
-  const round = (PLAYOFF_PHASES as readonly Phase[]).indexOf(phase) + 1;
-  return round > 0 ? league.rules.season.weeks + round : null;
-}
-
-/** This week's games still to play. */
-export function weekGames(league: League): ScheduledGame[] {
-  const week = gameWeek(league);
-  return week === null ? [] : league.schedule.filter(g => g.week === week && !league.season.results[g.id]);
+  /** Every AI decision made before the games (spec 14.10), for the debug log. */
+  decisions: DecisionLog[];
 }
 
 const touchdowns = (t: TeamTotals): number =>
@@ -113,14 +97,21 @@ function moveOn(league: League): void {
 }
 
 /**
- * Plays the league's current week in place (spec 4.2) and moves it on. Each game draws from the league's
- * advance seed, so a fixed-seed league replays the same week exactly.
+ * Plays the league's current week in place (spec 4.2) and moves it on: weekly management first, then the
+ * games. Each game draws from the league's advance seed, so a fixed-seed league replays the same week
+ * exactly.
  */
 export function advanceWeek(league: League, climate: ClimateTable | null, input: AdvanceInput): WeekOutcome {
   const week = gameWeek(league);
   if (week === null) throw new Error(`There are no games to play in the ${league.date.phase} phase.`);
   const season = league.season.season;
   const playoff = week > league.rules.season.weeks;
+  // Teams set their rosters, lineups, and game plans before kickoff (spec 14.10).
+  const decisions = manageWeek(
+    league,
+    leagueStream(league.random, 'ai', week),
+    stream(league.random.baseSeed, 'ai', season)
+  );
   const results = weekGames(league).map(g => simLeagueGame(league, g.id, climate));
   for (const r of results) league.season.results[r.id] = outcome(r, week, playoff);
   // The week passes for every player, then this week's injuries start their clocks.
@@ -136,6 +127,10 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
   league.random = advanceLeagueRandom(league.random, input);
   return {
     league,
-    games: results.map(result => ({ result, meta: { season, week, kind: playoff ? 'playoffs' : 'regular' } }))
+    games: results.map(result => ({
+      result,
+      meta: { season, week, kind: playoff ? 'playoffs' : 'regular' }
+    })),
+    decisions
   };
 }
