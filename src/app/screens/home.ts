@@ -276,7 +276,8 @@ function newsCard(league: League): HTMLElement {
   const awards = league.season.awards.filter(a => a.week === last);
   const award = (a: (typeof awards)[number]) => {
     const p = league.players[a.playerId];
-    return h('li', null, `${a.conference} ${CATEGORY_WORDS[a.category].toLowerCase()}: `, p ? playerLink(p) : '', `, ${nick(a.team)}`);
+    const label = a.category === 'rookie' ? 'Rookie' : `${a.conference} ${CATEGORY_WORDS[a.category].toLowerCase()}`;
+    return h('li', null, `${label}: `, p ? playerLink(p) : '', `, ${nick(a.team)}`);
   }; // prettier-ignore
   return homeCard(
     last ? `News: ${weekText(league, last)}` : 'News',

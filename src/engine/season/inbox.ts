@@ -10,7 +10,7 @@ import type { League } from '../league/types';
 import { fullName } from '../model/player';
 import type { GameResult } from '../sim/types';
 import { plural, withArticle } from '../text';
-import type { WeeklyAward } from './awards';
+import { awardName, type WeeklyAward } from './awards';
 import type { NewsItem } from './news';
 import { leagueStandings } from './state';
 
@@ -121,7 +121,6 @@ export function weekInbox(league: League, input: WeekInboxInput): InboxItem[] {
     }
   }
 
-  const words = { offense: 'Offensive', defense: 'Defensive', special: 'Special Teams' } as const;
   for (const a of input.awards) {
     if (a.team !== user) continue;
     const player = league.players[a.playerId];
@@ -129,7 +128,7 @@ export function weekInbox(league: League, input: WeekInboxInput): InboxItem[] {
     add({
       kind: 'award',
       event: null,
-      title: `${fullName(player)} is the ${a.conference} ${words[a.category]} Player of the Week`,
+      title: `${fullName(player)} is the ${awardName(a)}`,
       body: a.line ? `${capitalize(a.line)}.` : '',
       players: [a.playerId]
     });

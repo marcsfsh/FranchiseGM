@@ -15,7 +15,7 @@ import type { PlayerLine, StatKey } from '../sim/stats';
 import type { GameResult } from '../sim/types';
 import { TUNING } from '../tuning';
 import { numberArticle, plural, possessive, withArticle } from '../text';
-import type { WeeklyAward } from './awards';
+import { awardName, type WeeklyAward } from './awards';
 
 const N = TUNING.news;
 
@@ -248,18 +248,14 @@ function transactionCandidates(league: League, moves: readonly Transaction[]): C
 }
 
 function awardCandidates(league: League, awards: readonly WeeklyAward[]): Candidate[] {
-  const words = { offense: 'Offensive', defense: 'Defensive', special: 'Special Teams' } as const;
   return awards.flatMap(a => {
     const player = league.players[a.playerId];
     if (!player) return [];
     return [
       {
         kind: 'award' as const,
-        templates: [
-          '{name} is the {conf} {cat} Player of the Week',
-          '{conf} {cat} Player of the Week: {name}'
-        ],
-        fill: { name: fullName(player), conf: a.conference, cat: words[a.category] },
+        templates: ['{name} is the {award}', '{award}: {name}'],
+        fill: { name: fullName(player), award: awardName(a) },
         teams: [a.team],
         players: [a.playerId],
         score: N.award

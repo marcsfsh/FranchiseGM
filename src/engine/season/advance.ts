@@ -138,8 +138,9 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
   // Season totals and players of the week, then the calendar moves on (seeds come after week 18).
   const before = league.season.totals;
   league.season.totals = addToTotals(before, results);
-  // Players of the week are a regular-season award.
-  const awards = playoff ? [] : playersOfTheWeek(season, week, results);
+  // Players of the week are a regular-season award; the rookie award goes to a first-year player.
+  const rookies = new Set(Object.values(league.players).flatMap(p => (p.experience === 0 ? [p.id] : [])));
+  const awards = playoff ? [] : playersOfTheWeek(season, week, results, rookies);
   league.season.awards.push(...awards);
   moveOn(league);
   // News and the inbox (spec 18.1, 19.6).

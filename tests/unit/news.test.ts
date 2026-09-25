@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { TeamAbbr } from '../../src/data/team-colors';
 import type { League } from '../../src/engine/league/types';
 import { stream } from '../../src/engine/rng';
-import { gameScore, lineText, playersOfTheWeek } from '../../src/engine/season/awards';
+import { awardName, gameScore, lineText, playersOfTheWeek } from '../../src/engine/season/awards';
 import { addToInbox, INBOX_LIMIT, pausing, weekInbox, type InboxItem } from '../../src/engine/season/inbox';
 import { addToTotals, weekNews } from '../../src/engine/season/news';
 import { emptyLine, emptyTotals, type PlayerLine } from '../../src/engine/sim/stats';
@@ -60,6 +60,25 @@ describe('players of the week (spec 18.4)', () => {
     expect(find('NFC', 'special')?.line).toBe('4 of 4 field goals, long 52');
     expect(find('AFC', 'offense')?.playerId).toBe('wr');
     expect(find('AFC', 'offense')?.team).toBe('KC');
+  });
+
+  it('names one rookie of the week from the whole league', () => {
+    const results = [
+      game('MIN', 'GB', [31, 17], {
+        home: { qb: line({ passAtt: 35, passCmp: 27, passYds: 342, passTd: 3 }) },
+        away: { rookie: line({ rushAtt: 18, rushYds: 120, rushTd: 1 }) }
+      }),
+      game('KC', 'BUF', [20, 27], { away: { second: line({ tackles: 6, sacks: 1 }) } })
+    ];
+    const rookies = playersOfTheWeek(2026, 3, results, new Set(['rookie', 'second'])).filter(
+      a => a.category === 'rookie'
+    );
+    expect(rookies).toHaveLength(1);
+    expect(rookies[0]?.playerId).toBe('rookie');
+    expect(rookies[0]?.conference).toBe('NFC');
+    expect(rookies[0]?.line).toBe('18 carries for 120 yards and 1 touchdown');
+    expect(rookies[0] && awardName(rookies[0])).toBe('Rookie of the Week');
+    expect(playersOfTheWeek(2026, 3, results).some(a => a.category === 'rookie')).toBe(false);
   });
 
   it('scores turnovers against a player and gives a small edge to winners', () => {
