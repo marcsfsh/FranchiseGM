@@ -441,6 +441,21 @@ export const TUNING = {
       ankle: ['agi', 'cod']
     }
   },
+  /** Generated schedules (spec 5.2). */
+  schedule: {
+    /** Most road games in a row; a bye doesn't end the run. */
+    maxRoadStreak: 3,
+    /** Fewest weeks between a division rival's two games. */
+    rematchGap: 3,
+    /** Fewest days between a team's games: a Thursday night game after a Sunday, never after a Monday. */
+    minRestDays: 4,
+    /**
+     * Prime-time picks: the two teams' winning percentages last season, plus up to this much at random,
+     * less this much for each prime-time game either team already has this season.
+     */
+    primeJitter: 0.3,
+    primeRepeat: 0.15
+  },
   /** The fictional league (spec 10.2 item 4): roster quality by slot, ages, and cap use. */
   league: {
     /** Latent quality of starters, their spread, and the spread of team strength. */
