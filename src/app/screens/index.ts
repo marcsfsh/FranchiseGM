@@ -3,6 +3,7 @@ import { capScreen } from './cap';
 import { depthScreen } from './depth';
 import { devScreen } from './dev';
 import { freeAgencyScreen } from './free-agency';
+import { gameScreen } from './game';
 import { gamePlanScreen } from './gameplan';
 import { placeholderScreen } from './placeholder';
 import { historyScreen } from './history';
@@ -29,7 +30,7 @@ export const SCREENS: Record<RouteName, () => Screen> = {
   finances: capScreen,
   league: leagueScreen,
   leagueTab: leagueScreen,
-  game: () => placeholderScreen('Game', "A game's box score, scoring and drive summaries, and recap."),
+  game: gameScreen,
   history: historyScreen,
   settings: settingsScreen,
   player: playerScreen,

@@ -375,3 +375,22 @@ export function gameLog(
   const order: Record<GameKind, number> = { preseason: 0, regular: 1, playoffs: 2 };
   return [...entries.values()].sort((a, b) => order[a.kind] - order[b.kind] || a.week - b.week);
 }
+
+/** One row of a game's box score: the table it came from and the player's line in it. */
+export interface GameLine {
+  table: TableId;
+  row: StatRow;
+}
+
+/** Every player line of one game (spec 8.8 box score), read from its season's tables in table order. */
+export function gameLines(gameId: string, tables: Partial<Record<TableId, StatTable>>): GameLine[] {
+  const out: GameLine[] = [];
+  for (const id of TABLE_IDS) {
+    const table = tables[id];
+    const game = table ? table.games.indexOf(gameId) : -1;
+    if (!table || game < 0) continue;
+    for (let i = 0; i < table.rows; i++)
+      if (table.game[i] === game) out.push({ table: id, row: readRow(table, i) });
+  }
+  return out;
+}

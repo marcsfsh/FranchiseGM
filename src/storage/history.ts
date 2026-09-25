@@ -7,8 +7,10 @@ import { TABLE_IDS, type TableId } from '../engine/stats/categories';
 import type { PlayerHistory } from '../engine/stats/aggregate';
 import {
   emptySeason,
+  gameLines,
   gameLog,
   recordGames,
+  type GameLine,
   type GameLogEntry,
   type GameMeta,
   type GameRecord,
@@ -175,6 +177,11 @@ export class HistoryStore {
 
   async game(leagueId: string, gameId: string): Promise<GameRecord | null> {
     return (await this.get<GameRecord>('gameRecords', [leagueId, gameId])) ?? null;
+  }
+
+  /** One game's player lines, for its box score (spec 8.8): its season's tables load in one read each. */
+  async gameLines(leagueId: string, season: number, gameId: string): Promise<GameLine[]> {
+    return gameLines(gameId, await this.seasonTables(leagueId, season));
   }
 
   /** Seasons with stored history, oldest first. */

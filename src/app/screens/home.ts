@@ -11,7 +11,7 @@ import { PHASE_LABELS } from '../../engine/model/calendar';
 import type { Player } from '../../engine/model/player';
 import type { InboxItem, InboxKind } from '../../engine/season/inbox';
 import { designation } from '../../engine/season/injuries';
-import { gameWeek, leagueStandings, PLAYOFF_PHASES } from '../../engine/season/state';
+import { gameWeek, leagueStandings } from '../../engine/season/state';
 import type { WinLoss } from '../../engine/season/standings';
 import { h, type Child } from '../dom';
 import { toast } from '../feedback';
@@ -19,6 +19,7 @@ import { gameDay, kickoff, record } from '../format';
 import { href } from '../router';
 import { dateLine } from '../shell';
 import type { AdvanceTarget, AppState } from '../state';
+import { userGameIn, weekLabel } from '../ui/games';
 import { playerLink, tierPlate } from '../ui/players';
 import { pageHead } from './common';
 import type { Screen } from './types';
@@ -125,15 +126,11 @@ function nextGameCard(app: AppState, league: League): HTMLElement {
     .sort((a, b) => a.week - b.week)[0];
   const opponent = next ? (next.home === user ? next.away : next.home) : null;
   const inSeason = gameWeek(league) !== null;
-  const weekLabel = next
-    ? next.week > league.rules.season.weeks
-      ? PHASE_LABELS[PLAYOFF_PHASES[next.week - league.rules.season.weeks - 1] ?? 'wildCard']
-      : `Week ${next.week}`
-    : '';
+  const nextWeek = next ? weekLabel(league, next.week) : '';
   const body: Child[] = [];
   if (next && opponent) {
     body.push(
-      h('p', { class: 'label' }, `${weekLabel} · ${next.home === user ? 'Home' : next.siteType === 'home' ? 'Away' : 'Neutral site'}`),
+      h('p', { class: 'label' }, `${nextWeek} · ${next.home === user ? 'Home' : next.siteType === 'home' ? 'Away' : 'Neutral site'}`),
       h('p', { class: 'hero-title' }, teamFullName(opponent)),
       h('p', null, `Your record: ${winLoss(standings[user]?.overall)} · ${nick(opponent)}: ${winLoss(standings[opponent]?.overall)}`),
       h('p', null, `${gameDay(next.date, next.day)} · ${kickoff(next.timeEt)}`),
@@ -229,7 +226,8 @@ function rosterCard(league: League): HTMLElement {
 }
 
 function inboxCard(app: AppState, league: League): HTMLElement {
-  const items = [...league.inbox].reverse();
+  // Newest week first; within a week, in the order filed (the result leads).
+  const items = [...league.inbox].sort((a, b) => b.season - a.season || b.week - a.week);
   const unread = items.filter(i => !i.read).length;
   const shown = items.slice(0, 6);
   const markRead = h(
@@ -248,26 +246,24 @@ function inboxCard(app: AppState, league: League): HTMLElement {
     view?.refresh();
     view?.announce('All messages marked as read.');
   });
-  const message = (item: InboxItem) =>
-    h(
+  const message = (item: InboxItem) => {
+    // A result links to its box score.
+    const game = item.kind === 'result' ? userGameIn(league, item.season, item.week) : undefined;
+    return h(
       'div',
       { class: `inbox-item${item.read ? '' : ' is-unread'}` },
-      h('p', { class: 'label' }, `${INBOX_LABELS[item.kind]} · ${weekText(league, item.week)}${item.read ? '' : ' · New'}`),
+      h('p', { class: 'label' }, `${INBOX_LABELS[item.kind]} · ${weekLabel(league, item.week)}${item.read ? '' : ' · New'}`),
       h('p', null, h('strong', null, item.title)),
-      item.body ? h('p', { class: 'muted' }, item.body) : null
-    ); // prettier-ignore
+      item.body ? h('p', { class: 'muted' }, item.body) : null,
+      game ? h('a', { class: 'inbox-link', href: href('game', { id: game.id }), 'aria-label': `Box score: ${item.title}` }, 'Box score') : null
+    );
+  }; // prettier-ignore
   return homeCard(
     unread ? `Inbox (${unread} new)` : 'Inbox',
     {},
     shown.length ? h('div', null, ...shown.map(message)) : h('p', { class: 'empty' }, 'No messages yet. Results, injuries, and awards for your team arrive here each week.'),
     h('div', { class: 'btn-row' }, markRead)
   ); // prettier-ignore
-}
-
-/** "Week 5" or a playoff round's name. */
-function weekText(league: League, week: number): string {
-  const weeks = league.rules.season.weeks;
-  return week > weeks ? PHASE_LABELS[PLAYOFF_PHASES[week - weeks - 1] ?? 'wildCard'] : `Week ${week}`;
 }
 
 const CATEGORY_WORDS = { offense: 'Offense', defense: 'Defense', special: 'Special teams' } as const;
@@ -282,7 +278,7 @@ function newsCard(league: League): HTMLElement {
     return h('li', null, `${label}: `, p ? playerLink(p) : '', `, ${nick(a.team)}`);
   }; // prettier-ignore
   return homeCard(
-    last ? `News: ${weekText(league, last)}` : 'News',
+    last ? `News: ${weekLabel(league, last)}` : 'News',
     {},
     stories.length
       ? h('ul', { class: 'preview-list news-list' }, ...stories.slice(0, 8).map(n => h('li', null, n.headline)))

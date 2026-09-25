@@ -13,3 +13,10 @@
 .news-list li {
   display: block;
 }
+.inbox-link {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: var(--tap);
+  font-weight: 700;
+}

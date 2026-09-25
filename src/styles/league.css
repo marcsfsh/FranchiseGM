@@ -38,7 +38,7 @@
   grid-template-columns: minmax(0, 1fr);
   gap: var(--s4);
 }
-.bracket-round ul {
+.game-list {
   display: flex;
   flex-direction: column;
   gap: var(--s3);
@@ -46,7 +46,7 @@
   padding: 0;
   list-style: none;
 }
-.bracket-game {
+.game-card {
   display: flex;
   flex-direction: column;
   gap: var(--s1);
@@ -54,24 +54,33 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
 }
-.bracket-game p {
+.game-card p {
   margin: 0;
-  font-size: var(--fs-small);
 }
-.bracket-team {
+.game-status {
+  font-size: var(--fs-small);
+  color: var(--text-2);
+}
+.game-status a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  font-weight: 700;
+}
+.game-team {
   display: flex;
   justify-content: space-between;
   gap: var(--s3);
   min-width: 0;
 }
-.bracket-team span:first-child {
+.game-team span:first-child {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.bracket-team.is-winner {
+.game-team.is-winner {
   font-weight: 800;
 }
-.bracket-team.is-us {
+.game-team.is-us {
   background: var(--selection-bg);
   color: var(--selection-text);
 }
@@ -95,4 +104,35 @@
   margin-bottom: var(--s1);
   max-width: 100%;
   overflow-wrap: anywhere;
+}
+/* A list of sentences with links: injuries, ejections, and fouls on the game page. */
+.plain-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  margin: 0;
+  padding-left: var(--s5);
+}
+.plain-list a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  font-weight: 700;
+}
+.game-card.is-bye p:last-child {
+  color: var(--text-2);
+}
+/* The line score keeps its columns narrow; the team column takes the rest. */
+.line-score th[scope='row'] {
+  width: 100%;
+}
+.box-more summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap);
+  font-weight: 700;
+  cursor: pointer;
+}
+.box-more > .stack {
+  margin-top: var(--s3);
 }

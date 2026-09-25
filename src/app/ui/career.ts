@@ -9,6 +9,7 @@ import { careerTotals, type PlayerHistory, type SeasonLine, type Totals } from '
 import { CATEGORY_IDS, CATEGORY_KEYS, type CategoryId } from '../../engine/stats/categories';
 import type { GameLogEntry } from '../../engine/stats/record';
 import { h, mount, type Child } from '../dom';
+import { href } from '../router';
 import { card } from '../screens/common';
 import { CATEGORY_TITLES, STAT_COLUMNS, type StatColumn } from './stat-columns';
 import { scrollRegion, statCell, statHeader, statKey } from './stat-table';
@@ -162,7 +163,7 @@ function logTable(
                 )
               : '—'
           ),
-          h('td', null, result(e)),
+          h('td', null, h('a', { href: href('game', { id: e.gameId }) }, result(e))),
           ...cells(columns, e.line)
         )
       )

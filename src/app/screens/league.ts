@@ -3,7 +3,7 @@
  * that ordered clubs tied on record, and the playoff picture, which becomes the bracket once the playoffs
  * are seeded. The chosen tab and view last while the user moves around the app.
  */
-import { TEAM_COLORS, type TeamAbbr } from '../../data/team-colors';
+import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { team as teamInfo, type Conference } from '../../data/teams';
 import type { League } from '../../engine/league/types';
 import { PHASE_LABELS } from '../../engine/model/calendar';
@@ -15,15 +15,16 @@ import {
   type Ranked,
   type WinLoss
 } from '../../engine/season/standings';
-import { leagueStandings, PLAYOFF_PHASES } from '../../engine/season/state';
+import { gameWeek, leagueStandings, PLAYOFF_PHASES } from '../../engine/season/state';
 import { h, mount, type Child } from '../dom';
 import { record } from '../format';
+import { gameCard, nick, weekLabel } from '../ui/games';
 import { scrollRegion, statHeader } from '../ui/stat-table';
 import { tabs } from '../ui/tabs';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
 
-export const LEAGUE_TABS = ['standings', 'playoffs'] as const;
+export const LEAGUE_TABS = ['standings', 'playoffs', 'schedule'] as const;
 export type LeagueTab = (typeof LEAGUE_TABS)[number];
 
 type StandingsView = 'divisions' | 'conferences';
@@ -33,12 +34,16 @@ const STANDINGS_VIEWS: { id: StandingsView; label: string }[] = [
   { id: 'conferences', label: 'Conferences' }
 ];
 
-/** The tab and standings view, kept for the session. */
-const choice: { tab: LeagueTab; standings: StandingsView } = { tab: 'standings', standings: 'divisions' };
+/** The tab, standings view, and schedule filters, kept for the session. A null week follows the season. */
+const choice: { tab: LeagueTab; standings: StandingsView; week: number | null; team: TeamAbbr | 'all' } = {
+  tab: 'standings',
+  standings: 'divisions',
+  week: null,
+  team: 'all'
+};
 
 const CONFERENCES: readonly Conference[] = ['AFC', 'NFC'];
 
-const nick = (abbr: TeamAbbr): string => TEAM_COLORS[abbr].name;
 const pct = (r: WinLoss): string => winPct(r).toFixed(3).replace(/^0/, '');
 const winLoss = (r: WinLoss): string => record(r.wins, r.losses, r.ties);
 const signed = (n: number): string => (n > 0 ? `+${n}` : String(n));
@@ -233,7 +238,7 @@ const conferenceOf = (home: TeamAbbr, away: TeamAbbr): string =>
   teamInfo(home).conf === teamInfo(away).conf ? `${teamInfo(home).conf} · ` : '';
 
 /** The bracket once the playoffs are seeded: every round's games, with scores once played. */
-function bracket(league: League, user: TeamAbbr): HTMLElement {
+function bracket(league: League): HTMLElement {
   const seeds = league.season.seeds;
   const weeks = league.rules.season.weeks;
   const seedOf = (abbr: TeamAbbr): number => {
@@ -247,8 +252,6 @@ function bracket(league: League, user: TeamAbbr): HTMLElement {
     label: PHASE_LABELS[phase],
     games: league.schedule.filter(g => g.week === weeks + i + 1)
   }));
-  const side = (abbr: TeamAbbr, score: number | null, won: boolean) =>
-    h('div', { class: `bracket-team${won ? ' is-winner' : ''}${abbr === user ? ' is-us' : ''}` }, h('span', null, `(${seedOf(abbr)}) ${nick(abbr)}`), h('span', { class: 'num' }, score === null ? '' : String(score)), won ? h('span', { class: 'sr-only' }, ', won') : null); // prettier-ignore
   return card(
     'Playoff bracket',
     league.season.champion
@@ -266,12 +269,13 @@ function bracket(league: League, user: TeamAbbr): HTMLElement {
             { class: 'bracket-round', 'aria-label': round.label },
             h('h3', { class: 'label' }, round.label),
             round.games.length
-              ? h('ul', null, ...round.games.map(g => {
-                const r = league.season.results[g.id];
-                const home = r ? r.homeScore : null;
-                const away = r ? r.awayScore : null;
-                return h('li', { class: 'bracket-game' }, side(g.away, away, !!r && r.awayScore > r.homeScore), side(g.home, home, !!r && r.homeScore > r.awayScore), h('p', { class: 'muted' }, `${conferenceOf(g.home, g.away)}${r ? `Final${r.overtime ? ', overtime' : ''}` : 'Upcoming'}`));
-              })) // prettier-ignore
+              ? h(
+                  'ul',
+                  { class: 'game-list' },
+                  ...round.games.map(g =>
+                    gameCard(league, g, { seedOf, prefix: conferenceOf(g.home, g.away) })
+                  )
+                )
               : h('p', { class: 'empty' }, 'Not set yet.')
           )
         )
@@ -327,13 +331,92 @@ function standingsPanel(league: League): HTMLElement {
 function playoffsPanel(league: League): HTMLElement {
   const standings = leagueStandings(league);
   const user = league.meta.start.userTeam;
-  return league.season.seeds ? bracket(league, user) : projectedPicture(standings, user);
+  return league.season.seeds ? bracket(league) : projectedPicture(standings, user);
 }
 
-const TAB_LABELS: Record<LeagueTab, string> = { standings: 'Standings', playoffs: 'Playoffs' };
+/** The week the schedule opens on: this week, or the last one once the season is over. */
+function currentWeek(league: League): number {
+  const weeks = [...new Set(league.schedule.map(g => g.week))].sort((a, b) => a - b);
+  return gameWeek(league) ?? weeks.at(-1) ?? 1;
+}
+
+/** Schedule and results (spec 19.3): one week's games league-wide, or one club's season. */
+function schedulePanel(league: League): HTMLElement {
+  const user = league.meta.start.userTeam;
+  const weeks = [...new Set(league.schedule.map(g => g.week))].sort((a, b) => a - b);
+  if (choice.week !== null && !weeks.includes(choice.week)) choice.week = null;
+  const week = h(
+    'select',
+    { class: 'select', id: 'scheduleWeek' },
+    ...weeks.map(w => h('option', { value: String(w) }, weekLabel(league, w)))
+  );
+  const others = TEAM_ABBRS.filter(t => t !== user).sort((a, b) => nick(a).localeCompare(nick(b)));
+  const team = h(
+    'select',
+    { class: 'select', id: 'scheduleTeam' },
+    h('option', { value: 'all' }, 'All teams'),
+    h('option', { value: user }, `${nick(user)} (your team)`),
+    ...others.map(t => h('option', { value: t }, nick(t)))
+  );
+  const body = h('div', { class: 'stack' });
+  const status = h('p', { class: 'sr-only', role: 'status' });
+  const draw = (announce: boolean) => {
+    const shownWeek = choice.week ?? currentWeek(league);
+    week.value = String(shownWeek);
+    team.value = choice.team;
+    week.disabled = choice.team !== 'all';
+    if (choice.team === 'all') {
+      const games = league.schedule.filter(g => g.week === shownWeek);
+      const playing = new Set(games.flatMap(g => [g.home, g.away]));
+      const byes = shownWeek <= league.rules.season.weeks ? TEAM_ABBRS.filter(t => !playing.has(t)).map(nick).sort() : [];
+      mount(
+        body,
+        games.length ? h('ul', { class: 'game-list', 'aria-label': `${weekLabel(league, shownWeek)} games` }, ...games.map(g => gameCard(league, g))) : h('p', { class: 'empty' }, 'No games this week.'),
+        byes.length ? h('p', { class: 'muted' }, `Byes: ${byes.join(', ')}.`) : null
+      );
+      if (announce) status.textContent = `${weekLabel(league, shownWeek)}: ${games.length} ${games.length === 1 ? 'game' : 'games'}.`;
+    } else {
+      const club = choice.team;
+      const games = league.schedule.filter(g => g.home === club || g.away === club).sort((a, b) => a.week - b.week);
+      const played = new Set(games.map(g => g.week));
+      const regular = Array.from({ length: league.rules.season.weeks }, (_, i) => i + 1);
+      const items = [...regular.filter(w => !played.has(w)).map(w => ({ week: w, node: h('li', { class: 'game-card is-bye' }, h('p', { class: 'label' }, weekLabel(league, w)), h('p', null, 'Bye')) })), ...games.map(g => ({ week: g.week, node: gameCard(league, g, { label: weekLabel(league, g.week) }) }))].sort((a, b) => a.week - b.week);
+      mount(body, h('ul', { class: 'game-list', 'aria-label': `${nick(club)} schedule` }, ...items.map(i => i.node)));
+      if (announce) status.textContent = `${nick(club)} schedule: ${games.length} games.`;
+    }
+  }; // prettier-ignore
+  week.addEventListener('change', () => {
+    choice.week = Number(week.value);
+    draw(true);
+  });
+  team.addEventListener('change', () => {
+    choice.team = team.value === 'all' ? 'all' : (team.value as TeamAbbr);
+    draw(true);
+  });
+  draw(false);
+  return h(
+    'div',
+    { class: 'stack' },
+    h(
+      'div',
+      { class: 'filterbar' },
+      h('div', { class: 'field' }, h('label', { for: 'scheduleWeek' }, 'Week'), week),
+      h('div', { class: 'field' }, h('label', { for: 'scheduleTeam' }, 'Team'), team)
+    ),
+    status,
+    body
+  );
+}
+
+const TAB_LABELS: Record<LeagueTab, string> = {
+  standings: 'Standings',
+  playoffs: 'Playoffs',
+  schedule: 'Schedule'
+};
 const PANELS: Record<LeagueTab, (league: League) => Child> = {
   standings: standingsPanel,
-  playoffs: playoffsPanel
+  playoffs: playoffsPanel,
+  schedule: schedulePanel
 };
 
 export const isLeagueTab = (tab: string | undefined): tab is LeagueTab =>

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { gameLines } from '../../src/engine/stats/record';
 import {
   appendRows,
   decodeTable,
@@ -65,5 +66,22 @@ describe('columnar stat tables (spec 9.3)', () => {
     expect(readRow(back, 3)).toEqual(row('p3', 'g3', { rushAtt: 9, rushYds: -3 }, 'playoffs'));
     expect(decodeTable(encodeTable(emptyTable(2027, 'passing', ['passAtt']))).rows).toBe(0);
     expect(() => decodeTable({ ...text, rows: 6 })).toThrow(/damaged/);
+  });
+});
+
+describe('box score lines (spec 8.8)', () => {
+  it("reads one game's rows from every table, in table order", () => {
+    const rushing = appendRows(emptyTable(2026, 'rushing', ['rushAtt', 'rushYds']), [
+      row('p1', 'g1', { rushAtt: 20, rushYds: 97 }),
+      row('p2', 'g2', { rushAtt: 3, rushYds: 9 }),
+      row('p3', 'g1', { rushAtt: 1, rushYds: -2 })
+    ]);
+    const passing = appendRows(emptyTable(2026, 'passing', ['passAtt']), [row('p4', 'g1', { passAtt: 30 })]);
+    expect(gameLines('g1', { rushing, passing }).map(l => [l.table, l.row.playerId])).toEqual([
+      ['passing', 'p4'],
+      ['rushing', 'p1'],
+      ['rushing', 'p3']
+    ]);
+    expect(gameLines('g9', { rushing, passing })).toEqual([]);
   });
 });

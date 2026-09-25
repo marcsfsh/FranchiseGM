@@ -66,12 +66,15 @@ test('shows the playoff picture during the season and the bracket after it', asy
   await expect(bracket.locator('.hero-title')).toHaveText(/^The \S+ are champions\.$/);
   const rounds = bracket.locator('.bracket-round');
   await expect(rounds.locator('h3')).toHaveText(['Wild Card round', 'Divisional round', 'Conference championships', 'Super Bowl']);
-  await expect(rounds.nth(0).locator('.bracket-game')).toHaveCount(6);
-  await expect(rounds.nth(1).locator('.bracket-game')).toHaveCount(4);
-  await expect(rounds.nth(2).locator('.bracket-game')).toHaveCount(2);
-  await expect(rounds.nth(3).locator('.bracket-game')).toHaveCount(1);
+  await expect(rounds.nth(0).locator('.game-card')).toHaveCount(6);
+  await expect(rounds.nth(1).locator('.game-card')).toHaveCount(4);
+  await expect(rounds.nth(2).locator('.game-card')).toHaveCount(2);
+  await expect(rounds.nth(3).locator('.game-card')).toHaveCount(1);
   await expect(rounds.nth(3).locator('.is-winner')).toHaveCount(1);
-  await expect(rounds.nth(0).locator('.bracket-game').first()).toHaveText(/^\(\d\) \S+\d+(, won)?\(\d\) \S+\d+(, won)?(AFC|NFC) · Final/);
+  const first = rounds.nth(0).locator('.game-card').first();
+  await expect(first.locator('.game-team')).toHaveText([/^\(\d\) \S+\d+(, won)?$/, /^\(\d\) \S+\d+(, won)?$/]);
+  await expect(first.locator('.game-status')).toHaveText(/^(AFC|NFC) · Final(, overtime)? · Box score$/);
+  await expect(first.getByRole('link')).toHaveAccessibleName(/^Box score: \S+ at \S+$/);
   await expectNoHorizontalOverflow(page);
   await expectTouchTargets(page, 'main', phone ? 48 : 44);
 }); // prettier-ignore
