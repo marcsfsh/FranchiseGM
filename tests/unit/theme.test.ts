@@ -161,7 +161,8 @@ describe('preferences', () => {
       team: 'mine'
     });
     expect(parsePrefs(null).theme).toBe('system');
-    expect(parsePrefs({ team: 'DET' }).team).toBe('DET');
+    // A team preview never survives a reload: the theme follows the user's team (spec 22.7).
+    expect(parsePrefs({ team: 'DET' }).team).toBe('mine');
   });
 
   it('works in memory when storage throws', () => {
@@ -183,7 +184,7 @@ describe('preferences', () => {
     const store: KeyValueStore = { getItem: k => map.get(k) ?? null, setItem: (k, v) => void map.set(k, v) };
     const prefs = parsePrefs({ theme: 'night', layout: 'desktop', density: 'compact', team: 'LV' });
     expect(savePrefs(store, prefs)).toBe(true);
-    expect(loadPrefs(store)).toEqual(prefs);
+    expect(loadPrefs(store)).toEqual({ ...prefs, team: 'mine' });
   });
 
   it('resolves the theme team', () => {

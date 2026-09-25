@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openGame } from './helpers';
+import { createLeague, openGame } from './helpers';
 
 // Spec 23.4 offline test: the built file makes zero network requests, and the embedded fonts render.
 test.describe('offline', () => {
@@ -15,6 +15,7 @@ test.describe('offline', () => {
     await context.route(/^(https?|wss?):/, route => route.abort());
     if (info.project.name.startsWith('chromium')) await context.setOffline(true);
     await openGame(page, { theme: 'night' });
+    await createLeague(page);
 
     for (const hash of ['#/roster', '#/settings', '#/league', '#/']) {
       await page.evaluate(h => (location.hash = h), hash);

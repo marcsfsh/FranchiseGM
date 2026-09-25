@@ -1,12 +1,14 @@
 import type { RouteName } from '../router';
 import { placeholderScreen } from './placeholder';
+import { homeScreen } from './home';
+import { newLeagueScreen } from './new-league';
 import { settingsScreen } from './settings';
+import { startScreen } from './start';
 import type { Screen } from './types';
 
 /** Screen factories by route. Each navigation gets a fresh screen. */
 export const SCREENS: Record<RouteName, () => Screen> = {
-  home: () =>
-    placeholderScreen('Team hub', 'Your next game, roster and injuries, inbox, standings, and cap summary.'),
+  home: homeScreen,
   roster: () =>
     placeholderScreen('Roster', 'Every player on your roster with ratings, contracts, and status.'),
   depth: () =>
@@ -22,5 +24,7 @@ export const SCREENS: Record<RouteName, () => Screen> = {
   history: () => placeholderScreen('History', 'Past seasons, awards, and the records book.'),
   settings: settingsScreen,
   player: () => placeholderScreen('Player', 'A player profile with ratings, contract, and stats.'),
-  team: () => placeholderScreen('Team', "Another team's roster and results.")
+  team: () => placeholderScreen('Team', "Another team's roster and results."),
+  start: startScreen,
+  newLeague: newLeagueScreen
 };

@@ -15,7 +15,9 @@ export type RouteName =
   | 'history'
   | 'settings'
   | 'player'
-  | 'team';
+  | 'team'
+  | 'start'
+  | 'newLeague';
 
 export interface Route {
   name: RouteName;
@@ -42,7 +44,9 @@ const ROUTES: readonly RouteDef[] = [
   { name: 'history', path: 'history' },
   { name: 'settings', path: 'settings' },
   { name: 'player', path: 'player/:id' },
-  { name: 'team', path: 'team/:abbr/:tab' }
+  { name: 'team', path: 'team/:abbr/:tab' },
+  { name: 'start', path: 'leagues' },
+  { name: 'newLeague', path: 'leagues/new' }
 ];
 
 const PARAM = /^[A-Za-z0-9_-]{1,64}$/;
@@ -96,30 +100,37 @@ export interface Destination {
   /** Shorter label for the phone tab bar. */
   short?: string;
   icon: IconName;
+  /** Shown only while a league is open (true), only while none is (false), or always (absent). */
+  league?: boolean;
 }
 
 /** Main sections, in spec 19.1 order. */
 export const DESTINATIONS: readonly Destination[] = [
-  { route: 'home', label: 'Home', icon: 'home' },
-  { route: 'roster', label: 'Roster', icon: 'roster' },
-  { route: 'depth', label: 'Depth chart', icon: 'depth' },
-  { route: 'gameplan', label: 'Game plan', icon: 'gamePlan' },
-  { route: 'staff', label: 'Staff', icon: 'staff' },
-  { route: 'scouting', label: 'Scouting and draft', short: 'Scout', icon: 'scouting' },
-  { route: 'freeagency', label: 'Free agency', icon: 'addPerson' },
-  { route: 'trades', label: 'Trades', icon: 'trades' },
-  { route: 'finances', label: 'Finances', icon: 'finances' },
-  { route: 'league', label: 'League', icon: 'league' },
-  { route: 'history', label: 'History', icon: 'history' },
+  { route: 'start', label: 'Leagues', icon: 'leagues', league: false },
+  { route: 'home', label: 'Home', icon: 'home', league: true },
+  { route: 'roster', label: 'Roster', icon: 'roster', league: true },
+  { route: 'depth', label: 'Depth chart', icon: 'depth', league: true },
+  { route: 'gameplan', label: 'Game plan', icon: 'gamePlan', league: true },
+  { route: 'staff', label: 'Staff', icon: 'staff', league: true },
+  { route: 'scouting', label: 'Scouting and draft', short: 'Scout', icon: 'scouting', league: true },
+  { route: 'freeagency', label: 'Free agency', icon: 'addPerson', league: true },
+  { route: 'trades', label: 'Trades', icon: 'trades', league: true },
+  { route: 'finances', label: 'Finances', icon: 'finances', league: true },
+  { route: 'league', label: 'League', icon: 'league', league: true },
+  { route: 'history', label: 'History', icon: 'history', league: true },
   { route: 'settings', label: 'Settings', icon: 'settings' }
 ];
 
-/** The phone tab bar shows these, then More (style guide 4.4). */
-export const PHONE_TABS: readonly RouteName[] = ['home', 'roster', 'staff', 'scouting'];
+/** Routes that need an open league. */
+export const needsLeague = (name: RouteName): boolean => !['start', 'newLeague', 'settings'].includes(name);
+
+/** The phone tab bar shows these, then More (style guide 4.4). Without a league: Leagues and Settings. */
+export const PHONE_TABS: readonly RouteName[] = ['home', 'roster', 'staff', 'scouting', 'start'];
 
 /** The destination a route highlights in navigation. */
 export function sectionOf(route: Route): RouteName {
   if (route.name === 'player') return 'roster';
   if (route.name === 'team') return 'league';
+  if (route.name === 'newLeague') return 'start';
   return route.name;
 }

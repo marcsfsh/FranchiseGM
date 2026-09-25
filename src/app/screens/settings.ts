@@ -1,9 +1,13 @@
 import { TEAM_ABBRS, teamFullName } from '../../data/team-colors';
+import { toast, whileBusy, type ToastAction } from '../feedback';
+import { savedAgo } from '../format';
+import { dateLine } from '../shell';
+import { exportToDevice, type AppState } from '../state';
 import { h } from '../dom';
 import { layoutNote } from '../theme/prefs';
 import type { PrefsController } from '../theme/controller';
 import { card, pageHead } from './common';
-import type { Screen } from './types';
+import type { Screen, ScreenContext } from './types';
 
 const select = (
   id: string,
@@ -66,7 +70,7 @@ function displaySettings(prefs: PrefsController): { node: HTMLElement; sync: () 
     ),
     select(
       'teamSel',
-      'Team colors',
+      'Preview team colors',
       [
         ['mine', 'My team'],
         ...[...TEAM_ABBRS]
@@ -75,7 +79,7 @@ function displaySettings(prefs: PrefsController): { node: HTMLElement; sync: () 
       ],
       prefs.prefs.team,
       v => prefs.set('team', v),
-      h('p', { class: 'hint' }, "Changes appearance only. Your franchise doesn't change.")
+      h('p', { class: 'hint' }, "Changes appearance for this visit only. Your franchise doesn't change.")
     ),
     storageNote
   );
@@ -95,21 +99,113 @@ function displaySettings(prefs: PrefsController): { node: HTMLElement; sync: () 
   return { node, sync };
 }
 
+function saveStatusText(app: AppState): string {
+  const status = app.saveStatus;
+  if (status.state === 'saving') return 'Saving…';
+  if (status.state === 'failed')
+    return `Couldn't save: ${status.message}. Export the league to keep your progress.`;
+  if (status.state === 'saved') return `Saved ${savedAgo(status.at)}.`;
+  return '';
+}
+
+function leagueSettings(ctx: ScreenContext): { node: HTMLElement; sync: () => void } | null {
+  const { app } = ctx;
+  const league = app.league;
+  if (!league) return null;
+  const name = h('input', {
+    class: 'input',
+    id: 'leagueRename',
+    type: 'text',
+    maxlength: '40',
+    value: league.meta.name,
+    'aria-describedby': 'leagueRename-error'
+  });
+  const nameError = h(
+    'p',
+    { class: 'field-error', id: 'leagueRename-error', role: 'alert', hidden: true },
+    'Enter a league name.'
+  );
+  name.addEventListener('change', () => {
+    const ok = app.rename(name.value);
+    nameError.hidden = ok;
+    if (ok) name.removeAttribute('aria-invalid');
+    else name.setAttribute('aria-invalid', 'true');
+  });
+  const status = h('p', { class: 'hint', role: 'status' });
+  const exportAction: ToastAction = {
+    label: 'Export league',
+    run: () =>
+      void exportToDevice(app).catch(() =>
+        toast("Couldn't export the league. Try again.", { persistent: true })
+      )
+  };
+  const saveButton = h('button', { class: 'btn btn-solid', type: 'button' }, 'Save now');
+  saveButton.addEventListener('click', () =>
+    whileBusy(saveButton, 'Saving…', async () => {
+      if (await app.save()) toast('League saved.');
+    })
+  );
+  const exportButton = h('button', { class: 'btn btn-outline', type: 'button' }, 'Export league');
+  exportButton.addEventListener('click', () =>
+    whileBusy(exportButton, 'Exporting…', async () => {
+      try {
+        await exportToDevice(app);
+        toast(`Exported ${league.meta.name}.`);
+      } catch (e) {
+        toast(`Couldn't export: ${e instanceof Error ? e.message : String(e)}. Try again.`, {
+          persistent: true
+        });
+      }
+    })
+  );
+  const switchButton = h('button', { class: 'btn btn-outline', type: 'button' }, 'Switch league');
+  switchButton.addEventListener('click', () =>
+    whileBusy(switchButton, 'Saving…', async () => {
+      // Closing an unsaved league would lose it, so a failed save keeps it open with a way out.
+      if (!(await app.save())) {
+        toast(
+          `Couldn't save ${league.meta.name}, so it's still open. Export it to keep your progress, then try again.`,
+          { persistent: true, action: exportAction }
+        );
+        return;
+      }
+      await app.close();
+      ctx.go('#/leagues');
+    })
+  );
+  const start = league.meta.start;
+  const node = card(
+    'League',
+    h('div', { class: 'field' }, h('label', { for: 'leagueRename' }, 'League name'), name, nameError),
+    h('p', null, `${teamFullName(start.userTeam)} · ${dateLine(league)}`),
+    h('p', { class: 'muted small' }, `Seed ${start.seed} · Fictional league · Started ${start.startSeason}`),
+    status,
+    h('div', { class: 'btn-row' }, saveButton, exportButton, switchButton)
+  );
+  const sync = () => {
+    status.textContent = saveStatusText(app);
+  };
+  sync();
+  return { node, sync };
+}
+
 export function settingsScreen(): Screen {
-  let unsubscribe: (() => void) | null = null;
+  const offs: (() => void)[] = [];
   return {
     title: 'Settings',
-    render: ({ prefs }) => {
-      const display = displaySettings(prefs);
-      unsubscribe = prefs.onChange(display.sync);
+    render: ctx => {
+      const display = displaySettings(ctx.prefs);
+      offs.push(ctx.prefs.onChange(display.sync));
+      const league = leagueSettings(ctx);
+      if (league) offs.push(ctx.app.onChange(league.sync));
       return h(
         'section',
         { class: 'view' },
         pageHead('Settings'),
-        h('div', { class: 'cards-host' }, h('div', { class: 'cards' }, display.node)),
+        h('div', { class: 'cards-host' }, h('div', { class: 'cards' }, league?.node ?? null, display.node)),
         h('p', { class: 'muted small' }, `Franchise GM version ${__GM_VERSION__}`)
       );
     },
-    dispose: () => unsubscribe?.()
+    dispose: () => offs.forEach(off => off())
   };
 }

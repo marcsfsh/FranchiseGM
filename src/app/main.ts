@@ -1,13 +1,15 @@
 import '../styles/index.css';
-import { byId } from './dom';
-import { parseHash, type Route } from './router';
+import { SaveStore } from '../storage/saves';
+import { loadBaseDb } from './base-db-loader';
+import { byId, h, mount } from './dom';
+import { toast } from './feedback';
+import { needsLeague, parseHash, type Route } from './router';
 import { SCREENS } from './screens';
 import type { Screen } from './screens/types';
 import { createShell } from './shell';
+import { AppState } from './state';
 import { PrefsController } from './theme/controller';
 import { WorkerClient, type Progress } from './worker-client';
-import { loadBaseDb } from './base-db-loader';
-import { toast } from './feedback';
 
 const prefs = new PrefsController();
 prefs.apply();
@@ -27,42 +29,40 @@ void worker
   .result.then(() => (document.documentElement.dataset.worker = worker.mode))
   .catch(() => (document.documentElement.dataset.worker = 'failed'));
 
-const baseDb = loadBaseDb();
-baseDb
-  .then(({ db, readyAtMs }) => {
-    document.documentElement.dataset.baseDb = 'ready';
-    Object.assign((globalThis as unknown as { __gm: object }).__gm, {
-      baseDbReadyMs: Math.round(readyAtMs),
-      baseDbInfo: { season: db.season, source: db.source, games: db.schedule.length, staff: db.staff.length }
-    });
-  })
-  .catch((error: unknown) => {
-    document.documentElement.dataset.baseDb = 'failed';
-    toast(error instanceof Error ? error.message : 'The base database could not be read.', {
-      persistent: true
-    });
-  });
-
-/** Console and test access to the job runner. It exposes nothing that isn't already in the page. */
-Object.assign(globalThis, {
-  __gm: {
-    version: __GM_VERSION__,
-    workerMode: worker.mode,
-    async runJob(job: string, payload: unknown) {
-      const progress: Progress[] = [];
-      const result = await worker.run(job, payload, p => progress.push(p)).result;
-      return { result, progress };
-    }
+const gm: Record<string, unknown> = {
+  version: __GM_VERSION__,
+  workerMode: worker.mode,
+  async runJob(job: string, payload: unknown) {
+    const progress: Progress[] = [];
+    const result = await worker.run(job, payload, p => progress.push(p)).result;
+    return { result, progress };
   }
-});
+};
+/** Console and test access to the job runner. It exposes nothing that isn't already in the page. */
+Object.assign(globalThis, { __gm: gm });
 
+let app: AppState | null = null;
 let current: Screen | null = null;
 let first = true;
 
+function go(hash: string): void {
+  if (location.hash === hash) show(parseHash(hash));
+  else location.hash = hash;
+}
+
 function show(route: Route): void {
+  if (!app) return;
+  if (!app.league && needsLeague(route.name)) {
+    history.replaceState(null, '', '#/leagues');
+    route = parseHash('#/leagues');
+  } else if (app.league && (route.name === 'start' || route.name === 'newLeague')) {
+    // The league list is for choosing a league; Settings > Switch league saves and closes this one first.
+    history.replaceState(null, '', '#/');
+    route = parseHash('#/');
+  }
   current?.dispose?.();
   current = SCREENS[route.name]();
-  shell.main.replaceChildren(current.render({ route, prefs }));
+  shell.main.replaceChildren(current.render({ route, prefs, app, go }));
   shell.setCurrent(route);
   document.title = `${current.title} · Franchise GM`;
   if (!first) {
@@ -72,5 +72,68 @@ function show(route: Route): void {
   first = false;
 }
 
-window.addEventListener('hashchange', () => show(parseHash(location.hash)));
-show(parseHash(location.hash));
+async function boot(): Promise<void> {
+  mount(shell.main, h('p', { class: 'muted', role: 'status' }, 'Loading Franchise GM…'));
+  let baseDb;
+  try {
+    const loaded = await loadBaseDb();
+    baseDb = loaded.db;
+    document.documentElement.dataset.baseDb = 'ready';
+    gm.baseDbReadyMs = Math.round(loaded.readyAtMs);
+    gm.baseDbInfo = {
+      season: baseDb.season,
+      source: baseDb.source,
+      games: baseDb.schedule.length,
+      staff: baseDb.staff.length
+    };
+  } catch (error) {
+    document.documentElement.dataset.baseDb = 'failed';
+    mount(
+      shell.main,
+      h(
+        'p',
+        { class: 'empty', role: 'alert' },
+        error instanceof Error ? error.message : 'The base database could not be read.'
+      )
+    );
+    return;
+  }
+  const store = await SaveStore.open();
+  const state = new AppState(store, baseDb, worker, __GM_VERSION__);
+  app = state;
+  gm.app = state;
+  state.onChange(() => {
+    shell.setLeague(state.league);
+    prefs.setFranchiseTeam(state.league?.meta.start.userTeam ?? null);
+  });
+  await state.refreshList();
+  if (!store.available) {
+    toast(
+      `Saving isn't available in this browser (${store.unavailableReason}). Export your league to keep it.`,
+      {
+        persistent: true
+      }
+    );
+  }
+  const last = await state.lastLeagueId();
+  if (last) {
+    try {
+      await state.open(last);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : String(error), { persistent: true });
+    }
+  }
+  document.documentElement.dataset.ready = 'true';
+  window.addEventListener('hashchange', () => show(parseHash(location.hash)));
+  // Choosing the destination that's already open moves focus to its heading, as a screen change would.
+  document.addEventListener('click', event => {
+    const link = (event.target as Element).closest<HTMLAnchorElement>('a[href^="#/"]');
+    if (!link || link.getAttribute('href') !== location.hash) return;
+    event.preventDefault();
+    window.scrollTo(0, 0);
+    shell.main.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true });
+  });
+  show(parseHash(location.hash));
+}
+
+void boot();

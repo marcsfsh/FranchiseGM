@@ -1,9 +1,13 @@
 import type { Route } from '../router';
+import type { AppState } from '../state';
 import type { PrefsController } from '../theme/controller';
 
 export interface ScreenContext {
   route: Route;
   prefs: PrefsController;
+  app: AppState;
+  /** Navigates to a hash route. */
+  go(hash: string): void;
 }
 
 export interface Screen {

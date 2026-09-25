@@ -40,7 +40,7 @@ export function parsePrefs(raw: unknown): UiPrefs {
     theme: isOneOf(ALLOWED.theme, r.theme) ? r.theme : 'system',
     layout: isOneOf(ALLOWED.layout, r.layout) ? r.layout : 'auto',
     density: isOneOf(ALLOWED.density, r.density) ? r.density : 'comfortable',
-    team: r.team === 'mine' || isTeamAbbr(r.team) ? r.team : 'mine'
+    team: 'mine'
   };
 }
 
@@ -63,11 +63,14 @@ export function loadPrefs(storage: KeyValueStore | null): UiPrefs {
   }
 }
 
-/** Returns false when storage is unavailable; the in-memory preferences still apply. */
+/**
+ * Returns false when storage is unavailable; the in-memory preferences still apply. A team color preview
+ * is never stored: the theme always follows the user's team on the next visit (spec 22.7).
+ */
 export function savePrefs(storage: KeyValueStore | null, prefs: UiPrefs): boolean {
   try {
     if (!storage) return false;
-    storage.setItem(PREF_KEY, JSON.stringify(prefs));
+    storage.setItem(PREF_KEY, JSON.stringify({ ...prefs, team: 'mine' }));
     return true;
   } catch {
     return false;

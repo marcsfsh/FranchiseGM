@@ -32,7 +32,25 @@ export async function openGame(page: Page, options: OpenOptions = {}): Promise<v
     }
   }, prefs);
   await page.goto(GAME_URL + (options.hash ?? ''));
+  await expect(page.locator('html')).toHaveAttribute('data-ready', 'true');
   await expect(page.locator('main h1')).toBeVisible();
+}
+
+export interface LeagueOptions {
+  name?: string;
+  team?: string;
+  seed?: string;
+}
+
+/** Creates a league through the new league form and waits for the team hub. */
+export async function createLeague(page: Page, options: LeagueOptions = {}): Promise<void> {
+  await page.evaluate(() => (location.hash = '#/leagues/new'));
+  await expect(page.locator('#leagueName')).toBeVisible();
+  await page.fill('#leagueName', options.name ?? 'Test league');
+  await page.selectOption('#leagueTeam', options.team ?? 'MIN');
+  await page.fill('#leagueSeed', options.seed ?? '2026');
+  await page.click('form button[type=submit]');
+  await expect(page.locator('main h1')).toHaveText('Team hub', { timeout: 30_000 });
 }
 
 /** The page never scrolls sideways (style guide 14.4). */

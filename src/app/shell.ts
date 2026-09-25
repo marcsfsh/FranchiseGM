@@ -1,9 +1,12 @@
 /**
  * App shell (style guide 4.1, 4.4, 11): sidebar on desktop, icon rail on tablet, bottom tab bar on phone,
  * and a top bar everywhere. All three navigations are built from one destination list; CSS shows the one
- * that matches the layout, so a layout change never rebuilds the main content.
+ * that matches the layout, so a layout change never rebuilds the main content. League destinations
+ * appear only while a league is open.
  */
 import { TEAM_COLORS } from '../data/team-colors';
+import type { League } from '../engine/league/types';
+import { PHASE_LABELS } from '../engine/model/calendar';
 import { h, mount } from './dom';
 import { dialogFrame, openDialog, toastRegion } from './feedback';
 import { icon } from './icons';
@@ -14,22 +17,35 @@ export interface Shell {
   main: HTMLElement;
   /** Marks the current destination in every navigation. */
   setCurrent(route: Route): void;
-  /** Updates the brand block and top bar for the theme team or franchise. */
-  refreshBrand(): void;
+  /** Shows league destinations and the league's brand block, or the no-league navigation. */
+  setLeague(league: League | null): void;
 }
 
 const navLink = (d: Destination, className: string, compact: boolean) =>
   h(
     'a',
-    { class: className, href: href(d.route), 'data-nav': d.route },
+    {
+      class: className,
+      href: href(d.route),
+      'data-nav': d.route,
+      'data-league': d.league === undefined ? null : String(d.league)
+    },
     icon(d.icon, { size: compact ? 22 : 20 }),
     h('span', null, compact ? (d.short ?? d.label) : d.label)
   );
 
+/** A short date line: "2026 season · Week 1". */
+export function dateLine(league: League): string {
+  const { season, phase, week } = league.date;
+  return phase === 'regularSeason'
+    ? `${season} season · Week ${week}`
+    : `${season} season · ${PHASE_LABELS[phase]}`;
+}
+
 export function createShell(root: HTMLElement, prefs: PrefsController): Shell {
   const twill = h('span', { class: 'twill twill-sm', 'aria-hidden': 'true' });
   const teamName = h('strong', null);
-  const brandNote = h('span', null, 'No league loaded');
+  const brandNote = h('span', null, 'No league open');
   const sidebar = h(
     'nav',
     { class: 'sidebar on-team', 'aria-label': 'Main' },
@@ -71,10 +87,13 @@ export function createShell(root: HTMLElement, prefs: PrefsController): Shell {
     h('span', null, 'More')
   );
   moreButton.addEventListener('click', () => openDialog(moreDialog, moreButton));
+  const settings = DESTINATIONS.find(d => d.route === 'settings') as Destination;
+  const settingsTab = navLink({ ...settings, league: false }, 'tab-item', true);
   const tabbar = h(
     'nav',
     { class: 'tabbar', 'aria-label': 'Main' },
     ...DESTINATIONS.filter(d => PHONE_TABS.includes(d.route)).map(d => navLink(d, 'tab-item', true)),
+    settingsTab,
     moreButton
   );
 
@@ -89,11 +108,13 @@ export function createShell(root: HTMLElement, prefs: PrefsController): Shell {
   root.before(skip);
   root.after(moreDialog, toastRegion());
 
+  let league: League | null = null;
   const refreshBrand = () => {
     const team = TEAM_COLORS[prefs.team];
     twill.textContent = prefs.team;
     teamName.textContent = `${team.city} ${team.name}`;
-    brandNote.textContent = prefs.franchiseTeam ? brandNote.textContent : 'No league loaded';
+    brandNote.textContent = league ? dateLine(league) : 'No league open';
+    title.textContent = league ? league.meta.name : 'Franchise GM';
     const night = prefs.mode === 'night';
     themeButton.replaceChildren(icon(night ? 'sun' : 'moon'));
     themeButton.setAttribute('aria-label', night ? 'Switch to Day' : 'Switch to Night');
@@ -101,17 +122,39 @@ export function createShell(root: HTMLElement, prefs: PrefsController): Shell {
   prefs.onChange(refreshBrand);
   refreshBrand();
 
+  const applyVisibility = () => {
+    const open = league !== null;
+    for (const scope of [root, moreList]) {
+      for (const link of scope.querySelectorAll<HTMLElement>('[data-league]')) {
+        link.hidden = link.dataset.league !== String(open);
+      }
+    }
+    for (const item of moreList.querySelectorAll<HTMLElement>('li')) {
+      item.hidden = Boolean(item.querySelector<HTMLElement>('[data-league]')?.hidden);
+    }
+    moreButton.hidden = !open;
+  };
+  applyVisibility();
+
   return {
     main,
-    refreshBrand,
+    setLeague(next) {
+      league = next;
+      applyVisibility();
+      refreshBrand();
+    },
     setCurrent(route) {
       const section = sectionOf(route);
-      for (const link of document.querySelectorAll<HTMLAnchorElement>('[data-nav]')) {
+      for (const link of root.querySelectorAll<HTMLAnchorElement>('[data-nav]')) {
+        if (link.dataset.nav === section) link.setAttribute('aria-current', 'page');
+        else link.removeAttribute('aria-current');
+      }
+      for (const link of moreList.querySelectorAll<HTMLAnchorElement>('[data-nav]')) {
         if (link.dataset.nav === section) link.setAttribute('aria-current', 'page');
         else link.removeAttribute('aria-current');
       }
       const inMore = moreItems.some(d => d.route === section);
-      if (inMore) moreButton.setAttribute('aria-current', 'page');
+      if (inMore && league) moreButton.setAttribute('aria-current', 'page');
       else moreButton.removeAttribute('aria-current');
     }
   };

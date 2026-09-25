@@ -24,8 +24,8 @@ describe('hash router', () => {
     expect(parseHash(href('player', { id: 'x_1' }))).toEqual({ name: 'player', params: { id: 'x_1' } });
   });
 
-  it('keeps the phone tab bar to four destinations plus More', () => {
-    expect(PHONE_TABS).toHaveLength(4);
+  it('keeps the phone tab bar to four league destinations plus More, or Leagues without a league', () => {
+    expect(PHONE_TABS).toEqual(['home', 'roster', 'staff', 'scouting', 'start']);
     expect(sectionOf(parseHash('#/player/p1'))).toBe('roster');
   });
 });

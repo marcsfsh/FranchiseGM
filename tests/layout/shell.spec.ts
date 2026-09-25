@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
   contrastOf,
+  createLeague,
   expectNoHorizontalOverflow,
   expectTouchTargets,
   openGame,
@@ -117,21 +118,26 @@ test.describe('app shell', () => {
   test('navigates every destination and marks it current', async ({ page }, info) => {
     const size = sizeOf(info);
     await openGame(page);
-    const routes = await page.locator('.sidebar [data-nav]').evaluateAll(links =>
-      links.map(link => ({
-        route: (link as HTMLElement).dataset.nav as string,
-        label: link.textContent ?? ''
-      }))
-    );
-    expect(routes.length).toBe(12);
-    for (const { route } of routes) {
+    // Without a league, only Leagues and Settings are offered.
+    const bare = await page
+      .locator(`${NAV[size]} [data-nav]:visible`)
+      .evaluateAll(links => links.map(l => (l as HTMLElement).dataset.nav));
+    expect(bare).toEqual(['start', 'settings']);
+    await createLeague(page);
+    const routes = await page
+      .locator('.sidebar [data-nav]')
+      .evaluateAll(links =>
+        links.filter(l => !(l as HTMLElement).hidden).map(l => (l as HTMLElement).dataset.nav as string)
+      );
+    expect(routes).toHaveLength(12);
+    for (const route of routes) {
       const nav = page.locator(NAV[size]);
-      const direct = nav.locator(`[data-nav="${route}"]`);
+      const direct = nav.locator(`[data-nav="${route}"]:visible`);
       if ((await direct.count()) > 0) {
         await direct.click();
       } else {
         await nav.locator('[data-nav-more]').click();
-        await page.locator(`#moreDialog [data-nav="${route}"]`).click();
+        await page.locator(`#moreDialog [data-nav="${route}"]:visible`).click();
         await expect(page.locator('#moreDialog')).toBeHidden();
       }
       await expect(page.locator('main h1')).toBeFocused();

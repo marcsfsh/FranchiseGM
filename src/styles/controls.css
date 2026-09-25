@@ -212,3 +212,35 @@ input[type='radio'] {
   min-height: var(--tap);
   accent-color: var(--selection-indicator);
 }
+
+/* Form additions: fieldsets for radio groups, left-aligned check labels, and a readable form width. */
+fieldset.field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+fieldset.field > legend {
+  padding: 0;
+  margin-bottom: var(--s2);
+}
+.check-left {
+  justify-content: flex-start;
+  font-weight: 700;
+}
+.form-card {
+  max-width: 44rem;
+}
+/* Radio options stack in forms so long labels wrap at narrow widths and large text sizes. */
+fieldset.field .seg {
+  flex-direction: column;
+}
+fieldset.field .seg label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.progress {
+  width: 100%;
+  height: var(--s3);
+  accent-color: var(--selection-indicator);
+}
