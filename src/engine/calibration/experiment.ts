@@ -69,7 +69,8 @@ function measure(
     case 'receiving':
       return [line.recYds, line.targets];
     case 'protection':
-      return [line.sacksAllowed + line.pressuresAllowed, dropbacks(own)];
+      // Pressures allowed include the ones that became sacks.
+      return [line.pressuresAllowed, dropbacks(own)];
     case 'passRush':
       return [line.pressures, dropbacks(opponent)];
     case 'coverage':

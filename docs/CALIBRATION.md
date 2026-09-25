@@ -27,15 +27,15 @@ Tuning changes, newest last. Each entry names the constants in `src/engine/tunin
 - Effect: fourth-down tries 1.10 to 1.2 per team game and conversions 43% to 50%; third downs 37.3% to 39.8%.
 
 ## C-7: Weather (M6, 2026-09-25)
-- Change: wind hurts every throw (`windPassLogitPerMph` -0.03, `windDepth` by depth), `fgWindPerMph` -0.03 to -0.06, new `indoorPassLogit` 0.15, `turfSpeed` 0.5 to 1.5.
+- Change: wind hurts every throw (`windPassLogitPerMph` -0.03, `windDepth` by depth), replacing the deep-throw-only `windDeepLogitPerMph` -0.02; `fgWindPerMph` -0.03 to -0.06, new `indoorPassLogit` 0.15, `turfSpeed` 0.5 to 1.5.
 - Effect: wind 20+ mph completion change +1.0 to -3.5 points, field goals about -4 points, indoor scoring edge +0.5 to +1.6 per team.
 
 ## C-8: Kickoffs, punts, and returns (M6, 2026-09-25)
-- Change: `kickoffReturnable` 0.66 to 0.78, `kickReturnMean` 23 to 24.5, `kickoffLanding` [1, 14] to [0, 10], `puntMean` 50 to 52.2, `puntReturnMean` 8 to 7.5, `returnTouchdown` 0.004 to 0.007; new turnover returns (`returnBreakaway` 0.14, `returnBreakawayMean` 55, `fumbleReturnMean` 3, `intReturnMean` 7).
+- Change: `kickoffReturnable` 0.66 to 0.78, `kickReturnMean` 23 to 24.5, `kickoffLanding` [1, 14] to [0, 10], `puntMean` 50 to 52.2, `puntReturnMean` 8 to 7.5, `returnTouchdown` 0.004 to 0.007; new turnover return breakaways (`returnBreakaway` 0.14, `returnBreakawayMean` 55) and `fumbleReturnMean` 3, `intReturnMean` 9 to 7.
 - Effect: kickoffs returned 64% to 75%, average drive start 31.8 to 30.3, gross punts 45.3 to 46.9, return touchdowns 0.02 to 0.11 per team game.
 
 ## C-9: Home field, pace, penalties, and fit (M6, 2026-09-25)
-- Change: `homeCrowd` 0.5 to 0.65; `runGainMean` 4.52, `breakaway` 0.06, `brokenTackle` 0.065; penalty rates (pass interference 0.021, roughing the passer 0.0145, unnecessary roughness 0.0095); `fitPoints` 0.5 to 0.7; Air Raid pass rates 0.02 to 0.04 lower (`src/engine/schemes/catalog.ts`).
+- Change: `homeCrowd` 0.5 to 0.65; `runGainMean` 4.52, `breakaway` 0.06, `brokenTackle` 0.065; penalty rates (pass interference 0.021, roughing the passer 0.0145, unnecessary roughness 0.0095); `fitPoints` 0.5 to 0.7; Air Raid pass rates 0.01 to 0.04 lower (`src/engine/schemes/catalog.ts`).
 - Effect: home field +1.3 to +1.7 points, penalty yards 44 to 47, fit effect 3.7% to 7.3%, passing yards leader 5,484 to about 5,300; 100-season run: every game-level and stat metric passes.
 
 ## C-10: Touchdowns near the goal line and kick returns (M6, 2026-09-25)

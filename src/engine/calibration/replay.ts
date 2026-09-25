@@ -71,6 +71,8 @@ export interface TeamInjuries {
   missed: number;
   gamesLost: number;
   seasonEnding: number;
+  /** Player-games sat out at kickoff because of an earlier injury: equal to gamesLost. */
+  absences: number;
 }
 
 export interface TeamFact {
@@ -164,7 +166,7 @@ export function replaySeason(
         pointsAgainst: 0,
         totals: emptyTotals(),
         lines: emptyLines(),
-        injuries: { all: 0, missed: 0, gamesLost: 0, seasonEnding: 0 }
+        injuries: { all: 0, missed: 0, gamesLost: 0, seasonEnding: 0, absences: 0 }
       };
       teams.set(abbr, fact);
     }
@@ -176,7 +178,10 @@ export function replaySeason(
     const setup = gameSetup(league, game, climate, g.fork('setup'), cache);
     for (const side of ['home', 'away'] as const)
       for (const player of Object.values(setup[side].players))
-        if ((outThrough.get(player.id) ?? 0) >= game.week) player.out = true;
+        if ((outThrough.get(player.id) ?? 0) >= game.week) {
+          player.out = true;
+          team(setup[side].abbr).injuries.absences++;
+        }
     experiment?.assign(setup, g.fork('arms'));
     const result = simulateGame(setup, g.fork('plays'));
     experiment?.record(setup, result);

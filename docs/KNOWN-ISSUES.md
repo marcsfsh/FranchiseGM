@@ -17,3 +17,4 @@
 - The red zone touchdown band is wide until a sourced league average is found (calibration/targets.json).
 - Calibration replays keep injured players out but make no roster moves until M7's weekly management (D-17).
 - The dev menu has only the calibration runner; the AI decision log (M14), sim inspector, performance overlay, and fixed-seed toggle arrive later (spec 23.5).
+- Games lost to injury is measured without a target: no public all-player count was found. Football Outsiders' adjusted games lost (starters and key reserves, camp injuries included) was 68.9 to 80.9 per team in 2021-2023.

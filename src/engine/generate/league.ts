@@ -118,7 +118,7 @@ export function practiceSquadPlan(size: number): Position[] {
 }
 
 /** A typical starter's latent quality at a position, stars included. */
-function typicalStarter(position: Position): number {
+export function typicalStarter(position: Position): number {
   if (position === 'K' || position === 'P' || position === 'LS') return L.specialistQuality;
   const star = L.starShare * ((L.starBonus[0] + L.starBonus[1]) / 2);
   return L.starterQuality + star + (position === 'QB' ? L.qbStarterBonus : 0);
@@ -129,7 +129,7 @@ function typicalStarter(position: Position): number {
  * starters' average quality above typical, the quarterback weighted most; within balanceFrom of typical a
  * roster stays as drawn, and beyond it only balanceKeep of the excess remains.
  */
-function balanceShift(
+export function balanceShift(
   slots: readonly { position: Position; depth: number; starters: number; quality: number }[]
 ): number {
   let sum = 0;

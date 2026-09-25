@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { generateFictionalLeague } from '../../src/engine/generate/league';
+import { balanceShift, generateFictionalLeague, typicalStarter } from '../../src/engine/generate/league';
+import type { Position } from '../../src/engine/model/positions';
+import { TUNING } from '../../src/engine/tuning';
 import { capHit } from '../../src/engine/contracts/cap';
 import { DEFAULT_RULES, changeRules } from '../../src/engine/rules/ruleset';
 import { TEAM_ABBRS } from '../../src/data/team-colors';
@@ -140,5 +142,59 @@ describe('fictional league follows the rule set (spec 12.1, 16)', () => {
     expect(
       s.players.filter(p => p.team === 'MIN' && p.status === 'active' && p.position === 'K')
     ).toHaveLength(1);
+  });
+});
+
+describe('roster balance in generated leagues (D-19)', () => {
+  const L = TUNING.league;
+  const STARTERS: readonly Position[] = [
+    'QB',
+    'HB',
+    'WR',
+    'WR',
+    'TE',
+    'LT',
+    'C',
+    'DT',
+    'LE',
+    'MLB',
+    'CB',
+    'FS'
+  ];
+  /** A starting lineup at typical quality, moved by `delta` everywhere or by position. */
+  const lineup = (delta: number | Partial<Record<Position, number>>) =>
+    STARTERS.map(position => ({
+      position,
+      depth: 0,
+      starters: 1,
+      quality: typicalStarter(position) + (typeof delta === 'number' ? delta : (delta[position] ?? 0))
+    }));
+
+  it('leaves rosters near typical as drawn', () => {
+    expect(balanceShift(lineup(0))).toBe(0);
+    expect(balanceShift(lineup(L.balanceFrom * 0.9))).toBe(0);
+    expect(balanceShift(lineup(-L.balanceFrom * 0.9))).toBe(0);
+  });
+
+  it('keeps only balanceKeep of the excess beyond balanceFrom, either way', () => {
+    for (const strength of [0.5, -0.5, 1.2]) {
+      const kept =
+        Math.sign(strength) * (L.balanceFrom + (Math.abs(strength) - L.balanceFrom) * L.balanceKeep);
+      expect(strength + balanceShift(lineup(strength))).toBeCloseTo(kept, 10);
+    }
+  });
+
+  it('weights the quarterback most and ignores backups and specialists', () => {
+    const qbOnly = balanceShift(lineup({ QB: 1 }));
+    const backOnly = balanceShift(lineup({ HB: 1 }));
+    const others = STARTERS.length - 1;
+    const strength = L.balanceQbWeight / (L.balanceQbWeight + others);
+    expect(qbOnly).toBeCloseTo(-(strength - L.balanceFrom) * (1 - L.balanceKeep), 10);
+    expect(Math.abs(qbOnly)).toBeGreaterThan(Math.abs(backOnly));
+    const extras = [
+      { position: 'QB' as const, depth: 1, starters: 1, quality: 5 },
+      { position: 'K' as const, depth: 0, starters: 1, quality: 5 }
+    ];
+    expect(balanceShift([...lineup(0.5), ...extras])).toBe(balanceShift(lineup(0.5)));
   });
 });

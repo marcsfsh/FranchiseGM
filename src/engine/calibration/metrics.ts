@@ -127,8 +127,8 @@ def('leaders.passYds', 'leaders', 'Passing yards leader', 'int');
 def('leaders.rushYds', 'leaders', 'Rushing yards leader', 'int');
 def('leaders.recYds', 'leaders', 'Receiving yards leader', 'int');
 def('leaders.receptions', 'leaders', 'Receptions leader', 'int');
-def('leaders.sacks', 'leaders', 'Sacks leader', 'int');
-def('leaders.defInt', 'leaders', 'Interceptions leader', 'int');
+def('leaders.sacks', 'leaders', 'Sacks leader', 'dec1');
+def('leaders.defInt', 'leaders', 'Interceptions leader', 'dec1');
 def('leaders.passers4000', 'leaders', '4,000-yard passers', 'dec1');
 def('leaders.rushers1000', 'leaders', '1,000-yard rushers', 'dec1');
 def('leaders.receivers1000', 'leaders', '1,000-yard receivers', 'dec1');
@@ -147,6 +147,8 @@ for (const group of FIT_GROUP_IDS)
 def('effects.windPoints', 'effects', 'Wind 16+ mph versus calm, points per team', 'signed1');
 def('effects.domePoints', 'effects', 'Indoors versus outdoors, points per team', 'signed1');
 def('effects.coldPoints', 'effects', 'Freezing versus mild, points per team', 'signed1');
+def('effects.rainPoints', 'effects', 'Rain versus dry, points per team', 'signed1');
+def('effects.snowPoints', 'effects', 'Snow versus dry, points per team', 'signed1');
 def('effects.windCompletion', 'effects', 'Wind 20+ mph versus under 10, completion rate', 'pctPoints');
 def('effects.windFieldGoal', 'effects', 'Wind 20+ mph versus under 10, field goal rate', 'pctPoints');
 def('effects.cohesion', 'effects', 'Cohesion', 'signed1');
@@ -312,7 +314,8 @@ function seasonMetrics(samples: readonly RunSample[], out: Map<string, MetricVal
     for (const t of s.facts.teams) {
       if (t.wins >= MANY_WINS) many++;
       if (t.wins <= FEW_WINS) few++;
-      if ((t.losses === 0 && t.ties === 0) || (t.wins === 0 && t.ties === 0)) extreme++;
+      // Perfect means no losses or ties; winless means no wins, ties or not.
+      if ((t.losses === 0 && t.ties === 0) || t.wins === 0) extreme++;
     }
   }
   const teamSeasons = deviations.length;
@@ -481,6 +484,17 @@ function effectMetrics(
     'effects.coldPoints',
     outdoor.filter(g => g.weather.tempF <= COLD_F),
     outdoor.filter(g => g.weather.tempF >= MILD_F[0] && g.weather.tempF <= MILD_F[1])
+  );
+  const dry = outdoor.filter(g => g.weather.precipitation === 'none');
+  pointsGap(
+    'effects.rainPoints',
+    outdoor.filter(g => g.weather.precipitation === 'rain'),
+    dry
+  );
+  pointsGap(
+    'effects.snowPoints',
+    outdoor.filter(g => g.weather.precipitation === 'snow'),
+    dry
   );
   const high = outdoor.filter(g => g.weather.windMph >= HIGH_MPH);
   const light = outdoor.filter(g => g.weather.windMph < LIGHT_MPH);

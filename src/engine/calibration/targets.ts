@@ -13,7 +13,8 @@ export interface Target {
   /** Present when the short CI run checks the metric: its wide band. */
   ci?: Band;
   source: string;
-  note?: string;
+  /** What the metric measures and how the band follows from the source. */
+  note: string;
 }
 
 export interface TargetsFile {
@@ -43,7 +44,8 @@ export function checkTargets(file: TargetsFile): string[] {
       problems.push(`${id}: the warn band must contain the pass band`);
     if (t.ci && !(t.ci[0] <= plo && phi <= t.ci[1]))
       problems.push(`${id}: the CI band must contain the pass band`);
-    if (!t.source.trim()) problems.push(`${id}: no source`);
+    if (!t.source?.trim()) problems.push(`${id}: no source`);
+    if (!t.note?.trim()) problems.push(`${id}: no note`);
   }
   return problems;
 }

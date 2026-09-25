@@ -33,7 +33,8 @@ const targets = JSON.parse(readFileSync('calibration/targets.json', 'utf8')) as 
 const league = calibrationLeague(data, 17);
 const short = { ...league, schedule: league.schedule.filter(g => g.week <= 2) };
 
-describe('calibration replays (spec 23.1)', () => {
+// Replays are the slowest unit tests; the suite runs files in parallel.
+describe('calibration replays (spec 23.1)', { timeout: 30_000 }, () => {
   it('replays exactly from the same stream and yields facts that agree with each other', () => {
     const a = replaySeason(short, data.climate, stream(3, 'replay'));
     expect(replaySeason(short, data.climate, stream(3, 'replay'))).toStrictEqual(a);
@@ -56,6 +57,9 @@ describe('calibration replays (spec 23.1)', () => {
     expect(facts.teams.reduce((n, t) => n + t.injuries.all, 0)).toBeGreaterThanOrEqual(hurt);
     // Week 2 injuries can't cost week 1 games, so a two-week replay loses at most one game per injury.
     expect(facts.teams.reduce((n, t) => n + t.injuries.gamesLost, 0)).toBeLessThanOrEqual(hurt);
+    // Every game an injury costs is a game the player sat out.
+    expect(facts.teams.reduce((n, t) => n + t.injuries.absences, 0)).toBeGreaterThan(0);
+    for (const t of facts.teams) expect(t.injuries.absences, t.team).toBe(t.injuries.gamesLost);
   });
 
   it('runs the fit experiment: every measured starter plays at his best or worst fit', () => {
@@ -116,7 +120,7 @@ describe('calibration metrics (spec 23.3)', () => {
       lines: { kickoffs: 8, kickoffTouchbacks: 2, kickReturns: 6, kickReturnYds: 150, puntReturns: 4,
         puntReturnYds: 40, puntYds: 0, puntNetYds: 0, fgAtt40: 0, fgMade40: 0, fgAtt50: 0, fgMade50: 0,
         targets: 50, receptions: 39 },
-      injuries: { all: 4, missed: 2, gamesLost: 5, seasonEnding: 0 }
+      injuries: { all: 4, missed: 2, gamesLost: 5, seasonEnding: 0, absences: 5 }
     }); // prettier-ignore
     const facts: ReplayFacts = {
       games: [fact('MIN', 'GB', 24, 21), fact('GB', 'MIN', 30, 10)],
@@ -138,12 +142,22 @@ describe('calibration metrics (spec 23.3)', () => {
   });
 });
 
-describe('calibration targets and reports (spec 23.2)', () => {
+describe('calibration targets and reports (spec 23.2)', { timeout: 30_000 }, () => {
   it('has a sourced band for known metrics only, with nested bands', () => {
     expect(checkTargets(targets)).toEqual([]);
     expect(
-      checkTargets({ version: 1, targets: { 'games.nope': { pass: [0, 1], warn: [0, 1], source: 'x' } } })
+      checkTargets({
+        version: 1,
+        targets: { 'games.nope': { pass: [0, 1], warn: [0, 1], source: 'x', note: 'y' } }
+      })
     ).toEqual(['games.nope: no such metric']);
+    // Spec 23.2: every target has a band, a source, and a note.
+    expect(
+      checkTargets({
+        version: 1,
+        targets: { 'games.tieRate': { pass: [0, 1], warn: [0, 1], source: 'x', note: ' ' } }
+      })
+    ).toEqual(['games.tieRate: no note']);
     const ids = new Set(METRICS.map(m => m.id));
     expect(Object.keys(targets.targets).every(id => ids.has(id))).toBe(true);
   });
@@ -152,9 +166,15 @@ describe('calibration targets and reports (spec 23.2)', () => {
     const file: TargetsFile = {
       version: 1,
       targets: {
-        'games.homeWinRate': { pass: [0.52, 0.58], warn: [0.5, 0.6], ci: [0.45, 0.65], source: 's' },
-        'games.pointsPerTeam': { pass: [21, 23], warn: [20, 24], source: 's' },
-        'stats.ypa': { pass: [6.8, 7.3], warn: [6.6, 7.5], source: 's' }
+        'games.homeWinRate': {
+          pass: [0.52, 0.58],
+          warn: [0.5, 0.6],
+          ci: [0.45, 0.65],
+          source: 's',
+          note: 'n'
+        },
+        'games.pointsPerTeam': { pass: [21, 23], warn: [20, 24], source: 's', note: 'n' },
+        'stats.ypa': { pass: [6.8, 7.3], warn: [6.6, 7.5], source: 's', note: 'n' }
       }
     };
     const values = new Map([
