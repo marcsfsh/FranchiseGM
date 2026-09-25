@@ -190,23 +190,23 @@ Fit against the fixture only. The check that formulas reproduce Madden OVR is de
 
 | Position | Samples | Mean abs error | Within 2 points |
 |---|---|---|---|
-| QB | 35 | 0.09 | 100% |
+| QB | 35 | 0.26 | 100% |
 | HB | 1 | too few samples | n/a |
 | FB | 0 | too few samples | n/a |
-| WR | 67 | 0.34 | 100% |
+| WR | 67 | 0.39 | 100% |
 | TE | 0 | too few samples | n/a |
-| LT | 34 | 0.32 | 100% |
+| LT | 34 | 0.38 | 100% |
 | LG | 0 | too few samples | n/a |
 | C | 0 | too few samples | n/a |
 | RG | 0 | too few samples | n/a |
 | RT | 0 | too few samples | n/a |
-| LE | 35 | 0.09 | 100% |
+| LE | 35 | 0.20 | 100% |
 | RE | 0 | too few samples | n/a |
 | DT | 0 | too few samples | n/a |
 | LOLB | 0 | too few samples | n/a |
 | MLB | 0 | too few samples | n/a |
 | ROLB | 0 | too few samples | n/a |
-| CB | 36 | 0.75 | 94% |
+| CB | 36 | 0.83 | 94% |
 | FS | 0 | too few samples | n/a |
 | SS | 0 | too few samples | n/a |
 | K | 0 | too few samples | n/a |

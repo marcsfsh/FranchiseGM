@@ -1,0 +1,268 @@
+{
+  "status": "provisional",
+  "note": "Hand-written templates for the no-CSV path (build order). Each rating is [mean, sd, loading] for an average rostered player at quality 0; loading ties the rating to the player's latent quality, which correlates his key skills. Ratings not listed use keyDefault when they are in the position's overall formula, otherwise otherDefault. tools/fit-archetypes.ts replaces this file when the Madden CSV arrives.",
+  "keyDefault": [72, 9, 0.85],
+  "otherDefault": [32, 11, 0.05],
+  "shared": {
+    "sta": [80, 8, 0.1],
+    "inj": [82, 9, 0],
+    "tgh": [80, 9, 0.1]
+  },
+  "positions": {
+    "QB": {
+      "height": [75, 1.6],
+      "weight": [222, 10],
+      "age": [28, 4.5],
+      "ratings": {
+        "spd": [66, 10, 0.1], "acc": [72, 7, 0.1], "agi": [70, 8, 0.1], "cod": [68, 8, 0.1], "str": [58, 8, 0], "jmp": [62, 9, 0],
+        "awr": [70, 12, 0.9], "prc": [60, 12, 0.5], "car": [60, 10, 0], "bcv": [55, 10, 0], "btk": [45, 10, 0], "jkm": [45, 12, 0],
+        "thp": [86, 6, 0.6], "sac": [78, 7, 0.9], "mac": [74, 8, 0.9], "dac": [70, 9, 0.85], "tor": [70, 9, 0.6], "tup": [66, 10, 0.8],
+        "pac": [72, 9, 0.6], "bsk": [65, 10, 0.4]
+      },
+      "archetypes": [
+        { "name": "Field general", "weight": 35, "adjust": { "awr": 4, "sac": 3, "mac": 2, "spd": -8, "acc": -4, "tor": -4, "bsk": -4 }, "traits": { "qbStyle": { "pocket": 0.7, "balanced": 0.3 } } },
+        { "name": "Strong arm", "weight": 30, "adjust": { "thp": 5, "dac": 5, "sac": -2 }, "traits": { "qbStyle": { "pocket": 0.5, "balanced": 0.5 } } },
+        { "name": "Improviser", "weight": 20, "adjust": { "tor": 6, "tup": 4, "agi": 5, "bsk": 6 }, "traits": { "qbStyle": { "balanced": 0.6, "scrambling": 0.4 } } },
+        { "name": "Scrambler", "weight": 15, "adjust": { "spd": 14, "acc": 8, "agi": 8, "cod": 8, "tor": 6, "bsk": 8, "sac": -3, "awr": -3 }, "traits": { "qbStyle": { "scrambling": 0.9, "balanced": 0.1 } } }
+      ]
+    },
+    "HB": {
+      "height": [70.5, 1.6],
+      "weight": [213, 11],
+      "age": [25, 2.5],
+      "ratings": {
+        "spd": [88, 4, 0.5], "acc": [88, 4, 0.5], "agi": [86, 5, 0.5], "cod": [85, 5, 0.5], "str": [64, 8, 0.2], "jmp": [80, 7, 0.2],
+        "awr": [66, 11, 0.8], "prc": [45, 12, 0.1], "car": [80, 8, 0.6], "bcv": [74, 10, 0.85], "btk": [72, 10, 0.7], "trk": [66, 12, 0.5],
+        "sfa": [62, 12, 0.4], "spm": [65, 12, 0.4], "jkm": [72, 11, 0.5], "cth": [66, 10, 0.4], "cit": [50, 12, 0.2], "srr": [55, 12, 0.3],
+        "mrr": [45, 12, 0.2], "rls": [50, 12, 0.2], "rbk": [40, 12, 0.1], "pbk": [45, 12, 0.3], "ret": [55, 20, 0.1]
+      },
+      "archetypes": [
+        { "name": "Elusive back", "weight": 35, "adjust": { "agi": 4, "cod": 5, "jkm": 8, "spm": 6, "trk": -10, "str": -6 }, "traits": { "fightForYards": 0.4 } },
+        { "name": "Power back", "weight": 30, "adjust": { "trk": 12, "btk": 5, "sfa": 8, "str": 8, "agi": -4, "jkm": -8 }, "weight_adjust": 12, "traits": { "fightForYards": 0.8 } },
+        { "name": "Receiving back", "weight": 20, "adjust": { "cth": 10, "srr": 10, "mrr": 8, "cit": 6, "trk": -6 }, "traits": { "fightForYards": 0.3 } },
+        { "name": "Speed back", "weight": 15, "adjust": { "spd": 5, "acc": 3, "bcv": -3, "trk": -6 }, "traits": { "fightForYards": 0.3 } }
+      ]
+    },
+    "FB": {
+      "height": [72.5, 1.4],
+      "weight": [243, 9],
+      "age": [27, 3],
+      "ratings": {
+        "spd": [74, 6, 0.3], "acc": [78, 5, 0.3], "agi": [70, 6, 0.3], "cod": [66, 6, 0.3], "str": [74, 7, 0.4], "jmp": [66, 8, 0.1],
+        "awr": [66, 10, 0.8], "car": [72, 8, 0.4], "bcv": [55, 10, 0.3], "btk": [66, 9, 0.5], "trk": [72, 9, 0.5], "cth": [62, 10, 0.5],
+        "srr": [45, 10, 0.2], "rls": [45, 10, 0.2], "cit": [52, 10, 0.3]
+      },
+      "archetypes": [
+        { "name": "Blocking fullback", "weight": 65, "adjust": { "lbk": 5, "ibl": 5, "rbk": 4, "cth": -5 }, "traits": {} },
+        { "name": "Utility fullback", "weight": 35, "adjust": { "cth": 8, "car": 4, "bcv": 5, "lbk": -4 }, "traits": { "fightForYards": 0.6 } }
+      ]
+    },
+    "WR": {
+      "height": [72.8, 2.2],
+      "weight": [198, 13],
+      "age": [26, 3],
+      "ratings": {
+        "spd": [89, 4, 0.5], "acc": [88, 4, 0.5], "agi": [86, 5, 0.4], "cod": [85, 5, 0.4], "str": [52, 9, 0.1], "jmp": [84, 7, 0.3],
+        "awr": [66, 11, 0.8], "prc": [40, 12, 0], "car": [66, 9, 0.2], "bcv": [62, 10, 0.3], "btk": [52, 12, 0.2], "jkm": [62, 12, 0.3],
+        "ret": [52, 22, 0.1], "rbk": [45, 10, 0.1]
+      },
+      "archetypes": [
+        { "name": "Deep threat", "weight": 30, "adjust": { "spd": 4, "drr": 6, "spc": 5, "srr": -4, "cit": -4 }, "traits": { "aggressiveCatch": 0.4, "yacCatch": 0.3 } },
+        { "name": "Route technician", "weight": 30, "adjust": { "srr": 6, "mrr": 6, "rls": 5, "spd": -3 }, "traits": { "feetInBounds": 0.6, "possessionCatch": 0.4 } },
+        { "name": "Physical", "weight": 20, "adjust": { "cit": 7, "spc": 6, "str": 10, "jmp": 3, "agi": -4 }, "height_adjust": 2, "weight_adjust": 14, "traits": { "aggressiveCatch": 0.7 } },
+        { "name": "Slot", "weight": 20, "adjust": { "agi": 5, "cod": 6, "srr": 6, "drr": -6 }, "height_adjust": -2.5, "weight_adjust": -10, "traits": { "yacCatch": 0.6 } }
+      ]
+    },
+    "TE": {
+      "height": [76.5, 1.3],
+      "weight": [251, 8],
+      "age": [27, 3.5],
+      "ratings": {
+        "spd": [79, 5, 0.4], "acc": [82, 4, 0.4], "agi": [76, 6, 0.3], "cod": [74, 6, 0.3], "str": [68, 8, 0.3], "jmp": [76, 7, 0.2],
+        "awr": [66, 11, 0.8], "prc": [40, 10, 0], "car": [66, 8, 0.2], "bcv": [55, 10, 0.2], "btk": [60, 10, 0.3], "trk": [62, 10, 0.3],
+        "rbp": [64, 10, 0.5], "rbf": [62, 10, 0.5], "pbp": [58, 10, 0.4], "pbf": [56, 10, 0.4], "lbk": [55, 10, 0.3], "spc": [60, 12, 0.4]
+      },
+      "archetypes": [
+        { "name": "Receiving tight end", "weight": 40, "adjust": { "cth": 5, "srr": 6, "mrr": 6, "spd": 3, "rbk": -8, "str": -6 }, "weight_adjust": -8, "traits": { "yacCatch": 0.4 } },
+        { "name": "Blocking tight end", "weight": 35, "adjust": { "rbk": 8, "pbk": 6, "str": 8, "ibl": 6, "cth": -6, "srr": -6, "spd": -4 }, "weight_adjust": 8, "traits": {} },
+        { "name": "Balanced tight end", "weight": 25, "adjust": {}, "traits": { "possessionCatch": 0.4 } }
+      ]
+    },
+    "LT": {
+      "height": [77.5, 1.2],
+      "weight": [315, 9],
+      "age": [27.5, 3.5],
+      "ratings": {
+        "spd": [58, 6, 0.3], "acc": [70, 6, 0.3], "agi": [62, 7, 0.4], "cod": [58, 7, 0.3], "str": [86, 6, 0.6], "jmp": [55, 8, 0],
+        "awr": [68, 11, 0.8], "prc": [40, 10, 0], "ibl": [66, 10, 0.5], "lbk": [55, 10, 0.3]
+      },
+      "archetypes": [
+        { "name": "Pass protector", "weight": 45, "adjust": { "pbk": 4, "pbf": 6, "agi": 4, "rbp": -4 }, "traits": {} },
+        { "name": "Power blocker", "weight": 35, "adjust": { "rbp": 6, "pbp": 5, "str": 4, "pbf": -4, "agi": -3 }, "weight_adjust": 8, "traits": {} },
+        { "name": "Agile blocker", "weight": 20, "adjust": { "rbf": 6, "agi": 6, "spd": 4, "str": -3 }, "weight_adjust": -6, "traits": {} }
+      ]
+    },
+    "RT": { "same": "LT" },
+    "LG": {
+      "height": [76.5, 1.1],
+      "weight": [317, 9],
+      "age": [27.5, 3.5],
+      "ratings": {
+        "spd": [54, 6, 0.2], "acc": [68, 6, 0.3], "agi": [58, 7, 0.3], "cod": [55, 7, 0.3], "str": [88, 5, 0.6], "jmp": [50, 8, 0],
+        "awr": [68, 11, 0.8], "prc": [40, 10, 0], "lbk": [55, 10, 0.3]
+      },
+      "archetypes": [
+        { "name": "Power blocker", "weight": 55, "adjust": { "rbp": 6, "pbp": 5, "str": 3, "rbf": -4 }, "weight_adjust": 6, "traits": {} },
+        { "name": "Agile blocker", "weight": 45, "adjust": { "rbf": 6, "pbf": 5, "agi": 5, "rbp": -4 }, "weight_adjust": -6, "traits": {} }
+      ]
+    },
+    "RG": { "same": "LG" },
+    "C": {
+      "height": [76, 1.1],
+      "weight": [307, 9],
+      "age": [28, 3.5],
+      "ratings": {
+        "spd": [55, 6, 0.2], "acc": [70, 6, 0.3], "agi": [60, 7, 0.3], "cod": [56, 7, 0.3], "str": [86, 5, 0.6], "jmp": [50, 8, 0],
+        "awr": [70, 11, 0.85], "prc": [40, 10, 0], "lbk": [55, 10, 0.3], "lsp": [40, 15, 0]
+      },
+      "archetypes": [
+        { "name": "Power center", "weight": 50, "adjust": { "rbp": 5, "pbp": 5, "rbf": -3 }, "weight_adjust": 6, "traits": {} },
+        { "name": "Agile center", "weight": 50, "adjust": { "rbf": 5, "pbf": 5, "agi": 5, "rbp": -3 }, "weight_adjust": -6, "traits": {} }
+      ]
+    },
+    "LE": {
+      "height": [76.2, 1.3],
+      "weight": [268, 13],
+      "age": [27, 3.5],
+      "ratings": {
+        "spd": [78, 6, 0.4], "acc": [82, 5, 0.5], "agi": [74, 6, 0.4], "cod": [70, 6, 0.3], "str": [80, 7, 0.5], "jmp": [72, 8, 0.2],
+        "awr": [66, 11, 0.8], "prc": [66, 11, 0.8], "pow": [66, 12, 0.4], "zcv": [40, 12, 0.1], "mcv": [30, 10, 0.05]
+      },
+      "archetypes": [
+        { "name": "Speed rusher", "weight": 40, "adjust": { "fmv": 8, "spd": 5, "acc": 4, "pmv": -5, "bsh": -4, "str": -6 }, "weight_adjust": -12, "traits": { "dlSwim": 0.6, "dlSpin": 0.5, "highMotor": 0.4 } },
+        { "name": "Power rusher", "weight": 35, "adjust": { "pmv": 8, "str": 6, "bsh": 4, "fmv": -5, "spd": -3 }, "weight_adjust": 10, "traits": { "dlBullRush": 0.7, "highMotor": 0.4 } },
+        { "name": "Run stopper", "weight": 25, "adjust": { "bsh": 8, "tak": 5, "str": 5, "fmv": -6, "pmv": -3, "spd": -4 }, "weight_adjust": 14, "traits": { "dlBullRush": 0.4, "highMotor": 0.3 } }
+      ]
+    },
+    "RE": { "same": "LE" },
+    "DT": {
+      "height": [75.3, 1.3],
+      "weight": [308, 14],
+      "age": [27, 3.5],
+      "ratings": {
+        "spd": [64, 6, 0.3], "acc": [76, 6, 0.4], "agi": [62, 7, 0.3], "cod": [58, 7, 0.2], "str": [88, 5, 0.6], "jmp": [62, 8, 0.1],
+        "awr": [66, 11, 0.8], "prc": [66, 11, 0.8], "pow": [66, 12, 0.3], "zcv": [30, 10, 0.05], "mcv": [25, 8, 0]
+      },
+      "archetypes": [
+        { "name": "Pass-rushing tackle", "weight": 35, "adjust": { "fmv": 8, "pmv": 4, "acc": 4, "bsh": -3 }, "weight_adjust": -12, "traits": { "dlSwim": 0.5, "dlSpin": 0.3, "highMotor": 0.4 } },
+        { "name": "Nose tackle", "weight": 30, "adjust": { "bsh": 8, "str": 5, "fmv": -8, "spd": -5, "pur": -4 }, "weight_adjust": 22, "traits": { "dlBullRush": 0.6 } },
+        { "name": "Power tackle", "weight": 35, "adjust": { "pmv": 7, "str": 3, "fmv": -3 }, "weight_adjust": 6, "traits": { "dlBullRush": 0.7, "highMotor": 0.3 } }
+      ]
+    },
+    "LOLB": {
+      "height": [74.5, 1.3],
+      "weight": [244, 11],
+      "age": [26.5, 3],
+      "ratings": {
+        "spd": [83, 5, 0.5], "acc": [84, 5, 0.5], "agi": [78, 6, 0.4], "cod": [76, 6, 0.4], "str": [72, 8, 0.3], "jmp": [76, 8, 0.2],
+        "awr": [66, 11, 0.8], "prc": [66, 11, 0.8], "prs": [45, 12, 0.2], "rbk": [30, 10, 0]
+      },
+      "archetypes": [
+        { "name": "Pass rusher", "weight": 40, "adjust": { "fmv": 10, "pmv": 6, "acc": 3, "zcv": -8, "mcv": -6 }, "weight_adjust": 8, "traits": { "lbStyle": { "passRush": 0.85, "balanced": 0.15 }, "dlSwim": 0.4, "dlSpin": 0.3, "highMotor": 0.4 } },
+        { "name": "Run stopper", "weight": 30, "adjust": { "tak": 6, "bsh": 6, "pow": 6, "zcv": -4 }, "weight_adjust": 4, "traits": { "lbStyle": { "balanced": 0.7, "passRush": 0.3 }, "bigHitter": 0.5 } },
+        { "name": "Coverage linebacker", "weight": 30, "adjust": { "zcv": 8, "mcv": 6, "spd": 3, "fmv": -8, "pmv": -8, "bsh": -4 }, "weight_adjust": -8, "traits": { "lbStyle": { "cover": 0.8, "balanced": 0.2 } } }
+      ]
+    },
+    "ROLB": { "same": "LOLB" },
+    "MLB": {
+      "height": [73.8, 1.2],
+      "weight": [238, 8],
+      "age": [26.5, 3],
+      "ratings": {
+        "spd": [80, 5, 0.4], "acc": [82, 5, 0.4], "agi": [74, 6, 0.3], "cod": [72, 6, 0.3], "str": [74, 7, 0.3], "jmp": [74, 8, 0.2],
+        "fmv": [48, 12, 0.3], "pmv": [52, 12, 0.3], "prs": [42, 12, 0.1]
+      },
+      "archetypes": [
+        { "name": "Field general", "weight": 40, "adjust": { "prc": 5, "awr": 5, "zcv": 3, "pow": -3 }, "traits": { "lbStyle": { "balanced": 0.7, "cover": 0.3 } } },
+        { "name": "Run stopper", "weight": 35, "adjust": { "tak": 5, "bsh": 6, "pow": 8, "zcv": -5, "mcv": -5 }, "weight_adjust": 6, "traits": { "lbStyle": { "balanced": 0.8, "passRush": 0.2 }, "bigHitter": 0.6 } },
+        { "name": "Coverage linebacker", "weight": 25, "adjust": { "zcv": 7, "mcv": 6, "spd": 4, "bsh": -5 }, "weight_adjust": -6, "traits": { "lbStyle": { "cover": 0.8, "balanced": 0.2 } } }
+      ]
+    },
+    "CB": {
+      "height": [71.5, 1.5],
+      "weight": [193, 8],
+      "age": [26, 3],
+      "ratings": {
+        "spd": [91, 3, 0.5], "acc": [90, 3, 0.5], "agi": [88, 4, 0.5], "cod": [87, 4, 0.5], "str": [50, 8, 0.1], "jmp": [88, 5, 0.4],
+        "pur": [72, 9, 0.4], "pow": [50, 12, 0.2], "bsh": [40, 10, 0.1], "ret": [50, 22, 0.1], "spc": [50, 12, 0.2], "cit": [45, 12, 0.1]
+      },
+      "archetypes": [
+        { "name": "Man coverage", "weight": 40, "adjust": { "mcv": 6, "prs": 6, "zcv": -3 }, "traits": { "playsBall": { "aggressive": 0.5, "balanced": 0.5 } } },
+        { "name": "Zone coverage", "weight": 35, "adjust": { "zcv": 6, "prc": 4, "mcv": -3, "prs": -4 }, "traits": { "playsBall": { "balanced": 0.6, "conservative": 0.2, "aggressive": 0.2 } } },
+        { "name": "Slot corner", "weight": 25, "adjust": { "agi": 3, "cod": 4, "tak": 5, "prs": -4 }, "height_adjust": -1.5, "traits": { "playsBall": { "balanced": 0.6, "aggressive": 0.4 } } }
+      ]
+    },
+    "FS": {
+      "height": [72.5, 1.4],
+      "weight": [203, 8],
+      "age": [26, 3],
+      "ratings": {
+        "spd": [89, 4, 0.5], "acc": [88, 4, 0.5], "agi": [84, 5, 0.4], "cod": [83, 5, 0.4], "str": [56, 8, 0.1], "jmp": [86, 6, 0.3],
+        "bsh": [45, 10, 0.1], "prs": [50, 12, 0.2], "ret": [45, 20, 0.1], "spc": [52, 12, 0.2]
+      },
+      "archetypes": [
+        { "name": "Center fielder", "weight": 55, "adjust": { "zcv": 5, "spd": 2, "tak": -4, "pow": -4 }, "traits": { "playsBall": { "aggressive": 0.5, "balanced": 0.5 } } },
+        { "name": "Hybrid safety", "weight": 45, "adjust": { "mcv": 5, "tak": 3, "zcv": -2 }, "traits": { "playsBall": { "balanced": 0.7, "aggressive": 0.3 } } }
+      ]
+    },
+    "SS": {
+      "height": [72.3, 1.3],
+      "weight": [208, 8],
+      "age": [26, 3],
+      "ratings": {
+        "spd": [87, 4, 0.5], "acc": [87, 4, 0.5], "agi": [82, 5, 0.4], "cod": [80, 5, 0.4], "str": [62, 8, 0.2], "jmp": [84, 6, 0.3],
+        "bsh": [52, 10, 0.3], "prs": [48, 12, 0.2], "spc": [48, 12, 0.2]
+      },
+      "archetypes": [
+        { "name": "Box safety", "weight": 50, "adjust": { "tak": 5, "pow": 6, "bsh": 5, "zcv": -4 }, "weight_adjust": 6, "traits": { "bigHitter": 0.6, "playsBall": { "balanced": 0.7, "conservative": 0.3 } } },
+        { "name": "Coverage safety", "weight": 50, "adjust": { "zcv": 5, "mcv": 4, "pow": -4 }, "traits": { "playsBall": { "balanced": 0.5, "aggressive": 0.5 } } }
+      ]
+    },
+    "K": {
+      "height": [72.5, 2],
+      "weight": [196, 13],
+      "age": [29, 5],
+      "ratings": {
+        "spd": [55, 8, 0], "acc": [60, 8, 0], "agi": [55, 8, 0], "cod": [52, 8, 0], "str": [45, 8, 0], "jmp": [50, 8, 0],
+        "awr": [66, 11, 0.6], "kpw": [86, 6, 0.75], "kac": [82, 7, 0.9], "tak": [20, 8, 0]
+      },
+      "archetypes": [
+        { "name": "Accurate kicker", "weight": 55, "adjust": { "kac": 4, "kpw": -3 }, "traits": {} },
+        { "name": "Power kicker", "weight": 45, "adjust": { "kpw": 5, "kac": -3 }, "traits": {} }
+      ]
+    },
+    "P": {
+      "height": [74, 2],
+      "weight": [212, 14],
+      "age": [29, 5],
+      "ratings": {
+        "spd": [55, 8, 0], "acc": [60, 8, 0], "agi": [55, 8, 0], "cod": [52, 8, 0], "str": [48, 8, 0], "jmp": [50, 8, 0],
+        "awr": [66, 11, 0.6], "kpw": [86, 6, 0.8], "kac": [80, 7, 0.85], "tak": [20, 8, 0]
+      },
+      "archetypes": [
+        { "name": "Directional punter", "weight": 50, "adjust": { "kac": 4, "kpw": -3 }, "traits": {} },
+        { "name": "Power punter", "weight": 50, "adjust": { "kpw": 5, "kac": -3 }, "traits": {} }
+      ]
+    },
+    "LS": {
+      "height": [74.5, 1.2],
+      "weight": [240, 9],
+      "age": [29, 4.5],
+      "ratings": {
+        "spd": [55, 6, 0], "acc": [62, 6, 0], "agi": [52, 6, 0], "cod": [50, 6, 0], "str": [70, 7, 0], "jmp": [45, 8, 0],
+        "awr": [62, 11, 0.5], "lsp": [82, 7, 0.9], "tak": [45, 10, 0.1], "rbk": [45, 10, 0.1], "pbk": [45, 10, 0.1]
+      },
+      "archetypes": [{ "name": "Long snapper", "weight": 100, "adjust": {}, "traits": {} }]
+    }
+  }
+}

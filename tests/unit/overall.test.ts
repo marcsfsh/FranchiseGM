@@ -11,19 +11,26 @@ const randomRatings = (rng: Rng): Ratings => {
 };
 
 describe('overall formulas (spec 7.1)', () => {
-  it('has a formula for every position whose weights sum to 1', () => {
+  it('has a formula for every position with positive weights and a Madden-style stretch', () => {
     for (const position of POSITIONS) {
       const f = HAND_SET_FORMULAS[position];
-      const sum = Object.values(f.coefficients).reduce((a, b) => a + (b ?? 0), 0);
-      expect(sum, position).toBeCloseTo(1, 10);
+      const values = Object.values(f.coefficients) as number[];
+      expect(
+        values.every(v => v > 0),
+        position
+      ).toBe(true);
+      const scale = values.reduce((a, b) => a + b, 0);
+      expect(scale, position).toBeGreaterThanOrEqual(1);
+      expect(scale, position).toBeLessThan(1.7);
+      expect(f.intercept, position).toBeLessThanOrEqual(0);
     }
   });
 
-  it('maps all-equal ratings to that value and stays in 0 to 99', () => {
+  it('stays in 0 to 99 and rises with every weighted rating', () => {
     for (const position of POSITIONS) {
-      expect(overall(position, emptyRatings(77))).toBe(77);
-      expect(overall(position, emptyRatings(99))).toBe(99);
+      expect(overall(position, emptyRatings(99))).toBeGreaterThanOrEqual(95);
       expect(overall(position, emptyRatings(0))).toBe(0);
+      expect(overall(position, emptyRatings(80))).toBeGreaterThan(overall(position, emptyRatings(70)));
     }
   });
 

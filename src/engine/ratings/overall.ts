@@ -16,11 +16,17 @@ export interface OverallFormula {
 
 type Weights = Partial<Record<RatingKey, number>>;
 
-const normalize = (weights: Weights): OverallFormula => {
+/**
+ * Madden-style formula: an intercept plus a stretched weighted average. `scale` and `intercept` map an
+ * average rostered player (quality 0 in the provisional archetypes) to 70 and a quality +2.5 star to
+ * about 89, the way Madden's own formulas stretch position ratings. Derived from the archetype templates
+ * at age 27; the generator test checks they still hold.
+ */
+const formula = (weights: Weights, intercept = 0, scale = 1): OverallFormula => {
   const total = Object.values(weights).reduce((a, b) => a + (b ?? 0), 0);
   return {
-    intercept: 0,
-    coefficients: Object.fromEntries(Object.entries(weights).map(([k, w]) => [k, (w ?? 0) / total]))
+    intercept,
+    coefficients: Object.fromEntries(Object.entries(weights).map(([k, w]) => [k, ((w ?? 0) / total) * scale]))
   };
 };
 
@@ -68,28 +74,28 @@ const OLB: Weights = {
 const KICKER: Weights = { kpw: 45, kac: 45, awr: 10 };
 
 export const HAND_SET_FORMULAS: Record<Position, OverallFormula> = {
-  QB: normalize({ thp: 18, sac: 14, mac: 14, dac: 10, awr: 20, tup: 7, tor: 5, pac: 4, spd: 3, bsk: 3 }),
-  HB: normalize({ spd: 14, acc: 10, agi: 9, bcv: 13, car: 8, btk: 8, awr: 8, jkm: 5, cod: 6, cth: 5, trk: 5, sfa: 3, spm: 3, str: 3 }),
-  FB: normalize({ rbk: 16, ibl: 10, lbk: 18, str: 12, awr: 12, car: 7, cth: 8, trk: 7, spd: 5, pbk: 5 }),
-  WR: normalize({ cth: 13, spd: 14, srr: 10, mrr: 10, drr: 10, rls: 8, cit: 8, spc: 6, awr: 7, acc: 5, agi: 4, cod: 3, jmp: 2 }),
-  TE: normalize({ cth: 14, rbk: 12, pbk: 6, srr: 9, mrr: 8, cit: 8, spd: 8, str: 8, awr: 10, rls: 5, drr: 3, ibl: 5, rbp: 2, acc: 2 }),
-  LT: normalize(TACKLE),
-  RT: normalize(TACKLE),
-  LG: normalize(GUARD),
-  RG: normalize(GUARD),
-  C: normalize({ rbk: 17, rbp: 11, rbf: 8, pbk: 16, pbp: 10, pbf: 7, str: 12, awr: 14, ibl: 3, acc: 2 }),
-  LE: normalize(END),
-  RE: normalize(END),
-  DT: normalize({ bsh: 18, pmv: 14, fmv: 8, str: 18, tak: 12, pur: 8, prc: 8, awr: 8, acc: 4, spd: 2 }),
-  LOLB: normalize(OLB),
-  ROLB: normalize(OLB),
-  MLB: normalize({ tak: 16, pur: 12, prc: 14, awr: 14, bsh: 10, zcv: 10, spd: 8, pow: 6, acc: 4, mcv: 3, str: 3 }),
-  CB: normalize({ mcv: 17, zcv: 14, spd: 16, acc: 7, agi: 6, cod: 6, prs: 8, prc: 8, awr: 8, cth: 4, jmp: 3, tak: 3 }),
-  FS: normalize({ zcv: 18, spd: 14, mcv: 10, prc: 12, awr: 12, tak: 8, pur: 8, acc: 5, cth: 5, pow: 3, agi: 3, jmp: 2 }),
-  SS: normalize({ zcv: 14, tak: 14, pur: 10, pow: 8, spd: 12, mcv: 8, prc: 12, awr: 12, acc: 4, str: 3, bsh: 3 }),
-  K: normalize(KICKER),
-  P: normalize(KICKER),
-  LS: normalize({ lsp: 70, awr: 15, str: 5, rbk: 5, pbk: 5 })
+  QB: formula({ thp: 18, sac: 14, mac: 14, dac: 10, awr: 20, tup: 7, tor: 5, pac: 4, spd: 3, bsk: 3 }, -19.7, 1.188),
+  HB: formula({ spd: 14, acc: 10, agi: 9, bcv: 13, car: 8, btk: 8, awr: 8, jkm: 5, cod: 6, cth: 5, trk: 5, sfa: 3, spm: 3, str: 3 }, -53.6, 1.597),
+  FB: formula({ rbk: 16, ibl: 10, lbk: 18, str: 12, awr: 12, car: 7, cth: 8, trk: 7, spd: 5, pbk: 5 }, -22.1, 1.275),
+  WR: formula({ cth: 13, spd: 14, srr: 10, mrr: 10, drr: 10, rls: 8, cit: 8, spc: 6, awr: 7, acc: 5, agi: 4, cod: 3, jmp: 2 }, -27.4, 1.267),
+  TE: formula({ cth: 14, rbk: 12, pbk: 6, srr: 9, mrr: 8, cit: 8, spd: 8, str: 8, awr: 10, rls: 5, drr: 3, ibl: 5, rbp: 2, acc: 2 }, -13.3, 1.152),
+  LT: formula(TACKLE, -11.6, 1.105),
+  RT: formula(TACKLE, -11.6, 1.105),
+  LG: formula(GUARD, -11.5, 1.092),
+  RG: formula(GUARD, -11.5, 1.092),
+  C: formula({ rbk: 17, rbp: 11, rbf: 8, pbk: 16, pbp: 10, pbf: 7, str: 12, awr: 14, ibl: 3, acc: 2 }, -8.6, 1.061),
+  LE: formula(END, -16.9, 1.173),
+  RE: formula(END, -16.9, 1.173),
+  DT: formula({ bsh: 18, pmv: 14, fmv: 8, str: 18, tak: 12, pur: 8, prc: 8, awr: 8, acc: 4, spd: 2 }, -19.5, 1.188),
+  LOLB: formula(OLB, -13.9, 1.138),
+  ROLB: formula(OLB, -13.9, 1.138),
+  MLB: formula({ tak: 16, pur: 12, prc: 14, awr: 14, bsh: 10, zcv: 10, spd: 8, pow: 6, acc: 4, mcv: 3, str: 3 }, -16.9, 1.159),
+  CB: formula({ mcv: 17, zcv: 14, spd: 16, acc: 7, agi: 6, cod: 6, prs: 8, prc: 8, awr: 8, cth: 4, jmp: 3, tak: 3 }, -46.5, 1.462),
+  FS: formula({ zcv: 18, spd: 14, mcv: 10, prc: 12, awr: 12, tak: 8, pur: 8, acc: 5, cth: 5, pow: 3, agi: 3, jmp: 2 }, -25.8, 1.242),
+  SS: formula({ zcv: 14, tak: 14, pur: 10, pow: 8, spd: 12, mcv: 8, prc: 12, awr: 12, acc: 4, str: 3, bsh: 3 }, -18.7, 1.188),
+  K: formula(KICKER, -64.3, 1.61),
+  P: formula(KICKER, -57, 1.545),
+  LS: formula({ lsp: 70, awr: 15, str: 5, rbk: 5, pbk: 5 }, -43.4, 1.508)
 }; // prettier-ignore
 
 /** Unrounded formula value. */
