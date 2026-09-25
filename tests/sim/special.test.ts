@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_GAME_RULES, PENALTY_IDS, type GameRules } from '../../src/engine/rules/ruleset';
-import type { GameState } from '../../src/engine/sim/game';
+import { fieldGoalLogit, type GameState } from '../../src/engine/sim/game';
+import { TUNING } from '../../src/engine/tuning';
 import type { GameResult, GameSetup } from '../../src/engine/sim/types';
 import { freshSetup, kickoffStart, runFrom as run, situationGame as game } from '../helpers/situations';
 
@@ -214,3 +215,18 @@ describe('special teams (spec 8.3)', () => {
 });
 
 void game;
+
+describe('field goals by distance (spec 8.3)', () => {
+  it('fall off fastest out to the knee and more slowly beyond it', () => {
+    const make = (yards: number) => 1 / (1 + Math.exp(-fieldGoalLogit(yards)));
+    const knee = TUNING.sim.fgKnee;
+    expect(fieldGoalLogit(25)).toBe(TUNING.sim.fgLogit25);
+    expect(make(30)).toBeGreaterThan(make(40));
+    expect(make(40)).toBeGreaterThan(make(50));
+    // Per yard, the curve drops faster before the knee than after it, and has no step at the knee.
+    expect(fieldGoalLogit(knee - 5) - fieldGoalLogit(knee)).toBeGreaterThan(
+      fieldGoalLogit(knee) - fieldGoalLogit(knee + 5)
+    );
+    expect(fieldGoalLogit(knee + 1e-6)).toBeCloseTo(fieldGoalLogit(knee), 5);
+  });
+});

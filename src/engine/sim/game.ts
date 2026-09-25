@@ -759,6 +759,20 @@ class GameSim {
     return Math.min(1, Math.max(late, size * (C.protectEarly + (1 - C.protectEarly) * progress)) * coach);
   }
 
+  /**
+   * How hard a side chases a deficit, 0 to 1 (game script): nothing in the first quarter, in overtime, or
+   * within a field goal, then rising with the deficit and the clock.
+   */
+  private chasing(side: Side): number {
+    if (this.quarter < 2 || this.quarter > 4) return 0;
+    const deficit = this.score[other(side)] - this.score[side];
+    if (deficit <= C.chaseFrom) return 0;
+    const size = Math.min(1, (deficit - C.chaseFrom) / C.chaseRamp);
+    const q = this.setup.rules.quarterSeconds;
+    const progress = ((this.quarter - 2) * q + (q - this.clock)) / (3 * q);
+    return size * (C.chaseEarly + (1 - C.chaseEarly) * progress);
+  }
+
   private fgDistance(): number {
     return 100 - this.ball + C.fgSnapYards;
   }
@@ -1142,7 +1156,11 @@ class GameSim {
   private callPlay(): Call {
     const team = this.teams[this.offense];
     const t = team.tendencies.offense;
-    let pass = t.passRate[DOWN_BUCKETS(this.down, this.distance)] + team.lean + this.adjust[this.offense];
+    let pass =
+      t.passRate[DOWN_BUCKETS(this.down, this.distance)] +
+      S.passRateShift +
+      team.lean +
+      this.adjust[this.offense];
     const goal = 100 - this.ball;
     const deficit = -this.margin;
     if (this.quarter >= 4 && deficit > this.fieldGoalPoints && this.clock <= C.lateTrailingSeconds)
@@ -1151,6 +1169,7 @@ class GameSim {
       pass = Math.max(pass, C.lateTrailingPass);
     if (this.milking()) pass *= C.leadingRunShift;
     else pass *= 1 - C.protectPassCut * this.protecting(this.offense);
+    pass += (1 - pass) * C.chaseShift * this.chasing(this.offense);
     if (this.quarter === 2 && this.clock <= C.hurryHalfSeconds) pass = Math.max(pass, C.twoMinutePass);
     if (goal <= C.goalLineYards) pass *= C.goalLinePass;
     const w = this.setup.weather;
@@ -2533,7 +2552,7 @@ class GameSim {
     const acc = kicker ? this.edge(team, kicker, 'K', 'kickAccuracy', ['kick']) : -10;
     const power = kicker ? this.edge(team, kicker, 'K', 'kickPower', ['kick']) : -10;
     const long = Math.max(0, distance - C.longKick) / 10;
-    let x = S.fgLogit25 + S.fgPerYard * (distance - 25) + S.edge.kick * (acc + power * long);
+    let x = fieldGoalLogit(distance) + S.edge.kick * (acc + power * long);
     if (!w.indoor) {
       if (w.tempF < C.coldF) x += S.fgCold * impact;
       if (w.precipitation !== 'none') x += S.fgWet * impact;
@@ -2932,6 +2951,15 @@ export interface GameState {
 }
 
 /** Simulates the rest of a game from a situation. The scoring and drives cover only what happens next. */
+/**
+ * Field goal log-odds for an average kicker in calm air (spec 8.3): falling fastest out to fgKnee and more
+ * slowly beyond it.
+ */
+export function fieldGoalLogit(distance: number): number {
+  const inside = Math.min(distance, S.fgKnee);
+  return S.fgLogit25 + S.fgPerYard * (inside - 25) + S.fgPerYardLong * (distance - inside);
+}
+
 export function simulateFrom(setup: GameSetup, rng: Rng, from: GameState): GameResult {
   return new GameSim(setup, rng).run(from);
 }

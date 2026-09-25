@@ -464,19 +464,21 @@ export const TUNING = {
   sim: {
     /** Log-odds per rating point of matchup difference, for each resolution. */
     // prettier-ignore
-    edge: { pressure: 0.045, sack: 0.04, completion: 0.035, separation: 0.04, interception: 0.025, stuff: 0.04, breakaway: 0.045, fumble: 0.03, kick: 0.03 },
+    edge: { pressure: 0.045, sack: 0.04, completion: 0.035, separation: 0.04, interception: 0.015, stuff: 0.04, breakaway: 0.045, fumble: 0.03, kick: 0.03 },
     /** Rating points per point of fit (spec 7.3), per unit of cohesion execution, and for team form sd. */
     fitPoints: 0.7,
     /** Adaptive play calling (spec 7.6): the largest pass-rate shift, reached at this many rating points of
      * pass-over-run edge with a fully flexible coach. */
-    leanMax: 0.05,
+    leanMax: 0.02,
     leanScale: 6,
+    /** Added to every scheme's pass rate: the league-wide calibration of pass volume (spec 23.3). */
+    passRateShift: -0.02,
     /** Halftime adjustments (spec 8.6): the largest pass-rate shift toward what worked, at full skill, and
      * the yards-per-play gap between passing and running that counts as neutral. */
-    halftimeShift: 0.07,
+    halftimeShift: 0.02,
     halftimeNeutralGap: 1.5,
     halftimeScale: 4,
-    formSd: 1.75,
+    formSd: 2.0,
     /** Halftime adjustments need at least this many dropbacks and runs to judge by. */
     halftimeMinPlays: 5,
     /** Pass protection: pressure base rate, blitz and simulated pressure boosts (log-odds). */
@@ -490,11 +492,11 @@ export const TUNING = {
     throwAwayTrait: 0.07,
     groundingGivenThrowAway: 0.05,
     /** Completion by depth (short, intermediate, deep, screen), and the pressure penalty (log-odds). */
-    completion: { short: 0.771, intermediate: 0.617, deep: 0.391, screen: 0.871 },
+    completion: { short: 0.7763, intermediate: 0.6241, deep: 0.3981, screen: 0.8743 },
     pressureCompletion: -0.75,
     dropShare: 0.075,
     /** Interceptions per attempt by depth, and log-odds shifts. */
-    interception: { short: 0.0125, intermediate: 0.0213, deep: 0.0385, screen: 0.0029 },
+    interception: { short: 0.0136, intermediate: 0.0232, deep: 0.042, screen: 0.0032 },
     interceptionPressure: 0.45,
     interceptionAggressive: 0.25,
     /** Air yards: short mean above 1, intermediate span, deep mean past 20. */
@@ -502,13 +504,13 @@ export const TUNING = {
     airDeepMean: 11,
     screenAir: [-3, 1],
     /** Yards after catch means by depth, and the broken-tackle chance and extra yards. */
-    yac: { short: 4.3, intermediate: 2.85, deep: 4.3, screen: 5.7 },
+    yac: { short: 3.9, intermediate: 2.55, deep: 3.9, screen: 5.2 },
     brokenTackle: 0.065,
     brokenTackleYards: 11,
     /** Runs: stuff rate, stuff depth, gain shape and mean, breakaway chance and extra yards. */
     stuff: 0.17,
     stuffYards: 3,
-    runGainMean: 4.52,
+    runGainMean: 4.62,
     runGainShape: 1.6,
     breakaway: 0.06,
     breakawayYards: 14,
@@ -525,14 +527,19 @@ export const TUNING = {
     outOfBoundsRun: 0.12,
     outOfBoundsCatch: 0.25,
     /** Fourth downs: go rates by yards to go (1, 2, 3 to 5, 6 or more) in plus territory, and at midfield. */
-    goRate: [0.82, 0.57, 0.31, 0.09],
-    goRateOwnHalf: [0.31, 0.14, 0.045, 0.008],
+    goRate: [0.95, 0.75, 0.36, 0.08],
+    goRateOwnHalf: [0.42, 0.2, 0.055, 0.007],
     /** Two-point tries: base rate of touchdowns and success rate. */
     twoPointBase: 0.04,
     twoPointSuccess: 0.48,
-    /** Field goals: log-odds at 25 yards and per yard beyond, the longest try, and weather. */
+    /**
+     * Field goals: log-odds at 25 yards, per yard out to fgKnee, per yard beyond it (long tries fall off
+     * more slowly: the kickers who try them have the legs), the longest try, and weather.
+     */
     fgLogit25: 4.2,
-    fgPerYard: -0.12,
+    fgPerYard: -0.155,
+    fgKnee: 45,
+    fgPerYardLong: -0.04,
     fgMaxDistance: 62,
     fgCold: -0.25,
     fgWet: -0.35,
@@ -643,10 +650,10 @@ export const TUNING = {
        * run, and the defense plays soft: short passes gain softShortLogit, deep ones lose softDeepLogit,
        * yards after the catch shrink by softYac, and a lighter rush loses softPressureLogit.
        */
-      protectFrom: 6,
+      protectFrom: 5,
       protectRamp: 12,
       protectEarly: 0.6,
-      protectPassCut: 0.35,
+      protectPassCut: 0.4,
       softShortLogit: 1.2,
       softDeepLogit: 0.3,
       softYac: 0.1,
@@ -654,6 +661,16 @@ export const TUNING = {
       /** In the last preventSeconds, a lead of any size is protected at least this hard. */
       preventSeconds: 300,
       preventLate: 1,
+      /**
+       * Chasing a deficit (game script, spec 8.6): from deficits past chaseFrom points, full at chaseFrom +
+       * chaseRamp; chaseEarly of the effect at the start of the second quarter, all of it by the end of the
+       * game. At full strength the offense closes chaseShift of the gap between its pass rate and always
+       * passing.
+       */
+      chaseFrom: 3,
+      chaseRamp: 14,
+      chaseEarly: 0.3,
+      chaseShift: 0.25,
       twoMinutePass: 0.8,
       goalLinePass: 0.72,
       wetPassShift: 0.9,
@@ -764,7 +781,7 @@ export const TUNING = {
       scramblerFactor: 1.8,
       pocketFactor: 0.5,
       paranoidThrowAway: 0.06,
-      creditSpread: 18,
+      creditSpread: 21,
       /** Rating points of tackle edge that multiply a pursuer's share of tackles by e. */
       tackleSpread: 18,
       sackYards: [4, 9],
@@ -776,7 +793,7 @@ export const TUNING = {
       scrambleFloor: -1,
       scrambleSpread: 2,
       scrambleOutOfBounds: 0.35,
-      minTargetShare: 0.02,
+      minTargetShare: 0.005,
       uncovered: 12,
       /** Backs run checkdowns into open space: rating points of separation on their routes. */
       backfieldSeparation: 18,
@@ -787,16 +804,16 @@ export const TUNING = {
       blitzSeparation: 2.5,
       cohesionSeparation: 20,
       /** How much target choice follows separation, per rating point. */
-      openness: 0.018,
+      openness: 0.03,
       // prettier-ignore
-      deepFavor: { X: 1.5, Z: 1.5, SLOT: 0.7, EXTRA: 0.8, TE1: 0.5, TE2: 0.3, RB1: 0.1, RB2: 0.1, FB: 0.05 },
+      deepFavor: { X: 2, Z: 2, SLOT: 0.7, EXTRA: 0.8, TE1: 0.5, TE2: 0.3, RB1: 0.1, RB2: 0.1, FB: 0.05 },
       // prettier-ignore
       screenFavor: { X: 0.8, Z: 0.6, SLOT: 1.3, EXTRA: 0.6, TE1: 0.6, TE2: 0.3, RB1: 3, RB2: 3, FB: 0.5 },
       poiseWeight: 0.4,
       calmMph: 10,
       /** Wind's effect on completions by pass depth, relative to intermediate throws. */
       windDepth: { screen: 0.3, short: 0.7, intermediate: 1, deep: 1.5 },
-      playsBallLogit: 0.15,
+      playsBallLogit: 0.1,
       intSeparation: 0.02,
       contestedSep: -3,
       handsWeight: 0.02,

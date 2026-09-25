@@ -102,9 +102,9 @@
 - Why: Spec 23.1 has calibration replay the season until the offseason exists (M6 build order), and spec 23.3's favorite and fit metrics need a rating gap and a same-player comparison.
 - Revisit if: M7's season loop or M10's offseason lets replays use real weekly management and multi-season leagues.
 
-## D-18: Conservatism when leading
+## D-18: Conservatism when leading, and chasing a deficit
 - When: 2026-09-25, M6
-- Decision: A coach protects a second-half lead of more than 6 points, more as the lead and the clock grow: the offense passes less and lets the play clock run, and the defense plays soft coverage (short passes come easier, deep ones harder, fewer blitzes and a lighter rush). In the last five minutes any lead is protected (the prevent defense). Until M13 gives head coaches this tendency (spec 8.6), it is 100 minus the coach's fourth-down aggressiveness.
+- Decision: A coach protects a second-half lead of more than 5 points, more as the lead and the clock grow: the offense passes less and lets the play clock run, and the defense plays soft coverage (short passes come easier, deep ones harder, fewer blitzes and a lighter rush). In the last five minutes any lead is protected (the prevent defense). Until M13 gives head coaches this tendency (spec 8.6), it is 100 minus the coach's fourth-down aggressiveness. The mirror image: from the second quarter, an offense behind by more than a field goal passes more, more as the deficit and the clock grow (C-12).
 - Why: Spec 8.6 lists conservatism when leading; without it the sim produced too few one-score games and too many blowouts (NFL: 50.7% and 21.6%).
 - Revisit if: M13 adds the tendency to coaches.
 

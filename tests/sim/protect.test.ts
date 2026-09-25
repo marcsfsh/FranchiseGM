@@ -17,7 +17,7 @@ const conservatism =
 
 /** Runs with one play-calling constant changed, restoring it afterward. */
 function withTuning<T>(
-  key: 'preventLate' | 'sticksShift' | 'returnBreakaway',
+  key: 'preventLate' | 'sticksShift' | 'returnBreakaway' | 'chaseShift',
   value: number,
   run: () => T
 ): T {
@@ -66,6 +66,19 @@ describe('protecting a lead (spec 8.6 conservatism when leading)', () => {
     const completion = (games: GameResult[]) =>
       sum(games, g => g.box.away.totals.passCmp) / sum(games, g => g.box.away.totals.passAtt);
     expect(completion(prevent)).toBeGreaterThan(completion(noPrevent));
+  });
+});
+
+describe('chasing a deficit (game script)', () => {
+  it('throws more once behind by more than a field goal', () => {
+    // The home team trails by two scores at the start of the second half and has the ball.
+    const behind = { quarter: 3, clock: 900, score: { home: 7, away: 21 }, offense: 'home' as const, ball: 25, down: 1, distance: 10 }; // prettier-ignore
+    const passShare = (games: GameResult[]) =>
+      sum(games, g => g.box.home.totals.passAtt) /
+      sum(games, g => g.box.home.totals.passAtt + g.box.home.totals.rushAtt);
+    const chasing = runFrom(behind, 40, { seed: 'chase' });
+    const steady = withTuning('chaseShift', 0, () => runFrom(behind, 40, { seed: 'chase' }));
+    expect(passShare(chasing)).toBeGreaterThan(passShare(steady) + 0.03);
   });
 });
 

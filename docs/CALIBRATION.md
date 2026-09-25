@@ -45,3 +45,20 @@ Tuning changes, newest last. Each entry names the constants in `src/engine/tunin
 ## C-11: Tighter roster balance with a wider team offset (M6, 2026-09-25)
 - Change: `league.balanceFrom` 0.15 to 0.1, `balanceKeep` 0.3 to 0.2, `teamSpread` 0.15 to 0.2: fewer runaway rosters, and a little more spread among the rest.
 - Effect: in 48 seasons over 24 leagues, perfect or winless teams 6.3 to 2.1 per 100 seasons, win sd 2.79 to 2.92, favorites 65.4% to 66.2%, team rating sd 4.35 to 4.65; 100-season runs pass all 63 targets on seed 1 (5 perfect or winless per 100, down from 8) and seed 2 (3).
+
+## C-12: Game script (M6 review, 2026-09-25)
+- Change: new chasing a deficit (`chaseFrom` 3, `chaseRamp` 14, `chaseEarly` 0.3, `chaseShift` 0.25; D-18); `protectFrom` 6 to 5 and `protectPassCut` 0.35 to 0.4; `halftimeShift` 0.07 to 0.02 and `leanMax` 0.05 to 0.02, which tied pass volume to passing quality; `formSd` 1.75 to 2.0 to keep margins as uncertain.
+- Effect: blowouts 25.6% to 24.3%, one-score games 48.7% to 50.7%, margin sd 13.1 kept. Pass volume still barely falls as passing efficiency rises (docs/KNOWN-ISSUES.md).
+
+## C-13: Pass volume, completions, and target shares (M6 review, 2026-09-25)
+- Change: new `passRateShift` -0.02; `sim.completion` +0.03 log-odds (0.7763, 0.6241, 0.3981, 0.8743); `sim.yac` about 9% lower (3.9, 2.55, 3.9, 5.2); `openness` 0.018 to 0.03, `minTargetShare` 0.02 to 0.005, `deepFavor` for X and Z 1.5 to 2; `runGainMean` 4.52 to 4.62.
+- Effect: passing yards leader 5,273 to about 5,045 (NFL 2021-2025 mean 4,963), receiving yards leader 1,740 to 1,773-1,803 (1,811), receptions leader 133 to 138 (133), completions 63.5% to 64.9%, pass attempts 33.9 to 32.7 per team game, yards per carry 4.20 to 4.26.
+
+## C-14: Sack and interception leaders (M6 review, 2026-09-25)
+- Change: `creditSpread` 18 to 21, `edge.interception` 0.025 to 0.015, `playsBallLogit` 0.15 to 0.1, `sim.interception` 9% higher (0.0136, 0.0232, 0.042, 0.0032).
+- Effect: sacks leader 22.0 to 19.3-19.7 (NFL mean 20.1), interceptions leader 10.4 to 8.8-9.0 (8.4), interception rate 2.2% kept.
+
+## C-15: Field goals by distance and fourth downs (M6 review, 2026-09-25)
+- Change: `fgPerYard` -0.12 to -0.155 out to the new `fgKnee` 45, then the new `fgPerYardLong` -0.04; `goRate` [0.82, 0.57, 0.31, 0.09] to [0.95, 0.75, 0.36, 0.08] and `goRateOwnHalf` [0.31, 0.14, 0.045, 0.008] to [0.42, 0.2, 0.055, 0.007].
+- Effect: field goals from 40 to 49 yards 85.4% to 77.0-77.8% (NFL 2021-2024 78.6%), under 40 96.8% to 95.6-95.9% (95.5%), 50 or more 67.1% to 68.5-69.1% (68.3%); fourth-down tries 1.32 to 1.40-1.42 per team game (1.42) and conversions 49.8% to 51.9-52.2% (53.1%). 100-season runs pass all 62 targets on seeds 1 and 2; seed 3 warns on the receiving yards leader (1,697) and 4,000-yard passers (6.5).
+

@@ -18,3 +18,6 @@
 - Calibration replays keep injured players out but make no roster moves until M7's weekly management (D-17).
 - The dev menu has only the calibration runner; the AI decision log (M14), sim inspector, performance overlay, and fixed-seed toggle arrive later (spec 23.5).
 - Games lost to injury is measured without a target: no public all-player count was found. Football Outsiders' adjusted games lost (starters and key reserves, camp injuries included) was 68.9 to 80.9 per team in 2021-2023.
+- Pass volume barely falls as passing efficiency rises: team pass attempts against yards per attempt correlate about -0.05 in replays and -0.54 in the 2024 NFL, because good passing teams don't lead and run enough. The passing leader is held near the NFL mean by a league-wide pass rate shift (C-13); M7's opponent-tailored game plans and M14's coaching should carry more of it.
+- Leader metrics move about 3% between seeds because a 100-season run draws only 10 leagues; seed 3 warns on the receiving yards leader and 4,000-yard passers (C-15).
+
