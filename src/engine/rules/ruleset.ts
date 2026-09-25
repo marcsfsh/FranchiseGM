@@ -85,6 +85,72 @@ export interface SeasonRules {
   draftRounds: number;
 }
 
+export const PENALTY_IDS = [
+  'falseStart', 'delayOfGame', 'illegalFormation', 'offensiveHolding', 'offensivePassInterference',
+  'intentionalGrounding', 'illegalBlockInBack', 'offside', 'defensiveHolding', 'illegalContact',
+  'defensivePassInterference', 'roughingThePasser', 'unnecessaryRoughness', 'facemask', 'illegalUseOfHands',
+  'unsportsmanlikeConduct', 'kickCatchInterference', 'runningIntoKicker'
+] as const; // prettier-ignore
+export type PenaltyId = (typeof PENALTY_IDS)[number];
+
+/** A foul as the rules define it (spec 16: yardage, automatic first downs, ejection). */
+export interface PenaltyRule {
+  name: string;
+  /** Yards; a spot foul with 0 here moves the ball to the spot of the foul. */
+  yards: number;
+  /** Spot fouls (defensive pass interference) place the ball where the foul happened. */
+  spotFoul: boolean;
+  /** A defensive foul that gives the offense a first down. */
+  automaticFirstDown: boolean;
+  /** An offensive foul that also costs the down. */
+  lossOfDown: boolean;
+  /** Called before the snap (dead-ball fouls); the play doesn't happen. */
+  preSnap: boolean;
+  /** Flagrant versions can get the player ejected. */
+  ejectionEligible: boolean;
+}
+
+/** On-field rules (spec 16): the clock, overtime, kickoffs, tries, and penalties. */
+export interface GameRules {
+  quarterSeconds: number;
+  timeoutsPerHalf: number;
+  twoMinuteWarning: boolean;
+  /** Seconds on the play clock between snaps. */
+  playClock: number;
+  overtime: {
+    regularSeasonSeconds: number;
+    playoffSeconds: number;
+    timeouts: number;
+    /** Both teams get a possession before sudden death, even after an opening touchdown. */
+    bothTeamsPossess: boolean;
+    /** Regular-season games tied after one overtime period end tied. */
+    regularSeasonTies: boolean;
+  };
+  kickoff: {
+    /** Yard line the kicking team kicks from. */
+    spot: number;
+    /** Receiving team's yard line after a touchback. */
+    touchback: number;
+    /** Receiving team's yard line after a kick lands in the landing zone and rolls into the end zone. */
+    landingZoneTouchback: number;
+    /** Depth of the landing zone, measured from the receiving team's goal line. */
+    landingZone: number;
+    /** Receiving team's yard line when the kick lands short of the landing zone. */
+    shortSpot: number;
+    /** Only a trailing team may declare an onside kick. */
+    onsideOnlyWhenTrailing: boolean;
+    /** Onside kicks only in the fourth quarter (the 2024 rule; 2025 allows any quarter). */
+    onsideFourthQuarterOnly: boolean;
+  };
+  /** Line of scrimmage for extra-point kicks and two-point tries. */
+  extraPointSpot: number;
+  twoPointSpot: number;
+  /** Points for a defensive return on a try. */
+  defensiveTryPoints: number;
+  puntFairCatch: boolean;
+  penalties: Record<PenaltyId, PenaltyRule>;
+}
+
 export interface RuleSet {
   /** Increases with every change, so saves and history can say which rules applied. */
   version: number;
@@ -93,7 +159,80 @@ export interface RuleSet {
   roster: RosterRules;
   pay: PayRules;
   rookieScale: RookieScaleRules;
+  game: GameRules;
 }
+
+const foul = (
+  name: string,
+  yards: number,
+  flags: Partial<Omit<PenaltyRule, 'name' | 'yards'>> = {}
+): PenaltyRule => ({
+  name,
+  yards,
+  spotFoul: false,
+  automaticFirstDown: false,
+  lossOfDown: false,
+  preSnap: false,
+  ejectionEligible: false,
+  ...flags
+});
+
+/** The 2025 NFL playing rules, which carry into 2026 until the rules committee changes them. */
+export const DEFAULT_GAME_RULES: GameRules = {
+  quarterSeconds: 900,
+  timeoutsPerHalf: 3,
+  twoMinuteWarning: true,
+  playClock: 40,
+  overtime: {
+    regularSeasonSeconds: 600,
+    playoffSeconds: 900,
+    timeouts: 2,
+    bothTeamsPossess: true,
+    regularSeasonTies: true
+  },
+  kickoff: {
+    spot: 35,
+    touchback: 35,
+    landingZoneTouchback: 20,
+    landingZone: 20,
+    shortSpot: 40,
+    onsideOnlyWhenTrailing: true,
+    onsideFourthQuarterOnly: false
+  },
+  extraPointSpot: 15,
+  twoPointSpot: 2,
+  defensiveTryPoints: 2,
+  puntFairCatch: true,
+  penalties: {
+    falseStart: foul('False start', 5, { preSnap: true }),
+    delayOfGame: foul('Delay of game', 5, { preSnap: true }),
+    illegalFormation: foul('Illegal formation', 5),
+    offensiveHolding: foul('Offensive holding', 10),
+    offensivePassInterference: foul('Offensive pass interference', 10),
+    intentionalGrounding: foul('Intentional grounding', 10, { lossOfDown: true }),
+    illegalBlockInBack: foul('Illegal block in the back', 10),
+    offside: foul('Offside', 5, { preSnap: true }),
+    defensiveHolding: foul('Defensive holding', 5, { automaticFirstDown: true }),
+    illegalContact: foul('Illegal contact', 5, { automaticFirstDown: true }),
+    defensivePassInterference: foul('Defensive pass interference', 0, {
+      spotFoul: true,
+      automaticFirstDown: true
+    }),
+    roughingThePasser: foul('Roughing the passer', 15, { automaticFirstDown: true, ejectionEligible: true }),
+    unnecessaryRoughness: foul('Unnecessary roughness', 15, {
+      automaticFirstDown: true,
+      ejectionEligible: true
+    }),
+    facemask: foul('Face mask', 15, { automaticFirstDown: true }),
+    illegalUseOfHands: foul('Illegal use of hands', 5, { automaticFirstDown: true }),
+    unsportsmanlikeConduct: foul('Unsportsmanlike conduct', 15, {
+      automaticFirstDown: true,
+      ejectionEligible: true
+    }),
+    kickCatchInterference: foul('Kick catch interference', 15),
+    runningIntoKicker: foul('Running into the kicker', 5)
+  }
+};
 
 export const DEFAULT_RULES: RuleSet = {
   version: 1,
@@ -150,7 +289,8 @@ export const DEFAULT_RULES: RuleSet = {
     minimumSigningBonus: 80_000,
     firstRoundBaseShare: 0.12,
     udfaYears: 3
-  }
+  },
+  game: DEFAULT_GAME_RULES
 };
 
 /** The league minimum base salary for a player with this many credited seasons. */
@@ -190,6 +330,25 @@ export function validateRules(rules: RuleSet): string[] {
   whole(rules.rookieScale.topSigningBonus, 'The top rookie signing bonus', 0);
   if (rules.season.games !== 17 || rules.season.playoffTeamsPerConference !== 7) {
     problems.push('The season format (17 games, 14-team playoffs) is fixed.');
+  }
+  const g = rules.game;
+  whole(g.quarterSeconds, 'Quarter length', 60);
+  whole(g.timeoutsPerHalf, 'Timeouts per half');
+  whole(g.overtime.regularSeasonSeconds, 'Regular-season overtime length', 60);
+  for (const [name, spot] of [
+    ['The kickoff spot', g.kickoff.spot],
+    ['The kickoff touchback spot', g.kickoff.touchback],
+    ['The extra-point spot', g.extraPointSpot],
+    ['The two-point spot', g.twoPointSpot]
+  ] as const) {
+    if (!Number.isInteger(spot) || spot < 1 || spot > 50)
+      problems.push(`${name} must be a yard line from 1 to 50.`);
+  }
+  for (const [id, penalty] of Object.entries(g.penalties)) {
+    if (!Number.isInteger(penalty.yards) || penalty.yards < 0 || penalty.yards > 30)
+      problems.push(`${penalty.name || id} yardage must be 0 to 30.`);
+    if (penalty.spotFoul === false && penalty.yards === 0)
+      problems.push(`${penalty.name || id} moves the ball nowhere.`);
   }
   return problems;
 }

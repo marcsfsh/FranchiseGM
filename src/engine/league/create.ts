@@ -13,6 +13,7 @@ import type { StaffRole } from '../model/staff';
 import { coordinatorFit } from '../fit/cohesion';
 import { DEFENSE_SCHEMES, OFFENSE_SCHEMES } from '../schemes/ids';
 import { named, type TeamSchemes } from '../schemes/resolve';
+import { defaultSliders } from '../sim/sliders';
 import { TUNING } from '../tuning';
 import { SAVE_SCHEMA_VERSION, type League, type StartOptions, type TeamState } from './types';
 
@@ -94,7 +95,7 @@ export function createLeague(input: NewLeagueInput): League {
     date: { season: start.startSeason, phase: 'regularSeason', week: 1 },
     random: createLeagueRandom(start.seed, input.fixed ?? false),
     rules,
-    settings: { version: 1, fitCap: TUNING.fit.cap },
+    settings: { version: 1, fitCap: TUNING.fit.cap, sim: defaultSliders() },
     teams,
     players: byId(generated.players),
     contracts: byId(generated.contracts),

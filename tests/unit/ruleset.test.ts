@@ -29,4 +29,27 @@ describe('rule set (spec 16, 12.1)', () => {
     expect(() => changeRules(DEFAULT_RULES, 'season', { games: 16 })).toThrow(/fixed/);
     expect(() => changeRules(DEFAULT_RULES, 'cap', { amount: -5 })).toThrow(/salary cap/);
   });
+
+  it('holds the 2025 on-field rules: clock, overtime, kickoffs, tries, and penalties (spec 16)', () => {
+    const g = DEFAULT_RULES.game;
+    expect(g.quarterSeconds).toBe(900);
+    expect(g.overtime).toMatchObject({ regularSeasonSeconds: 600, bothTeamsPossess: true });
+    expect(g.kickoff).toMatchObject({ spot: 35, touchback: 35, landingZone: 20, shortSpot: 40 });
+    expect([g.extraPointSpot, g.twoPointSpot]).toEqual([15, 2]);
+    expect(g.penalties.defensiveHolding).toMatchObject({ yards: 5, automaticFirstDown: true });
+    expect(g.penalties.defensivePassInterference.spotFoul).toBe(true);
+    expect(g.penalties.intentionalGrounding.lossOfDown).toBe(true);
+    expect(validateRules(DEFAULT_RULES)).toEqual([]);
+  });
+
+  it('lets the rules committee change penalty yardage, within limits', () => {
+    const penalties = {
+      ...DEFAULT_RULES.game.penalties,
+      defensiveHolding: { ...DEFAULT_RULES.game.penalties.defensiveHolding, yards: 10 }
+    };
+    const next = changeRules(DEFAULT_RULES, 'game', { penalties });
+    expect(next.game.penalties.defensiveHolding.yards).toBe(10);
+    const bad = { ...penalties, facemask: { ...penalties.facemask, yards: 45 } };
+    expect(() => changeRules(DEFAULT_RULES, 'game', { penalties: bad })).toThrow(/Face mask yardage/);
+  });
 });

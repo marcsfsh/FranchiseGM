@@ -11,12 +11,13 @@ import type { Owner, StaffMember, StaffRole } from '../model/staff';
 import type { LeagueRandom } from '../rng';
 import type { RuleSet } from '../rules/ruleset';
 import type { TeamSchemes } from '../schemes/resolve';
+import type { SimSliders } from '../sim/sliders';
 
 /**
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 2;
+export const SAVE_SCHEMA_VERSION = 3;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -58,6 +59,8 @@ export interface LeagueSettings {
   version: number;
   /** Fit is capped at plus or minus this many points (spec 7.3). */
   fitCap: number;
+  /** Game sim and stat sliders (spec 22.3). */
+  sim: SimSliders;
 }
 
 export interface League {
