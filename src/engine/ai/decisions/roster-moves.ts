@@ -35,6 +35,16 @@ export const NEED_GROUP: Record<Position, string> = {
   K: 'K', P: 'P', LS: 'LS'
 }; // prettier-ignore
 
+/** Each group in words, for the reasons roster moves give. */
+const GROUP_WORDS: Record<string, string> = {
+  QB: 'quarterback', RB: 'running back', FB: 'fullback', WR: 'receiver', TE: 'tight end', OT: 'tackle',
+  OG: 'guard', C: 'center', DE: 'defensive end', DT: 'defensive tackle', OLB: 'outside linebacker',
+  MLB: 'middle linebacker', CB: 'cornerback', S: 'safety', K: 'kicker', P: 'punter', LS: 'long snapper'
+}; // prettier-ignore
+const groupWords = (p: Player): string => GROUP_WORDS[NEED_GROUP[p.position]] ?? p.position;
+const injuryWords = (p: Player): string =>
+  p.injury ? `a ${p.injury.bodyPart} injury, out ${p.injury.weeksOut} weeks` : 'an injury';
+
 /** The standard roster's count in each group. */
 const TARGET = new Map<string, number>();
 for (const [position, n] of ACTIVE_ROSTER) {
@@ -193,11 +203,12 @@ export function rosterMoves(league: League, abbr: TeamAbbr, rng: Rng): DecisionL
       ? active().filter(p => NEED_GROUP[p.position] === NEED_GROUP[group] && !claimed.includes(p.id) && healthy(p))
       : [];
     const cut = (same.length ? weakest(league, abbr, same) : null) ?? surplusCut(league, abbr, active());
-    if (!cut || !move({ kind: 'release', playerId: cut.id })) break;
+    if (!cut || !move({ kind: 'release', playerId: cut.id, reason: 'to make room for a waiver claim' })) break;
   } // prettier-ignore
 
   for (const p of active())
-    if ((p.injury?.weeksOut ?? 0) >= irMinGames) move({ kind: 'injuredReserve', playerId: p.id });
+    if ((p.injury?.weeksOut ?? 0) >= irMinGames)
+      move({ kind: 'injuredReserve', playerId: p.id, reason: injuryWords(p) });
 
   // Healed players who have missed the minimum games come back, best first, if they beat the weakest
   // healthy player in their group. With nobody healthy in the group he's needed, and the room comes from
@@ -215,9 +226,16 @@ export function rosterMoves(league: League, abbr: TeamAbbr, rng: Rng): DecisionL
       const inGroup = active().filter(q => NEED_GROUP[q.position] === group && healthy(q));
       const cut = inGroup.length ? weakest(league, abbr, inGroup) : surplusCut(league, abbr, active());
       if (!cut || (inGroup.length > 0 && cut.ovr >= p.ovr)) continue;
-      if (!move({ kind: 'release', playerId: cut.id })) continue;
+      if (
+        !move({
+          kind: 'release',
+          playerId: cut.id,
+          reason: `to make room for ${fullName(p)}, back from injured reserve`
+        })
+      )
+        continue;
     }
-    if (!move({ kind: 'activate', playerId: p.id })) break;
+    if (!move({ kind: 'activate', playerId: p.id, reason: 'healed' })) break;
   }
 
   // Free agents, looked up only when the team signs someone; players it couldn't sign are skipped.
@@ -229,13 +247,15 @@ export function rosterMoves(league: League, abbr: TeamAbbr, rng: Rng): DecisionL
       const decision = decideSigning(league, abbr, mine(), pool, rng, skip, only);
       const player = decision ? league.players[decision.chosen.id] : undefined;
       if (!decision || !player) return false;
+      const reason = `needed at ${groupWords(player)}`;
       const done =
         player.status === 'practice'
-          ? move({ kind: 'promote', playerId: player.id })
+          ? move({ kind: 'promote', playerId: player.id, reason })
           : move({
               kind: 'sign',
               playerId: player.id,
-              offer: { years: 1, salary: askingSalary(league, player), signingBonus: 0 }
+              offer: { years: 1, salary: askingSalary(league, player), signingBonus: 0 },
+              reason
             });
       skip.add(player.id);
       if (done) {
@@ -261,12 +281,12 @@ export function rosterMoves(league: League, abbr: TeamAbbr, rng: Rng): DecisionL
       const squad = mine()
         .filter(p => p.status === 'practice' && NEED_GROUP[p.position] === group && healthy(p))
         .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
-      if (squad.some(p => move({ kind: 'elevate', playerId: p.id }))) continue;
+      if (squad.some(p => move({ kind: 'elevate', playerId: p.id, reason: `short at ${groupWords(p)} this week` }))) continue;
       pool ??= freeAgents(league);
       if (!pool.some(p => NEED_GROUP[p.position] === group && !skip.has(p.id))) break;
       if (active().length >= limit) {
         const cut = surplusCut(league, abbr, active());
-        if (!cut || !move({ kind: 'release', playerId: cut.id })) break;
+        if (!cut || !move({ kind: 'release', playerId: cut.id, reason: 'to make room for a signing' })) break;
       }
       if (!sign(group)) break;
     }
@@ -281,7 +301,7 @@ export function rosterMoves(league: League, abbr: TeamAbbr, rng: Rng): DecisionL
     .sort((a, b) => b.potential - a.potential || b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
   for (const p of young) {
     if (mine().filter(q => q.status === 'practice').length >= league.rules.roster.practiceSquad) break;
-    move({ kind: 'signPracticeSquad', playerId: p.id });
+    move({ kind: 'signPracticeSquad', playerId: p.id, reason: 'to fill the practice squad' });
   }
   return logs;
 }

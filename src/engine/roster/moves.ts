@@ -33,7 +33,8 @@ import { claimedContract, claimProblem, placeOnWaivers, subjectToWaivers } from 
 
 export type { Offer };
 
-export type Move =
+/** A roster move; `reason` says why for the transaction log (post-M42 section 1.1). */
+export type Move = (
   | { kind: 'sign'; team: TeamAbbr; playerId: string; offer: Offer }
   | { kind: 'signPracticeSquad'; team: TeamAbbr; playerId: string }
   | { kind: 'release'; team: TeamAbbr; playerId: string; designated?: boolean }
@@ -42,7 +43,8 @@ export type Move =
   | { kind: 'promote'; team: TeamAbbr; playerId: string }
   | { kind: 'elevate'; team: TeamAbbr; playerId: string }
   | { kind: 'claim'; team: TeamAbbr; playerId: string }
-  | { kind: 'restructure'; team: TeamAbbr; playerId: string; amount: number; voidYears?: number };
+  | { kind: 'restructure'; team: TeamAbbr; playerId: string; amount: number; voidYears?: number }
+) & { reason?: string };
 
 export interface MovePreview {
   /** The league year whose cap the move changes now. */
@@ -106,8 +108,8 @@ function join(league: League, player: Player, team: TeamAbbr, contract: Contract
   player.contractId = contract.id;
 } // prettier-ignore
 
-function log(league: League, team: TeamAbbr, kind: TransactionKind, player: Player): void {
-  recordTransaction(league, team, kind, player.id);
+function log(league: League, team: TeamAbbr, kind: TransactionKind, player: Player, reason?: string): void {
+  recordTransaction(league, team, kind, player.id, reason);
 }
 
 /** June 1 designations the team has used this league year. */
@@ -185,7 +187,7 @@ function plan(league: League, move: Move): Outcome<Plan> {
         }),
         apply: rng => {
           join(league, player, team, { ...deal, id: newId(league, 'c') }, 'active', rng);
-          log(league, team, 'signed', player);
+          log(league, team, 'signed', player, move.reason);
         }
       });
     } // prettier-ignore
@@ -211,7 +213,7 @@ function plan(league: League, move: Move): Outcome<Plan> {
         }),
         apply: rng => {
           join(league, player, team, practiceSquadDeal(league, player, team, newId(league, 'c')), 'practice', rng);
-          log(league, team, 'practiceSquad', player);
+          log(league, team, 'practiceSquad', player, move.reason);
         }
       });
     } // prettier-ignore
@@ -266,7 +268,7 @@ function plan(league: League, move: Move): Outcome<Plan> {
             e => !(e.playerId === player.id && e.week === gameWeek(league))
           );
           league.teams[team].resting = league.teams[team].resting.filter(id => id !== player.id);
-          log(league, team, 'released', player);
+          log(league, team, 'released', player, move.reason);
           if (waived) placeOnWaivers(league, player, team, contract.id);
           else Object.assign(player, { team: null, status: 'freeAgent', contractId: null });
         }
@@ -285,7 +287,7 @@ function plan(league: League, move: Move): Outcome<Plan> {
         }),
         apply: () => {
           player.status = 'ir';
-          log(league, team, 'injuredReserve', player);
+          log(league, team, 'injuredReserve', player, move.reason);
         }
       });
     } // prettier-ignore
@@ -309,7 +311,7 @@ function plan(league: League, move: Move): Outcome<Plan> {
       return ok({
         preview: preview({ active: counts.active + 1, notes: [`${name} returns to the active roster.`] }),
         apply: () => {
-          log(league, team, player.status === 'ir' ? 'activated' : 'reserveReturn', player);
+          log(league, team, player.status === 'ir' ? 'activated' : 'reserveReturn', player, move.reason);
           player.status = 'active';
         }
       });
@@ -334,7 +336,7 @@ function plan(league: League, move: Move): Outcome<Plan> {
         apply: rng => {
           league.contracts[contract.id] = ended;
           join(league, player, team, { ...deal, id: newId(league, 'c') }, 'active', rng);
-          log(league, team, 'promoted', player);
+          log(league, team, 'promoted', player, move.reason);
         }
       });
     } // prettier-ignore
@@ -363,7 +365,7 @@ function plan(league: League, move: Move): Outcome<Plan> {
         }),
         apply: () => {
           league.season.elevations.push({ playerId: player.id, team, week: game.week });
-          log(league, team, 'elevated', player);
+          log(league, team, 'elevated', player, move.reason);
         }
       });
     } // prettier-ignore
@@ -406,7 +408,7 @@ function plan(league: League, move: Move): Outcome<Plan> {
         }),
         apply: () => {
           league.contracts[contract.id] = done.value;
-          log(league, team, 'restructured', player);
+          log(league, team, 'restructured', player, move.reason);
         }
       });
     } // prettier-ignore

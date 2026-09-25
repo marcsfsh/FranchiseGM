@@ -28,6 +28,8 @@ export interface Transaction {
   team: TeamAbbr;
   kind: TransactionKind;
   playerId: string;
+  /** Why, in a phrase ("a knee injury, out 6 weeks"), for news and notifications; absent for the user's moves. */
+  reason?: string;
 }
 
 /** A new ID for a prefix from the league's counters. */
@@ -64,13 +66,22 @@ export function gamesOnReserve(league: League, player: Player): number {
 export const irReturnsUsed = (league: League, abbr: TeamAbbr): number =>
   league.season.transactions.filter(t => t.team === abbr && t.kind === 'activated').length;
 
-/** Logs a roster move in the season's transactions. */
+/** Logs a roster move in the season's transactions, with its reason when one is given. */
 export function recordTransaction(
   league: League,
   team: TeamAbbr,
   kind: TransactionKind,
-  playerId: string
+  playerId: string,
+  reason?: string
 ): void {
   const { season, phase, week } = league.date;
-  league.season.transactions.push({ season, phase, week, team, kind, playerId });
+  league.season.transactions.push({
+    season,
+    phase,
+    week,
+    team,
+    kind,
+    playerId,
+    ...(reason ? { reason } : {})
+  });
 }

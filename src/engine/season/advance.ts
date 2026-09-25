@@ -9,6 +9,8 @@ import { settleIncentives } from '../contracts/moves';
 import { processWaivers, waiverOrder } from '../roster/waivers';
 import { waiverClaims } from '../ai/decisions/roster-moves';
 import { manageWeek } from '../ai/weekly';
+import { depthChanges, startersByTeam, type DepthChange } from '../league/depth-changes';
+import type { RatingChange } from '../progression/change';
 import type { Conference, TeamAbbr } from '../../data/teams';
 import type { League } from '../league/types';
 import type { Phase } from '../model/calendar';
@@ -42,6 +44,12 @@ export interface WeekOutcome {
   inbox: InboxItem[];
   /** New messages that stop a multi-week advance under the user's pause settings. */
   pauses: InboxItem[];
+  /**
+   * Changes with causes, for histories and notifications later (post-M23 and post-M42 sections 1.1):
+   * starters who changed in weekly management, and ratings that moved.
+   */
+  depth: DepthChange[];
+  ratings: RatingChange[];
 }
 
 const touchdowns = (t: TeamTotals): number =>
@@ -140,11 +148,13 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     order,
     (entry, player) => waiverClaims(league, entry, player)
   );
+  const starters = startersByTeam(league);
   const decisions = manageWeek(
     league,
     leagueStream(league.random, 'ai', week),
     stream(league.random.baseSeed, 'ai', season)
   );
+  const depth = depthChanges(league, starters);
   const played = weekGames(league).map(g => playLeagueGame(league, g.id, climate));
   const results = played.map(p => p.result);
   for (const r of results) league.season.results[r.id] = outcome(r, week, playoff);
@@ -155,7 +165,7 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     );
   // The week passes for every player, then this week's injuries start their clocks.
   healWeek(league);
-  applyInjuries(
+  const ratings = applyInjuries(
     league,
     results.flatMap(r => r.injuries),
     season,
@@ -198,6 +208,8 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     news,
     awards,
     inbox,
-    pauses: pausing(inbox, league.settings.pause)
+    pauses: pausing(inbox, league.settings.pause),
+    depth,
+    ratings
   };
 }

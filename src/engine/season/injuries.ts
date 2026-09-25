@@ -5,7 +5,7 @@
 import type { League } from '../league/types';
 import type { Player } from '../model/player';
 import type { RatingKey } from '../model/ratings';
-import { overall } from '../ratings/overall';
+import { changeRatings, type RatingChange } from '../progression/change';
 import type { Rng } from '../rng';
 import type { InjuryEvent, InjurySeverity } from '../sim/types';
 import { TUNING } from '../tuning';
@@ -68,25 +68,26 @@ export function healWeek(league: League): void {
   }
 }
 
-/** Takes a career-altering injury's ratings and recomputes his overall. */
-function alterCareer(player: Player, bodyPart: string, rng: Rng): void {
+/** Takes a career-altering injury's ratings, through the one path every rating change takes. */
+function alterCareer(league: League, player: Player, bodyPart: string, rng: Rng): RatingChange | null {
   const keys = (I.careerRatings as Record<string, readonly string[]>)[bodyPart] ?? [];
-  for (const key of keys) {
-    const k = key as RatingKey;
-    const loss = rng.int(I.careerLoss[0], I.careerLoss[1]);
-    player.ratings[k] = Math.max(0, player.ratings[k] - loss);
-  }
-  player.ovr = overall(player.position, player.ratings);
+  const deltas: Partial<Record<RatingKey, number>> = {};
+  for (const key of keys) deltas[key as RatingKey] = -rng.int(I.careerLoss[0], I.careerLoss[1]);
+  return changeRatings(player, deltas, 'injury', league.date, [{ id: `injury:${bodyPart}`, amount: -1 }]);
 }
 
-/** New injuries from a week's games. A player already hurt keeps the longer of the two. */
+/**
+ * New injuries from a week's games. A player already hurt keeps the longer of the two. Returns the rating
+ * changes career-altering injuries caused.
+ */
 export function applyInjuries(
   league: League,
   events: readonly InjuryEvent[],
   season: number,
   week: number,
   rng: Rng
-): void {
+): RatingChange[] {
+  const changes: RatingChange[] = [];
   for (const e of events) {
     const player = league.players[e.playerId];
     if (!player) continue;
@@ -100,9 +101,13 @@ export function applyInjuries(
       week,
       career: e.severity === 'season' && rng.chance(I.careerChance)
     };
-    if (injury.career) alterCareer(player, e.bodyPart, rng);
+    if (injury.career) {
+      const change = alterCareer(league, player, e.bodyPart, rng);
+      if (change) changes.push(change);
+    }
     const current = player.injury;
     if (!current || injury.weeksOut + injury.lingering >= current.weeksOut + current.lingering)
       player.injury = injury;
   }
+  return changes;
 }
