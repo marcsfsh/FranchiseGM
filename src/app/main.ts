@@ -45,9 +45,16 @@ let app: AppState | null = null;
 let current: Screen | null = null;
 let currentRoute: Route | null = null;
 let first = true;
-/** Where the roster was when a player page opened from it, so returning restores it (style guide 13.5). */
 /** Lists that bring the user back to the same place after a player page (style guide 7.3). */
-const RETURN_ROUTES: ReadonlySet<string> = new Set(['roster', 'depth', 'league', 'leagueTab', 'team', 'game']);
+const RETURN_ROUTES: ReadonlySet<string> = new Set([
+  'roster',
+  'depth',
+  'league',
+  'leagueTab',
+  'team',
+  'game'
+]);
+/** Where the list was when a player page opened from it, so returning restores it (style guide 13.5). */
 let listReturn: { route: string; scroll: number; playerId: string } | null = null;
 /** Waiting for a list that loads after its screen draws, to put the user back in it. */
 let pendingReturn: MutationObserver | null = null;
