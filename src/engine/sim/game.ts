@@ -18,6 +18,7 @@ import type { GameplaySlider, OutputSlider, PenaltySlider } from './sliders';
 import type {
   DriveResult,
   DriveSummary,
+  EjectionEvent,
   GameResult,
   GameSetup,
   InjuryEvent,
@@ -33,14 +34,17 @@ import { isBadWeather } from './weather';
 const S = TUNING.sim;
 const C = S.calls;
 const K = S.clock;
+const B = C.airBands;
 
 const other = (side: Side): Side => (side === 'home' ? 'away' : 'home');
+/** Points for a field goal, which decide when one ties or wins a game. */
+const FIELD_GOAL = 3;
 const sigmoid = (x: number): number => 1 / (1 + Math.exp(-x));
 const logit = (p: number): number => Math.log(p / (1 - p));
 const clamp = (x: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, x));
 
 type Depth = 'short' | 'intermediate' | 'deep' | 'screen';
-type Package = 'base' | 'nickel' | 'dime';
+type Package = 'base' | 'nickel' | 'dime' | 'goalLine';
 type OnField = Map<Slot, SimPlayer>;
 
 interface PassCall {
@@ -111,8 +115,12 @@ const EXTRA_SLOT: Partial<Record<Personnel, OffenseSlot>> = { '10': 'SLOT', '13'
 const PACKAGE_SLOTS: Record<Package, readonly DefenseSlot[]> = {
   base: ['LEDGE', 'REDGE', 'DT1', 'DT2', 'FLEX', 'MIKE', 'WILL', 'CB1', 'CB2', 'FS', 'SS'],
   nickel: ['LEDGE', 'REDGE', 'DT1', 'DT2', 'MIKE', 'WILL', 'CB1', 'CB2', 'NCB', 'FS', 'SS'],
-  dime: ['LEDGE', 'REDGE', 'DT1', 'DT2', 'MIKE', 'CB1', 'CB2', 'NCB', 'DIME', 'FS', 'SS']
+  dime: ['LEDGE', 'REDGE', 'DT1', 'DT2', 'MIKE', 'CB1', 'CB2', 'NCB', 'DIME', 'FS', 'SS'],
+  // Goal line: a third interior lineman (GOAL_LINE_EXTRA) takes the second corner's place.
+  goalLine: ['LEDGE', 'REDGE', 'DT1', 'DT2', 'FLEX', 'MIKE', 'WILL', 'CB1', 'FS', 'SS']
 };
+/** The goal-line package's extra lineman, from deeper in the interior depth chart. */
+const GOAL_LINE_EXTRA = 'DT1+' as Slot;
 /** Who covers each receiving slot, first choice first. */
 const COVERAGE: Record<TargetSlot | 'EXTRA', readonly DefenseSlot[]> = {
   X: ['CB1', 'CB2', 'NCB'],
@@ -125,7 +133,7 @@ const COVERAGE: Record<TargetSlot | 'EXTRA', readonly DefenseSlot[]> = {
   RB2: ['WILL', 'MIKE', 'FLEX'],
   FB: ['MIKE', 'WILL', 'FLEX']
 };
-const FRONT: readonly DefenseSlot[] = ['LEDGE', 'REDGE', 'DT1', 'DT2', 'FLEX'];
+const FRONT: readonly Slot[] = ['LEDGE', 'REDGE', 'DT1', 'DT2', 'FLEX', GOAL_LINE_EXTRA];
 const LINE: readonly OffenseSlot[] = ['LT', 'LG', 'C', 'RG', 'RT'];
 
 const BODY_PARTS: Record<InjurySeverity, readonly string[]> = {
@@ -149,11 +157,13 @@ class GameSim {
   private readonly teams: Record<Side, TeamSetup>;
   private readonly rng: Rng;
   private readonly bad: boolean;
+  private readonly turf: boolean;
   private readonly lines: Record<Side, Record<string, PlayerLine>> = { home: {}, away: {} };
   private readonly totals: Record<Side, TeamTotals> = { home: emptyTotals(), away: emptyTotals() };
   private readonly scoring: ScoringPlay[] = [];
   private readonly drives: DriveSummary[] = [];
   private readonly injuries: InjuryEvent[] = [];
+  private readonly ejections: EjectionEvent[] = [];
   private readonly situations: Record<Side, SituationCounts> = {
     home: { snaps: {}, counts: {} },
     away: { snaps: {}, counts: {} }
@@ -176,6 +186,10 @@ class GameSim {
   private overtime = false;
   private readonly otPossessions: Record<Side, number> = { home: 0, away: 0 };
   private drive: Drive | null = null;
+  /** The game clock runs between plays; incompletions, timeouts, scores, and changes of possession stop it. */
+  private running = false;
+  /** An accepted defensive foul on a period's last play gives the offense an untimed down. */
+  private untimed = false;
   /** Halftime pass-rate adjustments (spec 8.6). */
   private readonly adjust: Record<Side, number> = { home: 0, away: 0 };
   private plays = 0;
@@ -191,19 +205,50 @@ class GameSim {
     this.teams = { home: setup.home, away: setup.away };
     this.rng = rng;
     this.bad = isBadWeather(setup.weather);
+    this.turf = setup.venue.surface === 'turf';
     this.clock = setup.rules.quarterSeconds;
     this.timeouts = { home: setup.rules.timeoutsPerHalf, away: setup.rules.timeoutsPerHalf };
   }
 
-  run(): GameResult {
+  run(from?: GameState): GameResult {
     // The toss winner defers, so the other team receives the opening kickoff.
     const receiver: Side = this.rng.chance(0.5) ? 'home' : 'away';
     this.openingKicker = other(receiver);
-    this.kickoff(this.openingKicker);
+    if (from) this.resume(from);
+    else this.kickoff(this.openingKicker);
     let guard = 0;
     while (!this.over && guard++ < K.maxPlays) this.snap();
     if (!this.over) this.finish();
     return this.result();
+  }
+
+  /** Starts from a game situation instead of the opening kickoff. */
+  private resume(from: GameState): void {
+    const rules = this.setup.rules;
+    this.quarter = from.quarter;
+    this.overtime = from.quarter > 4;
+    this.clock = Math.min(from.clock, this.periodSeconds);
+    this.warned = this.lateHalf() && this.clock <= K.twoMinute;
+    const timeouts = this.overtime ? rules.overtime.timeouts : rules.timeoutsPerHalf;
+    this.timeouts.home = from.timeouts?.home ?? timeouts;
+    this.timeouts.away = from.timeouts?.away ?? timeouts;
+    this.otPossessions.home = from.overtimePossessions?.home ?? 0;
+    this.otPossessions.away = from.overtimePossessions?.away ?? 0;
+    // Earlier points go in the first quarter of the line score.
+    for (const side of ['home', 'away'] as const) {
+      this.score[side] = from.score[side];
+      this.byQuarter[side] = this.overtime ? [from.score[side], 0, 0, 0, 0] : [from.score[side], 0, 0, 0];
+      this.totals[side].points = from.score[side];
+    }
+    if (!from.offense) {
+      const receiver: Side = this.rng.chance(0.5) ? 'home' : 'away';
+      this.kickoff(other(receiver));
+      return;
+    }
+    this.possess(from.offense, from.ball ?? 25);
+    this.down = from.down ?? 1;
+    this.distance = Math.min(from.distance ?? 10, 100 - this.ball);
+    this.running = from.running ?? false;
   }
 
   // ---------------------------------------------------------------------------------------------------
@@ -278,6 +323,8 @@ class GameSim {
     triggers: readonly PlayTrigger[] = []
   ): number {
     let value = player.edges[id] + this.modifier(side, player, slot);
+    // Artificial turf is a little faster (spec 17.2).
+    if (this.turf && (id === 'burst' || id === 'elusive' || id === 'returner')) value += C.turfSpeed;
     if (triggers.length) {
       for (const a of player.abilities) {
         if (!a.triggers.some(t => triggers.includes(t))) continue;
@@ -326,30 +373,58 @@ class GameSim {
     return this.score[this.offense] - this.score[other(this.offense)];
   }
 
-  private get halfSeconds(): number {
-    // Seconds left in the half (or the overtime period).
-    return this.quarter === 1 || this.quarter === 3
-      ? this.clock + this.setup.rules.quarterSeconds
-      : this.clock;
+  /** A regular-season overtime that can end in a tie is a single period (spec 16 rules). */
+  private get singleOvertime(): boolean {
+    return !this.setup.playoff && this.setup.rules.overtime.regularSeasonTies;
   }
 
+  private get periodSeconds(): number {
+    const rules = this.setup.rules;
+    if (this.quarter <= 4) return rules.quarterSeconds;
+    return this.setup.playoff ? rules.overtime.playoffSeconds : rules.overtime.regularSeasonSeconds;
+  }
+
+  /**
+   * Whether this period's end ends a half, overtime, or the game: the second and fourth quarters, and in
+   * overtime a single regular-season period or every second period of a longer one, which pair up like
+   * quarters. The two-minute warning and end-of-half clock management apply only here.
+   */
   private lateHalf(): boolean {
-    return this.quarter === 2 || this.quarter >= 4;
+    if (this.quarter <= 4) return this.quarter === 2 || this.quarter === 4;
+    return this.singleOvertime || (this.quarter - 4) % 2 === 0;
   }
 
-  /** Runs the game clock; stops at the two-minute warning. Returns false if the period ended. */
-  private tick(raw: number): boolean {
+  /** Seconds left in the half (or the pair of overtime periods). */
+  private get halfSeconds(): number {
+    return this.lateHalf() ? this.clock : this.clock + this.periodSeconds;
+  }
+
+  /** The last two minutes of the first half and the last five of the second: the clock stops more. */
+  private lateWindow(): boolean {
+    if (!this.lateHalf()) return false;
+    return this.clock <= (this.quarter === 2 ? K.twoMinute : K.fiveMinutes);
+  }
+
+  private warningPending(): boolean {
+    return this.setup.rules.twoMinuteWarning && this.lateHalf() && !this.warned && this.clock > K.twoMinute;
+  }
+
+  /**
+   * Runs the game clock and credits the time to the offense. The two-minute warning stops it: at 2:00
+   * between plays, or after a play that runs through 2:00. Returns false once the period's time is up.
+   */
+  private tick(raw: number, betweenPlays = false): boolean {
     const seconds = Math.round(raw);
-    if (seconds <= 0) return true;
-    const warnAt = this.setup.rules.twoMinuteWarning && this.lateHalf() && !this.warned ? K.twoMinute : -1;
-    if (this.drive) this.drive.seconds += Math.min(seconds, this.clock);
-    this.totals[this.offense].timeOfPossession += Math.min(seconds, this.clock);
-    if (warnAt > 0 && this.clock > warnAt && this.clock - seconds <= warnAt) {
-      this.clock = Math.max(warnAt, this.clock - seconds) === warnAt ? warnAt : this.clock - seconds;
+    if (seconds <= 0 || this.clock <= 0) return this.clock > 0;
+    const before = this.clock;
+    if (this.warningPending() && this.clock - seconds <= K.twoMinute) {
+      this.clock = betweenPlays ? K.twoMinute : Math.max(0, this.clock - seconds);
       this.warned = true;
-      return this.clock > 0;
-    }
-    this.clock = Math.max(0, this.clock - seconds);
+      this.running = false;
+    } else this.clock = Math.max(0, this.clock - seconds);
+    const used = before - this.clock;
+    if (this.drive) this.drive.seconds += used;
+    this.totals[this.offense].timeOfPossession += used;
     return this.clock > 0;
   }
 
@@ -364,7 +439,6 @@ class GameSim {
       seconds: 0
     };
     this.redZoneCounted = false;
-    if (this.overtime) this.otPossessions[team]++;
   }
 
   private endDrive(result: DriveResult): void {
@@ -380,9 +454,10 @@ class GameSim {
       seconds: d.seconds,
       result
     });
+    // Overtime counts finished possessions: both teams get one before sudden death (spec 16 rules).
+    if (this.overtime) this.otPossessions[d.team]++;
     this.drive = null;
     this.redZoneCounted = false;
-    this.checkOvertime();
   }
 
   /** Gives the ball to a team at a yard line (from its own goal line), first and ten. */
@@ -417,39 +492,56 @@ class GameSim {
     });
   }
 
-  /** After the clock runs out in a period. */
-  private endPeriod(): void {
+  /** Sets up a new half or overtime period: fresh clock, timeouts, and two-minute warning. */
+  private newHalf(quarter: number, timeouts: number): void {
+    this.quarter = quarter;
+    this.clock = this.periodSeconds;
+    this.warned = false;
+    this.running = false;
+    this.timeouts.home = this.timeouts.away = timeouts;
+  }
+
+  /**
+   * The clock ran out in a period. Returns true when play goes on in the same half: a quarter break, where
+   * the teams switch ends and the drive continues. Returns false after halftime, the start of overtime, a
+   * new pair of overtime periods (each of which kicks off), or the end of the game.
+   */
+  private endPeriod(): boolean {
     const rules = this.setup.rules;
-    if (this.quarter === 1 || this.quarter === 3) {
+    const q = this.quarter;
+    if (q === 1 || q === 3 || (q > 4 && !this.lateHalf())) {
       this.quarter++;
-      this.clock = rules.quarterSeconds;
-      return;
+      this.clock = this.periodSeconds;
+      return true;
     }
-    if (this.quarter === 2) {
+    if (q === 2) {
       this.endDrive('endOfHalf');
       this.halftime();
-      this.quarter = 3;
-      this.clock = rules.quarterSeconds;
-      this.warned = false;
-      this.timeouts.home = this.timeouts.away = rules.timeoutsPerHalf;
+      this.newHalf(3, rules.timeoutsPerHalf);
       // The opening kickoff's receiver kicks to start the second half.
       this.kickoff(other(this.openingKicker));
-      return;
+      return false;
     }
-    if (this.quarter === 4 && this.score.home !== this.score.away) return this.finish();
-    if (this.quarter >= 5 && (!this.setup.playoff || this.score.home !== this.score.away))
-      return this.finish();
-    // Overtime: a new period after a coin toss (spec 16 rules).
+    // The end of regulation, a single regular-season overtime, or a pair of longer overtime periods.
+    if ((q === 4 && this.score.home !== this.score.away) || (q > 4 && this.singleOvertime)) {
+      this.finish();
+      return false;
+    }
     this.endDrive('endOfHalf');
-    this.overtime = true;
-    this.quarter++;
-    this.clock = this.setup.playoff ? rules.overtime.playoffSeconds : rules.overtime.regularSeasonSeconds;
-    this.warned = false;
-    this.timeouts.home = this.timeouts.away = rules.overtime.timeouts;
-    if (this.quarter === 5) {
-      const receiver: Side = this.rng.chance(0.5) ? 'home' : 'away';
-      this.kickoff(other(receiver));
+    // A possession cut off by the end of a pair of overtime periods counts as that team's possession.
+    this.overtimeCheck();
+    if (this.over) return false;
+    if (q === 4) {
+      this.overtime = true;
+      // The line score's fifth entry holds overtime for both teams.
+      for (const side of ['home', 'away'] as const)
+        while (this.byQuarter[side].length < 5) this.byQuarter[side].push(0);
     }
+    this.newHalf(q + 1, rules.overtime.timeouts);
+    // A coin toss decides who receives (spec 16 rules).
+    const receiver: Side = this.rng.chance(0.5) ? 'home' : 'away';
+    this.kickoff(other(receiver));
+    return false;
   }
 
   /**
@@ -462,7 +554,7 @@ class GameSim {
       const sum = (k: StatKey) => lines.reduce((total, l) => total + l[k], 0);
       const dropbacks = sum('passAtt') + sum('sacked');
       const runs = sum('rushAtt');
-      if (dropbacks < 5 || runs < 5) continue;
+      if (dropbacks < S.halftimeMinPlays || runs < S.halftimeMinPlays) continue;
       const gap =
         (sum('passYds') - sum('sackYds')) / dropbacks - sum('rushYds') / runs - S.halftimeNeutralGap;
       const skill = this.teams[side].coach.halftime / 100;
@@ -470,12 +562,15 @@ class GameSim {
     }
   }
 
-  private checkOvertime(): void {
-    if (!this.overtime || this.over) return;
-    const both =
-      !this.setup.rules.overtime.bothTeamsPossess ||
-      (this.otPossessions.home > 0 && this.otPossessions.away > 0);
-    if (both && this.score.home !== this.score.away) this.finish();
+  /**
+   * Overtime ends when the scores differ once both teams have had a possession, or at once on a defensive
+   * score (spec 16 rules). Without the both-teams rule, an opening touchdown ends it too.
+   */
+  private overtimeCheck(scoring: { defensive?: boolean; touchdown?: boolean } = {}): void {
+    if (!this.overtime || this.over || this.score.home === this.score.away) return;
+    const both = this.otPossessions.home > 0 && this.otPossessions.away > 0;
+    const sudden = !this.setup.rules.overtime.bothTeamsPossess && scoring.touchdown === true;
+    if (both || scoring.defensive || sudden) this.finish();
   }
 
   private finish(): void {
@@ -493,7 +588,8 @@ class GameSim {
       let w = t.personnel[p];
       const heavy = p === '12' || p === '13' || p === '21' || p === '22';
       if (100 - this.ball <= C.goalLineYards && heavy) w *= C.goalLineHeavy;
-      if ((this.down === 3 && this.distance >= 7) || this.hurry()) w *= heavy ? C.passingDownHeavy : 1;
+      if ((this.down === 3 && this.distance >= C.longYardage) || this.hurry())
+        w *= heavy ? C.passingDownHeavy : 1;
       return w;
     });
     return this.rng.weighted(Object.keys(t.personnel) as Personnel[], weights);
@@ -501,6 +597,8 @@ class GameSim {
 
   private defensePackage(personnel: Personnel): Package {
     const t = this.teams[other(this.offense)].tendencies.defense;
+    const heavy = personnel === '12' || personnel === '13' || personnel === '21' || personnel === '22';
+    if (heavy && 100 - this.ball <= C.goalLineYards && this.rng.chance(C.goalLinePackage)) return 'goalLine';
     const receivers = 5 - Number(personnel[0]) - Number(personnel[1]);
     const factor = C.packageByReceivers[Math.min(4, Math.max(1, receivers)) as 1 | 2 | 3 | 4];
     return this.rng.weighted<Package>(
@@ -522,10 +620,10 @@ class GameSim {
         used.add(p);
       }
     }
-    // A fourth receiver in 10 personnel or a third tight end in 13, from deeper in the depth chart.
+    // A fourth receiver in 10 personnel or a third tight end in 13: the next one on the depth chart.
     const extra = EXTRA_SLOT[personnel];
     if (extra) {
-      const p = this.pick(offense, extra, used, 1);
+      const p = this.pick(offense, extra, used);
       if (p) {
         off.set(`${extra}+` as Slot, p);
         used.add(p);
@@ -539,6 +637,10 @@ class GameSim {
         def.set(slot, p);
         dUsed.add(p);
       }
+    }
+    if (pkg === 'goalLine') {
+      const p = this.pick(other(offense), 'DT1', dUsed);
+      if (p) def.set(GOAL_LINE_EXTRA, p);
     }
     this.field = offense === 'home' ? { home: off, away: def } : { home: def, away: off };
   }
@@ -556,7 +658,7 @@ class GameSim {
         if (onField.has(p)) {
           const cost =
             S.fatigue[POSITION_GROUP[p.position]] *
-            (1.5 - p.stamina / 100) *
+            (S.staminaBase - p.stamina / 100) *
             (1 + heat * S.heatFatigue + hurry + altitude);
           p.energy = Math.max(0, p.energy - cost);
           this.line(side, p)[side === this.offense ? 'snapsOffense' : 'snapsDefense']++;
@@ -580,14 +682,16 @@ class GameSim {
   // ---------------------------------------------------------------------------------------------------
   // Decisions (spec 8.6)
 
+  /** The two-minute offense: late in the first half, or late in the game while behind or tied. */
   private hurry(): boolean {
-    const q = this.quarter;
-    if (q === 2 && this.clock <= C.hurryHalfSeconds) return true;
-    return q >= 4 && this.margin < 0 && this.clock <= C.hurrySeconds;
+    if (!this.lateHalf()) return false;
+    if (this.quarter === 2) return this.clock <= C.hurryHalfSeconds;
+    if (this.margin < 0) return this.clock <= C.hurrySeconds;
+    return this.margin === 0 && this.clock <= C.hurryHalfSeconds;
   }
 
   private milking(): boolean {
-    return this.quarter >= 4 && this.margin > 0 && this.clock <= C.milkSeconds;
+    return this.quarter >= 4 && this.lateHalf() && this.margin > 0 && this.clock <= C.milkSeconds;
   }
 
   private fgDistance(): number {
@@ -601,11 +705,19 @@ class GameSim {
   private fgRange(): boolean {
     const k = this.kicker(this.offense);
     const bonus = k ? k.edges.kickPower * C.rangePerPoint : 0;
-    const altitude = this.setup.weather.altitudeFt >= K.altitudeFt ? C.altitudeRange : 0;
-    return (
-      this.fgDistance() <=
-      S.fgMaxDistance + bonus + altitude - (this.setup.weather.windMph >= 20 ? C.windRangeLoss : 0)
-    );
+    const w = this.setup.weather;
+    const altitude = w.altitudeFt >= K.altitudeFt ? C.altitudeRange : 0;
+    const wind = !w.indoor && w.windMph >= C.windRangeMph ? C.windRangeLoss : 0;
+    return this.fgDistance() <= S.fgMaxDistance + bonus + altitude - wind;
+  }
+
+  /**
+   * As a half or the game runs out, an offense in range plays for the last kick: always before halftime,
+   * and at the end of the game (or overtime) when a field goal ties or wins it.
+   */
+  private wantsLastKick(): boolean {
+    if (!this.lateHalf() || !this.fgRange()) return false;
+    return this.quarter === 2 || (this.margin >= -FIELD_GOAL && this.margin <= 0);
   }
 
   /** Fourth down: go for it, kick a field goal, or punt (spec 8.3 step 2). */
@@ -615,20 +727,26 @@ class GameSim {
     const deficit = -this.margin;
     const range = this.fgRange();
     const seconds = this.halfSeconds;
+    if (this.wantsLastKick() && this.clock <= C.endHalfFgSeconds) return 'fg';
+    // Behind in overtime, a punt loses the game: kick only if a field goal ties or wins it.
+    if (this.overtime && deficit > 0) return range && deficit <= FIELD_GOAL ? 'fg' : 'go';
     if (late && deficit > 0) {
       // Behind late: a field goal only helps if it ties or wins; otherwise keep the drive alive.
-      if (range && deficit <= 3) return 'fg';
+      if (range && deficit <= FIELD_GOAL) return 'fg';
       if (seconds <= C.desperationSeconds) return 'go';
-      if (deficit > 8 && seconds <= C.desperationSeconds * 2 && this.distance <= 5) return 'go';
+      if (deficit > C.oneScore && seconds <= C.desperationSeconds * 2 && this.distance <= C.desperationYards)
+        return 'go';
     }
-    if (this.quarter === 2 && this.clock <= C.endHalfFgSeconds && range) return 'fg';
+    // Sudden death: any field goal wins.
+    if (this.overtime && deficit === 0 && range && this.otPossessions.home > 0 && this.otPossessions.away > 0)
+      return 'fg';
     const goal = 100 - this.ball;
     const index = this.distance <= 1 ? 0 : this.distance <= 2 ? 1 : this.distance <= 5 ? 2 : 3;
     const plus = this.ball >= 50;
     let go = (plus ? S.goRate : S.goRateOwnHalf)[index] as number;
-    go *= 0.6 + (coach.aggressiveness / 100) * 0.8;
+    go *= C.goAggressionBase + (coach.aggressiveness / 100) * C.goAggressionSpread;
     if (late && this.margin > 0) go *= C.leadingGoFactor;
-    if (goal <= this.distance && goal <= 2) go = Math.max(go, C.goalLineGo);
+    if (goal <= this.distance && goal <= C.goalLineGoYards) go = Math.max(go, C.goalLineGo);
     if (this.rng.chance(clamp(go, 0, 1))) return 'go';
     if (!range) return 'punt';
     // Long tries depend on the kicker's leg; otherwise the coach punts to pin the other team deep.
@@ -637,7 +755,15 @@ class GameSim {
     const k = this.kicker(this.offense);
     const tryLong =
       1 - (distance - C.fgRoutine) * C.fgFadePerYard + (k ? k.edges.kickPower * C.fgPowerShare : 0);
-    return this.rng.chance(clamp(tryLong, 0.05, 0.95)) ? 'fg' : 'punt';
+    return this.rng.chance(clamp(tryLong, C.fgLongTry[0], C.fgLongTry[1])) ? 'fg' : 'punt';
+  }
+
+  /** Fakes a punt or field goal now and then on fourth and short (spec 8.6: coaching aggressiveness). */
+  private fakes(kind: 'punt' | 'fg'): boolean {
+    if (this.distance > C.fakeMaxDistance || this.lateWindow()) return false;
+    const coach = this.teams[this.offense].coach;
+    const base = kind === 'punt' ? C.fakePunt : C.fakeFieldGoal;
+    return this.rng.chance(base * (C.goAggressionBase + (coach.aggressiveness / 100) * C.goAggressionSpread));
   }
 
   // ---------------------------------------------------------------------------------------------------
@@ -645,6 +771,7 @@ class GameSim {
 
   private snap(): void {
     if (this.over) return;
+    this.untimed = false;
     const off = this.offense;
     const def = other(off);
     this.contexts = this.currentContexts();
@@ -653,19 +780,23 @@ class GameSim {
       this.totals[off].redZoneTrips++;
     }
 
-    // End of half or game: kneel with the lead, or try the field goal with the clock expiring.
+    // End of a half or the game: kneel with the lead, or set up and take the last kick.
     if (this.shouldKneel()) return this.kneel();
     if (this.down === 4) {
       const choice = this.fourthDown();
-      if (choice === 'punt') return this.punt();
-      if (choice === 'fg') return this.fieldGoal();
-    } else if (
-      this.lateHalf() &&
-      this.clock <= C.lastSecondsFg &&
-      this.fgRange() &&
-      (this.quarter === 2 || this.margin >= -3)
-    ) {
-      return this.fieldGoal();
+      if (choice === 'punt') return this.fakes('punt') ? this.fakeKick() : this.punt();
+      if (choice === 'fg') return this.fakes('fg') ? this.fakeKick() : this.fieldGoal();
+    } else if (this.wantsLastKick()) {
+      // With the clock stopped, kick when time is short (or after the spike, with no timeouts left); with it
+      // running and no timeouts, spike it first.
+      const noTimeouts = this.timeouts[off] === 0;
+      const kickNow = this.clock <= (noTimeouts ? C.spikeSeconds : C.fgNowSeconds);
+      if (!this.running && kickNow) return this.fieldGoal();
+      if (this.running && this.clock <= C.spikeSeconds) {
+        if (noTimeouts) return this.spike();
+        this.timeout(off);
+        return this.fieldGoal();
+      }
     }
 
     const personnel = this.personnel();
@@ -674,25 +805,32 @@ class GameSim {
     const call = this.callPlay();
     const dcall = this.defenseCall();
 
-    // Pre-snap fouls (spec 8.3 step 6): the play doesn't happen.
-    const pre = this.preSnapFoul(off, def);
-    if (pre) return;
+    // Pre-snap fouls (spec 8.3 step 6): the play doesn't happen. A running clock restarts on the ready
+    // signal, except late in a half, where it waits for the snap.
+    if (this.preSnapFoul(off, def)) return this.nextSnap(!this.running || this.lateWindow());
 
     const startBall = this.ball;
     const down = this.down;
     const distance = this.distance;
+    this.running = true;
     this.buffer = [];
     const outcome = call.kind === 'pass' ? this.pass(call, dcall) : this.rush(call, dcall);
     this.plays++;
     this.wear();
+    this.tick(this.playSeconds());
 
     const foul = this.liveFoul(call, outcome);
     const verdict = foul ? this.enforce(foul, outcome, startBall, down, distance) : 'stands';
     this.injuryCheck(outcome);
+    // A period can't end on an accepted defensive foul: the offense gets an untimed down.
+    if (foul && verdict !== 'stands' && foul.side === def && this.clock <= 0) this.untimed = true;
+    // After an accepted foul the clock restarts on the ready signal, unless the play stopped it anyway
+    // or it's late in a half.
+    const foulStops = outcome.stops || this.lateWindow();
     if (verdict === 'wiped') {
       this.discard();
       if (this.down > 4) return this.turnoverOnDowns();
-      return this.afterPlay(true, K.penaltySeconds);
+      return this.nextSnap(foulStops);
     }
     // Plays wiped by a penalty don't count as plays from scrimmage.
     this.totals[off].plays++;
@@ -706,9 +844,14 @@ class GameSim {
       this.ball = Math.min(99, this.ball + yards);
       if (this.drive) this.drive.yards += yards;
       this.firstDown('penalty');
-      return this.afterPlay(true, K.penaltySeconds);
+      return this.nextSnap(foulStops);
     }
     this.apply(outcome, startBall, down, distance);
+  }
+
+  /** Game seconds a scrimmage play takes. */
+  private playSeconds(): number {
+    return K.playSeconds[0] + this.rng.float() * (K.playSeconds[1] - K.playSeconds[0]);
   }
 
   private currentContexts(): ContextTrigger[] {
@@ -716,41 +859,97 @@ class GameSim {
     if (this.ball >= 80) out.push('redZone');
     if (this.down === 3) out.push('thirdDown');
     if (this.lateHalf() && this.clock <= K.twoMinute) out.push('twoMinute');
-    if (this.quarter >= 4 && Math.abs(this.margin) <= 8) out.push('lateAndClose');
+    if (this.quarter >= 4 && Math.abs(this.margin) <= C.oneScore) out.push('lateAndClose');
     if (this.bad) out.push('badWeather');
     return out;
   }
 
+  /** Seconds the offense lets run between snaps when it wants the clock to run: nearly the whole play clock. */
+  private get fullRunoff(): number {
+    return this.setup.rules.playClock - K.playClockMargin;
+  }
+
   /**
-   * Victory formation: with the lead late in the game and too little time for the defense to get the ball
-   * back, or at the end of the first half deep in its own territory.
+   * Victory formation: with the lead late in the game when kneeling runs out the clock, or at the end of
+   * the first half in the offense's own territory. Each kneel takes a couple of seconds, and the clock runs
+   * the play clock between them unless the defense stops it with a timeout or the two-minute warning does.
    */
   private shouldKneel(): boolean {
+    if (this.down > 4) return false;
     if (this.quarter === 2) return this.clock <= C.kneelHalfSeconds && this.ball < 50 && this.down < 4;
-    if (this.quarter < 4 || this.margin <= 0) return false;
-    const defTimeouts = this.timeouts[other(this.offense)];
-    const snapsLeft = 4 - this.down;
-    // The clock runs 40 seconds after each kneel unless the defense stops it with a timeout.
-    const canBurn = snapsLeft * K.kneelSeconds - defTimeouts * K.kneelSeconds + K.kneelPlaySeconds;
-    return this.down < 4 ? this.clock <= canBurn + K.kneelSeconds : this.clock <= K.kneelPlaySeconds + 1;
+    if (this.quarter < 4 || !this.lateHalf() || this.margin <= 0) return false;
+    const stops = this.timeouts[other(this.offense)] + (this.warningPending() ? 1 : 0);
+    const kneels = 5 - this.down;
+    const canBurn = kneels * K.kneelPlaySeconds + Math.max(0, kneels - 1 - stops) * this.fullRunoff;
+    return this.clock <= canBurn;
   }
 
   private kneel(): void {
-    const qb = this.pick(this.offense, 'QB', new Set());
+    const off = this.offense;
+    const qb = this.pick(off, 'QB', new Set());
     this.plays++;
-    this.totals[this.offense].plays++;
+    this.totals[off].plays++;
     if (this.drive) this.drive.plays++;
-    this.add(this.offense, qb, 'rushAtt');
-    this.add(this.offense, qb, 'rushYds', -1);
+    this.add(off, qb, 'rushAtt');
+    this.add(off, qb, 'rushYds', -1);
     this.ball = Math.max(1, this.ball - 1);
     this.down++;
     this.distance++;
     if (this.drive) this.drive.yards -= 1;
-    const defense = other(this.offense);
-    if (!this.tick(K.kneelPlaySeconds)) return this.endPeriod();
-    if (this.quarter >= 4 && this.timeouts[defense] > 0 && this.margin <= 16) this.timeouts[defense]--;
-    else if (!this.tick(K.kneelSeconds)) return this.endPeriod();
-    if (this.down > 4) return this.turnoverOnDowns();
+    this.running = true;
+    this.tick(K.kneelPlaySeconds);
+    if (this.down > 4 && this.clock > 0) return this.turnoverOnDowns();
+    this.nextSnap(false);
+  }
+
+  /** Spikes the ball to stop the clock: an incomplete pass that costs a down. */
+  private spike(): void {
+    const off = this.offense;
+    const qb = this.pick(off, 'QB', new Set());
+    this.plays++;
+    this.totals[off].plays++;
+    if (this.drive) this.drive.plays++;
+    this.add(off, qb, 'passAtt');
+    this.down++;
+    this.running = true;
+    this.tick(K.spikePlaySeconds);
+    this.nextSnap(true);
+  }
+
+  /**
+   * A fake punt or field goal: the up back or holder runs for it (credited to the punter, who holds for
+   * kicks). It converts at the tuning rate; a stop turns the ball over on downs.
+   */
+  private fakeKick(): void {
+    const off = this.offense;
+    const runner = this.pick(off, 'P', new Set()) ?? this.pick(off, 'RB1', new Set());
+    const start = this.ball;
+    const down = this.down;
+    const distance = this.distance;
+    this.plays++;
+    this.totals[off].plays++;
+    if (this.drive) this.drive.plays++;
+    const converted = this.rng.chance(C.fakeSuccess);
+    const extra = Math.round(-Math.log(1 - this.rng.float()) * C.fakeExtraYards);
+    const yards = Math.min(
+      100 - start,
+      converted ? distance + extra : Math.floor(this.rng.float() * distance)
+    );
+    this.add(off, runner, 'rushAtt');
+    this.add(off, runner, 'rushYds', yards);
+    this.long(off, runner, 'rushLong', yards);
+    this.running = true;
+    this.tick(this.playSeconds());
+    this.apply(
+      {
+        yards, stops: false, turnover: null, returnYards: 0, sack: false, kind: 'run', incomplete: false, air: 0,
+        ballCarrier: runner, passer: null, tackler: null, covering: null, pressured: false, throwAway: false,
+        description: `Fake ${runner?.short ?? 'kick'} runs for ${yards}`
+      },
+      start,
+      down,
+      distance
+    ); // prettier-ignore
   }
 
   private callPlay(): Call {
@@ -759,7 +958,7 @@ class GameSim {
     let pass = t.passRate[DOWN_BUCKETS(this.down, this.distance)] + team.lean + this.adjust[this.offense];
     const goal = 100 - this.ball;
     const deficit = -this.margin;
-    if (this.quarter >= 4 && deficit > 3 && this.clock <= C.lateTrailingSeconds)
+    if (this.quarter >= 4 && deficit > FIELD_GOAL && this.clock <= C.lateTrailingSeconds)
       pass = Math.max(pass, C.lateTrailingPass);
     else if (this.quarter >= 4 && deficit > 0 && this.clock <= C.hurrySeconds)
       pass = Math.max(pass, C.lateTrailingPass);
@@ -775,9 +974,10 @@ class GameSim {
     pass = clamp((pass * pv) / (pass * pv + (1 - pass) * rv), 0.02, 0.98);
     if (this.rng.chance(pass)) {
       let deep = t.deepShots * (this.quarter >= 4 && deficit > 7 ? C.deepLateBoost : 1);
-      if (this.down === 3 && this.distance <= 4) deep *= C.deepShortYardage;
+      if (this.down === 3 && this.distance <= C.shortYardage) deep *= C.deepShortYardage;
       if (goal < 20) deep = 0;
-      const screen = this.down === 3 && this.distance >= 7 ? t.screen * C.screenThirdLong : t.screen;
+      const screen =
+        this.down === 3 && this.distance >= C.longYardage ? t.screen * C.screenThirdLong : t.screen;
       const r = this.rng.float();
       const depth: Depth =
         r < screen
@@ -961,7 +1161,9 @@ class GameSim {
     const yards = -Math.min(
       this.ball - 0,
       Math.round(
-        C.sackYards[0] + this.rng.float() * (C.sackYards[1] - C.sackYards[0]) + this.rng.normal(0, 1)
+        C.sackYards[0] +
+          this.rng.float() * (C.sackYards[1] - C.sackYards[0]) +
+          this.rng.normal(0, C.sackSpread)
       )
     );
     this.add(off, qb, 'sacked');
@@ -1007,7 +1209,10 @@ class GameSim {
     const mean = Math.max(C.scrambleMin, S.scrambleMean + burst * C.scrambleBurst);
     const yards = Math.min(
       100 - this.ball,
-      Math.max(C.scrambleFloor, Math.round(this.rng.normal(0, 2) + -Math.log(1 - this.rng.float()) * mean))
+      Math.max(
+        C.scrambleFloor,
+        Math.round(this.rng.normal(0, C.scrambleSpread) + -Math.log(1 - this.rng.float()) * mean)
+      )
     );
     this.add(off, qb, 'rushAtt');
     this.add(off, qb, 'rushYds', yards);
@@ -1020,18 +1225,12 @@ class GameSim {
       yards,
       kind: 'run',
       incomplete: false,
-      stops: oob && this.oobStops(),
+      stops: oob && this.lateWindow(),
       ballCarrier: qb,
       tackler,
       pressured: true,
       description: `${qb.short} scrambles for ${yards}`
     };
-  }
-
-  private oobStops(): boolean {
-    return (
-      (this.quarter === 2 && this.clock <= K.twoMinute) || (this.quarter >= 4 && this.clock <= K.fiveMinutes)
-    );
   }
 
   private tacklerFor(slots: readonly DefenseSlot[]): SimPlayer | null {
@@ -1080,11 +1279,13 @@ class GameSim {
           : -C.uncovered;
       const press =
         dcall.man && defender && this.rng.chance(this.teams[def].tendencies.defense.press)
-          ? C.pressWeight * (r.player.edges.routeShort - defender.edges.manCover) * 0.1
+          ? C.pressWeight * (r.player.edges.routeShort - defender.edges.manCover)
           : 0;
+      const reaction = (this.slider(def, 'passDefenseReaction') - 1) * C.sliderPoints;
       const sep =
         route -
-        cover +
+        cover -
+        reaction +
         press +
         (call.playAction ? C.playActionSeparation : 0) +
         (dcall.blitz ? C.blitzSeparation : 0) -
@@ -1122,7 +1323,9 @@ class GameSim {
       ...(pressured ? (['facingBlitz'] as const) : [])
     ];
     // Play-action bootlegs move the quarterback out of the pocket to throw on the run.
-    const bootleg = call.playAction && this.rng.chance(C.bootlegShare);
+    const bootleg =
+      call.playAction &&
+      this.rng.chance(C.bootlegShare + C.bootlegPerOutsideZone * t.runConcepts.outsideZone);
     if (bootleg) {
       qbTriggers.push('outsidePocket');
       this.note(off, 'QB', 'outsidePocket');
@@ -1176,7 +1379,8 @@ class GameSim {
       sigmoid(
         logit(S.completion[depthKey]) + S.edge.completion * acc + S.edge.separation * target.sep + C.handsWeight * hands +
           (pressured ? S.pressureCompletion : 0) +
-          (this.ball >= 80 ? C.redZoneCompletion : 0) + wetLogit + windLogit + (call.playAction ? C.playActionLogit : 0) +
+          (this.ball >= 80 ? C.redZoneCompletion + (this.output('scoring') - 1) * C.sliderLogit : 0) +
+          wetLogit + windLogit + (call.playAction ? C.playActionLogit : 0) +
           (this.slider(off, 'qbAccuracy') - 1) * C.sliderLogit + (this.slider(off, 'wrCatching') - 1) * C.sliderLogit -
           (this.slider(def, 'passCoverage') - 1) * C.sliderLogit + (this.output('passingEfficiency') - 1) * C.sliderLogit
       ); // prettier-ignore
@@ -1263,7 +1467,7 @@ class GameSim {
     }
     const oob = this.rng.chance(S.outOfBoundsCatch);
     return {
-      ...base, yards, incomplete: false, stops: touchdown || (oob && this.oobStops()), air, ballCarrier: rec, tackler: tacklePlayer,
+      ...base, yards, incomplete: false, stops: touchdown || (oob && this.lateWindow()), air, ballCarrier: rec, tackler: tacklePlayer,
       covering: defender, pressured, description: `${qb.short} pass to ${rec.short} for ${yards}`
     }; // prettier-ignore
   }
@@ -1273,11 +1477,11 @@ class GameSim {
       case 'screen':
         return Math.round(S.screenAir[0] + this.rng.float() * (S.screenAir[1] - S.screenAir[0]));
       case 'short':
-        return 1 + (Math.floor(-Math.log(1 - this.rng.float()) * S.airShortMean) % 9);
+        return 1 + (Math.floor(-Math.log(1 - this.rng.float()) * S.airShortMean) % (B.intermediate - 1));
       case 'intermediate':
-        return 10 + Math.floor(this.rng.float() * 10);
+        return B.intermediate + Math.floor(this.rng.float() * (B.deep - B.intermediate));
       default:
-        return 20 + Math.round(-Math.log(1 - this.rng.float()) * S.airDeepMean);
+        return B.deep + Math.round(-Math.log(1 - this.rng.float()) * S.airDeepMean);
     }
   }
 
@@ -1351,7 +1555,7 @@ class GameSim {
     block /= Math.max(1, count);
     let stop = 0;
     let dcount = 0;
-    const box: DefenseSlot[] = ['LEDGE', 'REDGE', 'DT1', 'DT2', 'FLEX', 'MIKE', 'WILL', 'SS'];
+    const box: Slot[] = ['LEDGE', 'REDGE', 'DT1', 'DT2', 'FLEX', GOAL_LINE_EXTRA, 'MIKE', 'WILL', 'SS'];
     for (const slot of box) {
       const p = this.at(def, slot);
       if (!p) continue;
@@ -1364,15 +1568,13 @@ class GameSim {
     const light = (this.field[def].has('NCB') ? 1 : 0) + (this.field[def].has('DIME') ? 1 : 0);
     const runFit = this.teams[def].tendencies.defense.runFit;
     const net =
-      block -
-      stop +
-      ((light * S.lightBox) / S.blockYardsPerPoint) * 0.1 +
-      (this.slider(off, 'runBlocking') - 1) * C.sliderPoints;
+      block - stop + light * C.lightBoxPoints + (this.slider(off, 'runBlocking') - 1) * C.sliderPoints;
     const cohesionOff =
       this.teams[off].cohesion.offense.execution * this.setup.sliders.general.cohesionEffect;
     const pStuff = sigmoid(
       logit(S.stuff) +
-        (100 - this.ball <= 5 ? C.goalLineStuff : 0) -
+        (100 - this.ball <= C.goalLineStuffYards ? C.goalLineStuff : 0) -
+        (this.ball >= 80 ? (this.output('scoring') - 1) * C.sliderLogit : 0) -
         S.edge.stuff * net +
         (runFit - 0.5) * C.penetrationLogit * (zone ? 1 : 0.5) -
         cohesionOff * C.cohesionLogit
@@ -1410,7 +1612,7 @@ class GameSim {
       let g = 0;
       for (let i = 0; i < Math.round(shape); i++) g -= Math.log(1 - this.rng.float());
       yards = Math.round((g / Math.round(shape)) * mean) + (this.rng.float() < 0.5 ? 0 : -1) + 1;
-      if (yards <= 2 && zone) this.note(off, carrierSlot, 'contactAtLine');
+      if (yards <= C.contactAtLineYards && zone) this.note(off, carrierSlot, 'contactAtLine');
       // Outside runs that turn the corner put the back in space.
       if (!inside && yards >= C.edgeYards) this.note(off, carrierSlot, 'openField');
       const pursuers: DefenseSlot[] = ['MIKE', 'WILL', 'SS', 'FS', 'NCB', 'CB1', 'CB2'];
@@ -1477,11 +1679,11 @@ class GameSim {
         };
       }
     }
-    const oob = this.rng.chance(S.outOfBoundsRun * (inside ? 0.5 : 1.6));
+    const oob = this.rng.chance(S.outOfBoundsRun * (inside ? C.outOfBoundsInside : C.outOfBoundsOutside));
     return {
       ...base,
       yards,
-      stops: touchdown || (oob && this.oobStops()),
+      stops: touchdown || (oob && this.lateWindow()),
       tackler,
       description: `${carrier.short} runs for ${yards}`
     };
@@ -1522,8 +1724,11 @@ class GameSim {
     });
   }
 
-  /** Charges a foul to a player (never wiped with the play). */
-  private charge(side: Side, players: readonly SimPlayer[], yards: number): void {
+  /**
+   * Charges a foul to a player (never wiped with the play). A flagrant personal foul, when the rules make
+   * the foul ejection-eligible, sends him to the locker room for the rest of the game (spec 16).
+   */
+  private charge(side: Side, players: readonly SimPlayer[], id: PenaltyId, yards: number): void {
     if (!players.length) return;
     const who = players[
       this.rng.weightedIndex(players.map(p => S.discipline[p.traits.penalty]))
@@ -1531,6 +1736,16 @@ class GameSim {
     const l = this.line(side, who);
     l.penalties++;
     l.penaltyYds += yards;
+    if (this.setup.rules.penalties[id].ejectionEligible && !who.out && this.rng.chance(C.ejectionShare)) {
+      who.out = true;
+      this.returning.delete(who);
+      this.ejections.push({
+        playerId: who.id,
+        team: this.teams[side].abbr,
+        quarter: this.quarter,
+        penalty: id
+      });
+    }
   }
 
   /** Half the distance to the goal when the yardage would reach past it. */
@@ -1538,7 +1753,10 @@ class GameSim {
     return Math.min(yards, Math.floor((towardOwnGoal ? from : 100 - from) / 2));
   }
 
-  /** Dead-ball fouls before the snap. Returns true when one happened (the play doesn't). */
+  /**
+   * Dead-ball fouls before the snap, the ones the rule set marks pre-snap. Returns true when one happened
+   * (the play doesn't).
+   */
   private preSnapFoul(off: Side, def: Side): boolean {
     const R = S.penaltyRates;
     const rules = this.setup.rules.penalties;
@@ -1557,10 +1775,10 @@ class GameSim {
       ['illegalFormation', off, offense, this.foulRate(R.illegalFormation, off, offense, null)]
     ];
     for (const [id, side, players, rate] of options) {
-      if (!this.rng.chance(rate)) continue;
+      if (!rules[id].preSnap || !this.rng.chance(rate)) continue;
       const againstOffense = side === off;
       const yards = this.enforceYards(rules[id].yards, againstOffense);
-      this.charge(side, players, yards);
+      this.charge(side, players, id, yards);
       if (this.drive) this.drive.yards += againstOffense ? -yards : yards;
       if (againstOffense) {
         this.ball -= yards;
@@ -1575,7 +1793,7 @@ class GameSim {
     return false;
   }
 
-  /** A live-ball foul during the play, if any. */
+  /** A live-ball foul during the play, if any (fouls the rule set marks pre-snap happen before it). */
   private liveFoul(
     call: Call,
     outcome: PlayOutcome
@@ -1590,6 +1808,13 @@ class GameSim {
     const covering = outcome.covering ? [outcome.covering] : secondary;
     const receiver = outcome.ballCarrier ? [outcome.ballCarrier] : [];
     const options: [PenaltyId, Side, SimPlayer[], number][] = [];
+    const formation = this.unit(off, [...LINE, 'TE1', 'TE2', 'X', 'Z', 'SLOT']);
+    options.push([
+      'illegalFormation',
+      off,
+      formation,
+      this.foulRate(R.illegalFormation, off, formation, null)
+    ]);
     if (call.kind === 'pass') {
       options.push([
         'offensiveHolding',
@@ -1604,7 +1829,8 @@ class GameSim {
           [outcome.passer],
           S.groundingGivenThrowAway * this.penaltySlider(off, 'intentionalGrounding')
         ]);
-      if (!outcome.sack && !outcome.throwAway) {
+      // Coverage fouls need a thrown ball, not a sack, throwaway, or scramble.
+      if (outcome.kind === 'pass' && !outcome.sack && !outcome.throwAway) {
         options.push([
           'defensivePassInterference',
           def,
@@ -1659,7 +1885,9 @@ class GameSim {
       everyone,
       this.foulRate(R.unsportsmanlikeConduct, def, everyone, null)
     ]);
-    for (const [id, side, players, rate] of options) if (this.rng.chance(rate)) return { id, side, players };
+    const rules = this.setup.rules.penalties;
+    for (const [id, side, players, rate] of options)
+      if (!rules[id].preSnap && this.rng.chance(rate)) return { id, side, players };
     return null;
   }
 
@@ -1680,13 +1908,13 @@ class GameSim {
     const gained = outcome.yards;
     const scored = !outcome.turnover && start + gained >= 100;
     if (foul.side === off) {
-      // The defense declines when the play already went worse for the offense, or on third down
-      // when declining brings up fourth down.
+      // The defense declines when the play already went worse for the offense, or when declining brings
+      // up fourth down or turns the ball over on downs.
       const yards = this.enforceYards(rule.yards, true, start);
       const failed = gained < distance;
-      if (outcome.turnover || outcome.sack || gained <= -yards || (down === 3 && failed && !rule.lossOfDown))
+      if (outcome.turnover || outcome.sack || gained <= -yards || (down >= 3 && failed && !rule.lossOfDown))
         return 'stands';
-      this.charge(off, foul.players, yards);
+      this.charge(off, foul.players, foul.id, yards);
       this.ball = start - yards;
       this.down = down + (rule.lossOfDown ? 1 : 0);
       this.distance = distance + yards;
@@ -1702,7 +1930,7 @@ class GameSim {
     if (personal && !outcome.turnover && !scored && gained >= 0) {
       const end = start + gained;
       const yards = this.enforceYards(rule.yards, false, end);
-      this.charge(foul.side, foul.players, yards);
+      this.charge(foul.side, foul.players, foul.id, yards);
       return 'added';
     }
     // Otherwise the offense takes the better of the play and the penalty from the previous spot.
@@ -1712,7 +1940,7 @@ class GameSim {
     const playBetter =
       !outcome.turnover && (scored || (gained >= yards && (gained >= distance || !rule.automaticFirstDown)));
     if (playBetter) return 'stands';
-    this.charge(foul.side, foul.players, yards);
+    this.charge(foul.side, foul.players, foul.id, yards);
     this.ball = Math.min(99, start + yards);
     this.down = down;
     this.distance = distance;
@@ -1745,14 +1973,15 @@ class GameSim {
 
     if (outcome.turnover) {
       const spot = start + (outcome.turnover === 'interception' ? outcome.air : outcome.yards);
-      // An interception in the end zone is a touchback unless the return gets past the 20.
+      // An interception in the end zone is a touchback unless the return gets past the touchback line.
+      const touchback = this.setup.rules.touchback;
       const defBall =
         spot >= 100
-          ? outcome.returnYards >= 20
-            ? outcome.returnYards
-            : 20
+          ? Math.max(outcome.returnYards, touchback)
           : 100 - clamp(spot, 1, 99) + outcome.returnYards;
       this.endDrive(outcome.turnover === 'interception' ? 'interception' : 'fumble');
+      this.overtimeCheck();
+      if (this.over) return;
       if (defBall >= 100) {
         const scorer = outcome.turnover === 'interception' ? outcome.covering : outcome.tackler;
         this.add(def, scorer, outcome.turnover === 'interception' ? 'defIntTd' : 'fumbleReturnTd');
@@ -1765,7 +1994,7 @@ class GameSim {
         return;
       }
       this.possess(def, Math.max(1, defBall));
-      this.afterPlay(true, 0);
+      this.nextSnap(true);
       return;
     }
 
@@ -1807,93 +2036,114 @@ class GameSim {
         return;
       }
     }
-    this.afterPlay(outcome.stops, 0);
+    this.nextSnap(outcome.stops);
   }
 
-  /** Clock after a play: the play's time, then (if the clock runs) the time before the next snap. */
-  private afterPlay(stops: boolean, extra: number): void {
+  /**
+   * Between plays (spec 8.3 step 8): the period ends if its time is up (unless an untimed down is owed);
+   * otherwise, if the clock is running, a timeout may stop it, or it runs until the next snap.
+   */
+  private nextSnap(stops: boolean): void {
     if (this.over) return;
-    const played = K.playSeconds[0] + this.rng.float() * (K.playSeconds[1] - K.playSeconds[0]) + extra;
-    if (!this.tick(played)) return this.endPeriod();
-    if (stops || this.over) return;
-    // Timeouts late in a half (spec 8.3 step 2: timeouts and clock management).
+    if (stops) this.running = false;
+    if (this.clock <= 0) {
+      if (!this.untimed) this.endPeriod();
+      return;
+    }
+    if (!this.running) return;
     const off = this.offense;
     const def = other(off);
-    if (this.lateHalf() && this.timeouts[off] > 0 && this.wantsOffenseTimeout()) {
-      this.timeouts[off]--;
-      return;
-    }
-    // A defense behind late stops the clock to get the ball back with time left.
-    if (
-      this.quarter >= 4 &&
-      this.timeouts[def] > 0 &&
-      this.margin >= 0 &&
-      this.margin <= 16 &&
-      this.clock <= C.defenseTimeoutSeconds
-    ) {
-      this.timeouts[def]--;
-      return;
-    }
+    if (this.timeouts[off] > 0 && this.wantsOffenseTimeout()) return this.timeout(off);
+    if (this.timeouts[def] > 0 && this.wantsDefenseTimeout()) return this.timeout(def);
+    const hurry = this.hurry();
     const tempo = this.teams[off].tendencies.offense.tempo;
-    const runoff = this.hurry()
-      ? K.runoff.hurry
-      : this.milking()
-        ? K.runoff.milk
-        : K.runoff.normal + (0.5 - tempo) * K.tempoSpread;
+    // An offense out of timeouts that needs the last kick hurries to the line to spike the ball.
+    const spiking =
+      this.wantsLastKick() && this.timeouts[off] === 0 && this.clock <= C.spikeSeconds + K.spikeRunoff;
     const skill = this.teams[off].coach.clock;
-    const waste = this.hurry() ? (1 - skill / 100) * K.clockWaste : 0;
-    if (!this.tick(runoff + waste)) this.endPeriod();
+    const runoff = spiking
+      ? K.spikeRunoff
+      : hurry
+        ? K.runoff.hurry + (1 - skill / 100) * K.clockWaste
+        : this.milking()
+          ? this.fullRunoff
+          : K.runoff.normal + (0.5 - tempo) * K.tempoSpread;
+    if (!this.tick(Math.min(this.setup.rules.playClock, runoff), true)) this.endPeriod();
   }
 
+  private timeout(side: Side): void {
+    this.timeouts[side]--;
+    this.running = false;
+  }
+
+  /** Timeouts late in a half (spec 8.3 step 2): to save time for a score. */
   private wantsOffenseTimeout(): boolean {
+    if (!this.lateHalf()) return false;
     if (this.quarter === 2) return this.clock <= C.timeoutHalfSeconds && this.ball >= C.timeoutHalfFromBall;
     return this.margin <= 0 && this.clock <= C.timeoutGameSeconds;
+  }
+
+  /** A defense behind or tied late in the game stops the clock to get the ball back with time left. */
+  private wantsDefenseTimeout(): boolean {
+    return (
+      this.quarter >= 4 &&
+      this.lateHalf() &&
+      this.margin >= 0 &&
+      this.margin <= C.defenseTimeoutMaxDeficit &&
+      this.clock <= C.defenseTimeoutSeconds
+    );
   }
 
   private turnoverOnDowns(): void {
     const def = other(this.offense);
     this.endDrive('downs');
+    this.overtimeCheck();
+    if (this.over) return;
     this.possess(def, 100 - this.ball);
-    this.afterPlay(true, 0);
+    this.nextSnap(true);
   }
 
   private safety(scoringTeam: Side): void {
     const conceding = other(scoringTeam);
-    this.endDrive('safety');
-    this.offense = conceding;
     const defenders = [...this.field[scoringTeam].values()];
     const who = defenders.length
       ? (defenders[Math.floor(this.rng.float() * defenders.length)] as SimPlayer)
       : null;
     this.add(scoringTeam, who, 'safeties');
     this.scored(scoringTeam, 'safety', 2, 'Safety');
-    if (this.overtime) {
-      this.finish();
-      return;
-    }
-    // The conceding team free kicks from its own 20.
-    this.afterPlay(true, 0);
-    if (!this.over) this.kickoff(conceding, true);
+    this.endDrive('safety');
+    // A safety is a defensive score: in overtime it ends the game.
+    this.overtimeCheck({ defensive: true });
+    if (this.over) return;
+    // The conceding team free kicks (spec 16 rules).
+    this.offense = conceding;
+    this.kickoffAfterScore(conceding, true);
   }
 
-  /** A touchdown: the try, then the kickoff (spec 16 rules). `defensive` for interception and fumble returns. */
+  /**
+   * A touchdown, the try, then the kickoff (spec 16 rules). `defensive` for interception and fumble
+   * returns. In overtime, a touchdown that takes the lead after both teams have had the ball ends the game
+   * without a try; one that only ties it or trails still gets its try.
+   */
   private touchdown(team: Side, description: string, defensive = false): void {
     if (!defensive && team === this.offense && this.redZoneCounted) this.totals[team].redZoneTd++;
-    this.endDrive('touchdown');
     this.scored(team, 'touchdown', 6, description);
-    // Overtime: a defensive score ends it; so does any score once both teams have had the ball.
-    if (this.overtime && (defensive || this.bothPossessedAndAhead())) return this.finish();
-    this.tryAfter(team);
+    this.endDrive('touchdown');
+    const scoring = { defensive, touchdown: true };
+    if (this.score[team] > this.score[other(team)]) this.overtimeCheck(scoring);
     if (this.over) return;
-    this.afterPlay(true, 0);
-    if (!this.over) this.kickoff(team);
+    this.tryAfter(team);
+    this.overtimeCheck(scoring);
+    if (this.over) return;
+    this.kickoffAfterScore(team);
   }
 
-  private bothPossessedAndAhead(): boolean {
-    const both =
-      !this.setup.rules.overtime.bothTeamsPossess ||
-      (this.otPossessions.home > 0 && this.otPossessions.away > 0);
-    return both && this.score.home !== this.score.away;
+  /** The kickoff after a score, unless the score came on the last play of a half or the game. */
+  private kickoffAfterScore(kicker: Side, freeKick = false): void {
+    if (this.over) return;
+    this.running = false;
+    if (this.clock <= 0 && !this.endPeriod()) return;
+    this.kickoff(kicker, freeKick);
   }
 
   // ---------------------------------------------------------------------------------------------------
@@ -1909,15 +2159,21 @@ class GameSim {
     if (goForTwo) {
       this.totals[team].twoPointAtt++;
       const off = this.teams[team];
-      const qb = this.pick(team, 'QB', new Set());
+      // Success from the rule set's spot: the tuning rate at the 2, harder from farther out.
+      const fromSpot = sigmoid(
+        logit(S.twoPointSuccess) + (this.setup.rules.twoPointSpot - 2) * C.twoPointPerYard
+      );
       const success = this.rng.chance(
-        clamp(S.twoPointSuccess + (off.boost - this.teams[other(team)].boost) * C.twoPointPerPoint, 0.2, 0.8)
+        clamp(
+          fromSpot + (off.boost - this.teams[other(team)].boost) * C.twoPointPerPoint,
+          C.twoPointRange[0],
+          C.twoPointRange[1]
+        )
       );
       if (success) {
         const who = this.pick(team, this.rng.chance(0.5) ? 'RB1' : 'X', new Set());
         this.add(team, who, 'twoPointMade');
         this.scored(team, 'twoPoint', 2, `Two-point conversion by ${who?.short ?? off.name}`);
-        void qb;
       } else if (this.rng.chance(C.defensiveTry)) {
         this.scored(
           other(team),
@@ -1928,7 +2184,7 @@ class GameSim {
       }
       return;
     }
-    const distance = this.setup.rules.extraPointSpot + C.fgSnapYards + 1;
+    const distance = this.setup.rules.extraPointSpot + C.fgSnapYards + C.xpExtraYards;
     this.add(team, kicker, 'xpAtt');
     if (this.rng.chance(this.kickChance(team, kicker, distance))) {
       this.add(team, kicker, 'xpMade');
@@ -1972,38 +2228,63 @@ class GameSim {
     this.add(off, kicker, 'fgAtt');
     if (distance >= 40 && distance < 50) this.add(off, kicker, 'fgAtt40');
     if (distance >= 50) this.add(off, kicker, 'fgAtt50');
+    this.running = true;
     this.tick(K.kickSeconds);
     if (this.rng.chance(this.kickChance(off, kicker, distance))) {
       this.add(off, kicker, 'fgMade');
       if (distance >= 40 && distance < 50) this.add(off, kicker, 'fgMade40');
       if (distance >= 50) this.add(off, kicker, 'fgMade50');
       this.long(off, kicker, 'fgLong', distance);
+      this.scored(off, 'fieldGoal', FIELD_GOAL, `${kicker?.short ?? 'Team'} ${distance} yd field goal`);
       this.endDrive('fieldGoal');
-      this.scored(off, 'fieldGoal', 3, `${kicker?.short ?? 'Team'} ${distance} yd field goal`);
-      if (this.overtime && this.bothPossessedAndAhead()) return this.finish();
-      if (this.clock <= 0) return this.endPeriod();
-      this.kickoff(off);
+      this.overtimeCheck();
+      if (this.over) return;
+      this.kickoffAfterScore(off);
       return;
     }
-    // A miss: the defense takes over at the spot of the kick, or its 20 if that is closer to its goal.
+    // A miss: the defense takes over at the spot of the kick, or the rule's yard line if that is farther
+    // from its goal.
     const kickSpot = this.ball - (C.fgSnapYards - 10);
     this.endDrive('missedFieldGoal');
-    this.possess(def, Math.max(20, 100 - kickSpot));
-    if (this.clock <= 0) this.endPeriod();
+    this.overtimeCheck();
+    if (this.over) return;
+    this.possess(def, Math.max(this.setup.rules.missedFieldGoalSpot, 100 - kickSpot));
+    this.nextSnap(true);
   }
 
+  /**
+   * A punt (spec 8.3 special teams): distance from the punter's leg, weather, and altitude; with room to
+   * spare he aims to pin the returner deep. Then a fair catch, a return, or a ball downed or rolling into the
+   * end zone. Running into the kicker, kick catch interference, and blocks in the back come from the rules.
+   */
   private punt(): void {
     const off = this.offense;
     const def = other(off);
+    const rules = this.setup.rules;
     const punter = this.pick(off, 'P', new Set());
     this.plays++;
     this.note(off, 'P', 'kick');
+    this.running = true;
+    // Running into the kicker: the punting team takes the yards only when they reach the line to gain.
+    if (this.rng.chance(S.penaltyRates.runningIntoKicker * this.output('penalties'))) {
+      const rik = rules.penalties.runningIntoKicker;
+      const yards = this.enforceYards(rik.yards, false);
+      if (yards >= this.distance || rik.automaticFirstDown) {
+        this.charge(def, this.unit(def, FRONT), 'runningIntoKicker', yards);
+        this.tick(K.kickSeconds);
+        this.ball += yards;
+        if (this.drive) this.drive.yards += yards;
+        this.firstDown('penalty');
+        return this.nextSnap(true);
+      }
+    }
     this.endDrive('punt');
+    this.overtimeCheck();
+    if (this.over) return;
     this.add(off, punter, 'punts');
     const w = this.setup.weather;
-    const wind = w.indoor
-      ? 0
-      : (this.rng.float() - 0.5) * w.windMph * C.puntWind * this.setup.sliders.general.weatherImpact;
+    const impact = this.setup.sliders.general.weatherImpact;
+    const wind = w.indoor ? 0 : (this.rng.float() - 0.5) * w.windMph * C.puntWind * impact;
     const power = punter ? this.edge(off, punter, 'P', 'kickPower', ['kick']) : -5;
     const altitude = w.altitudeFt >= K.altitudeFt ? C.puntAltitude : 0;
     let gross = Math.round(
@@ -2011,67 +2292,101 @@ class GameSim {
         this.slider(off, 'puntPower')
     );
     const toGoal = 100 - this.ball;
+    // With more leg than field, the punter aims for the corner instead of the end zone.
+    const aim = toGoal - C.puntAim;
+    if (gross > aim && aim > 0) {
+      const accuracy = punter ? this.edge(off, punter, 'P', 'kickAccuracy', ['kick']) : 0;
+      const sd = Math.max(
+        1,
+        (C.puntAimSd * (1 - accuracy * C.puntAimPerPoint)) / Math.max(0.25, this.slider(off, 'puntAccuracy'))
+      );
+      // Bounces can still carry an aimed punt into the end zone.
+      gross = Math.round(aim + this.rng.normal(0, sd));
+    }
     let receiveAt: number;
     let returned = 0;
     let net: number;
+    this.tick(K.kickSeconds);
     if (this.rng.chance(S.puntBlocked)) {
       gross = 0;
       receiveAt = 100 - (this.ball - C.blockedPuntLoss);
       net = -C.blockedPuntLoss;
     } else if (gross >= toGoal) {
-      // Into the end zone: a touchback at the 20.
+      // Into the end zone: a touchback.
       this.add(off, punter, 'puntTouchbacks');
       gross = toGoal;
-      receiveAt = 20;
-      net = toGoal - 20;
+      receiveAt = rules.touchback;
+      net = toGoal - rules.touchback;
     } else {
       const landing = this.ball + gross;
+      const catchAt = 100 - landing;
       const returner = this.pick(def, 'PR', new Set());
-      const deep = 100 - landing <= 10;
+      const deep = catchAt <= C.puntDownedInside;
+      const fairCatch = rules.puntFairCatch ? S.puntFairCatch : 0;
       const r = this.rng.float();
-      if (deep || r < S.puntFairCatch) {
-        if (!deep) this.add(def, returner, 'fairCatches');
-        receiveAt = 100 - landing;
-      } else if (r < S.puntFairCatch + S.puntReturned && returner) {
-        this.note(def, 'PR', 'carry', 'openField');
-        const edge = this.edge(def, returner, 'PR', 'returner', ['openField', 'carry']);
-        returned = Math.round(
-          -Math.log(1 - this.rng.float()) * Math.max(2, S.puntReturnMean + edge * C.returnPerPoint)
-        );
-        this.add(def, returner, 'puntReturns');
-        if (this.rng.chance(C.returnTdPunt)) returned = landing;
-        const maxReturn = landing;
-        returned = Math.min(returned, maxReturn);
-        this.add(def, returner, 'puntReturnYds', returned);
-        this.long(def, returner, 'puntReturnLong', returned);
-        if (this.rng.chance(S.penaltyRates.illegalBlockInBack * this.output('penalties'))) {
-          const players = this.unit(def, ['MIKE', 'WILL', 'SS', 'CB2']);
-          const yards = this.setup.rules.penalties.illegalBlockInBack.yards;
-          this.charge(def, players, yards);
-          returned = Math.max(-5, returned - yards);
+      receiveAt = catchAt;
+      if (!deep && r < fairCatch + S.puntReturned && returner) {
+        // Kick catch interference: the receiving team gets the ball 15 yards past the catch.
+        const kci = rules.penalties.kickCatchInterference;
+        const kciRate =
+          S.penaltyRates.kickCatchInterference *
+          this.penaltySlider(off, 'kickCatchInterference') *
+          this.output('penalties');
+        if (this.rng.chance(kciRate)) {
+          const gunner = this.pick(off, 'GUNNER', new Set());
+          this.charge(off, gunner ? [gunner] : [], 'kickCatchInterference', kci.yards);
+          receiveAt = Math.min(99, catchAt + kci.yards);
+        } else if (r < fairCatch) {
+          this.add(def, returner, 'fairCatches');
+        } else {
+          this.note(def, 'PR', 'carry', 'openField');
+          const edge = this.edge(def, returner, 'PR', 'returner', ['openField', 'carry']);
+          returned = Math.round(
+            -Math.log(1 - this.rng.float()) *
+              Math.max(C.puntReturnFloor, S.puntReturnMean + edge * C.returnPerPoint)
+          );
+          this.add(def, returner, 'puntReturns');
+          if (this.rng.chance(C.returnTdPunt)) returned = landing;
+          returned = Math.min(returned, landing);
+          this.add(def, returner, 'puntReturnYds', returned);
+          this.long(def, returner, 'puntReturnLong', returned);
+          if (this.rng.chance(this.blockInBackRate(def))) {
+            const yards = rules.penalties.illegalBlockInBack.yards;
+            this.charge(def, this.unit(def, ['MIKE', 'WILL', 'SS', 'CB2']), 'illegalBlockInBack', yards);
+            returned = Math.max(-C.returnFoulFloor, returned - yards);
+          }
+          receiveAt = catchAt + returned;
+          if (receiveAt >= 100) {
+            this.add(def, returner, 'puntReturnTd');
+            this.add(off, punter, 'puntYds', gross);
+            this.add(off, punter, 'puntNetYds', gross - landing);
+            this.long(off, punter, 'puntLong', gross);
+            // The return is the receiving team's possession, starting where the returner caught it.
+            this.offense = def;
+            this.ball = catchAt;
+            this.startDrive(def);
+            this.touchdown(def, `${returner.short} punt return`);
+            return;
+          }
         }
-        receiveAt = 100 - landing + returned;
-        if (receiveAt >= 100) {
-          this.add(def, returner, 'puntReturnTd');
-          this.offense = def;
-          this.startDrive(def);
-          this.touchdown(def, `${returner.short} punt return`);
-          this.add(off, punter, 'puntYds', gross);
-          this.add(off, punter, 'puntNetYds', gross - landing);
-          return;
-        }
-      } else {
-        receiveAt = 100 - landing;
       }
       net = gross - returned;
-      if (100 - landing <= 20 && receiveAt <= 20) this.add(off, punter, 'puntsIn20');
+      if (catchAt <= 20 && receiveAt <= 20) this.add(off, punter, 'puntsIn20');
     }
     this.add(off, punter, 'puntYds', gross);
     this.add(off, punter, 'puntNetYds', net);
     this.long(off, punter, 'puntLong', gross);
-    this.tick(K.kickSeconds);
     this.possess(def, receiveAt);
-    if (this.clock <= 0) this.endPeriod();
+    this.nextSnap(true);
+  }
+
+  /** Blocks in the back on a return, charged to the returning team. */
+  private blockInBackRate(returning: Side): number {
+    return (
+      S.penaltyRates.illegalBlockInBack *
+      this.penaltySlider(returning, 'illegalBlockInBack') *
+      this.output('penalties')
+    );
   }
 
   /** A kickoff (spec 8.3: current kickoff rules from the rule set) or a free kick after a safety. */
@@ -2081,20 +2396,19 @@ class GameSim {
     const rules = this.setup.rules.kickoff;
     const k = this.kicker(kicker);
     this.note(kicker, 'K', 'kick');
+    this.running = true;
     const behind = this.score[kicker] - this.score[receiver];
     const onsideAllowed =
       (!rules.onsideOnlyWhenTrailing || behind < 0) && (!rules.onsideFourthQuarterOnly || this.quarter >= 4);
     const lateTrailing =
       this.quarter >= 4 && behind < 0 && behind >= -C.onsideMaxDeficit && this.clock <= C.onsideSeconds;
     if (!afterSafety && onsideAllowed && lateTrailing && this.rng.chance(C.onsideChance)) {
+      // The ball travels about onsideYards from the kicking spot, where one team or the other falls on it.
+      const spot = rules.spot + C.onsideYards;
       this.tick(K.kickSeconds / 2);
-      if (this.rng.chance(S.onsideRecovery)) {
-        this.possess(kicker, 100 - (rules.spot + C.onsideYards));
-      } else {
-        this.possess(receiver, 100 - (rules.spot + C.onsideYards));
-      }
-      if (this.clock <= 0) this.endPeriod();
-      return;
+      if (this.rng.chance(S.onsideRecovery)) this.possess(kicker, spot);
+      else this.possess(receiver, 100 - spot);
+      return this.nextSnap(true);
     }
     const returner = this.pick(receiver, 'KR', new Set());
     const r = this.rng.float();
@@ -2103,9 +2417,14 @@ class GameSim {
       S.kickoffReturnable - power + (1 - this.slider(kicker, 'kickoffPower')) * C.kickoffSliderShift;
     let start: number;
     if (afterSafety) {
-      // A free kick from the 20 travels about 45 yards, then is returned.
+      // A free kick travels about freeKickLanding yards from the kicking spot, then is returned.
       const landing = C.freeKickLanding;
-      start = 100 - (20 + landing) + Math.round(this.rng.normal(S.kickReturnMean * 0.5, S.kickReturnSd));
+      start =
+        100 -
+        (this.setup.rules.safetyKickSpot + landing) +
+        Math.round(this.rng.normal(S.kickReturnMean * C.freeKickReturnShare, S.kickReturnSd));
+      this.offense = receiver;
+      this.tick(K.returnSeconds);
     } else if (r < S.kickoffShort) {
       start = rules.shortSpot;
     } else if (r < S.kickoffShort + S.kickoffLandingRollTouchback) {
@@ -2113,17 +2432,17 @@ class GameSim {
     } else if (r < S.kickoffShort + S.kickoffLandingRollTouchback + returnable && returner) {
       // Caught inside the landing zone and returned (spec 8.3: return rating, blocking, and coverage).
       this.note(receiver, 'KR', 'carry', 'openField');
-      const caught =
-        S.kickoffLanding[0] + Math.floor(this.rng.float() * (S.kickoffLanding[1] - S.kickoffLanding[0]));
+      const deepest = Math.min(S.kickoffLanding[1], rules.landingZone);
+      const caught = S.kickoffLanding[0] + Math.floor(this.rng.float() * (deepest - S.kickoffLanding[0]));
       const edge = this.edge(receiver, returner, 'KR', 'returner', ['openField', 'carry']);
       let back = Math.max(
         0,
         Math.round(this.rng.normal(S.kickReturnMean + edge * C.returnPerPoint, S.kickReturnSd))
       );
       if (this.rng.chance(S.returnTouchdown)) back = 100;
-      if (this.rng.chance(S.penaltyRates.illegalBlockInBack * this.output('penalties'))) {
+      if (this.rng.chance(this.blockInBackRate(receiver))) {
         const yards = this.setup.rules.penalties.illegalBlockInBack.yards;
-        this.charge(receiver, this.unit(receiver, ['MIKE', 'WILL', 'SS']), yards);
+        this.charge(receiver, this.unit(receiver, ['MIKE', 'WILL', 'SS']), 'illegalBlockInBack', yards);
         back = Math.max(0, back - yards);
       }
       this.add(receiver, returner, 'kickReturns');
@@ -2131,10 +2450,12 @@ class GameSim {
       this.add(receiver, returner, 'kickReturnYds', total);
       this.long(receiver, returner, 'kickReturnLong', total);
       start = caught + total;
+      // The receiving team has the ball during the return.
+      this.offense = receiver;
       this.tick(K.returnSeconds);
       if (start >= 100) {
         this.add(receiver, returner, 'kickReturnTd');
-        this.offense = receiver;
+        this.ball = caught;
         this.startDrive(receiver);
         this.touchdown(receiver, `${returner.short} kickoff return`);
         return;
@@ -2143,7 +2464,7 @@ class GameSim {
       start = rules.touchback;
     }
     this.possess(receiver, start);
-    if (this.clock <= 0) this.endPeriod();
+    this.nextSnap(true);
   }
 
   // ---------------------------------------------------------------------------------------------------
@@ -2162,13 +2483,15 @@ class GameSim {
         involved.push([side, players[Math.floor(this.rng.float() * players.length)] as SimPlayer]);
     }
     const g = this.setup.sliders.general;
+    const surface = this.turf ? C.turfInjury : 1;
     for (const [side, p] of involved) {
       if (p.out) continue;
       const risk =
         S.injuryRate *
-        (1.6 - p.injury / 99) *
-        (1.3 - p.toughness / 200) *
-        (1 + Math.max(0, 70 - p.energy) / 100) *
+        (C.injuryProne - p.injury / 99) *
+        (C.toughnessBase - p.toughness / C.toughnessScale) *
+        (1 + Math.max(0, C.injuryTiredBelow - p.energy) / 100) *
+        surface *
         g.injuryFrequency;
       if (!this.rng.chance(risk)) continue;
       const weights = S.injurySeverity.map((w, i) => (i === 0 ? w / g.injurySeverity : w * g.injurySeverity));
@@ -2223,6 +2546,7 @@ class GameSim {
       scoring: this.scoring,
       drives: this.drives,
       injuries: this.injuries,
+      ejections: this.ejections,
       recap: [],
       weather: this.setup.weather,
       plays: this.plays,
@@ -2236,4 +2560,28 @@ class GameSim {
 /** Simulates one game (spec 8). The same setup and stream always give the same result. */
 export function simulateGame(setup: GameSetup, rng: Rng): GameResult {
   return new GameSim(setup, rng).run();
+}
+
+/** A game situation to start a sim from (tests of end-of-game rules and clock management). */
+export interface GameState {
+  quarter: number;
+  /** Seconds left in the period. */
+  clock: number;
+  score: { home: number; away: number };
+  /** The team with the ball, or null to start with a kickoff to the coin toss winner. */
+  offense: Side | null;
+  /** Yard line from the offense's goal line. */
+  ball?: number;
+  down?: number;
+  distance?: number;
+  timeouts?: { home: number; away: number };
+  /** Possessions each team has finished in overtime. */
+  overtimePossessions?: { home: number; away: number };
+  /** Whether the clock is running before the next snap. */
+  running?: boolean;
+}
+
+/** Simulates the rest of a game from a situation. The scoring and drives cover only what happens next. */
+export function simulateFrom(setup: GameSetup, rng: Rng, from: GameState): GameResult {
+  return new GameSim(setup, rng).run(from);
 }

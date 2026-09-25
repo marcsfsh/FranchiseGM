@@ -7,7 +7,7 @@
 import type { ClimateTable } from '../../data/climate';
 import type { ScheduledGame } from '../../data/schedule';
 import { venueById, type Venue } from '../../data/stadiums';
-import { homeStadium } from '../../data/teams';
+import { divisionOf, homeStadium } from '../../data/teams';
 import { teamFullName, type TeamAbbr } from '../../data/team-colors';
 import { ability } from '../abilities/catalog';
 import { adaptedTendencies, autoLineup, teamCohesion, type LineupPlayer } from '../fit/cohesion';
@@ -20,8 +20,8 @@ import { DEFENSE_SLOTS, OFFENSE_SLOTS, SPECIAL_SLOTS, type Slot } from '../schem
 import { TUNING } from '../tuning';
 import { abilityEdges, compositeEdges } from './composites';
 import type { SimSliders } from './sliders';
-import type { CoachStyle, GameSetup, SimAbility, SimPlayer, TeamSetup } from './types';
-import { drawWeather, zoneHours } from './weather';
+import type { CoachStyle, GameSetup, GameWeather, SimAbility, SimPlayer, TeamSetup } from './types';
+import { drawWeather, EASTERN, zoneHours, zoneOffset } from './weather';
 
 const S = TUNING.sim;
 const ALL_SLOTS: readonly Slot[] = [...OFFENSE_SLOTS, ...DEFENSE_SLOTS, ...SPECIAL_SLOTS];
@@ -161,29 +161,58 @@ function restPoints(days: number | null): number {
   return 0;
 }
 
+/** One team's home field and travel effects for a game, in rating points (spec 17.2, 17.3). */
+export interface HomeField {
+  crowd: number;
+  /** Time zones crossed. */
+  travel: number;
+  /** An eastbound trip to a kickoff in the body clock's morning. */
+  early: number;
+  rest: number;
+  /** Division visitors know the building and the opponent, which trims the home edge. */
+  familiarity: number;
+  /** Dome and retractable-roof teams playing outdoors in the cold. */
+  cold: number;
+}
+
 /**
- * Home field (spec 17.3) from crowd noise, travel across time zones, and rest, scaled by the home field
- * slider; plus each team's form for the day (spec 8.5), scaled by the upset slider.
+ * Home field (spec 17.3) from crowd noise, travel across time zones and early eastbound kickoffs, rest,
+ * and division familiarity, scaled by the home field slider; plus dome teams in the cold (spec 17.2),
+ * scaled by the weather slider. `falseStarts` multiplies the visiting offense's false starts.
  */
-function boosts(
+export function homeField(
   league: League,
   game: ScheduledGame,
   venue: Venue,
-  sliders: SimSliders,
-  rng: Rng
-): { home: number; away: number; crowd: number } {
+  weather: GameWeather,
+  sliders: SimSliders
+): { home: HomeField; away: HomeField; falseStarts: number } {
   const neutral = game.siteType !== 'home';
   const hf = sliders.general.homeField;
-  const crowd = neutral ? 0 : S.homeCrowd * venue.noise * hf;
-  const travel = (abbr: TeamAbbr) => -S.travelPerZone * zoneHours(homeStadium(abbr), venue) * hf;
-  const rest = (abbr: TeamAbbr) => restPoints(restDays(league, abbr, game)) * hf;
-  const form = () => rng.normal(0, S.formSd * sliders.general.upsets);
+  const kickoffEt = Number(game.timeEt.slice(0, 2)) + Number(game.timeEt.slice(3, 5)) / 60;
+  const division = !neutral && divisionOf(game.home).includes(game.away);
+  const team = (abbr: TeamAbbr, isHome: boolean): HomeField => {
+    const stadium = homeStadium(abbr);
+    const zone = zoneOffset(stadium);
+    const eastbound = zoneOffset(venue) > zone;
+    const outdoorCold = !weather.indoor && weather.tempF < S.domeColdF;
+    return {
+      crowd: isHome && !neutral ? S.homeCrowd * venue.noise * hf : 0,
+      travel: -S.travelPerZone * zoneHours(stadium, venue) * hf,
+      early: eastbound && kickoffEt + zone - EASTERN < S.earlyBodyClockHour ? -S.earlyEastbound * hf : 0,
+      rest: restPoints(restDays(league, abbr, game)) * hf,
+      familiarity: !isHome && division ? S.divisionFamiliarity * hf : 0,
+      cold: stadium.roof !== 'open' && outdoorCold ? -S.domeCold * sliders.general.weatherImpact : 0
+    };
+  };
   return {
-    home: crowd + travel(game.home) + rest(game.home) + form(),
-    away: travel(game.away) + rest(game.away) + form(),
-    crowd: neutral ? 1 : 1 + S.crowdFalseStart * venue.noise * hf
+    home: team(game.home, true),
+    away: team(game.away, false),
+    falseStarts: neutral ? 1 : 1 + S.crowdFalseStart * venue.noise * hf
   };
 }
+
+const total = (h: HomeField): number => h.crowd + h.travel + h.early + h.rest + h.familiarity + h.cold;
 
 /** Everything the sim needs for one scheduled game. */
 export function gameSetup(
@@ -196,7 +225,11 @@ export function gameSetup(
   const month = Number(game.date.slice(5, 7)) - 1;
   const sliders = league.settings.sim;
   const weather = drawWeather(rng.fork('weather'), venue, climate?.[venue.climate]?.[month] ?? null);
-  const b = boosts(league, game, venue, sliders, rng.fork('boost'));
+  const field = homeField(league, game, venue, weather, sliders);
+  // Each team's form for the day (spec 8.5), scaled by the upset slider.
+  const boostRng = rng.fork('boost');
+  const form = () => boostRng.normal(0, S.formSd * sliders.general.upsets);
+  const b = { home: total(field.home) + form(), away: total(field.away) + form(), crowd: field.falseStarts };
   return {
     id: game.id,
     season: game.season,

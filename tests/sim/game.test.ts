@@ -95,7 +95,19 @@ describe('game results are internally consistent (spec 8.8)', () => {
       expect(g.recap.length).toBeGreaterThanOrEqual(1);
       expect(g.recap.length).toBeLessThanOrEqual(4);
       expect(g.recap.join(' ')).not.toMatch(/undefined|NaN|\d\.\d{3}/);
-      for (const d of g.drives) expect(d.seconds).toBeGreaterThanOrEqual(0);
+      for (const d of g.drives) {
+        expect(d.seconds).toBeGreaterThanOrEqual(0);
+        expect(d.start).toBeGreaterThanOrEqual(1);
+        expect(d.start).toBeLessThanOrEqual(99);
+      }
+      // Every second of the game clock belongs to one team's possession.
+      const rules = base.rules.game;
+      const regulation = 4 * rules.quarterSeconds;
+      const top = g.box.home.totals.timeOfPossession + g.box.away.totals.timeOfPossession;
+      if (g.overtime) {
+        expect(top).toBeGreaterThan(regulation);
+        expect(top).toBeLessThanOrEqual(regulation + rules.overtime.regularSeasonSeconds);
+      } else expect(top).toBe(regulation);
     }
   });
 });

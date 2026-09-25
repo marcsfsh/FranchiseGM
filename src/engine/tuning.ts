@@ -469,18 +469,20 @@ export const TUNING = {
     halftimeNeutralGap: 1.5,
     halftimeScale: 4,
     formSd: 0.8,
+    /** Halftime adjustments need at least this many dropbacks and runs to judge by. */
+    halftimeMinPlays: 5,
     /** Pass protection: pressure base rate, blitz and simulated pressure boosts (log-odds). */
     pressureBase: 0.31,
     blitzPressure: 0.45,
     simPressure: 0.2,
     sackGivenPressure: 0.18,
-    scrambleGivenPressure: 0.13,
-    scrambleTendency: 0.25,
+    scrambleGivenPressure: 0.08,
+    scrambleTendency: 0.12,
     throwAwayGivenPressure: 0.06,
     throwAwayTrait: 0.07,
     groundingGivenThrowAway: 0.05,
     /** Completion by depth (short, intermediate, deep, screen), and the pressure penalty (log-odds). */
-    completion: { short: 0.745, intermediate: 0.585, deep: 0.37, screen: 0.86 },
+    completion: { short: 0.755, intermediate: 0.595, deep: 0.37, screen: 0.86 },
     pressureCompletion: -0.75,
     dropShare: 0.075,
     /** Interceptions per attempt by depth, and log-odds shifts. */
@@ -498,13 +500,12 @@ export const TUNING = {
     /** Runs: stuff rate, stuff depth, gain shape and mean, breakaway chance and extra yards. */
     stuff: 0.17,
     stuffYards: 3,
-    runGainMean: 4.4,
+    runGainMean: 4.5,
     runGainShape: 1.6,
     breakaway: 0.065,
     breakawayYards: 14,
-    /** Rating points of run block edge worth one yard of mean gain; defenders in the box change it. */
+    /** Yards of mean gain per rating point of run block edge. */
     blockYardsPerPoint: 0.06,
-    lightBox: 0.35,
     /** Fumbles per carry and per catch, share lost, and rain or snow log-odds. */
     fumbleCarry: 0.011,
     fumbleCatch: 0.004,
@@ -512,10 +513,7 @@ export const TUNING = {
     fumbleWet: 0.35,
     /** Scrambles and designed quarterback runs. */
     scrambleMean: 6.5,
-    /** Clock: seconds a play takes, the runoff between snaps (normal, hurry-up, and milking), and out of
-     * bounds shares. */
-    playSeconds: [4, 8],
-    runoff: { normal: 31, hurry: 14, milk: 39 },
+    /** Shares of runs and catches that end out of bounds. */
     outOfBoundsRun: 0.12,
     outOfBoundsCatch: 0.25,
     /** Fourth downs: go rates by yards to go (1, 2, 3 to 5, 6 or more) in plus territory, and at midfield. */
@@ -542,11 +540,11 @@ export const TUNING = {
     returnTouchdown: 0.004,
     onsideRecovery: 0.12,
     /** Punts: gross mean and spread, fair catches, returns, and return yards. */
-    puntMean: 46.5,
+    puntMean: 50,
     puntSd: 6,
     puntFairCatch: 0.28,
     puntReturned: 0.44,
-    puntReturnMean: 9.5,
+    puntReturnMean: 8,
     puntBlocked: 0.004,
     /** Penalties per play (offense or defense snap), before discipline, crowd, and slider multipliers. */
     // prettier-ignore
@@ -566,6 +564,8 @@ export const TUNING = {
     /** Fatigue: energy spent per snap by position group, recovery per snap off the field, the energy
      * where ratings start to suffer, rating points lost per energy point, and substitution thresholds. */
     fatigue: { QB: 0.5, RB: 2.6, WR: 1.4, TE: 1.7, OL: 0.9, DL: 3.1, LB: 2.1, DB: 1.5, ST: 0.3 },
+    /** A snap costs (staminaBase - stamina / 100) times the group's fatigue. */
+    staminaBase: 1.5,
     recovery: 3.5,
     tiredAt: 85,
     tiredPoints: 0.15,
@@ -579,6 +579,14 @@ export const TUNING = {
     /** Days between games that count as a short week, and as rest after a bye. */
     shortWeekDays: 5,
     byeWeekDays: 13,
+    /** Division games: the visitors know the building and the opponent, which trims the home edge. */
+    divisionFamiliarity: 0.3,
+    /** A team traveling east for a kickoff before this hour on its body clock loses earlyEastbound points. */
+    earlyEastbound: 0.4,
+    earlyBodyClockHour: 11,
+    /** Dome and retractable-roof teams lose domeCold points playing outdoors below domeColdF (spec 17.2). */
+    domeCold: 0.5,
+    domeColdF: 40,
     /** Game weather draws (spec 17.2): retractable roofs close below roofClosesBelowF or in rain; game
      * time sits gameTimeShare of the way from the day's low to its high; wet games follow monthly
      * precipitation; wind draws around the monthly mean with occasional gusts. */
@@ -603,6 +611,9 @@ export const TUNING = {
     calls: {
       // Situations and play calling
       goalLineYards: 3,
+      /** Third and this many or fewer is short yardage; this many or more is long. */
+      shortYardage: 4,
+      longYardage: 7,
       goalLineHeavy: 2.5,
       passingDownHeavy: 0.5,
       /** Defensive package weights (base, nickel, dime) by the offense's wide receivers (1 to 4). */
@@ -625,29 +636,62 @@ export const TUNING = {
       milkSeconds: 480,
       // Decisions
       desperationSeconds: 240,
+      /** More than one score behind (a touchdown and two-point try) with desperationYards or less to go. */
+      oneScore: 8,
+      desperationYards: 5,
       endHalfFgSeconds: 30,
-      lastSecondsFg: 5,
+      /** End of a half: with the clock stopped and this little time left, an offense in range kicks now;
+       * with it running and no timeouts, it spikes the ball inside spikeSeconds to set up the kick. */
+      fgNowSeconds: 18,
+      spikeSeconds: 25,
       leadingGoFactor: 0.6,
+      /** Fourth-down go rates scale from goAggressionBase for the most timid coach, plus goAggressionSpread
+       * at aggressiveness 100. */
+      goAggressionBase: 0.6,
+      goAggressionSpread: 0.8,
+      /** Fourth and goal from inside goalLineGoYards: coaches go for it at least goalLineGo of the time. */
       goalLineGo: 0.45,
-      minFgGoal: 2,
+      goalLineGoYards: 2,
       /** Field goal tries up to this distance are routine; longer ones fade by fgFadePerYard, helped by a
        * strong leg (fgPowerShare per rating point of kick power). */
       fgRoutine: 52,
       fgFadePerYard: 0.08,
       fgPowerShare: 0.02,
+      fgLongTry: [0.05, 0.95],
       fgSnapYards: 17,
       rangePerPoint: 0.15,
       altitudeRange: 4,
+      /** Wind this strong takes windRangeLoss yards off a kicker's range. */
+      windRangeMph: 20,
       windRangeLoss: 5,
       kneelHalfSeconds: 40,
       timeoutHalfSeconds: 90,
       timeoutHalfFromBall: 35,
       timeoutGameSeconds: 150,
       defenseTimeoutSeconds: 180,
+      /** A defense behind by this much or less (or tied) spends its timeouts late to get the ball back. */
+      defenseTimeoutMaxDeficit: 16,
       /** Leads after a late touchdown (before the try) where coaches go for two. */
       goForTwoLate: [-2, -5, -10, 1, 5, -9, -12, -16],
       twoPointPerPoint: 0.01,
+      /** Two-point success moves by this much log-odds per yard the try is snapped beyond the 2, within
+       * twoPointRange. */
+      twoPointPerYard: -0.1,
+      twoPointRange: [0.2, 0.8],
+      /** Extra points are held a yard deeper than field goals: the try from the 15 is a 33-yard kick. */
+      xpExtraYards: 1,
       defensiveTry: 0.01,
+      /** Fake punts and field goals: a chance on fourth down with fakeMaxDistance or less to go (scaled by
+       * the coach's aggressiveness), how often they convert, and the mean extra yards. */
+      fakePunt: 0.02,
+      fakeFieldGoal: 0.012,
+      fakeMaxDistance: 5,
+      fakeSuccess: 0.55,
+      fakeExtraYards: 4,
+      /** Share of goal-line snaps against heavy personnel where the defense brings its goal-line package. */
+      goalLinePackage: 0.8,
+      /** Share of ejection-eligible fouls flagrant enough to eject the player (spec 16). */
+      ejectionShare: 0.03,
       onsideSeconds: 180,
       onsideMaxDeficit: 16,
       onsideChance: 0.9,
@@ -666,15 +710,17 @@ export const TUNING = {
       paranoidThrowAway: 0.06,
       creditSpread: 6,
       sackYards: [4, 9],
+      sackSpread: 1,
       stripSack: 0.11,
       stripLost: 0.55,
       scrambleMin: 3,
       scrambleBurst: 0.08,
       scrambleFloor: -1,
+      scrambleSpread: 2,
       scrambleOutOfBounds: 0.35,
       minTargetShare: 0.02,
       uncovered: 12,
-      pressWeight: 0.5,
+      pressWeight: 0.05,
       playActionSeparation: 2.5,
       blitzSeparation: 2.5,
       cohesionSeparation: 20,
@@ -691,14 +737,20 @@ export const TUNING = {
       contestedSep: -3,
       handsWeight: 0.02,
       playActionLogit: 0.15,
-      /** Share of play-action passes thrown on a bootleg, outside the pocket. */
-      bootlegShare: 0.35,
-      /** Inside the 20 the field compresses: harder completions and more stuffed runs near the goal. */
-      redZoneCompletion: -0.45,
-      goalLineStuff: 0.6,
+      /** Share of play-action passes thrown on a bootleg, outside the pocket: more in offenses that run
+       * outside zone, whose action the boot comes off. */
+      bootlegShare: 0.2,
+      bootlegPerOutsideZone: 0.6,
+      /** Inside the 20 the field compresses: harder completions, and more stuffed runs inside
+       * goalLineStuffYards. */
+      redZoneCompletion: -0.6,
+      goalLineStuff: 0.75,
+      goalLineStuffYards: 5,
       dropsTrait: 2.5,
       wetDrops: 1.5,
       breakupShare: 0.35,
+      /** Air yards where intermediate and deep throws begin. */
+      airBands: { intermediate: 10, deep: 20 },
       yacFloor: 1,
       yacPerPoint: 0.025,
       yacTrait: 1.12,
@@ -709,6 +761,8 @@ export const TUNING = {
       leadWeight: 0.5,
       teBlockWeight: 0.6,
       safetyBoxWeight: 0.5,
+      /** Rating points of run blocking edge for each defensive back replacing a box defender. */
+      lightBoxPoints: 0.58,
       penetrationLogit: 0.4,
       runMeanFloor: 1.5,
       carrierYardsPerPoint: 0.05,
@@ -717,6 +771,14 @@ export const TUNING = {
       /** Outside runs break away a little more often, and reach the open field once they gain edgeYards. */
       outsideBreakaway: 0.2,
       edgeYards: 6,
+      /** Zone runs gaining this little met contact at the line (situation profiles). */
+      contactAtLineYards: 2,
+      /** Outside runs go out of bounds more often than inside runs. */
+      outOfBoundsInside: 0.5,
+      outOfBoundsOutside: 1.6,
+      /** Artificial turf is a little faster (rating points of burst and elusiveness) and a little riskier. */
+      turfSpeed: 0.5,
+      turfInjury: 1.08,
       coversBall: { never: 0.55, onBigHits: 0, onMediumHits: -0.15, forAllHits: -0.3, always: -0.45 },
       // Kicking
       longKick: 40,
@@ -725,14 +787,32 @@ export const TUNING = {
       puntPerPoint: 0.25,
       puntAltitude: 3,
       blockedPuntLoss: 8,
+      /** Punts landing inside this yard line aren't returned. */
+      puntDownedInside: 10,
+      /** With room to spare, punters aim for the receiving team's puntAim yard line with an error of
+       * puntAimSd yards, tightened by puntAimPerPoint per point of accuracy edge. */
+      puntAim: 12,
+      puntAimSd: 9,
+      puntAimPerPoint: 0.02,
+      puntReturnFloor: 2,
+      /** A block in the back on a return can't cost more than this many yards behind the catch. */
+      returnFoulFloor: 5,
       returnPerPoint: 0.25,
       returnTdPunt: 0.004,
       kickoffPowerShift: 0.004,
       kickoffSliderShift: 0.3,
       freeKickLanding: 45,
+      /** Free kicks after a safety are returned for this share of a kickoff return. */
+      freeKickReturnShare: 0.5,
       // Penalties and injuries
       cohesionPenalty: 15,
       linemenExposed: 2,
+      /** Injury risk: (injuryProne - injury / 99) x (toughnessBase - toughness / toughnessScale), rising
+       * as energy falls below injuryTiredBelow. */
+      injuryProne: 1.6,
+      toughnessBase: 1.3,
+      toughnessScale: 200,
+      injuryTiredBelow: 70,
       injuryWeeks: { minor: [0, 0], short: [1, 2], medium: [3, 6], season: [8, 17] },
       minorOutPlays: [4, 20]
     },
@@ -741,14 +821,17 @@ export const TUNING = {
       twoMinute: 120,
       fiveMinutes: 300,
       playSeconds: [5, 8],
-      runoff: { normal: 34, hurry: 13, milk: 39 },
+      /** Seconds between snaps: normal and hurry-up; a team running the clock snaps with playClockMargin
+       * seconds left on the play clock (rule set), and one hurrying to spike takes spikeRunoff. */
+      runoff: { normal: 31, hurry: 13 },
+      playClockMargin: 1,
+      spikeRunoff: 7,
+      spikePlaySeconds: 1,
       tempoSpread: 14,
       clockWaste: 6,
-      kneelSeconds: 40,
       kneelPlaySeconds: 2,
       kickSeconds: 5,
       returnSeconds: 6,
-      penaltySeconds: 0,
       hurryDelay: 1.5,
       hurryFatigue: 0.25,
       heatAboveF: 80,
@@ -762,8 +845,7 @@ export const TUNING = {
     heatFatigue: 0.25,
     altitudeFatigue: 0.2,
     wetPassLogit: -0.15,
-    windDeepLogitPerMph: -0.02,
-    wetRunShift: 0.06
+    windDeepLogitPerMph: -0.02
   },
 
   /**

@@ -62,7 +62,13 @@ const ZONE_OFFSETS: Record<string, number> = {
   'Australia/Melbourne': 10
 };
 
+/** Eastern standard time's offset from UTC; schedule kickoff times are Eastern. */
+export const EASTERN = -5;
+
+/** A venue's standard-time offset from UTC in hours (Eastern when the zone is unknown). */
+export const zoneOffset = (venue: Venue): number => ZONE_OFFSETS[venue.timeZone] ?? EASTERN;
+
 /** Hours between two venues' time zones (standard time). */
 export function zoneHours(a: Venue, b: Venue): number {
-  return Math.abs((ZONE_OFFSETS[a.timeZone] ?? -5) - (ZONE_OFFSETS[b.timeZone] ?? -5));
+  return Math.abs(zoneOffset(a) - zoneOffset(b));
 }

@@ -4,7 +4,7 @@ import type { Venue } from '../../data/stadiums';
 import type { Cohesion } from '../fit/cohesion';
 import type { Position } from '../model/positions';
 import type { Traits } from '../model/traits';
-import type { GameRules } from '../rules/ruleset';
+import type { GameRules, PenaltyId } from '../rules/ruleset';
 import type { ResolvedDefense, ResolvedOffense } from '../schemes/resolve';
 import type { ContextTrigger, PlayTrigger } from '../schemes/situations';
 import type { Slot } from '../schemes/slots';
@@ -154,6 +154,14 @@ export interface InjuryEvent {
   bodyPart: string;
 }
 
+/** A player thrown out of the game for a flagrant foul (spec 16). */
+export interface EjectionEvent {
+  playerId: string;
+  team: TeamAbbr;
+  quarter: number;
+  penalty: PenaltyId;
+}
+
 export interface SituationCounts {
   snaps: Partial<Record<Slot, number>>;
   counts: Partial<Record<Slot, Partial<Record<PlayTrigger, number>>>>;
@@ -177,6 +185,7 @@ export interface GameResult {
   scoring: ScoringPlay[];
   drives: DriveSummary[];
   injuries: InjuryEvent[];
+  ejections: EjectionEvent[];
   recap: string[];
   weather: GameWeather;
   plays: number;

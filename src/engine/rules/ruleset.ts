@@ -148,6 +148,12 @@ export interface GameRules {
   /** Points for a defensive return on a try. */
   defensiveTryPoints: number;
   puntFairCatch: boolean;
+  /** Yard line after a touchback on a punt or a turnover in the end zone (kickoffs have their own). */
+  touchback: number;
+  /** Yard line a team free kicks from after conceding a safety. */
+  safetyKickSpot: number;
+  /** After a missed field goal the defense takes over at the spot of the kick, or this yard line if farther. */
+  missedFieldGoalSpot: number;
   penalties: Record<PenaltyId, PenaltyRule>;
 }
 
@@ -203,6 +209,9 @@ export const DEFAULT_GAME_RULES: GameRules = {
   twoPointSpot: 2,
   defensiveTryPoints: 2,
   puntFairCatch: true,
+  touchback: 20,
+  safetyKickSpot: 20,
+  missedFieldGoalSpot: 20,
   penalties: {
     falseStart: foul('False start', 5, { preSnap: true }),
     delayOfGame: foul('Delay of game', 5, { preSnap: true }),
@@ -335,11 +344,16 @@ export function validateRules(rules: RuleSet): string[] {
   whole(g.quarterSeconds, 'Quarter length', 60);
   whole(g.timeoutsPerHalf, 'Timeouts per half');
   whole(g.overtime.regularSeasonSeconds, 'Regular-season overtime length', 60);
+  whole(g.overtime.playoffSeconds, 'Playoff overtime length', 60);
+  whole(g.playClock, 'The play clock', 10);
   for (const [name, spot] of [
     ['The kickoff spot', g.kickoff.spot],
     ['The kickoff touchback spot', g.kickoff.touchback],
     ['The extra-point spot', g.extraPointSpot],
-    ['The two-point spot', g.twoPointSpot]
+    ['The two-point spot', g.twoPointSpot],
+    ['The touchback spot', g.touchback],
+    ['The safety free kick spot', g.safetyKickSpot],
+    ['The missed field goal spot', g.missedFieldGoalSpot]
   ] as const) {
     if (!Number.isInteger(spot) || spot < 1 || spot > 50)
       problems.push(`${name} must be a yard line from 1 to 50.`);
