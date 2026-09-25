@@ -117,7 +117,7 @@ describe('calibrate job', () => {
       climate: parseClimate(readFileSync('data-raw/climate.csv', 'utf8'))
     };
     const targets = JSON.parse(readFileSync('calibration/targets.json', 'utf8')) as TargetsFile;
-    const plan = { seed: 4, seasons: 1, perLeague: 10, experiments: 1, loopSeasons: 0 };
+    const plan = { seed: 4, seasons: 1, perLeague: 10, experiments: 1, loopSeasons: 0, chains: 0, chainSeasons: 0 }; // prettier-ignore
     const { messages, post } = collect();
     await createJobRunner(
       JOBS,

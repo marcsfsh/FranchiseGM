@@ -2,7 +2,8 @@
  * Calibration targets (spec 23.2): each metric's pass and warn bands, a wide band for the short CI run, a
  * source, and a note, kept in `calibration/targets.json`. Evaluation marks each metric pass, warn, fail,
  * info (measured, no target yet), or pending (not measured in this run, or not until a later milestone).
- * Season-level metrics are judged on the weekly-loop seasons, everything else on the replays (C-20).
+ * Season-level metrics are judged on the weekly-loop seasons (C-20), aging on leagues chained through the
+ * offseason, and everything else on the replays.
  */
 import { METRICS, type MetricDef, type MetricGroup, type MetricValue } from './metrics';
 
@@ -26,8 +27,8 @@ export interface TargetsFile {
 export type Status = 'pass' | 'warn' | 'fail' | 'info' | 'pending';
 export type Mode = 'full' | 'ci';
 
-/** A run's two modes: replays of the season, and seasons through the weekly loop. */
-export type Source = 'replays' | 'loop';
+/** A run's modes: replays of the season, seasons through the weekly loop, and leagues chained through the offseason. */
+export type Source = 'replays' | 'loop' | 'chain';
 
 /**
  * Metric groups the weekly loop decides: season records depend on in-season roster management (injured
@@ -35,8 +36,11 @@ export type Source = 'replays' | 'loop';
  */
 export const LOOP_GROUPS: readonly MetricGroup[] = ['seasons'];
 
+/** Metric groups the chained leagues decide: aging needs seasons played through the offseason. */
+export const CHAIN_GROUPS: readonly MetricGroup[] = ['aging'];
+
 export const decidedBy = (def: Pick<MetricDef, 'group'>): Source =>
-  LOOP_GROUPS.includes(def.group) ? 'loop' : 'replays';
+  CHAIN_GROUPS.includes(def.group) ? 'chain' : LOOP_GROUPS.includes(def.group) ? 'loop' : 'replays';
 
 /** A metric's result: the deciding mode's value and sample, with both modes' values side by side. */
 export interface MetricResult extends MetricDef, MetricValue {
@@ -45,6 +49,7 @@ export interface MetricResult extends MetricDef, MetricValue {
   decidedBy: Source;
   replays: MetricValue;
   loop: MetricValue;
+  chain: MetricValue;
 }
 
 const within = (value: number, [lo, hi]: Band): boolean => value >= lo && value <= hi;
@@ -85,14 +90,15 @@ export function evaluate(
     const by = decidedBy(def);
     const replays = metrics.replays.get(def.id) ?? NONE;
     const loop = metrics.loop.get(def.id) ?? NONE;
-    const measured = by === 'loop' ? loop : replays;
+    const chain = metrics.chain.get(def.id) ?? NONE;
+    const measured = by === 'chain' ? chain : by === 'loop' ? loop : replays;
     let status: Status;
     if (measured.value === null) status = 'pending';
     else if (!target) status = 'info';
     else if (mode === 'ci') status = within(measured.value, target.ci as Band) ? 'pass' : 'fail';
     else if (within(measured.value, target.pass)) status = 'pass';
     else status = within(measured.value, target.warn) ? 'warn' : 'fail';
-    results.push({ ...def, ...measured, status, target, decidedBy: by, replays, loop });
+    results.push({ ...def, ...measured, status, target, decidedBy: by, replays, loop, chain });
   }
   return results;
 }

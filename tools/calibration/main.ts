@@ -1,28 +1,30 @@
 /**
- * The calibration runner (spec 23.1). Replays the 2026 season across generated leagues and plays seasons
- * through the weekly loop on worker threads, compares every metric with calibration/targets.json on the
- * mode that decides it, writes Markdown and JSON reports to calibration/reports/, and prints the summary.
- * Exits with 1 when a metric fails.
+ * The calibration runner (spec 23.1). Replays the 2026 season across generated leagues, plays seasons
+ * through the weekly loop, and plays leagues season after season through the offseason, on worker threads;
+ * compares every metric with calibration/targets.json on the mode that decides it, writes Markdown and JSON
+ * reports to calibration/reports/, and prints the summary. Exits with 1 when a metric fails.
  *
- *   npm run calibrate -- [--seasons 100] [--per-league 10] [--experiments N] [--loop-seasons N] [--seed 1]
- *                        [--workers N] [--ci] [--out calibration/reports]
+ *   npm run calibrate -- [--seasons 100] [--per-league 10] [--experiments N] [--loop-seasons N]
+ *                        [--chains N] [--chain-seasons 10] [--seed 1] [--workers N] [--ci]
+ *                        [--out calibration/reports]
  *
  * --ci runs the CI subset against its wide bands (spec 23.1: 20 seasons in CI). Weekly-loop seasons default
  * to 100 in a full run, since perfect and winless seasons are rare, and 8 in CI; each takes about as long as
- * one and a half replays.
+ * one and a half replays. Chained leagues, for the aging metrics, default to 3 of 10 seasons in a full run
+ * and none in CI; a chained season takes about as long as three replays.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { Worker } from 'node:worker_threads';
-import type { RunSample } from '../../src/engine/calibration/metrics';
 import { reportMarkdown, summaryLines } from '../../src/engine/calibration/report';
 import {
   defaultExperiments,
   finishRun,
   planJobs,
   sharedLeague,
+  type JobSample,
   type RunJob,
   type RunPlan
 } from '../../src/engine/calibration/run';
@@ -34,6 +36,8 @@ const { values } = parseArgs({
     'per-league': { type: 'string', default: '10' },
     experiments: { type: 'string' },
     'loop-seasons': { type: 'string' },
+    chains: { type: 'string' },
+    'chain-seasons': { type: 'string', default: '10' },
     seed: { type: 'string', default: '1' },
     workers: { type: 'string' },
     ci: { type: 'boolean', default: false },
@@ -62,7 +66,9 @@ const plan: RunPlan = {
       ? mode === 'ci'
         ? 8
         : 100
-      : whole('loop-seasons', values['loop-seasons'], 0)
+      : whole('loop-seasons', values['loop-seasons'], 0),
+  chains: values.chains === undefined ? (mode === 'ci' ? 0 : 3) : whole('chains', values.chains, 0),
+  chainSeasons: whole('chain-seasons', values['chain-seasons'], 1)
 };
 const workers = Math.min(
   values.workers === undefined ? Math.min(availableParallelism(), 8) : whole('workers', values.workers, 1),
@@ -77,11 +83,12 @@ if (problems.length) throw new Error(`calibration/targets.json:\n${problems.join
  * Runs every job on a pool of workers, in plan order; a free worker takes a job from its cached replay league
  * when one is waiting, so each league is generated about once per worker.
  */
-function runJobs(jobs: readonly RunJob[]): Promise<RunSample[]> {
+function runJobs(jobs: readonly RunJob[]): Promise<JobSample[]> {
   const pending = [...jobs];
-  const samples: RunSample[] = [];
+  const samples: JobSample[] = [];
   const take = (league: number | null): RunJob | undefined => {
-    const at = pending[0]?.kind === 'loop' ? 0 : pending.findIndex(j => sharedLeague(j) === league);
+    const first = pending[0];
+    const at = first && sharedLeague(first) === null ? 0 : pending.findIndex(j => sharedLeague(j) === league);
     return pending.splice(at >= 0 ? at : 0, 1)[0];
   };
   return Promise.all(
@@ -90,7 +97,7 @@ function runJobs(jobs: readonly RunJob[]): Promise<RunSample[]> {
       () =>
         new Promise<void>((resolve, reject) => {
           const worker = new Worker(new URL('./worker.mjs', import.meta.url), {
-            workerData: { seed: plan.seed }
+            workerData: { seed: plan.seed, chainSeasons: plan.chainSeasons }
           });
           let league: number | null = null;
           const next = () => {
@@ -102,7 +109,7 @@ function runJobs(jobs: readonly RunJob[]): Promise<RunSample[]> {
             league = sharedLeague(job) ?? league;
             worker.postMessage(job);
           };
-          worker.on('message', (sample: RunSample) => {
+          worker.on('message', (sample: JobSample) => {
             samples.push(sample);
             next();
           });

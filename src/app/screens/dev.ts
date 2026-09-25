@@ -385,7 +385,7 @@ function calibrationCard({ app }: ScreenContext): HTMLElement {
     if (n === null) return seasons.focus();
     if (l === null) return loop.focus();
     if (s === null) return seed.focus();
-    startRun(app, { seed: s, seasons: n, perLeague: 10, experiments: defaultExperiments(n), loopSeasons: l });
+    startRun(app, { seed: s, seasons: n, perLeague: 10, experiments: defaultExperiments(n), loopSeasons: l, chains: 0, chainSeasons: 0 }); // prettier-ignore
   });
 
   view = {

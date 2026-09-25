@@ -8,7 +8,7 @@ import type { TeamAbbr } from '../../data/team-colors';
 import { FIT_GROUP_IDS, FIT_GROUPS, type FitArm, type FitGroup } from './experiment';
 import type { GameFact, ReplayFacts, TeamFact } from './replay';
 
-export type MetricGroup = 'games' | 'seasons' | 'stats' | 'leaders' | 'injuries' | 'effects';
+export type MetricGroup = 'games' | 'seasons' | 'stats' | 'leaders' | 'injuries' | 'effects' | 'aging';
 
 export const GROUP_TITLES: Record<MetricGroup, string> = {
   games: 'Games',
@@ -16,7 +16,8 @@ export const GROUP_TITLES: Record<MetricGroup, string> = {
   stats: 'League stats',
   leaders: 'Stat leaders and shares',
   injuries: 'Injuries',
-  effects: 'Effect sizes'
+  effects: 'Effect sizes',
+  aging: 'Aging and development'
 };
 
 /** How a value prints: a share as a percentage, a change in percentage points, or a number. */
@@ -157,6 +158,23 @@ def('effects.cohesion', 'effects', 'Cohesion', 'signed1');
 def('effects.coaching', 'effects', 'Coaching quality', 'signed1');
 def('effects.facilities', 'effects', 'Facilities', 'signed1');
 def('effects.lockerRoom', 'effects', 'Locker room', 'signed1');
+
+// Aging and development (spec 23.3), from leagues chained through the offseason (src/engine/calibration/chain.ts).
+def('aging.meanAge', 'aging', 'Average age, week 1 active rosters', 'dec2');
+def(
+  'aging.meanExperience',
+  'aging',
+  'Average seasons in the league, this one included, week 1 active rosters',
+  'dec2'
+);
+def('aging.rookiesPerTeam', 'aging', 'Players in their first season, per week 1 roster', 'dec1');
+def('aging.over30PerTeam', 'aging', 'Players 30 or older, per week 1 roster', 'dec1');
+def('aging.ovrDrift', 'aging', 'League average overall, change over the run', 'signed1');
+def('aging.groupDrift', 'aging', 'Largest position group overall change over the run', 'dec1');
+for (const group of ['QB', 'RB', 'WR', 'TE', 'OL', 'DL', 'LB', 'DB'])
+  def(`aging.peakAge.${group}`, 'aging', `Peak age, ${group}`, 'dec1');
+def('aging.retireAge', 'aging', 'Average age at retirement', 'dec1');
+def('aging.retireExperience', 'aging', 'Average credited seasons at retirement', 'dec1');
 
 function fitLabel(group: FitGroup): string {
   const labels: Record<FitGroup, string> = {

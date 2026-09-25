@@ -204,13 +204,15 @@ describe('calibration targets and reports (spec 23.2)', { timeout: 30_000 }, () 
       ['stats.cmpPct', { value: 0.64, n: 1 }]
     ]);
     const none = new Map<string, { value: number; n: number }>();
-    const full = new Map(evaluate({ replays: values, loop: none }, file, 'full').map(r => [r.id, r.status]));
+    const full = new Map(
+      evaluate({ replays: values, loop: none, chain: none }, file, 'full').map(r => [r.id, r.status])
+    );
     expect(full.get('games.homeWinRate')).toBe('warn');
     expect(full.get('games.pointsPerTeam')).toBe('fail');
     expect(full.get('stats.ypa')).toBe('pass');
     expect(full.get('stats.cmpPct')).toBe('info');
     expect(full.get('games.overtimeRate')).toBe('pending');
-    const ci = evaluate({ replays: values, loop: none }, file, 'ci');
+    const ci = evaluate({ replays: values, loop: none, chain: none }, file, 'ci');
     expect(ci.map(r => [r.id, r.status])).toEqual([['games.homeWinRate', 'pass']]);
   });
 
@@ -230,7 +232,7 @@ describe('calibration targets and reports (spec 23.2)', { timeout: 30_000 }, () 
       ['seasons.winSd', { value: 2.66, n: 640 }],
       ['games.homeWinRate', { value: 0.7, n: 5440 }]
     ]);
-    const results = new Map(evaluate({ replays, loop }, file, 'full').map(r => [r.id, r]));
+    const results = new Map(evaluate({ replays, loop, chain: new Map() }, file, 'full').map(r => [r.id, r]));
     const winSd = results.get('seasons.winSd');
     expect(winSd).toMatchObject({ status: 'warn', value: 2.66, n: 640, decidedBy: 'loop' });
     expect(winSd?.replays.value).toBe(3.1);
@@ -238,12 +240,12 @@ describe('calibration targets and reports (spec 23.2)', { timeout: 30_000 }, () 
     expect(home).toMatchObject({ status: 'pass', value: 0.55, decidedBy: 'replays' });
     expect(home?.loop.value).toBe(0.7);
     // Without weekly-loop seasons, season records go unmeasured.
-    const alone = evaluate({ replays, loop: new Map() }, file, 'full');
+    const alone = evaluate({ replays, loop: new Map(), chain: new Map() }, file, 'full');
     expect(alone.find(r => r.id === 'seasons.winSd')?.status).toBe('pending');
   });
 
   it('plans replays across leagues and writes a readable report', () => {
-    const plan = { seed: 1, seasons: 25, perLeague: 10, experiments: defaultExperiments(25), loopSeasons: 4 };
+    const plan = { seed: 1, seasons: 25, perLeague: 10, experiments: defaultExperiments(25), loopSeasons: 4, chains: 0, chainSeasons: 0 }; // prettier-ignore
     const jobs = planJobs(plan);
     // Weekly-loop seasons, the longest jobs, come first, each in a league of its own.
     expect(jobs.slice(0, 4).map(j => [j.kind, j.league, sharedLeague(j)])).toEqual([
@@ -281,10 +283,11 @@ describe('calibration targets and reports (spec 23.2)', { timeout: 30_000 }, () 
       '- Replays: 1 season (1 generated league, up to 10 replays each) and 0 fit experiment seasons, with rosters as generated.'
     );
     expect(markdown).toContain('- Weekly loop: 0 seasons through the weekly advance');
-    expect(markdown).toContain('| Metric | Replays | Weekly loop | Target | Status | Sample |');
+    expect(markdown).toContain('- Chained leagues: 0 generated leagues played for 0 seasons each');
+    expect(markdown).toContain('| Metric | Replays | Weekly loop | Chained | Target | Status | Sample |');
     expect(markdown).toContain('## Targets and sources');
     expect(summaryLines(report)[0]).toMatch(
-      /^Calibration \(full, 1 replay season and 0 weekly-loop seasons, seed 1\): \d+ pass/
+      /^Calibration \(full, 1 replay season, 0 weekly-loop seasons, and 0 chained leagues of 0 seasons, seed 1\): \d+ pass/
     );
     expect(summaryLines(report)).toContain('Decided by the weekly loop (replays, weekly loop, status):');
     expect(formatValue(0.6512, 'pct')).toBe('65.1%');

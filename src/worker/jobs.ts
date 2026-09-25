@@ -4,10 +4,16 @@ import { advanceWeek } from '../engine/season/advance';
 import { advanceOffseason } from '../engine/season/offseason';
 import type { NameData } from '../engine/generate/player';
 import type { ClimateTable } from '../data/climate';
-import type { RunSample } from '../engine/calibration/metrics';
 import type { CalibrationData } from '../engine/calibration/replay';
 import { LoopSeason } from '../engine/calibration/loop';
-import { finishRun, jobLeague, planJobs, runJob, type RunPlan } from '../engine/calibration/run';
+import {
+  finishRun,
+  jobLeague,
+  planJobs,
+  runJob,
+  type JobSample,
+  type RunPlan
+} from '../engine/calibration/run';
 import type { Mode, TargetsFile } from '../engine/calibration/targets';
 import { createLeague, type NewLeagueInput } from '../engine/league/create';
 import { DEFAULT_RULES } from '../engine/rules/ruleset';
@@ -91,13 +97,20 @@ export const JOBS: Record<string, JobHandler> = {
     const total = jobs.reduce((n, j) => n + (j.kind === 'loop' ? weeks : 1), 0);
     let done = 0;
     const started = performance.now();
-    const samples: RunSample[] = [];
+    const samples: JobSample[] = [];
     // Replays come league by league, so each replay league is generated once.
     let league: League | null = null;
     let leagueIndex = -1;
     let replays = 0;
     let experiments = 0;
     for (const job of jobs) {
+      if (job.kind === 'chain') {
+        ctx.progress(done, total, `Chained league ${job.league + 1} of ${plan.chains}`);
+        await ctx.checkpoint();
+        samples.push(runJob(data, plan.seed, job, jobLeague(data, plan.seed, job), plan.chainSeasons));
+        done++;
+        continue;
+      }
       if (job.kind === 'loop') {
         const season = new LoopSeason(jobLeague(data, plan.seed, job), data.climate);
         for (let week = 1; !season.done; week++) {

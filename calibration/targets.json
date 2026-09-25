@@ -391,6 +391,90 @@
       "warn": [-0.15, -0.01],
       "source": "The Spax, \"Analyzing the Effect of Weather in the NFL\": field goals 83.8% with wind under 10 mph and 76.9% at 20 mph or more.",
       "note": "Outdoor games only: field goal rate at 20 mph or more minus under 10 mph."
+    },
+    "aging.meanAge": {
+      "pass": [25.9, 26.8],
+      "warn": [25.5, 27.2],
+      "source": "NFL Football Operations, \"A Look at 2024 NFL Kickoff Weekend Rosters\", \"A Look at 2025 NFL Kickoff Weekend Rosters\", and \"A Look at 2026 NFL Kickoff Weekend Rosters\": league average age 26.21 (2024), 26.36 (2025), and 26.43 (2026).",
+      "note": "Week 1 active rosters in leagues chained through the offseason, ages to the day on each season's opener; the band allows about a quarter year either side of the three seasons."
+    },
+    "aging.meanExperience": {
+      "pass": [4.0, 4.8],
+      "warn": [3.6, 5.2],
+      "source": "NFL Football Operations, \"A Look at 2024 NFL Kickoff Weekend Rosters\", \"A Look at 2025 NFL Kickoff Weekend Rosters\", and \"A Look at 2026 NFL Kickoff Weekend Rosters\": league average experience 4.30 (2024), 4.44 (2025), and 4.47 (2026) seasons.",
+      "note": "Week 1 active rosters, counting the current season, so a rookie has one. The reports don't define experience, but their average age less average experience is about 21.9 for the league and for the youngest team alike (2025: 26.36 less 4.44; Green Bay 25.28 less 3.41), and rookies are 22 to 23 at kickoff, so the count includes the current season."
+    },
+    "aging.rookiesPerTeam": {
+      "pass": [8.5, 10.5],
+      "warn": [7.5, 11.5],
+      "source": "NFL Football Operations, \"A Look at 2024 NFL Kickoff Weekend Rosters\", \"A Look at 2025 NFL Kickoff Weekend Rosters\", and \"A Look at 2026 NFL Kickoff Weekend Rosters\": 9.69 (2024), 9.47 (2025), and 9.06 (2026) rookies and first-year players per team.",
+      "note": "Players with no credited season on week 1 active rosters, per team."
+    },
+    "aging.over30PerTeam": {
+      "pass": [7.5, 9.8],
+      "warn": [6.5, 11.0],
+      "source": "NFL Football Operations, \"A Look at 2024 NFL Kickoff Weekend Rosters\", \"A Look at 2025 NFL Kickoff Weekend Rosters\", and \"A Look at 2026 NFL Kickoff Weekend Rosters\": 7.91 (2024), 8.97 (2025), and 9.00 (2026) players aged 30 and over per team.",
+      "note": "Players 30 or older on the opener, week 1 active rosters, per team."
+    },
+    "aging.ovrDrift": {
+      "pass": [-1.5, 1.5],
+      "warn": [-3.0, 3.0],
+      "source": "Spec 23.3: rating inflation or deflation across decades is checked, and the league average overall by position must stay flat.",
+      "note": "Each chained league's week 1 active-roster average overall, first season to last, averaged over the leagues."
+    },
+    "aging.groupDrift": {
+      "pass": [0.0, 2.5],
+      "warn": [0.0, 4.0],
+      "source": "Spec 23.3: the league average overall by position must stay flat.",
+      "note": "The largest change among the eight position groups, first season to last."
+    },
+    "aging.peakAge.QB": {
+      "pass": [27.0, 31.0],
+      "warn": [25.5, 33.0],
+      "source": "Ty Schalter, \"When Does Age Catch Up to NFL Players?\" (Bleacher Report, June 8, 2018), approximate value by age and season: quarterback AV is nearly flat from 25 to 30 and falls after the tenth season (about age 32); Apex Fantasy Leagues peak-age studies: the average quarterback peak season comes at 28.5.",
+      "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
+    },
+    "aging.peakAge.RB": {
+      "pass": [25.0, 27.0],
+      "warn": [24.0, 28.0],
+      "source": "Tristan Bassett, \"Production Curves: Positional Breakouts, Prime Years, and Falloffs by Age\" (4for4, August 23, 2025): running backs peak at 26 and stay near it through 28; Apex Fantasy Leagues peak-age studies: average peak age 25.46; Ty Schalter, \"When Does Age Catch Up to NFL Players?\" (Bleacher Report, June 8, 2018), approximate value by age and season: AV highs at 27.",
+      "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
+    },
+    "aging.peakAge.WR": {
+      "pass": [26.0, 28.5],
+      "warn": [25.0, 30.0],
+      "source": "Tristan Bassett, \"Production Curves: Positional Breakouts, Prime Years, and Falloffs by Age\" (4for4, August 23, 2025): receivers are at their peak from 26 to 28 and fall off from 29; Apex Fantasy Leagues peak-age studies: average peak age 26.95.",
+      "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
+    },
+    "aging.peakAge.TE": {
+      "pass": [26.0, 30.0],
+      "warn": [25.0, 32.0],
+      "source": "Tristan Bassett, \"Production Curves: Positional Breakouts, Prime Years, and Falloffs by Age\" (4for4, August 23, 2025): tight ends reach their prime at 26 and produce close to their peak through 32.",
+      "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
+    },
+    "aging.peakAge.OL": {
+      "pass": [26.5, 30.0],
+      "warn": [25.5, 31.0],
+      "source": "Ty Schalter, \"When Does Age Catch Up to NFL Players?\" (Bleacher Report, June 8, 2018), approximate value by age and season: linemen peak in their seventh season, about age 28 to 29.",
+      "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
+    },
+    "aging.peakAge.DL": {
+      "pass": [26.5, 30.0],
+      "warn": [25.5, 31.0],
+      "source": "Ty Schalter, \"When Does Age Catch Up to NFL Players?\" (Bleacher Report, June 8, 2018), approximate value by age and season: linemen peak in their seventh season, about age 28 to 29, and decline quickly after.",
+      "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
+    },
+    "aging.peakAge.LB": {
+      "pass": [24.5, 28.0],
+      "warn": [23.5, 29.0],
+      "source": "Ty Schalter, \"When Does Age Catch Up to NFL Players?\" (Bleacher Report, June 8, 2018), approximate value by age and season: linebackers peak in their third season, about age 25, and hold for two more.",
+      "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
+    },
+    "aging.peakAge.DB": {
+      "pass": [24.5, 28.0],
+      "warn": [23.5, 29.0],
+      "source": "Ty Schalter, \"When Does Age Catch Up to NFL Players?\" (Bleacher Report, June 8, 2018), approximate value by age and season: defensive backs peak in their third season, about age 25, and decline steadily after.",
+      "note": "The delta method on overall ratings: the mean change from one week 1 to the next by age, for everyone in the league both times, smoothed over three ages; the peak is where it turns from rising to falling, placed at the next camp. Production peaks in the sources stand in for ability peaks."
     }
   }
 }

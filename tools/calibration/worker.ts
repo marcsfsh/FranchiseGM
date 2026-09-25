@@ -5,7 +5,7 @@ import type { League } from '../../src/engine/league/types';
 import { loadData } from './data';
 
 const data = loadData();
-const { seed } = workerData as { seed: number };
+const { seed, chainSeasons } = workerData as { seed: number; chainSeasons: number };
 let last: { index: number; league: League } | null = null;
 
 parentPort?.on('message', (job: RunJob) => {
@@ -16,5 +16,5 @@ parentPort?.on('message', (job: RunJob) => {
     if (last?.index !== shared) last = { index: shared, league: jobLeague(data, seed, job) };
     league = last.league;
   }
-  parentPort?.postMessage(runJob(data, seed, job, league));
+  parentPort?.postMessage(runJob(data, seed, job, league, chainSeasons));
 });
