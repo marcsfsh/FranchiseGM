@@ -19,6 +19,7 @@ import type { League } from '../league/types';
 import { calendarDay, leagueYear, PHASE_LABELS, type GameDate, type Phase } from '../model/calendar';
 import { fullName, type Player } from '../model/player';
 import type { RatingChange } from '../progression/change';
+import { campDevelopment, coachTraining } from '../progression/develop';
 import { retirePlayers } from '../progression/retirement';
 import { advanceLeagueRandom, leagueStream, stream, type AdvanceInput } from '../rng';
 import { activeLimit } from '../roster/rules';
@@ -162,6 +163,7 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
   const news: NewsItem[] = [];
   const messages: Omit<InboxItem, 'id' | 'season' | 'week' | 'read' | 'event'>[] = [];
   const decisions: DecisionLog[] = [];
+  const ratings: RatingChange[] = [];
   const headline = (
     kind: NewsItem['kind'],
     text: string,
@@ -265,6 +267,11 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     const mine = signed.filter(p => p.team === user);
     if (mine.length)
       messages.push({ kind: 'draft', title: `You signed ${plural(mine.length, 'undrafted rookie')}`, body: mine.map(named).join(', '), players: mine.map(p => p.id) }); // prettier-ignore
+  } else if (to.phase === 'trainingCamp') {
+    // Training camp (spec 10.5): the offseason's development, under each team's program.
+    league.date = { ...to };
+    coachTraining(league);
+    ratings.push(...campDevelopment(league, rng('camp')));
   } else if (to.phase === 'otas') {
     league.upcoming = nextSchedule(league, to.season + 1);
     const opener = league.upcoming.find(g => g.week === 1 && (g.home === user || g.away === user));
@@ -305,7 +312,7 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     news,
     inbox,
     pauses: pausing(inbox, league.settings.pause),
-    ratings: [],
+    ratings,
     blocked: null
   };
 }

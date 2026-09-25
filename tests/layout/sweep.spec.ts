@@ -35,6 +35,7 @@ const SCREENS: { hash: string; heading: string | RegExp; ready?: string }[] = [
   { hash: `#/player/${qb.id}`, heading: `${qb.firstName} ${qb.lastName}`, ready: 'main .card' },
   { hash: '#/depth-chart', heading: 'Depth chart', ready: 'main [role="tablist"]' },
   { hash: '#/game-plan', heading: 'Game plan', ready: 'main fieldset' },
+  { hash: '#/training', heading: 'Training', ready: 'main table' },
   { hash: '#/staff', heading: 'Staff' },
   { hash: '#/scouting', heading: 'Scouting and draft' },
   { hash: '#/free-agency', heading: 'Free agency', ready: 'main .card' },

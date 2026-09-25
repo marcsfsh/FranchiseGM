@@ -12,6 +12,7 @@ import type { Position } from '../../engine/model/positions';
 import { PLAN_LIMITS, PLAN_SITUATIONS, type GamePlan, type PlanSituation } from '../../engine/sim/plan';
 import { h, mount } from '../dom';
 import { gameDay, kickoff } from '../format';
+import { href } from '../router';
 import { pageHead } from './common';
 import type { Screen } from './types';
 
@@ -295,6 +296,7 @@ export function gamePlanScreen(): Screen {
           view,
         pageHead('Game plan', teamFullName(abbr)),
         h('p', null, header),
+        h('div', { class: 'btn-row' }, h('a', { class: 'btn btn-outline', href: href('training') }, 'Set training')),
         h(
           'div',
           { class: 'card depth-auto' },

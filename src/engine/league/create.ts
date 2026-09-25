@@ -4,6 +4,8 @@
  * 2026 regular season with rosters set.
  */
 import { defaultRotation, NEUTRAL_PLAN } from '../sim/plan';
+import { defaultDevelopment } from '../progression/settings';
+import { defaultTraining } from '../progression/training';
 import { defaultPauses } from '../season/inbox';
 import { emptySeason } from '../season/state';
 import type { ScheduledGame } from '../../data/schedule';
@@ -98,6 +100,7 @@ export function createLeague(input: NewLeagueInput): League {
       depth: { auto: true, order: {} },
       plan: { auto: true, plan: { ...NEUTRAL_PLAN } },
       rotation: defaultRotation(TUNING.situations.rb1Share),
+      training: defaultTraining(),
       carryover: 0
     };
   }
@@ -114,7 +117,7 @@ export function createLeague(input: NewLeagueInput): League {
       sim: defaultSliders(),
       pause: defaultPauses(),
       auto: { roster: false },
-      development: { retirementAge: 0 }
+      development: defaultDevelopment()
     },
     teams,
     players: byId(generated.players),

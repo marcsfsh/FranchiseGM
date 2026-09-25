@@ -11,6 +11,7 @@ import { waiverClaims } from '../ai/decisions/roster-moves';
 import { manageWeek } from '../ai/weekly';
 import { depthChanges, startersByTeam, type DepthChange } from '../league/depth-changes';
 import type { RatingChange } from '../progression/change';
+import { coachTraining, weeklyDevelopment } from '../progression/develop';
 import type { Conference, TeamAbbr } from '../../data/teams';
 import type { League } from '../league/types';
 import type { Phase } from '../model/calendar';
@@ -174,6 +175,17 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     week,
     leagueStream(league.random, 'injuries', week)
   );
+  // Regular-season weeks develop every rostered player a little (spec 10.5), by this week's snaps.
+  if (!playoff) {
+    const snaps: Record<string, number> = {};
+    for (const r of results)
+      for (const side of [r.box.home, r.box.away])
+        for (const [id, line] of Object.entries(side.players))
+          snaps[id] = (line.snapsOffense ?? 0) + (line.snapsDefense ?? 0) + (line.snapsSpecial ?? 0);
+    for (const [id, n] of Object.entries(snaps)) league.season.snaps[id] = (league.season.snaps[id] ?? 0) + n;
+    coachTraining(league);
+    ratings.push(...weeklyDevelopment(league, snaps, leagueStream(league.random, 'development', week)));
+  }
   // The Super Bowl comes two weeks after the conference championships: the off week heals too.
   if (week === league.rules.season.weeks + PLAYOFF_PHASES.length - 1) healWeek(league);
   // Season totals and players of the week, then the calendar moves on (seeds come after week 18).

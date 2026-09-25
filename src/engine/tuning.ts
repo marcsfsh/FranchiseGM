@@ -441,6 +441,71 @@ export const TUNING = {
       ankle: ['agi', 'cod']
     }
   },
+  /**
+   * Progression and regression (spec 10.5). Each rating belongs to a class with its own age curve, in rating
+   * points a year by years from the position group's peak age (generation.peakAge): growth of `growth` that
+   * fades past `growthEnd`, and decline of up to `decline` that builds past `declineStart`, both through a
+   * logistic of width `curveWidth`. Speed fades first, the mind keeps growing longest.
+   */
+  progression: {
+    curves: {
+      speed: { growth: 2, growthEnd: -3, decline: 3, declineStart: 2.5 },
+      body: { growth: 2.5, growthEnd: -2, decline: 2.5, declineStart: 4 },
+      mind: { growth: 3.5, growthEnd: 1, decline: 1.5, declineStart: 7 },
+      skill: { growth: 3, growthEnd: -1, decline: 2, declineStart: 5 },
+      kick: { growth: 1.5, growthEnd: 0, decline: 2, declineStart: 7 }
+    },
+    curveWidth: 1.2,
+    /** Ratings by class; every rating not listed is a skill. */
+    classes: {
+      speed: ['spd', 'acc', 'agi', 'cod', 'jmp', 'ret'],
+      body: ['str', 'sta', 'tgh', 'inj', 'thp'],
+      mind: ['awr', 'prc'],
+      kick: ['kpw', 'kac', 'lsp']
+    },
+    /** The share of a year's change that comes at training camp; the rest comes week by week in season. */
+    campShare: 0.75,
+    /** Random spread per rating at camp, in points (weekly steps scale it by their share). */
+    noise: 1,
+    /** Growth scales with the room left to potential: full at this many points, within these bounds. */
+    potentialRoom: 8,
+    potentialBounds: [0.25, 1.5],
+    /** Development traits (spec 10.6) speed growth and slow decline. */
+    devGrowth: { Normal: 1, Star: 1.25, Superstar: 1.5, 'X-Factor': 1.75 },
+    devDecline: { Normal: 1, Star: 0.92, Superstar: 0.86, 'X-Factor': 0.8 },
+    /** Playing time: growth x (base + span x share of a full game's snaps), a season's worth at camp. */
+    snapBase: 0.85,
+    snapSpan: 0.3,
+    fullGameSnaps: 60,
+    /** Coaching: growth x (1 + coaching x (the position coach's and coordinator's development - 50) / 50). */
+    coaching: 0.15,
+    /** Scheme fit: growth x (1 + fit x role fit / the fit cap), at camp. */
+    fit: 0.1,
+    /** Work ethic: growth x (1 + workEthic x (w - 50) / 50); decline x (1 - workEthicDecline x (w - 50) / 50). */
+    workEthic: 0.2,
+    workEthicDecline: 0.1,
+    /** An injury: growth x (1 - injury x the share of `injuryWeeks` he is out). */
+    injury: 0.5,
+    injuryWeeks: 8,
+    /** Free agents train on their own: growth x this. */
+    unsignedGrowth: 0.5,
+    training: {
+      /** A focus adds this share of growth to its ratings and costs the rest this share. */
+      focusBonus: 1,
+      focusCost: 0.1,
+      /** A program does the same at camp, and slows its ratings' decline by this share. */
+      programBonus: 0.3,
+      programCost: 0.05,
+      programDecline: 0.25,
+      /** Auto: each unit's focus looks at its best this many players; players through this age with this much room get their own. */
+      unitStarters: 11,
+      individualAge: 24,
+      individualRoom: 5,
+      /** Auto programs: technique for a roster this young or younger on average, strength this old or older. */
+      youngTeam: 25.5,
+      oldTeam: 27.5
+    }
+  },
   /** The new league year (spec 11.1). */
   leagueYear: {
     /**

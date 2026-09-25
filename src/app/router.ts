@@ -6,6 +6,7 @@ export type RouteName =
   | 'roster'
   | 'depth'
   | 'gameplan'
+  | 'training'
   | 'staff'
   | 'scouting'
   | 'freeagency'
@@ -39,6 +40,7 @@ const ROUTES: readonly RouteDef[] = [
   { name: 'roster', path: 'roster' },
   { name: 'depth', path: 'depth-chart' },
   { name: 'gameplan', path: 'game-plan' },
+  { name: 'training', path: 'training' },
   { name: 'staff', path: 'staff' },
   { name: 'scouting', path: 'scouting' },
   { name: 'freeagency', path: 'free-agency' },
@@ -140,6 +142,7 @@ export const PHONE_TABS: readonly RouteName[] = ['home', 'roster', 'staff', 'sco
 export function sectionOf(route: Route): RouteName {
   if (route.name === 'player') return 'roster';
   if (route.name === 'inbox') return 'home';
+  if (route.name === 'training') return 'gameplan';
   if (route.name === 'team' || route.name === 'leagueTab' || route.name === 'game') return 'league';
   if (route.name === 'newLeague') return 'start';
   if (route.name === 'dev') return 'settings';

@@ -40,6 +40,8 @@ export interface SeasonState {
   inactive: Record<string, number>;
   /** Practice squad players elevated for a game week (spec 12.1); they revert after that week's game. */
   elevations: { playerId: string; team: TeamAbbr; week: number }[];
+  /** Regular-season snaps by player, for development's playing time (spec 10.5). */
+  snaps: Record<string, number>;
 }
 
 export const emptySeason = (season: number): SeasonState => ({
@@ -52,7 +54,8 @@ export const emptySeason = (season: number): SeasonState => ({
   awards: [],
   totals: {},
   inactive: {},
-  elevations: []
+  elevations: [],
+  snaps: {}
 });
 
 /** Playoff phases in order: round 1 is the Wild Card round, the last is the Super Bowl. */

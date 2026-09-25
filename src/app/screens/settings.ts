@@ -8,6 +8,7 @@ import { exportToDevice, type AppState } from '../state';
 import { devMenuOn, tapVersion } from '../dev-menu';
 import { h, mount } from '../dom';
 import { layoutNote } from '../theme/prefs';
+import { developmentCard } from '../ui/development';
 import { slidersCard } from '../ui/sliders';
 import type { PrefsController } from '../theme/controller';
 import { card, pageHead } from './common';
@@ -239,6 +240,24 @@ function sliderSettings(app: AppState): HTMLElement | null {
   return card('Game sim and stat sliders', body, status);
 }
 
+/** Development settings (spec 22.4): the progression and regression curves and speeds, and retirement. */
+function developmentSettings(app: AppState): HTMLElement | null {
+  if (!app.league) return null;
+  const body = h('div', { class: 'stack' });
+  const status = h('p', { class: 'sr-only', role: 'status' });
+  const draw = () =>
+    mount(
+      body,
+      ...developmentCard(app, status, () => {
+        draw();
+        body.querySelector<HTMLButtonElement>('#resetDevelopment')?.focus();
+        status.textContent = 'Every development setting is back to normal.';
+      })
+    );
+  draw();
+  return card('Development', body, status);
+}
+
 /** The developer tools entry (spec 23.5), shown once the menu is on. */
 const devCard = () =>
   card(
@@ -288,6 +307,7 @@ export function settingsScreen(): Screen {
         league?.node ?? null,
         pauseSettings(ctx.app),
         sliderSettings(ctx.app),
+        developmentSettings(ctx.app),
         display.node,
         devMenuOn() ? devCard() : null
       );

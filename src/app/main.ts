@@ -52,7 +52,8 @@ const RETURN_ROUTES: ReadonlySet<string> = new Set([
   'league',
   'leagueTab',
   'team',
-  'game'
+  'game',
+  'training'
 ]);
 /** Where the list was when a player page opened from it, so returning restores it (style guide 13.5). */
 let listReturn: { route: string; scroll: number; playerId: string } | null = null;

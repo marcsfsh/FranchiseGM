@@ -13,6 +13,8 @@ import type { LeagueRandom } from '../rng';
 import type { RuleSet } from '../rules/ruleset';
 import type { TeamSchemes } from '../schemes/resolve';
 import type { WaiverEntry } from '../roster/waivers';
+import type { DevelopmentSettings } from '../progression/settings';
+import type { TrainingPlan } from '../progression/training';
 import type { InboxItem, PauseEvent } from '../season/inbox';
 import type { SeasonState } from '../season/state';
 import type { GamePlan, Rotation } from '../sim/plan';
@@ -69,6 +71,8 @@ export interface TeamState {
   plan: { auto: boolean; plan: GamePlan };
   /** Rotations and packages (spec 12.3). */
   rotation: Rotation;
+  /** The weekly focus, players' own focuses, and the offseason program (spec 10.5). */
+  training: TrainingPlan;
   /** Cap space carried over into the current league year (spec 11.1). */
   carryover: number;
 }
@@ -82,12 +86,6 @@ export interface AutoJobs {
   roster: boolean;
 }
 
-/** Development and draft settings (spec 22.4); the progression curves and sliders join them in M10. */
-export interface DevelopmentSettings {
-  /** Years added to the ages players tend to retire at (spec 10.7), from -3 to 3. */
-  retirementAge: number;
-}
-
 /** League settings that can change mid-save (spec 22). Sections are added as their features arrive. */
 export interface LeagueSettings {
   version: number;
@@ -99,6 +97,7 @@ export interface LeagueSettings {
   pause: Record<PauseEvent, boolean>;
   /** The user's jobs on auto (spec 22.7). */
   auto: AutoJobs;
+  /** Development and draft (spec 22.4). */
   development: DevelopmentSettings;
 }
 

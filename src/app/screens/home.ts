@@ -166,7 +166,10 @@ function offseasonCard(app: AppState, league: League): HTMLElement {
   }
   if (blocked) body.push(h('p', { class: 'delta-bad' }, blocked));
   const actions = h('div', { class: 'btn-row' });
-  actions.append(h('a', { class: 'btn btn-outline', href: href('freeagency') }, 'Free agency'));
+  actions.append(
+    h('a', { class: 'btn btn-outline', href: href('freeagency') }, 'Free agency'),
+    h('a', { class: 'btn btn-outline', href: href('training') }, 'Set training')
+  );
   if (date.phase === 'cutdown')
     actions.append(h('a', { class: 'btn btn-outline', href: '#/roster' }, 'Roster'));
   if (run) {
@@ -222,6 +225,7 @@ function nextGameCard(app: AppState, league: League): HTMLElement {
   const actions = h('div', { class: 'btn-row' });
   if (next && opponent)
     actions.append(h('a', { class: 'btn btn-outline', href: '#/game-plan' }, 'Set game plan'));
+  actions.append(h('a', { class: 'btn btn-outline', href: href('training') }, 'Set training'));
   // Quick actions (spec 19.2): the lineup is on the roster card; offers to free agents start here.
   actions.append(h('a', { class: 'btn btn-outline', href: href('freeagency') }, 'Free agency'));
   if (run) {

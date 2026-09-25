@@ -1,9 +1,10 @@
 # Status
 - Milestone: M10 (Checkpoint A reviewed by the user on 2026-09-25)
-- Current slice: M10 slice 5, progression and regression (spec 10.5) with training focus
+- Current slice: M10 slice 6, the re-sign window (spec 11.4, 11.5)
 - Done this milestone: slices 1 to 4 (sortable tables, changes with causes, 2027+ schedules, the offseason
-  calendar with the new league year, retirements, and the D-27 stand-ins for the draft and free agency)
-- Next slice: M10 slice 6, the re-sign window (spec 11.4, 11.5)
+  calendar with the new league year, retirements, and the D-27 stand-ins for the draft and free agency,
+  and progression with training focus, D-28)
+- Next slice: M10 slice 7, OTAs, training camp battles and injuries, preseason games, and the cutdown
 - Post-M23 build order registered: docs/design/franchise-gm-post-m23.md (`node tools/doc.mjs post <section>`).
   Its section 1.1 preparations apply at M10, M11, M13, M17, M18, M20, and any sim work; its section 2.18
   responsiveness rules apply now.

@@ -16,6 +16,7 @@ import { rosterScreen } from './roster';
 import { settingsScreen } from './settings';
 import { startScreen } from './start';
 import { teamScreen } from './team';
+import { trainingScreen } from './training';
 import type { Screen } from './types';
 
 /** Screen factories by route. Each navigation gets a fresh screen. */
@@ -24,6 +25,7 @@ export const SCREENS: Record<RouteName, () => Screen> = {
   roster: rosterScreen,
   depth: depthScreen,
   gameplan: gamePlanScreen,
+  training: trainingScreen,
   staff: () => placeholderScreen('Staff', 'Your coaches, coordinators, scouts, and front office.'),
   scouting: () =>
     placeholderScreen('Scouting and draft', 'Prospects, scouting assignments, and the draft board.'),

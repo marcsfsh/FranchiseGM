@@ -237,6 +237,7 @@ fieldset.field > legend {
 }
 .check-left {
   justify-content: flex-start;
+  max-width: 100%;
   font-weight: 700;
 }
 .form-card {
@@ -334,4 +335,14 @@ fieldset.field > legend {
 }
 .slider-pair .slider label {
   font-weight: 400;
+}
+
+/* Development curve tables (spec 22.4): a percentage in each cell, wide enough for 200 and the spinner. */
+.curve-table .input {
+  width: 9ch;
+  text-align: right;
+}
+/* Training (spec 10.5): a player's focus menu keeps its longest choice readable inside the table. */
+.focus-select {
+  min-width: 12rem;
 }
