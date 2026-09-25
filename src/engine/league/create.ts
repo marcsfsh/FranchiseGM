@@ -107,13 +107,14 @@ export function createLeague(input: NewLeagueInput): League {
     meta: { id: input.id, name, start: { ...start }, edited: false, createdBy: input.gameVersion },
     date: { season: start.startSeason, phase: 'regularSeason', week: 1 },
     random: createLeagueRandom(start.seed, input.fixed ?? false),
-    rules,
+    rules: structuredClone(rules),
     settings: {
       version: 1,
       fitCap: TUNING.fit.cap,
       sim: defaultSliders(),
       pause: defaultPauses(),
-      auto: { roster: false }
+      auto: { roster: false },
+      development: { retirementAge: 0 }
     },
     teams,
     players: byId(generated.players),
@@ -121,6 +122,8 @@ export function createLeague(input: NewLeagueInput): League {
     staff: byId(generated.staff),
     owners: byId(generated.owners),
     schedule: input.schedule.filter(g => g.season === start.startSeason).map(g => ({ ...g })),
+    seedSchedule: input.schedule.filter(g => g.season === start.startSeason).map(g => ({ ...g })),
+    upcoming: null,
     season: emptySeason(start.startSeason),
     inbox: [],
     waivers: [],

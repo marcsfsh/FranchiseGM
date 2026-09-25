@@ -1,6 +1,8 @@
 /** The worker's job table. Later milestones add season sims and AI batches. */
 import { hashWords, stream, type AdvanceInput } from '../engine/rng';
 import { advanceWeek } from '../engine/season/advance';
+import { advanceOffseason } from '../engine/season/offseason';
+import type { NameData } from '../engine/generate/player';
 import type { ClimateTable } from '../data/climate';
 import type { RunSample } from '../engine/calibration/metrics';
 import type { CalibrationData } from '../engine/calibration/replay';
@@ -42,6 +44,16 @@ export const JOBS: Record<string, JobHandler> = {
     };
     const { decisions: _decisions, ...week } = advanceWeek(league, climate, input);
     return week;
+  },
+
+  /**
+   * Takes the league one offseason step (spec 4.1). Returns everything but the AI decision log, like a
+   * week; a step the user must act on first comes back with `blocked` and the league unchanged.
+   */
+  advanceOffseason: payload => {
+    const { league, names, input } = payload as { league: League; names: NameData; input: AdvanceInput };
+    const { decisions: _decisions, ...step } = advanceOffseason(league, { names }, input);
+    return step;
   },
 
   /** Simulates one scheduled game (spec 8) and reports how long the sim took. */

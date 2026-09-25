@@ -41,12 +41,12 @@ const GROUP_WORDS: Record<string, string> = {
   OG: 'guard', C: 'center', DE: 'defensive end', DT: 'defensive tackle', OLB: 'outside linebacker',
   MLB: 'middle linebacker', CB: 'cornerback', S: 'safety', K: 'kicker', P: 'punter', LS: 'long snapper'
 }; // prettier-ignore
-const groupWords = (p: Player): string => GROUP_WORDS[NEED_GROUP[p.position]] ?? p.position;
+export const groupWords = (p: Player): string => GROUP_WORDS[NEED_GROUP[p.position]] ?? p.position;
 const injuryWords = (p: Player): string =>
   p.injury ? `a ${p.injury.bodyPart} injury, out ${p.injury.weeksOut} weeks` : 'an injury';
 
 /** The standard roster's count in each group. */
-const TARGET = new Map<string, number>();
+export const TARGET = new Map<string, number>();
 for (const [position, n] of ACTIVE_ROSTER) {
   const group = NEED_GROUP[position];
   TARGET.set(group, (TARGET.get(group) ?? 0) + n);

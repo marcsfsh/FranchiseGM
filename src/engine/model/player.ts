@@ -65,6 +65,8 @@ export interface Player {
   contractId: string | null;
   /** The injury he's carrying, if any (spec 10.8). */
   injury: PlayerInjury | null;
+  /** The season he retired after (spec 10.7); Hall of Fame candidates wait five seasons from it. */
+  retiredIn?: number;
   /** Columns from an import that the model doesn't use, kept for lossless round trips. */
   extra?: Record<string, string>;
 }

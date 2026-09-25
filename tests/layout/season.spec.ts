@@ -71,10 +71,11 @@ test('sims to the playoffs and through the Super Bowl without pausing', async ({
   );
   await page.getByRole('button', { name: 'Sim through the Super Bowl' }).click();
   await expect(status).toContainText(/Played 4 weeks\. The .+ won Super Bowl LXI\./, { timeout: 90_000 });
-  await expect(page.locator('main section.card', { hasText: 'Next game and game plan' })).toContainText(
+  await expect(page.locator('main section.card', { hasText: 'The offseason' })).toContainText(
     'Super Bowl LXI'
   );
   await expect(page.getByRole('button', { name: /^Play / })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Advance to Awards and Hall of Fame' })).toBeVisible();
 });
 
 test('keeps a custom game plan and depth chart through a played week', async ({ page }, info) => {

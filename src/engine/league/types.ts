@@ -22,7 +22,7 @@ import type { SimSliders } from '../sim/sliders';
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 10;
+export const SAVE_SCHEMA_VERSION = 11;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -82,6 +82,12 @@ export interface AutoJobs {
   roster: boolean;
 }
 
+/** Development and draft settings (spec 22.4); the progression curves and sliders join them in M10. */
+export interface DevelopmentSettings {
+  /** Years added to the ages players tend to retire at (spec 10.7), from -3 to 3. */
+  retirementAge: number;
+}
+
 /** League settings that can change mid-save (spec 22). Sections are added as their features arrive. */
 export interface LeagueSettings {
   version: number;
@@ -93,6 +99,7 @@ export interface LeagueSettings {
   pause: Record<PauseEvent, boolean>;
   /** The user's jobs on auto (spec 22.7). */
   auto: AutoJobs;
+  development: DevelopmentSettings;
 }
 
 export interface League {
@@ -109,6 +116,13 @@ export interface League {
   owners: Record<string, Owner>;
   /** The current season's schedule; playoff games join it as each round is set. */
   schedule: ScheduledGame[];
+  /**
+   * The first season's published schedule (spec 5.2): later schedules match their rotations in it and keep
+   * its weekly layout.
+   */
+  seedSchedule: ScheduledGame[];
+  /** Next season's schedule once it's released in the offseason (spec 5.2), until that season starts. */
+  upcoming: ScheduledGame[] | null;
   /** The current season's results, seeds, and champion. */
   season: SeasonState;
   /** Messages for the user (spec 19.6), oldest first. */

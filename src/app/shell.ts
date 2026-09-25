@@ -7,6 +7,7 @@
 import { TEAM_COLORS } from '../data/team-colors';
 import type { League } from '../engine/league/types';
 import { PHASE_LABELS } from '../engine/model/calendar';
+import { offseasonStep, stepLabel } from '../engine/season/offseason';
 import { h, mount } from './dom';
 import { dialogFrame, openDialog, toastRegion } from './feedback';
 import { icon } from './icons';
@@ -37,9 +38,8 @@ const navLink = (d: Destination, className: string, compact: boolean) =>
 /** A short date line: "2026 season · Week 1". */
 export function dateLine(league: League): string {
   const { season, phase, week } = league.date;
-  return phase === 'regularSeason'
-    ? `${season} season · Week ${week}`
-    : `${season} season · ${PHASE_LABELS[phase]}`;
+  if (phase === 'regularSeason') return `${season} season · Week ${week}`;
+  return `${season} season · ${offseasonStep(league.date) ? stepLabel(league.date) : PHASE_LABELS[phase]}`;
 }
 
 export function createShell(root: HTMLElement, prefs: PrefsController): Shell {

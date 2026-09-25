@@ -44,7 +44,18 @@ export const LIVE_PAUSE_EVENTS: readonly PauseEvent[] = ['starterInjuries'];
 export const defaultPauses = (): Record<PauseEvent, boolean> =>
   Object.fromEntries(PAUSE_EVENTS.map(e => [e, true])) as Record<PauseEvent, boolean>;
 
-export type InboxKind = 'result' | 'injury' | 'award' | 'milestone' | 'playoffs' | 'waivers';
+export type InboxKind =
+  | 'result'
+  | 'injury'
+  | 'award'
+  | 'milestone'
+  | 'playoffs'
+  | 'waivers'
+  | 'retirement'
+  | 'contracts'
+  | 'draft'
+  | 'schedule'
+  | 'roster';
 
 export interface InboxItem {
   id: string;

@@ -10,11 +10,12 @@ import type { League } from '../../engine/league/types';
 import { capFacts, capSheet } from '../../engine/cap/sheet';
 import { capHit } from '../../engine/contracts/cap';
 import { contractSummary } from '../../engine/contracts/view';
-import { calendarDay, leagueYear, PHASE_LABELS } from '../../engine/model/calendar';
+import { calendarDay, leagueYear, PHASE_LABELS, type Phase } from '../../engine/model/calendar';
 import { ageOn, type Player } from '../../engine/model/player';
 import { RATING_LABELS, type RatingKey } from '../../engine/model/ratings';
 import { HAND_SET_FORMULAS } from '../../engine/ratings/overall';
 import { designation } from '../../engine/season/injuries';
+import { nextStep, offseasonBlock, offseasonStep, stepLabel } from '../../engine/season/offseason';
 import { gameWeek, leagueStandings } from '../../engine/season/state';
 import type { WinLoss } from '../../engine/season/standings';
 import { h, type Child } from '../dom';
@@ -70,6 +71,7 @@ function nextStepLabel(league: League): string {
 
 function startAdvance(app: AppState, target: AdvanceTarget): void {
   if (run || !app.league) return;
+  const offseason = offseasonStep(app.league.date) > 0;
   const current: Run = { controller: new AbortController(), target, weeks: 0 };
   run = current;
   view?.refresh();
@@ -86,15 +88,23 @@ function startAdvance(app: AppState, target: AdvanceTarget): void {
       report => {
         run = null;
         const league = app.league;
-        const played = report.weeks === 1 ? 'Played a week' : `Played ${report.weeks} weeks`;
+        const played = offseason
+          ? league && offseasonStep(league.date) > 0
+            ? `Now: ${stepLabel(league.date)}`
+            : `The ${league?.date.season ?? ''} season is here: week 1`
+          : report.weeks === 1
+            ? 'Played a week'
+            : `Played ${report.weeks} weeks`;
         const paused = report.pauses[0];
-        const message = paused
-          ? `${played}. Stopped for: ${paused.title}.`
-          : report.stopped
-            ? `${played}. Stopped as you asked.`
-            : league && gameWeek(league) === null && league.season.champion
-              ? `${played}. The ${nick(league.season.champion)} won ${superBowlName(league.season.season)}.`
-              : `${played}.`;
+        const message = report.blocked
+          ? report.blocked
+          : paused
+            ? `${played}. Stopped for: ${paused.title}.`
+            : report.stopped
+              ? `${played}. Stopped as you asked.`
+              : !offseason && league && gameWeek(league) === null && league.season.champion
+                ? `${played}. The ${nick(league.season.champion)} won ${superBowlName(league.season.season)}.`
+                : `${played}.`;
         if (view) {
           view.refresh();
           view.announce(message);
@@ -112,6 +122,78 @@ function startAdvance(app: AppState, target: AdvanceTarget): void {
         );
       }
     );
+}
+
+/** What each offseason phase is for, in a line; the phases later builds fill say so. */
+const STEP_NOTES: Record<Exclude<Phase, 'regularSeason' | 'wildCard' | 'divisional' | 'conference' | 'superBowl'>, string> = {
+  staff: 'Coaching and staff moves arrive in a later build.',
+  awards: 'Season awards and the Hall of Fame arrive in a later build. Players decide whether to retire as this phase ends.',
+  resign: 'Extensions, tags, and tenders arrive in a later build. Contracts that run out end when free agency opens.',
+  combine: 'The combine arrives with the draft in a later build.',
+  annualMeeting: 'The new league year starts when free agency opens: contracts that run out end, and the cap grows.',
+  freeAgency: 'Sign free agents from the Free agency screen. The other teams sign theirs as each week ends.',
+  proDays: 'The draft is next: your picks join your roster when it opens.',
+  draft: 'Your draft picks are on your roster. The draft room arrives in a later build.',
+  udfa: 'The other teams have signed undrafted rookies; the rest are on the Free agency screen.',
+  otas: "Next season's schedule is out.",
+  trainingCamp: 'Training camp arrives in a later build.',
+  preseason: 'Preseason games arrive in a later build.',
+  cutdown: 'Every team cuts to the in-season limit before the season starts.'
+}; // prettier-ignore
+
+/** The offseason's current step (spec 4.1), with the advance controls. */
+function offseasonCard(app: AppState, league: League): HTMLElement {
+  const user = league.meta.start.userTeam;
+  const date = league.date;
+  const next = nextStep(date);
+  const season = next.phase === 'regularSeason' ? next.season : date.season + 1;
+  const body: Child[] = [
+    h('p', { class: 'label' }, `${date.season} offseason`),
+    h('p', { class: 'hero-title' }, stepLabel(date)),
+    h('p', null, STEP_NOTES[date.phase as keyof typeof STEP_NOTES] ?? '')
+  ];
+  if (league.season.champion)
+    body.push(
+      h('p', { class: 'muted' }, `The ${nick(league.season.champion)} won ${superBowlName(date.season)}.`)
+    );
+  const opener = league.upcoming?.find(g => g.week === 1 && (g.home === user || g.away === user));
+  if (opener)
+    body.push(h('p', { class: 'muted' }, `Your ${season} opener: ${opener.home === user ? `the ${nick(opener.away)} at home` : `at the ${nick(opener.home)}`}, ${gameDay(opener.date, opener.day)}.`)); // prettier-ignore
+  const blocked = offseasonBlock(league);
+  if (date.phase === 'cutdown') {
+    const active = Object.values(league.players).filter(p => p.team === user && p.status === 'active').length;
+    body.push(h('p', null, `You have ${active} active players; the limit is ${league.rules.roster.active}.`));
+  }
+  if (blocked) body.push(h('p', { class: 'delta-bad' }, blocked));
+  const actions = h('div', { class: 'btn-row' });
+  actions.append(h('a', { class: 'btn btn-outline', href: href('freeagency') }, 'Free agency'));
+  if (date.phase === 'cutdown')
+    actions.append(h('a', { class: 'btn btn-outline', href: '#/roster' }, 'Roster'));
+  if (run) {
+    const stop = h('button', { class: 'btn btn-outline', type: 'button', 'data-focus': 'stop' }, 'Stop after this step');
+    stop.addEventListener('click', () => {
+      run?.controller.abort();
+      stop.disabled = true;
+      view?.announce('Stopping after this step.');
+    });
+    body.push(
+      h('p', { role: 'status', class: 'advance-progress' }, `Working${run.weeks ? `: ${run.weeks} ${run.weeks === 1 ? 'step' : 'steps'} done` : '…'}`),
+      h('progress', { class: 'progress', 'aria-label': 'Advance progress' })
+    );
+    actions.append(stop);
+  } else {
+    const label = next.phase === 'regularSeason' ? `Start the ${next.season} season` : `Advance to ${stepLabel(next)}`;
+    const play = h('button', { class: 'btn btn-primary', type: 'button', 'data-focus': 'play' }, label);
+    play.addEventListener('click', () => startAdvance(app, 'week'));
+    actions.prepend(play);
+    if (next.phase !== 'regularSeason') {
+      const far = h('button', { class: 'btn btn-outline', type: 'button', 'data-focus': 'far' }, `Sim to the ${season} season`);
+      far.addEventListener('click', () => startAdvance(app, 'nextSeason'));
+      actions.append(far);
+    }
+  } // prettier-ignore
+  body.push(actions);
+  return homeCard('The offseason', {}, ...body);
 }
 
 function nextGameCard(app: AppState, league: League): HTMLElement {
@@ -133,15 +215,6 @@ function nextGameCard(app: AppState, league: League): HTMLElement {
       h('p', null, `${gameDay(next.date, next.day)} · ${kickoff(next.timeEt)}`),
       h('p', { class: 'muted' }, plan === 'Auto' ? `Game plan: Auto, tailored to the ${nick(opponent)}.` : 'Game plan: Custom.')
     ); // prettier-ignore
-  } else if (league.season.champion && !inSeason) {
-    body.push(
-      h(
-        'p',
-        { class: 'hero-title' },
-        `The ${nick(league.season.champion)} won ${superBowlName(league.season.season)}`
-      ),
-      h('p', { class: 'muted' }, 'The season is over. The offseason arrives with a later build.')
-    );
   } else if (inSeason) {
     body.push(h('p', null, 'Your season is over. The playoffs go on without you.'));
   }
@@ -379,7 +452,8 @@ export function homeScreen(): Screen {
         const key = active instanceof HTMLElement && cards.contains(active) ? active.dataset.focus : undefined;
         // Links (a box score, an arrow) come back by their address.
         const other = key ? null : focusKeyOf(cards);
-        cards.replaceChildren(...[nextGameCard(app, l), rosterCard(l), inboxCard(app, l), newsCard(l), ...standingsCards(l), capCard(l), featuredCard(l)].filter(c => c !== null));
+        const lead = offseasonStep(l.date) > 0 ? offseasonCard(app, l) : nextGameCard(app, l);
+        cards.replaceChildren(...[lead, rosterCard(l), inboxCard(app, l), newsCard(l), ...standingsCards(l), capCard(l), featuredCard(l)].filter(c => c !== null));
         // Keep focus on the control the user was using: the advance buttons hand it to Stop while a run goes
         // and take it back when it ends; a disabled button hands it to the play button.
         if (key) {

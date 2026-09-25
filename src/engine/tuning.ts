@@ -441,6 +441,69 @@ export const TUNING = {
       ankle: ['agi', 'cod']
     }
   },
+  /** The new league year (spec 11.1). */
+  leagueYear: {
+    /**
+     * League revenue growth for the cap formula, drawn each year until M16 models revenue: mean and spread
+     * around the NFL's recent cap growth (7% a year from 2014 to 2026, leaving out 2021).
+     */
+    revenueGrowth: [0.07, 0.025],
+    /** Rounding for the cap, and for the salaries and weekly pay that grow with it. */
+    capRound: 100_000,
+    salaryRound: 5_000,
+    weeklyRound: 50
+  },
+  /**
+   * Retirement (spec 10.7): chance = sigmoid(logit), where the logit is (age - usual age) / spread plus the
+   * terms below; younger players also retire by surprise at a small flat rate.
+   */
+  retirement: {
+    /** Usual retirement age by position group, before the retirement-age setting. */
+    age: { QB: 37, RB: 31, WR: 33, TE: 33, OL: 34, DL: 33, LB: 32, DB: 32, ST: 38 },
+    ageSpread: 1.6,
+    /** Per 10 overall points below his peak (his potential), a sign of decline. */
+    decline: 0.8,
+    /** A career-altering injury, or one that still has this many weeks to heal. */
+    injury: 1,
+    longInjuryWeeks: 8,
+    /** No contract: nobody wants him. Under contract past this league year: he stays. */
+    unsigned: 1.6,
+    underContract: -0.6,
+    /** Going out on top after a title. */
+    champion: 0.5,
+    /** At competitiveness 0 this much is added, at 100 subtracted (0 at 50). */
+    competitiveness: 0.5,
+    /** Players younger than this retire by surprise at this rate. */
+    surpriseBefore: 30,
+    surprise: 0.003
+  },
+  /**
+   * Offseason stand-ins for AI teams (D-27), until M11's draft and M12's free agency: free agents sign to
+   * fill each position group, a generated rookie class goes in draft order, and teams cut down to the limit.
+   */
+  offseason: {
+    /** Free agency: signings tried per team each week, and contract years by age (up to the age, years). */
+    signingTries: 12,
+    /** Most of the free cap (above the draft reserve) one signing may take, in open spots' shares. */
+    budgetShare: 3,
+    termByAge: [
+      [26, 3],
+      [29, 2]
+    ],
+    /** Prospects in a class (the spec 22.4 default), their ages, and their latent quality. */
+    classSize: 450,
+    classAge: [21, 23],
+    classQuality: [-1.2, 0.8],
+    /** Draft value: potential and current overall blended, with scouting noise. */
+    draftPotentialWeight: 0.6,
+    draftNoise: 2,
+    /** Undrafted rookies each team signs, and their signing bonus range. */
+    udfaPerTeam: 8,
+    udfaBonus: [5_000, 25_000],
+    /** In the cutdown, young players are kept for this share of the gap to their potential. */
+    cutPotentialWeight: 0.5,
+    cutYoungAge: 25
+  },
   /** Generated schedules (spec 5.2). */
   schedule: {
     /** Most road games in a row; a bye doesn't end the run. */

@@ -5,6 +5,7 @@
 import type { ScheduledGame } from '../../data/schedule';
 import { TEAM_COLORS, type TeamAbbr } from '../../data/team-colors';
 import type { League } from '../../engine/league/types';
+import { stepAt, stepLabel } from '../../engine/season/offseason';
 import { PHASE_LABELS } from '../../engine/model/calendar';
 import { PLAYOFF_PHASES } from '../../engine/season/state';
 import { h, type Child } from '../dom';
@@ -17,6 +18,9 @@ export const nick = (abbr: TeamAbbr): string => TEAM_COLORS[abbr].name;
 /** "Week 5", or a playoff round's name. */
 export function weekLabel(league: League, week: number): string {
   const weeks = league.rules.season.weeks;
+  // Offseason steps follow the playoff rounds (spec 4.1).
+  const step = stepAt(week - weeks - PLAYOFF_PHASES.length);
+  if (step) return stepLabel(step);
   return week > weeks ? PHASE_LABELS[PLAYOFF_PHASES[week - weeks - 1] ?? 'wildCard'] : `Week ${week}`;
 }
 

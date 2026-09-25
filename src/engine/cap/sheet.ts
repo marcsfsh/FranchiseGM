@@ -89,6 +89,15 @@ export function elevationCost(league: League, playerId: string): number {
   return Math.max(0, weekly - squad);
 }
 
+/**
+ * A sheet's space with every roster charge counting, as it will once the regular season starts: the rule of
+ * 51 only lasts until then (spec 11.2).
+ */
+export function seasonSpace(sheet: CapSheet): number {
+  const all = sheet.lines.reduce((total, l) => total + (l.status !== null ? l.charge.total : 0), 0);
+  return sheet.space - (all - sheet.roster);
+}
+
 /** A team's cap sheet for a league year (the current one by default), optionally after a proposed move. */
 export function capSheet(
   league: League,

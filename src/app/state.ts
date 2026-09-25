@@ -10,6 +10,7 @@ import type { TargetsFile } from '../engine/calibration/targets';
 import type { League, LeagueSummary, StartOptions } from '../engine/league/types';
 import { digestActions, freshSeed } from '../engine/rng';
 import type { WeekOutcome } from '../engine/season/advance';
+import { offseasonStep, type StepOutcome } from '../engine/season/offseason';
 import type { InboxItem } from '../engine/season/inbox';
 import { gameWeek } from '../engine/season/state';
 import type { NewLeagueInput } from '../engine/league/create';
@@ -23,17 +24,24 @@ export type SaveStatus =
   | { state: 'failed'; message: string }
   | { state: 'none' };
 
-/** How far an advance goes: one week, to the end of the regular season, or through the Super Bowl. */
-export type AdvanceTarget = 'week' | 'playoffs' | 'season';
+/**
+ * How far an advance goes: one week (or one offseason step), to the end of the regular season, through the
+ * Super Bowl, or through the offseason to the next season's week 1.
+ */
+export type AdvanceTarget = 'week' | 'playoffs' | 'season' | 'nextSeason';
 
 type AdvancedWeek = Omit<WeekOutcome, 'decisions'>;
+type AdvancedStep = Omit<StepOutcome, 'decisions'>;
 
 export interface AdvanceReport {
+  /** Weeks and offseason steps taken. */
   weeks: number;
   /** Messages that stopped the advance. */
   pauses: InboxItem[];
   /** The user stopped it between weeks. */
   stopped: boolean;
+  /** What the user must do before the offseason can go on, when that stopped it. */
+  blocked: string | null;
 }
 
 /** How long an edit waits for the next one before the league saves. */
@@ -232,35 +240,53 @@ export class AppState {
     await this.flush();
     const pauses: InboxItem[] = [];
     let weeks = 0;
-    while (this.league && gameWeek(this.league) !== null && !signal?.aborted) {
+    let blocked: string | null = null;
+    while (this.league && !signal?.aborted) {
+      const inSeason = gameWeek(this.league) !== null;
+      // A season advance ends when the offseason opens; the offseason one when the next season starts.
+      if (!inSeason && (target === 'season' || !offseasonStep(this.league.date))) break;
       const input = { actions: digestActions(this.actions), entropy: freshSeed() };
       const posted = this.actions.length;
       this.inFlight = [];
-      let week: AdvancedWeek;
+      let step: AdvancedWeek | AdvancedStep;
       let edits: ((league: League) => void)[];
       try {
-        week = await this.worker.run<AdvancedWeek>('advanceWeek', {
-          league: this.league,
-          climate: this.baseDb.climate,
-          input
-        }).result;
-        await this.store.history.record(week.league.meta.id, week.games);
+        if (inSeason) {
+          const week: AdvancedWeek = await this.worker.run<AdvancedWeek>('advanceWeek', {
+            league: this.league,
+            climate: this.baseDb.climate,
+            input
+          }).result;
+          await this.store.history.record(week.league.meta.id, week.games);
+          step = week;
+        } else {
+          step = await this.worker.run<AdvancedStep>('advanceOffseason', {
+            league: this.league,
+            names: this.baseDb.names,
+            input
+          }).result;
+        }
       } finally {
         edits = this.inFlight;
         this.inFlight = null;
       }
+      if ('blocked' in step && step.blocked) {
+        blocked = step.blocked;
+        break;
+      }
       // Actions taken during the week count toward the next one.
       this.actions = this.actions.slice(posted);
-      this.league = week.league;
-      for (const change of edits) change(week.league);
+      this.league = step.league;
+      for (const change of edits) change(step.league);
       await this.save();
       weeks++;
-      onWeek(week.league, weeks);
-      pauses.push(...week.pauses);
+      onWeek(step.league, weeks);
+      pauses.push(...step.pauses);
       if (target === 'week' || pauses.length) break;
-      if (target === 'playoffs' && week.league.date.phase !== 'regularSeason') break;
+      if (target === 'playoffs' && step.league.date.phase !== 'regularSeason') break;
+      if (target === 'nextSeason' && step.league.date.phase === 'regularSeason') break;
     }
-    return { weeks, pauses, stopped: signal?.aborted === true };
+    return { weeks, pauses, stopped: signal?.aborted === true, blocked };
   }
 
   /** Autosave hook (spec 21): after every week and every offseason phase. */

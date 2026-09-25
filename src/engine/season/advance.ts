@@ -23,6 +23,7 @@ import { playersOfTheWeek, type WeeklyAward } from './awards';
 import { addToInbox, pausing, weekInbox, type InboxItem } from './inbox';
 import { applyInjuries, healWeek } from './injuries';
 import { addToTotals, weekNews, type NewsItem } from './news';
+import { closeSeason } from './offseason';
 import { conferenceRound, superBowl, type Seed } from './playoffs';
 import { playoffSchedule } from './schedule';
 import { gameWeek, leagueStandings, PLAYOFF_PHASES, weekGames, type GameOutcome } from './state';
@@ -110,9 +111,10 @@ function moveOn(league: League): void {
   }
   const round = phase === 'regularSeason' ? 0 : (PLAYOFF_PHASES as readonly Phase[]).indexOf(phase) + 1;
   if (round === PLAYOFF_PHASES.length) {
-    // The Super Bowl is over: crown the champion and open the offseason (M10 fills it in).
+    // The Super Bowl is over: crown the champion, close the season, and open the offseason (spec 4.1).
     const final = Object.values(league.season.results).find(g => g.week === gameWeek(league));
     if (final) league.season.champion = final.homeScore > final.awayScore ? final.home : final.away;
+    closeSeason(league);
     league.date = { ...league.date, phase: 'staff', week: 1 };
     return;
   }

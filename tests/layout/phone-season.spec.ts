@@ -33,7 +33,7 @@ test('plays a whole season week by week on a phone, reading results and standing
   // Eighteen weeks and four playoff rounds, whether or not the Vikings are still playing.
   expect(weeks).toBe(22);
   await expect(date).toHaveText('2026 season · Staff management');
-  await expect(page.locator('main section.card', { hasText: 'Next game and game plan' })).toContainText(/won Super Bowl LXI/);
+  await expect(page.locator('main section.card', { hasText: 'The offseason' })).toContainText(/won Super Bowl LXI/);
   await goTo(page, '#/league/playoffs', 'League');
   await expect(page.locator('main .bracket-round').last().locator('.is-winner')).toHaveCount(1);
   await expectNoHorizontalOverflow(page);

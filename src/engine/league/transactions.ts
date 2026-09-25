@@ -19,7 +19,9 @@ export type TransactionKind =
   | 'claimed'
   | 'practiceSquad'
   | 'elevated'
-  | 'restructured';
+  | 'restructured'
+  /** A draft pick joining his team on a rookie deal. */
+  | 'drafted';
 
 export interface Transaction {
   season: number;

@@ -11,7 +11,12 @@ export const INBOX_LABELS: Record<InboxKind, string> = {
   award: 'Award',
   milestone: 'Milestone',
   playoffs: 'Playoffs',
-  waivers: 'Waivers'
+  waivers: 'Waivers',
+  retirement: 'Retirement',
+  contracts: 'Contracts',
+  draft: 'Draft',
+  schedule: 'Schedule',
+  roster: 'Roster'
 };
 
 /** Newest week first; within a week, in the order filed (the result leads). */

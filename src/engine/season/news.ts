@@ -19,7 +19,8 @@ import { awardName, type WeeklyAward } from './awards';
 
 const N = TUNING.news;
 
-export type NewsKind = 'result' | 'upset' | 'performance' | 'milestone' | 'injury' | 'transaction' | 'award';
+export type NewsKind =
+  'result' | 'upset' | 'performance' | 'milestone' | 'injury' | 'transaction' | 'award' | 'retirement';
 
 export interface NewsItem {
   id: string;
