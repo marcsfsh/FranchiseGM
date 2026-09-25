@@ -9,7 +9,10 @@ import type { League } from './types';
 
 export type TransactionKind =
   | 'injuredReserve'
+  /** A return from injured reserve, which uses one of the season's returns. */
   | 'activated'
+  /** A return from the PUP or non-football injury list, which doesn't. */
+  | 'reserveReturn'
   | 'signed'
   | 'promoted'
   | 'released'

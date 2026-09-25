@@ -24,12 +24,13 @@ export function demandShare(date: GameDate, rules: RuleSet): number {
   return (PLAYOFF_PHASES as readonly string[]).includes(date.phase) ? A.lateSeasonDemand : A.offseasonDemand;
 }
 
-/** What a free agent asks for per year now, in $5,000 steps, never under his minimum. */
+/** What a free agent asks for per year now, in quote steps, never under his minimum. */
 export function askingSalary(league: League, player: Player): number {
   const rules = league.rules;
   const age = ageOn(player.birthDate, calendarDay(league.date));
   const value = marketValue(rules, player.position, player.ovr, age, player.experience);
-  const ask = Math.round((value * demandShare(league.date, rules)) / 5000) * 5000;
+  const step = TUNING.market.quoteStep;
+  const ask = Math.round((value * demandShare(league.date, rules)) / step) * step;
   return Math.max(minimumSalary(rules, player.experience), ask);
 }
 

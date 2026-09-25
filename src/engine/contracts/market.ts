@@ -29,8 +29,7 @@ export function marketValue(
   const curve = 1 / (1 + Math.exp(-(ovr - mid) / M.width));
   const age0 = primeAge(position);
   const ageFactor = Math.max(0.4, 1 - Math.max(0, age - age0) * M.ageDiscountPerYear);
-  // Deals are quoted in $5,000 steps.
-  return Math.max(floor, Math.round((floor + (top - floor) * curve * ageFactor) / 5000) * 5000);
+  return Math.max(floor, Math.round((floor + (top - floor) * curve * ageFactor) / M.quoteStep) * M.quoteStep);
 }
 
 /** Signing bonus for a rookie drafted at this overall pick (spec 11.4). */
@@ -45,5 +44,7 @@ export function rookieSigningBonus(rules: RuleSet, pick: number): number {
 
 /** The most a deal at this position can pay per year. */
 export function marketCeiling(rules: RuleSet, position: Position): number {
-  return Math.round((rules.cap.amount * M.topShare[position] * (1 + M.topOverage)) / 5000) * 5000;
+  return (
+    Math.round((rules.cap.amount * M.topShare[position] * (1 + M.topOverage)) / M.quoteStep) * M.quoteStep
+  );
 }

@@ -49,8 +49,12 @@ export const leagueYearStart = (year: number): GameDate => ({
   week: 1
 });
 
-/** Whether a date falls after June 1 of its league year (spec 11.2). */
-export const afterJune1 = (date: GameDate): boolean => calendarDay(date) >= `${leagueYear(date)}-06-01`;
+/**
+ * Whether a date falls after June 1 (the rule set's day) of its league year (spec 11.2): from June 2, when
+ * releases split their dead money and June 1 designations take effect.
+ */
+export const afterJune1 = (date: GameDate, rules: RuleSet): boolean =>
+  calendarDay(date) > `${leagueYear(date)}-${rules.pay.june1}`;
 
 /**
  * Where a date falls in league year `year`'s regular season, for pay: 1 before the season (or in an earlier
@@ -121,13 +125,45 @@ export function guaranteedAt(c: Contract, entry: ContractYear, at: GameDate, inj
 const accelerates = (end: ContractEnd): boolean => end.how !== 'replaced';
 
 /** Whether an end splits dead money across two league years: after June 1, or with a designation. */
-export const splitsDeadMoney = (end: ContractEnd): boolean => end.designated || afterJune1(end.date);
+export const splitsDeadMoney = (end: ContractEnd, rules: RuleSet): boolean =>
+  end.designated || afterJune1(end.date, rules);
+
+/**
+ * Base salary of a year paid over its pay weeks [from, to). The salary comes in equal installments over the
+ * regular season's weeks; a restructure during the season converts part of what's still to come, so the
+ * weeks after it pay less (the stored base is the year's salary after every conversion).
+ */
+export function baseBetween(c: Contract, entry: ContractYear, from: number, to: number, rules: RuleSet): number {
+  if (entry.isVoid || to <= from) return 0;
+  const weeks = rules.season.weeks;
+  const cuts = c.restructures
+    .filter(r => leagueYear(r.date) === entry.year)
+    .map(r => ({ week: payWeek(r.date, entry.year, rules), amount: r.amount }))
+    .filter(r => r.week > 1 && r.week <= weeks)
+    .sort((a, b) => a.week - b.week);
+  let rate = (entry.base + cuts.reduce((sum, r) => sum + r.amount, 0)) / weeks;
+  let week = 1;
+  let total = 0;
+  const pay = (until: number) => {
+    const a = Math.max(week, from);
+    const b = Math.min(until, to);
+    if (b > a) total += rate * (b - a);
+    week = until;
+  };
+  for (const cut of cuts) {
+    pay(cut.week);
+    const remaining = weeks + 1 - cut.week;
+    rate = (rate * remaining - cut.amount) / remaining;
+  }
+  pay(weeks + 1);
+  return Math.round(total);
+} // prettier-ignore
 
 /** Base salary of the year counted for the weeks in force. */
-function paidBase(c: Contract, entry: ContractYear, rules: RuleSet): number {
-  if (entry.isVoid) return 0;
-  const weeks = weeksInForce(c, entry.year, rules);
-  return Math.round((entry.base * weeks) / rules.season.weeks);
+export function paidBase(c: Contract, entry: ContractYear, rules: RuleSet): number {
+  const start = payWeek(c.signed, entry.year, rules);
+  const end = c.ended ? payWeek(c.ended.date, entry.year, rules) : rules.season.weeks + 1;
+  return baseBetween(c, entry, start, end, rules);
 }
 
 /** Proration and guarantees of the years after `year` that a deal ending then still owes. */
@@ -140,30 +176,37 @@ function laterDeadMoney(c: Contract, end: ContractEnd, year: number, schedule: M
   return dead;
 }
 
+/** Roster, workout, and per-game roster bonuses earned in a year: the ones paid in cash as they're earned. */
+export function earnedBonuses(c: Contract, year: number, rules: RuleSet, facts: CapFacts = {}): number {
+  const entry = c.years.find(y => y.year === year);
+  if (!entry || entry.isVoid) return 0;
+  const end = c.ended;
+  let bonuses = 0;
+  // Roster bonuses fall due when the league year opens (or at signing, later in the year); a deal ended
+  // on the first day of the league year doesn't earn it.
+  if (!end || compareDates(end.date, leagueYearStart(year)) > 0) bonuses += entry.rosterBonus;
+  // Workout bonuses are earned through the offseason program, which ends in June.
+  const endYear = end ? leagueYear(end.date) : null;
+  if (!end || (endYear ?? year) > year || (endYear === year && afterJune1(end.date, rules)))
+    bonuses += entry.workoutBonus;
+  // Per-game roster bonuses: each game of the year in force, less the games he was inactive.
+  if (entry.perGameBonus) {
+    const games = rules.season.games;
+    const inForce = Math.round((games * weeksInForce(c, year, rules)) / rules.season.weeks);
+    const active = Math.max(0, inForce - (facts.inactive?.(year) ?? 0));
+    bonuses += Math.round((entry.perGameBonus * active) / games);
+  }
+  return bonuses;
+}
+
 /** Bonuses earned in a year, and incentives counted or settled in it. */
 function bonusesIn(c: Contract, year: number, rules: RuleSet, facts: CapFacts): number {
   const entry = c.years.find(y => y.year === year);
   const end = c.ended;
-  let bonuses = 0;
-  if (entry && !entry.isVoid) {
-    // Roster bonuses fall due when the league year opens (or at signing, later in the year); a deal ended
-    // on the first day of the league year doesn't earn it.
-    if (!end || compareDates(end.date, leagueYearStart(year)) > 0) bonuses += entry.rosterBonus;
-    // Workout bonuses are earned through the offseason program, which ends in June.
-    const endYear = end ? leagueYear(end.date) : null;
-    if (!end || (endYear ?? year) > year || (endYear === year && afterJune1(end.date)))
-      bonuses += entry.workoutBonus;
-    // Per-game roster bonuses: each game of the year in force, less the games he was inactive.
-    if (entry.perGameBonus) {
-      const games = rules.season.games;
-      const inForce = Math.round((games * weeksInForce(c, year, rules)) / rules.season.weeks);
-      const active = Math.max(0, inForce - (facts.inactive?.(year) ?? 0));
-      bonuses += Math.round((entry.perGameBonus * active) / games);
-    }
-    // Likely incentives count while he can still earn them: the deal lasts the regular season.
-    if (!end || payWeek(end.date, year, rules) > rules.season.weeks)
-      bonuses += entry.incentives.filter(i => i.likely).reduce((sum, i) => sum + i.amount, 0);
-  }
+  let bonuses = earnedBonuses(c, year, rules, facts);
+  // Likely incentives count while he can still earn them: the deal lasts the regular season.
+  if (entry && !entry.isVoid && (!end || payWeek(end.date, year, rules) > rules.season.weeks))
+    bonuses += entry.incentives.filter(i => i.likely).reduce((sum, i) => sum + i.amount, 0);
   // Last year's incentives settle now: unlikely ones earned are charged, likely ones missed are credited.
   const before = c.years.find(y => y.year === year - 1);
   const counted = !end || payWeek(end.date, year - 1, rules) > rules.season.weeks;
@@ -182,7 +225,8 @@ export function capCharge(c: Contract, year: number, rules: RuleSet, facts: CapF
   const bonuses = bonusesIn(c, year, rules, facts);
   if (end && endYear !== null && year > endYear) {
     // After an early end, only split dead money (the year after) and settled incentives land here.
-    const dead = year === endYear + 1 && splitsDeadMoney(end) ? laterDeadMoney(c, end, endYear, schedule) : 0;
+    const dead =
+      year === endYear + 1 && splitsDeadMoney(end, rules) ? laterDeadMoney(c, end, endYear, schedule) : 0;
     return charge(0, bonuses, 0, dead);
   }
   let proration = schedule.get(year) ?? 0;
@@ -200,7 +244,7 @@ export function capCharge(c: Contract, year: number, rules: RuleSet, facts: CapF
       const owed = end.terminationPay ? entry.base : guaranteedAt(c, entry, end.date, end.injured);
       dead += Math.max(0, owed - base);
     }
-    if (!splitsDeadMoney(end)) dead += laterDeadMoney(c, end, year, schedule);
+    if (!splitsDeadMoney(end, rules)) dead += laterDeadMoney(c, end, year, schedule);
   }
   return charge(base, bonuses, proration, dead);
 }
@@ -265,6 +309,6 @@ export function releaseImpact(
     savings: keep - now.total,
     deadNow: now.proration + now.dead,
     deadNext: capCharge(released, year + 1, rules, facts).dead,
-    split: splitsDeadMoney(released.ended as ContractEnd)
+    split: splitsDeadMoney(released.ended as ContractEnd, rules)
   };
 }

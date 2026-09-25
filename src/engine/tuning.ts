@@ -149,7 +149,9 @@ export const TUNING = {
     /** Spread of individual deals around the market value (log scale). */
     noise: 0.15,
     /** No deal exceeds the top of its position's market by more than this share. */
-    topOverage: 0.08
+    topOverage: 0.08,
+    /** Salaries are quoted in steps of this many dollars. */
+    quoteStep: 5000
   },
 
   /** Contract structure for generated deals (spec 11.3, 6.5). Tiers are by average annual value. */

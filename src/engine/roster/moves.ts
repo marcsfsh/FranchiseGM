@@ -6,10 +6,10 @@
  * the user's screens and the AI make their moves through the same functions.
  */
 import type { TeamAbbr } from '../../data/team-colors';
-import { capFacts, capSheet } from '../cap/sheet';
+import { capFacts, capSheet, elevationCost, type SheetChange } from '../cap/sheet';
 import { offerProblem } from '../contracts/acceptance';
 import { offerContract, practiceSquadSigning, type Offer } from '../contracts/build';
-import { afterJune1, capCharge, capHit, payWeek, releaseImpact } from '../contracts/cap';
+import { afterJune1, capHit, payWeek, releaseImpact } from '../contracts/cap';
 import { endContract, restructure, type Outcome } from '../contracts/moves';
 import type { Contract } from '../contracts/types';
 import {
@@ -29,7 +29,7 @@ import { cannotPlay, designation } from '../season/injuries';
 import { gameWeek, PLAYOFF_PHASES, weekGames } from '../season/state';
 import { dollars, plural, possessive } from '../text';
 import { elevatedThisWeek, elevationsThisSeason, practiceSquadVeteran, rosterCounts } from './rules';
-import { claimProblem, placeOnWaivers, subjectToWaivers } from './waivers';
+import { claimedContract, claimProblem, placeOnWaivers, subjectToWaivers } from './waivers';
 
 export type { Offer };
 
@@ -157,10 +157,14 @@ function plan(league: League, move: Move): Outcome<Plan> {
     counts.active < counts.limit
       ? null
       : `Your active roster is full (${counts.limit}): release or move a player first.`;
-  const capRoom = (charge: number) =>
-    charge <= before
-      ? null
-      : `His ${year} cap hit of ${dollars(charge)} is more than your ${dollars(Math.max(0, before))} of cap space.`;
+  // Cap space after a move, by the same sheet as the team's (the rule of 51 included).
+  const spaceWith = (change: SheetChange) => capSheet(league, team, year, change).space;
+  // A move that uses cap space can't leave the team over the cap; one that frees space always can.
+  const overCap = (after: number) => after < 0 && after < before;
+  const capRoom = (charge: number, after: number) =>
+    overCap(after)
+      ? `His ${year} cap hit of ${dollars(charge)} is more than your ${dollars(Math.max(0, before))} of cap space.`
+      : null;
 
   switch (move.kind) {
     case 'sign': {
@@ -170,12 +174,12 @@ function plan(league: League, move: Move): Outcome<Plan> {
       const full = roomOnRoster();
       if (full) return refuse(full);
       const deal = offerContract(rules, { id: 'preview', playerId: player.id, team }, league.date, move.offer, player.experience);
-      const charge = capHit(deal, year, rules);
-      const over = capRoom(charge);
+      const after = spaceWith({ add: [{ contract: deal, status: 'active' }] });
+      const over = capRoom(capHit(deal, year, rules), after);
       if (over) return refuse(over);
       return ok({
         preview: preview({
-          spaceAfter: before - charge,
+          spaceAfter: after,
           active: counts.active + 1,
           notes: [`${name} signs for ${plural(move.offer.years, 'year')}.`]
         }),
@@ -196,12 +200,12 @@ function plan(league: League, move: Move): Outcome<Plan> {
           `Your practice squad already has ${r.practiceSquadVeterans} players with more than ${plural(r.practiceSquadVeteranSeasons, 'accrued season')}.`
         );
       const deal = practiceSquadDeal(league, player, team, 'preview');
-      const charge = capHit(deal, year, rules);
-      const over = capRoom(charge);
+      const after = spaceWith({ add: [{ contract: deal, status: 'practice' }] });
+      const over = capRoom(capHit(deal, year, rules), after);
       if (over) return refuse(over);
       return ok({
         preview: preview({
-          spaceAfter: before - charge,
+          spaceAfter: after,
           practice: counts.practice + 1,
           notes: [`${name} joins the practice squad at ${dollars(deal.weeklyPay)} a week.`]
         }),
@@ -220,7 +224,7 @@ function plan(league: League, move: Move): Outcome<Plan> {
       const designated = move.designated ?? false;
       if (designated) {
         if (squad) return refuse('A June 1 designation is for players on the roster.');
-        if (afterJune1(league.date)) return refuse('After June 1 every release splits its dead money already.');
+        if (afterJune1(league.date, rules)) return refuse('After June 1 every release splits its dead money already.');
         if (june1Used(league, team) >= rules.pay.june1Designations)
           return refuse(`You've used your ${plural(rules.pay.june1Designations, 'June 1 designation')} this league year.`);
       }
@@ -228,10 +232,11 @@ function plan(league: League, move: Move): Outcome<Plan> {
       const terminationPay = !squad && owedTerminationPay(league, player, contract);
       const facts = capFacts(league, player.id);
       const impact = releaseImpact(contract, league.date, rules, { designated, injured, terminationPay }, facts);
-      const after = before + impact.savings;
-      if (impact.savings < 0 && after < 0)
+      const end = { date: { ...league.date }, how: 'released' as const, designated, injured, terminationPay };
+      const after = spaceWith({ replace: [endContract(contract, end)] });
+      if (overCap(after))
         return refuse(
-          `Releasing him now leaves ${dollars(-impact.savings)} more on this year's cap, which would put you over it. A June 1 designation moves most of it to next year.`
+          `Releasing him now leaves ${dollars(before - after)} more on this year's cap, which would put you over it. A June 1 designation moves most of it to next year.`
         );
       const waived = subjectToWaivers(league, player);
       const notes = [
@@ -241,6 +246,11 @@ function plan(league: League, move: Move): Outcome<Plan> {
       ];
       if (injured) notes.push('He is hurt, so his injury guarantees are owed.');
       if (terminationPay) notes.push("As a vested veteran on the week 1 roster, he's owed the rest of this season's salary.");
+      // Under the CBA a June 1 release keeps its full charge until June 2, when the split takes effect.
+      if (designated)
+        notes.push(
+          `His full cap hit stays on your ${year} cap until June 2. Then ${impact.savings >= 0 ? `${dollars(impact.savings)} comes off it` : `it grows by ${dollars(-impact.savings)}`}, and ${dollars(impact.deadNext)} of dead money moves to ${year + 1}.`
+        );
       return ok({
         preview: preview({
           spaceAfter: after,
@@ -251,13 +261,7 @@ function plan(league: League, move: Move): Outcome<Plan> {
           notes
         }),
         apply: () => {
-          league.contracts[contract.id] = endContract(contract, {
-            date: { ...league.date },
-            how: 'released',
-            designated,
-            injured,
-            terminationPay
-          });
+          league.contracts[contract.id] = endContract(contract, end);
           league.season.elevations = league.season.elevations.filter(
             e => !(e.playerId === player.id && e.week === gameWeek(league))
           );
@@ -305,8 +309,8 @@ function plan(league: League, move: Move): Outcome<Plan> {
       return ok({
         preview: preview({ active: counts.active + 1, notes: [`${name} returns to the active roster.`] }),
         apply: () => {
+          log(league, team, player.status === 'ir' ? 'activated' : 'reserveReturn', player);
           player.status = 'active';
-          log(league, team, 'activated', player);
         }
       });
     } // prettier-ignore
@@ -317,12 +321,12 @@ function plan(league: League, move: Move): Outcome<Plan> {
       if (full) return refuse(full);
       const deal = offerContract(rules, { id: 'preview', playerId: player.id, team }, league.date, { years: 1, salary: minimumSalary(rules, player.experience), signingBonus: 0 }, player.experience);
       const ended = endContract(contract, { date: { ...league.date }, how: 'replaced', designated: false, injured: false, terminationPay: false });
-      const charge = capHit(deal, year, rules) - (capHit(contract, year, rules) - capHit(ended, year, rules));
-      const over = capRoom(charge);
+      const after = spaceWith({ replace: [ended], add: [{ contract: deal, status: 'active' }] });
+      const over = capRoom(capHit(deal, year, rules), after);
       if (over) return refuse(over);
       return ok({
         preview: preview({
-          spaceAfter: before - charge,
+          spaceAfter: after,
           active: counts.active + 1,
           practice: counts.practice - 1,
           notes: [`${name} signs to the active roster at the minimum salary.`]
@@ -345,8 +349,18 @@ function plan(league: League, move: Move): Outcome<Plan> {
       if (elevated.length >= r.elevationsPerGame) return refuse(`You can elevate ${r.elevationsPerGame} players a game.`);
       if (elevationsThisSeason(league, player.id) >= r.elevationsPerPlayer)
         return refuse(`${name} has been elevated ${plural(r.elevationsPerPlayer, 'time')} this season; sign him to the roster instead.`);
+      // An elevated player earns the active minimum's week for the game (spec 12.1).
+      const cost = elevationCost(league, player.id);
+      const after = spaceWith({ elevate: player.id });
+      if (overCap(after)) return refuse(`His ${dollars(cost)} for the game is more than your ${dollars(Math.max(0, before))} of cap space.`);
       return ok({
-        preview: preview({ notes: [`${name} can dress for this week's game, then returns to the practice squad.`] }),
+        preview: preview({
+          spaceAfter: after,
+          notes: [
+            `${name} can dress for this week's game, then returns to the practice squad.`,
+            `He earns ${dollars(cost)} more than his practice squad pay for the game.`
+          ]
+        }),
         apply: () => {
           league.season.elevations.push({ playerId: player.id, team, week: game.week });
           log(league, team, 'elevated', player);
@@ -360,9 +374,18 @@ function plan(league: League, move: Move): Outcome<Plan> {
       if (entry.claims.includes(team)) return refuse(`You've already claimed ${name}.`);
       const problem = claimProblem(league, team, entry);
       if (problem) return refuse(problem);
+      const old = league.contracts[entry.contractId];
+      const claimed = old ? claimedContract(old, team, 'preview', league.date, rules) : null;
+      // The space he'd leave if he's awarded to you.
+      const after = claimed ? spaceWith({ add: [{ contract: claimed, status: 'active' }] }) : before;
       return ok({
         preview: preview({
-          notes: [`Claims are awarded in waiver order when the week is played; the winner takes over his contract.`]
+          spaceAfter: after,
+          active: counts.active + 1,
+          notes: [
+            'Claims are awarded in waiver order when the week is played; the winner takes over his contract.',
+            `If he's awarded to you, you'll have ${dollars(after)} of ${year} cap space.`
+          ]
         }),
         apply: () => {
           entry.claims.push(team);
@@ -374,11 +397,11 @@ function plan(league: League, move: Move): Outcome<Plan> {
       if (!ownPlayer || !contract || contract.ended) return refuse(`${name} isn't under contract with you.`);
       const done = restructure(contract, league.date, move.amount, minimumSalary(rules, player.experience), rules, move.voidYears ?? 0);
       if (!done.ok) return done;
-      const facts = capFacts(league, player.id);
-      const now = capCharge(contract, year, rules, facts).total - capCharge(done.value, year, rules, facts).total;
+      const after = spaceWith({ replace: [done.value] });
+      if (overCap(after)) return refuse(`The restructure would put you ${dollars(-after)} over the ${year} cap.`);
       return ok({
         preview: preview({
-          spaceAfter: before + now,
+          spaceAfter: after,
           notes: [`${dollars(move.amount)} of ${possessive(name)} salary becomes a bonus spread over ${plural(done.value.restructures.at(-1)?.prorationYears.length ?? 1, 'year')}.`]
         }),
         apply: () => {

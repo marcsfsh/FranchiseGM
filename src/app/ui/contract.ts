@@ -93,7 +93,7 @@ export function contractCard(app: AppState, league: League, player: Player, done
       ...contract.restructures.map(r => row(`Restructured, ${PHASE_LABELS[r.date.phase]} ${r.date.season}`, `${money(r.amount)} of salary spread over ${plural(r.prorationYears.length, 'year')}`))
     ),
     rows.length ? scrollRegion('Contract by year', table) : h('p', { class: 'muted' }, 'The contract has ended.'),
-    h('p', { class: 'hint' }, 'A release after June 1, or with a June 1 designation, leaves this year its own proration and moves the rest to next year.'),
+    h('p', { class: 'hint' }, 'A release after June 1 leaves this year its own proration and moves the rest to next year. A June 1 designation does the same, but its savings arrive on June 2.'),
     moves ? h('div', { class: 'btn-row' }, moves) : null
   ); // prettier-ignore
 }

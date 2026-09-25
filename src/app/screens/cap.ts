@@ -22,15 +22,20 @@ const YEARS_AHEAD = 3;
 let selected: number | null = null;
 
 function summaryCard(sheet: CapSheet): HTMLElement {
-  const bar = h('div', { class: 'capbar', role: 'img', 'aria-label': `${money(sheet.roster)} for players on the roster, ${money(sheet.dead)} of dead money, and ${money(Math.max(0, sheet.space))} of space` });
+  // Money for players on the roster (with their practice squad pay before a promotion and elevations),
+  // and money for players no longer here.
+  const here = sheet.roster + sheet.earlier + sheet.elevations;
+  const gone = sheet.dead + sheet.departed;
+  const bar = h('div', { class: 'capbar', role: 'img', 'aria-label': `${money(here)} for players on the roster, ${money(gone)} for players no longer here, and ${money(Math.max(0, sheet.space))} of space` });
   const room = Math.max(1, sheet.cap + sheet.carryover);
   const part = (cls: string, amount: number) => {
     const i = h('i', { class: cls });
     i.style.width = `${Math.max(0, Math.min(100, (amount / room) * 100))}%`;
     return i;
   };
-  bar.append(part('active', sheet.roster), part('dead', sheet.dead));
+  bar.append(part('active', here), part('dead', gone));
   const row = (label: string, value: string) => h('div', { class: 'kv' }, h('span', { class: 'label' }, label), h('span', null, value));
+  const optional = (label: string, amount: number) => (amount ? row(label, money(amount)) : null);
   return card(
     `${sheet.year} cap`,
     h('span', { class: 'label' }, 'Cap space'),
@@ -38,8 +43,11 @@ function summaryCard(sheet: CapSheet): HTMLElement {
     bar,
     h('div', { class: 'stack' },
       row('Salary cap', money(sheet.cap)),
-      sheet.carryover ? row('Carried over from last year', money(sheet.carryover)) : null,
+      optional('Carried over from last year', sheet.carryover),
       row(sheet.offseason ? 'Roster, the 51 largest cap hits' : 'Roster', money(sheet.roster)),
+      optional('Practice squad pay before promotions', sheet.earlier),
+      optional('Elevated practice squad players', sheet.elevations),
+      optional('Earned by players no longer here', sheet.departed),
       row('Dead money', money(sheet.dead)),
       row('Used', money(sheet.used))
     ),
@@ -91,7 +99,8 @@ function deadTable(league: League, sheet: CapSheet, lines: readonly CapSheetLine
       ...lines.map(line => {
         const p = league.players[line.playerId];
         const c = line.charge;
-        return h('tr', null, h('th', { scope: 'row' }, p ? playerLink(p) : line.playerId), h('td', { class: 'num' }, money(c.base + c.bonuses)), h('td', { class: 'num' }, money(c.proration)), h('td', { class: 'num' }, money(c.dead)), h('td', { class: 'num' }, money(c.total)));
+        const held = line.held ? h('span', { class: 'hint' }, ' (June 1 release, in full until June 2)') : null;
+        return h('tr', null, h('th', { scope: 'row' }, p ? playerLink(p) : line.playerId, held), h('td', { class: 'num' }, money(c.base + c.bonuses)), h('td', { class: 'num' }, money(c.proration)), h('td', { class: 'num' }, money(c.dead)), h('td', { class: 'num' }, money(c.total)));
       })
     )
   );
@@ -128,7 +137,8 @@ export function capScreen(): Screen {
         const panel = (year: number) => () => {
           const sheet = capSheet(league, abbr, year);
           const roster = sheet.lines.filter(l => l.status);
-          const dead = sheet.lines.filter(l => !l.status);
+          // Deals that ended; a practice squad deal replaced on promotion is in the summary instead.
+          const dead = sheet.lines.filter(l => !l.status && !l.replaced);
           return h(
             'div',
             { class: 'stack' },
@@ -140,7 +150,7 @@ export function capScreen(): Screen {
             ),
             card(
               'Dead money',
-              h('p', { class: 'hint' }, 'What deals that ended still charge this year: salary earned before the move, proration, and money accelerated or still owed.'),
+              h('p', { class: 'hint' }, 'What deals that ended still charge this year: salary earned before the move, proration, and money accelerated or still owed. A release with a June 1 designation counts in full until June 2.'),
               dead.length ? deadTable(league, sheet, dead) : h('p', { class: 'empty' }, `No dead money in ${year}.`)
             )
           );

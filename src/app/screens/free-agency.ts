@@ -137,7 +137,7 @@ export function freeAgencyScreen(): Screen {
         const waivers = league.waivers.flatMap(w => {
           const p = league.players[w.playerId];
           const old = league.contracts[w.contractId];
-          return p && old ? [{ w, p, hit: capHit(claimedContract(old, abbr, 'preview', league.date), year, league.rules) }] : [];
+          return p && old ? [{ w, p, hit: capHit(claimedContract(old, abbr, 'preview', league.date, league.rules), year, league.rules) }] : [];
         }); // prettier-ignore
         const waiverCard = card(
           'Waiver wire',

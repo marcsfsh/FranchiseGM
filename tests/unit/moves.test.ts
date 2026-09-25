@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import type { TeamAbbr } from '../../src/data/team-colors';
-import { capSheet } from '../../src/engine/cap/sheet';
+import { capSheet, elevationCost } from '../../src/engine/cap/sheet';
 import { askingSalary, offerProblem } from '../../src/engine/contracts/acceptance';
-import { releaseImpact } from '../../src/engine/contracts/cap';
+import { capHit, releaseImpact } from '../../src/engine/contracts/cap';
+import { irReturnsUsed, recordTransaction } from '../../src/engine/league/transactions';
 import type { League } from '../../src/engine/league/types';
-import type { Player } from '../../src/engine/model/player';
+import { fullName, type Player } from '../../src/engine/model/player';
 import type { PlayerInjury } from '../../src/engine/season/injuries';
 import { stream } from '../../src/engine/rng';
 import { makeMove, previewMove, type Move } from '../../src/engine/roster/moves';
 import { rosterCounts, rosterProblems } from '../../src/engine/roster/rules';
+import { claimedContract } from '../../src/engine/roster/waivers';
 import { situationLeague } from '../helpers/situations';
 
 const fresh = (): League => structuredClone(situationLeague);
@@ -24,6 +26,15 @@ const reason = (league: League, move: Move) => {
 const hurt = (weeksOut: number): PlayerInjury => ({
   bodyPart: 'knee', severity: 'medium', weeksOut, lingering: 2, fragile: 2, season: 2026, week: 1, career: false
 }); // prettier-ignore
+
+/** MIN's four home games against GB in weeks 1 to 4, played. */
+function playFourGames(league: League): void {
+  for (let week = 1; week <= 4; week++)
+    league.season.results[`m${week}`] = {
+      id: `m${week}`, week, home: 'MIN', away: 'GB', homeScore: 20, awayScore: 10, homeTd: 2, awayTd: 1,
+      playoff: false, overtime: false
+    }; // prettier-ignore
+}
 
 /** Frees a roster spot on MIN by moving a player to injured reserve. */
 function makeRoom(league: League): void {
@@ -130,6 +141,53 @@ describe('releases (spec 11.2, 12.1)', () => {
     );
   }); // prettier-ignore
 
+  it('keeps a June 1 release on the cap in full until June 2, then splits it', () => {
+    const league = fresh();
+    league.date = { season: 2026, phase: 'freeAgency', week: 2 };
+    // A deal with proration after 2027, so the designation moves some of it to 2028.
+    const player = players(league, 'MIN', 'active').find(p => {
+      const c = league.contracts[p.contractId ?? ''];
+      return !!c && c.signingBonus > 0 && c.years.some(y => y.year === 2028 && !y.isVoid);
+    });
+    const id = player?.contractId ?? '';
+    const contract = league.contracts[id];
+    if (!player || !contract) throw new Error('no player');
+    const charge = capSheet(league, 'MIN').lines.find(l => l.contractId === id)?.charge.total;
+    const impact = releaseImpact(contract, league.date, league.rules, { designated: true });
+    const move: Move = { kind: 'release', team: 'MIN', playerId: player.id, designated: true };
+    const preview = previewMove(league, move);
+    if (!preview.ok) throw new Error(preview.reason);
+    expect(preview.value.notes.some(n => /stays on your 2027 cap until June 2/.test(n))).toBe(true);
+    expect(makeMove(league, move, rng).ok).toBe(true);
+    const held = capSheet(league, 'MIN');
+    expect(held.space).toBe(preview.value.spaceAfter);
+    const line = held.lines.find(l => l.contractId === id);
+    expect(line).toMatchObject({ status: null, held: true });
+    expect(line?.charge.total).toBe(charge);
+    // In training camp, after June 1: 2027 keeps its part, and the rest waits for 2028.
+    league.date = { season: 2026, phase: 'trainingCamp', week: 1 };
+    const split = capSheet(league, 'MIN').lines.find(l => l.contractId === id);
+    expect(split?.held).toBe(false);
+    expect(split?.charge.total).toBe(impact.release);
+    expect(capSheet(league, 'MIN', 2028).lines.find(l => l.contractId === id)?.charge.dead).toBe(impact.deadNext);
+  }); // prettier-ignore
+
+  it('refuses a release that would put the team over the cap', () => {
+    const league = fresh();
+    // Before June 1 a release brings every later year's proration into this one.
+    league.date = { season: 2026, phase: 'freeAgency', week: 2 };
+    const costly = players(league, 'MIN', 'active').find(p => {
+      const c = league.contracts[p.contractId ?? ''];
+      return !!c && releaseImpact(c, league.date, league.rules).savings < 0;
+    });
+    if (!costly) throw new Error('no costly release');
+    league.teams.MIN.carryover -= capSheet(league, 'MIN').space;
+    expect(capSheet(league, 'MIN').space).toBe(0);
+    expect(reason(league, { kind: 'release', team: 'MIN', playerId: costly.id })).toMatch(
+      /^Releasing him now leaves \$[\d,]+ more on this year's cap, which would put you over it\./
+    );
+  });
+
   it('owes a vested veteran the rest of his season after week 1', () => {
     const league = fresh();
     league.date = { ...league.date, week: 5 };
@@ -156,11 +214,7 @@ describe('reserve lists, promotions, elevations, claims, and restructures (spec 
       /has missed 0 of the 4 games injured reserve requires\.$/
     );
     // Four MIN games later he can come back, taking the spot his team left open.
-    for (let week = 1; week <= 4; week++)
-      league.season.results[`m${week}`] = {
-        id: `m${week}`, week, home: 'MIN', away: 'GB', homeScore: 20, awayScore: 10, homeTd: 2, awayTd: 1,
-        playoff: false, overtime: false
-      }; // prettier-ignore
+    playFourGames(league);
     league.date = { ...league.date, week: 5 };
     expect(makeMove(league, { kind: 'activate', team: 'MIN', playerId: player.id }, rng).ok).toBe(true);
     expect(player.status).toBe('active');
@@ -170,7 +224,13 @@ describe('reserve lists, promotions, elevations, claims, and restructures (spec 
     const league = fresh();
     const [a, b, c] = players(league, 'MIN', 'practice');
     if (!a || !b || !c) throw new Error('no practice squad');
+    // An elevated player earns the active minimum's week for the game, less his practice squad pay.
+    const elevation = previewMove(league, { kind: 'elevate', team: 'MIN', playerId: a.id });
+    if (!elevation.ok) throw new Error(elevation.reason);
+    expect(elevationCost(league, a.id)).toBeGreaterThan(0);
+    expect(elevation.value.spaceBefore - elevation.value.spaceAfter).toBe(elevationCost(league, a.id));
     for (const p of [a, b]) expect(makeMove(league, { kind: 'elevate', team: 'MIN', playerId: p.id }, rng).ok).toBe(true);
+    expect(capSheet(league, 'MIN').space).toBe(elevation.value.spaceAfter - elevationCost(league, b.id));
     expect(reason(league, { kind: 'elevate', team: 'MIN', playerId: c.id })).toBe('You can elevate 2 players a game.');
     expect(reason(league, { kind: 'promote', team: 'MIN', playerId: c.id })).toMatch(/active roster is full/);
     makeRoom(league);
@@ -192,6 +252,13 @@ describe('reserve lists, promotions, elevations, claims, and restructures (spec 
     expect(makeMove(league, { kind: 'release', team: 'KC', playerId: cut.id }, rng).ok).toBe(true);
     expect(reason(league, { kind: 'claim', team: 'MIN', playerId: cut.id })).toBe('The active roster is full.');
     makeRoom(league);
+    // The preview shows the space he'd leave if he's awarded to MIN.
+    const old = league.contracts[league.waivers[0]?.contractId ?? ''];
+    if (!old) throw new Error('no contract');
+    const claim = previewMove(league, { kind: 'claim', team: 'MIN', playerId: cut.id });
+    if (!claim.ok) throw new Error(claim.reason);
+    const hit = capHit(claimedContract(old, 'MIN', 'x', league.date, league.rules), 2026, league.rules);
+    expect(claim.value.spaceBefore - claim.value.spaceAfter).toBe(hit);
     expect(makeMove(league, { kind: 'claim', team: 'MIN', playerId: cut.id }, rng).ok).toBe(true);
     expect(league.waivers[0]?.claims).toEqual(['MIN']);
     // A big 2026 base salary converts to a bonus spread over the remaining years.
@@ -203,5 +270,44 @@ describe('reserve lists, promotions, elevations, claims, and restructures (spec 
     if (!done.ok) throw new Error(done.reason);
     expect(done.value.spaceAfter).toBeGreaterThan(done.value.spaceBefore);
     expect(capSheet(league, 'MIN').space).toBe(done.value.spaceAfter);
+  }); // prettier-ignore
+
+  it('refuses a fourth elevation and an elevation with no game this week', () => {
+    const league = fresh();
+    const [a, b] = players(league, 'MIN', 'practice');
+    if (!a || !b) throw new Error('no practice squad');
+    const games = new Set(league.schedule.filter(g => g.home === 'MIN' || g.away === 'MIN').map(g => g.week));
+    const bye = Array.from({ length: 18 }, (_, i) => i + 1).find(w => !games.has(w));
+    const later = [...games].filter(w => w > 3).sort((x, y) => x - y)[0];
+    if (!bye || !later) throw new Error('no bye');
+    for (const week of [1, 2, 3]) league.season.elevations.push({ playerId: a.id, team: 'MIN', week });
+    league.date = { ...league.date, week: later };
+    expect(reason(league, { kind: 'elevate', team: 'MIN', playerId: a.id })).toBe(
+      `${fullName(a)} has been elevated 3 times this season; sign him to the roster instead.`
+    );
+    league.date = { ...league.date, week: bye };
+    expect(reason(league, { kind: 'elevate', team: 'MIN', playerId: b.id })).toBe(
+      'Your team has no game left to play this week.'
+    );
+  });
+
+  it('refuses a return from injured reserve once the returns are used, but not one from PUP', () => {
+    const league = fresh();
+    const [player, other] = players(league, 'MIN', 'active');
+    if (!player || !other) throw new Error('no players');
+    player.injury = hurt(5);
+    expect(makeMove(league, { kind: 'injuredReserve', team: 'MIN', playerId: player.id }, rng).ok).toBe(true);
+    player.injury = null;
+    playFourGames(league);
+    league.date = { ...league.date, week: 5 };
+    for (let i = 0; i < league.rules.roster.irReturns; i++) recordTransaction(league, 'MIN', 'activated', `x${i}`);
+    expect(reason(league, { kind: 'activate', team: 'MIN', playerId: player.id })).toBe(
+      "You've used all 8 returns from injured reserve this season."
+    );
+    // A return from the PUP list is its own kind, and uses none of them.
+    other.status = 'pup';
+    expect(makeMove(league, { kind: 'activate', team: 'MIN', playerId: other.id }, rng).ok).toBe(true);
+    expect(league.season.transactions.at(-1)).toMatchObject({ kind: 'reserveReturn', playerId: other.id });
+    expect(irReturnsUsed(league, 'MIN')).toBe(8);
   }); // prettier-ignore
 });

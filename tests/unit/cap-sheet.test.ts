@@ -55,9 +55,32 @@ describe('the team cap sheet (spec 11.1, 11.2)', () => {
     player.status = 'freeAgent';
     const after = capSheet(league, 'MIN');
     const dead = after.lines.find(l => l.contractId === contract.id);
-    expect(dead?.status).toBeNull();
-    expect(after.dead).toBe(dead?.charge.total);
-    expect(dead?.charge.proration).toBeGreaterThan(0);
+    if (!dead) throw new Error('no line');
+    expect(dead.status).toBeNull();
+    // Proration and money owed are dead money; what he earned before the release is counted apart.
+    expect(after.dead).toBe(dead.charge.proration + dead.charge.dead);
+    expect(after.departed).toBe(dead.charge.base + dead.charge.bonuses);
+    expect(dead.charge.proration).toBeGreaterThan(0);
+    expect(after.used).toBe(after.roster + after.dead + after.departed + after.earlier + after.elevations);
     expect(after.lines.filter(l => l.status)).toHaveLength(before.lines.filter(l => l.status).length - 1);
+  }); // prettier-ignore
+
+  it("keeps a promoted player's practice squad pay apart from dead money", () => {
+    const league = fresh();
+    league.date = { ...league.date, week: 6 };
+    const squad = Object.values(league.players).find(p => p.team === 'MIN' && p.status === 'practice');
+    const old = league.contracts[squad?.contractId ?? ''];
+    if (!squad || !old) throw new Error('no practice squad player');
+    league.contracts[old.id] = endContract(old, { date: { ...league.date }, how: 'replaced', designated: false, injured: false, terminationPay: false });
+    const deal = { ...old, id: 'promoted', type: 'minimum' as const, weeklyPay: 0, signed: { ...league.date }, ended: null };
+    league.contracts[deal.id] = deal;
+    Object.assign(squad, { status: 'active', contractId: deal.id });
+    const sheet = capSheet(league, 'MIN');
+    const line = sheet.lines.find(l => l.contractId === old.id);
+    // Five weeks of practice squad pay, before week 6.
+    expect(line).toMatchObject({ status: null, replaced: true });
+    expect(line?.charge.total).toBeGreaterThan(0);
+    expect(sheet.earlier).toBe(line?.charge.total);
+    expect(sheet.dead + sheet.departed).toBe(0);
   }); // prettier-ignore
 });

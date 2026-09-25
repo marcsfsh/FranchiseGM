@@ -6,7 +6,7 @@
 import type { ClimateTable } from '../../data/climate';
 import type { DecisionLog } from '../ai/framework';
 import { settleIncentives } from '../contracts/moves';
-import { processWaivers } from '../roster/waivers';
+import { processWaivers, waiverOrder } from '../roster/waivers';
 import { waiverClaims } from '../ai/decisions/roster-moves';
 import { manageWeek } from '../ai/weekly';
 import type { Conference, TeamAbbr } from '../../data/teams';
@@ -133,8 +133,12 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
   // Last week's waiver wire clears first (spec 12.1), then teams set their rosters, lineups, and game plans
   // before kickoff (spec 14.10).
   const movesBefore = league.season.transactions.length;
-  const waived = processWaivers(league, leagueStream(league.random, 'waivers', week), (entry, player) =>
-    waiverClaims(league, entry, player)
+  const order = waiverOrder(league, stream(league.random.baseSeed, 'waivers', season));
+  const waived = processWaivers(
+    league,
+    leagueStream(league.random, 'waivers', week),
+    order,
+    (entry, player) => waiverClaims(league, entry, player)
   );
   const decisions = manageWeek(
     league,

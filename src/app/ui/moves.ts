@@ -223,7 +223,7 @@ export function rosterMoveChoices(league: League, player: Player): MoveChoice[] 
           }
         }
       ];
-      if (!afterJune1(league.date))
+      if (!afterJune1(league.date, league.rules))
         choices.splice(1, 0, { label: 'Release him with a June 1 designation', confirm: `Release ${name} with a June 1 designation`, danger: true, move: () => ({ kind: 'release', ...base, designated: true }) });
       return choices;
     }

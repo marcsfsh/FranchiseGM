@@ -6,7 +6,7 @@ import { leagueYear, type GameDate } from '../model/calendar';
 import type { RuleSet } from '../rules/ruleset';
 import type { SeasonLine } from '../season/news';
 import { dollars } from '../text';
-import { leagueYearStart, payWeek, prorationYears as signingBonusSchedule } from './cap';
+import { baseBetween, leagueYearStart, payWeek, prorationYears as signingBonusSchedule } from './cap';
 import { emptyYear, type Contract, type ContractEnd } from './types';
 
 export type Outcome<T> = { ok: true; value: T } | { ok: false; reason: string };
@@ -17,12 +17,12 @@ const refuse = <T>(reason: string): Outcome<T> => ({ ok: false, reason });
 /** The deal ended as described. */
 export const endContract = (c: Contract, end: ContractEnd): Contract => ({ ...c, ended: end });
 
-/** Base salary of the year not yet paid on a date, which is all a restructure can convert. */
+/** Base salary of the year still to be paid from a date on, which is all a restructure can convert. */
 export function unpaidBase(c: Contract, year: number, date: GameDate, rules: RuleSet): number {
   const entry = c.years.find(y => y.year === year);
   if (!entry || entry.isVoid) return 0;
-  const paidWeeks = Math.max(0, payWeek(date, year, rules) - payWeek(c.signed, year, rules));
-  return entry.base - Math.round((entry.base * paidWeeks) / rules.season.weeks);
+  const from = Math.max(payWeek(date, year, rules), payWeek(c.signed, year, rules));
+  return baseBetween(c, entry, from, rules.season.weeks + 1, rules);
 }
 
 /**
@@ -45,8 +45,17 @@ export function restructure(
   if (c.ended) return refuse('This contract has ended.');
   if (!entry || entry.isVoid) return refuse(`The contract has no ${year} salary to convert.`);
   if (c.type === 'practiceSquad') return refuse("Practice squad contracts can't be restructured.");
+  // The CBA bars renegotiating a drafted rookie's deal until his third regular season is over.
+  const first = c.years[0]?.year ?? year;
+  if (c.type === 'rookie' && year < first + 3)
+    return refuse(
+      `A drafted rookie's contract can't be renegotiated until after his third season (${first + 2}).`
+    );
   if (!Number.isInteger(amount) || amount <= 0) return refuse('Convert a whole-dollar amount above zero.');
-  const room = Math.min(unpaidBase(c, year, date, rules), entry.base - minimum);
+  // The weeks still to be paid keep at least the minimum salary's share of them.
+  const from = Math.max(payWeek(date, year, rules), payWeek(c.signed, year, rules));
+  const floor = Math.round((minimum * Math.max(0, rules.season.weeks + 1 - from)) / rules.season.weeks);
+  const room = unpaidBase(c, year, date, rules) - floor;
   if (amount > room)
     return refuse(
       room > 0

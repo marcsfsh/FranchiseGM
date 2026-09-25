@@ -6,7 +6,15 @@
  */
 import { leagueYear, type GameDate } from '../model/calendar';
 import type { RuleSet } from '../rules/ruleset';
-import { afterJune1, capCharge, leagueYearStart, releaseImpact, type CapFacts } from './cap';
+import {
+  afterJune1,
+  capCharge,
+  earnedBonuses,
+  leagueYearStart,
+  paidBase,
+  releaseImpact,
+  type CapFacts
+} from './cap';
 import type { Contract } from './types';
 
 export interface ReleaseView {
@@ -62,15 +70,17 @@ export function contractSummary(c: Contract, today: GameDate): ContractSummary {
   };
 }
 
-/** Cash paid in a league year: salary and bonuses, the signing bonus at signing, converted salary. */
-function cashIn(c: Contract, year: number): number {
+/**
+ * Cash paid in a league year: salary for the weeks in force, bonuses as they're earned, the signing bonus at
+ * signing, an exercised option's bonus, and salary converted by a restructure, paid as a bonus when converted.
+ */
+function cashIn(c: Contract, year: number, rules: RuleSet, facts: CapFacts): number {
   const entry = c.years.find(y => y.year === year);
   if (!entry || entry.isVoid) return 0;
   const signed = leagueYear(c.signed) === year ? c.signingBonus : 0;
   const option = entry.optionExercised ? entry.optionBonus : 0;
-  // Restructured salary is paid as a bonus in the year it converts, and no longer as salary.
-  return entry.base + entry.rosterBonus + entry.workoutBonus + entry.perGameBonus + signed + option +
-    c.restructures.filter(r => leagueYear(r.date) === year).reduce((sum, r) => sum + r.amount, 0);
+  const converted = c.restructures.filter(r => leagueYear(r.date) === year).reduce((sum, r) => sum + r.amount, 0);
+  return paidBase(c, entry, rules) + earnedBonuses(c, year, rules, facts) + signed + option + converted;
 } // prettier-ignore
 
 const view = (
@@ -103,7 +113,7 @@ export function contractView(
       let cutEarly: ReleaseView | null = null;
       let cutLate: ReleaseView | null = null;
       if (!entry.isVoid && !c.ended) {
-        if (now && afterJune1(today)) cutLate = view(c, today, rules, facts);
+        if (now && afterJune1(today, rules)) cutLate = view(c, today, rules, facts);
         else {
           cutEarly = view(c, opening, rules, facts);
           cutLate = now ? view(c, today, rules, facts, true) : view(c, camp, rules, facts);
@@ -116,7 +126,7 @@ export function contractView(
         bonuses: charge.bonuses,
         proration: charge.proration,
         capHit: charge.total,
-        cash: cashIn(c, entry.year),
+        cash: cashIn(c, entry.year, rules, facts),
         cutEarly,
         cutLate
       };

@@ -17,6 +17,9 @@ import { available } from '../../src/engine/sim/setup';
 import { situationLeague } from '../helpers/situations';
 
 const fresh = (): League => structuredClone(situationLeague);
+/** The league's waiver order, from its stream for the season, as the week's advance draws it. */
+const orderOf = (league: League) =>
+  waiverOrder(league, stream(league.random.baseSeed, 'waivers', league.season.season));
 const mine = (league: League, abbr: TeamAbbr, status: Player['status']) =>
   Object.values(league.players).filter(p => p.team === abbr && p.status === status);
 
@@ -103,8 +106,8 @@ describe('waivers (spec 12.1)', () => {
 
   it('orders claims by a fixed draft stand-in early, then by the standings, worst first', () => {
     const league = fresh();
-    expect(waiverOrder(league)).toEqual(waiverOrder(fresh()));
-    expect(new Set(waiverOrder(league)).size).toBe(32);
+    expect(orderOf(league)).toEqual(orderOf(fresh()));
+    expect(new Set(orderOf(league)).size).toBe(32);
     // By week 5 KC has lost all four of its games and everyone else is 0-0 or better.
     league.date = { ...league.date, week: 5 };
     ['BUF', 'DEN', 'LV', 'LAC'].forEach((opp, i) => {
@@ -113,7 +116,7 @@ describe('waivers (spec 12.1)', () => {
         awayTd: 2, playoff: false, overtime: false
       }; // prettier-ignore
     });
-    expect(waiverOrder(league)[0]).toBe('KC');
+    expect(orderOf(league)[0]).toBe('KC');
   });
 
   it('awards a claimed player to the first claimant in priority, who takes over his deal', () => {
@@ -125,7 +128,7 @@ describe('waivers (spec 12.1)', () => {
     const oldId = player.contractId as string;
     waive(league, player);
     expect(player.status).toBe('waivers');
-    const order = waiverOrder(league).filter(abbr => abbr !== 'MIN');
+    const order = orderOf(league).filter(abbr => abbr !== 'MIN');
     const first = order[3] as TeamAbbr;
     const second = order[1] as TeamAbbr;
     // Both claimants make room: a player each goes on injured reserve.
@@ -134,7 +137,7 @@ describe('waivers (spec 12.1)', () => {
       if (hurt) hurt.status = 'ir';
     }
     league.waivers[0]?.claims.push(first);
-    const results = processWaivers(league, stream(1), () => [second]);
+    const results = processWaivers(league, stream(1), orderOf(league), () => [second]);
     // The earlier team in priority wins.
     expect(results).toEqual([
       { playerId: player.id, from: 'MIN', claimedBy: second, claims: [first, second] }
@@ -175,11 +178,11 @@ describe('waivers (spec 12.1)', () => {
     // The user's claim needs room; KC's is refused, and he clears to free agency.
     entry.claims.push('KC');
     const kept = structuredClone(league);
-    expect(processWaivers(league, stream(1))).toEqual([
+    expect(processWaivers(league, stream(1), orderOf(league))).toEqual([
       { playerId: player.id, from: 'MIN', claimedBy: null, claims: ['KC'] }
     ]);
     expect(player).toMatchObject({ team: null, status: 'freeAgent' });
     // An AI claimant cuts someone before its next game, so a full roster doesn't stop it.
-    expect(processWaivers(kept, stream(1), () => ['KC'])[0]?.claimedBy).toBe('KC');
+    expect(processWaivers(kept, stream(1), orderOf(kept), () => ['KC'])[0]?.claimedBy).toBe('KC');
   });
 });

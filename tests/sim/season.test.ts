@@ -93,6 +93,19 @@ describe('the season loop (spec 4.2, 5.3)', { timeout: 120_000 }, () => {
     const moves = l.season.transactions;
     expect(moves.some(t => t.kind === 'injuredReserve')).toBe(true);
     expect(moves.some(t => t.kind === 'signed')).toBe(true);
+    // Elevations kept within the limits: two a team each game, three a player each season (spec 12.1).
+    const count = (keys: string[]) => {
+      const counts = new Map<string, number>();
+      for (const k of keys) counts.set(k, (counts.get(k) ?? 0) + 1);
+      return Math.max(0, ...counts.values());
+    };
+    expect(l.season.elevations.length).toBeGreaterThan(0);
+    expect(count(l.season.elevations.map(e => `${e.team} ${e.week}`))).toBeLessThanOrEqual(
+      l.rules.roster.elevationsPerGame
+    );
+    expect(count(l.season.elevations.map(e => e.playerId))).toBeLessThanOrEqual(
+      l.rules.roster.elevationsPerPlayer
+    );
     expect(l.date).toMatchObject({ phase: 'wildCard', week: 1 });
     const settled = l.contracts[deal.id]?.years.find(y => y.year === 2026)?.incentives;
     expect(settled?.map(i => i.earned)).toEqual([true, false]);

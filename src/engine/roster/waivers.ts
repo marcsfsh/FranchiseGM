@@ -8,14 +8,15 @@
  */
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { capSheet } from '../cap/sheet';
-import { capHit } from '../contracts/cap';
+import { afterJune1, leagueYearStart } from '../contracts/cap';
 import type { Contract } from '../contracts/types';
 import { newId, recordTransaction } from '../league/transactions';
 import type { League } from '../league/types';
-import { leagueYear, type GameDate } from '../model/calendar';
+import { compareDates, leagueYear, type GameDate } from '../model/calendar';
 import { pickJersey } from '../model/jerseys';
 import type { Player } from '../model/player';
-import { stream, type Rng } from '../rng';
+import type { Rng } from '../rng';
+import type { RuleSet } from '../rules/ruleset';
 import { leagueStandings, PLAYOFF_PHASES } from '../season/state';
 import { winPct } from '../season/standings';
 import { activeLimit } from './rules';
@@ -47,21 +48,20 @@ export function subjectToWaivers(league: League, player: Player): boolean {
 /**
  * Waiver priority, first claim first: the standings from the early weeks' end on (worst winning
  * percentage, then the weaker schedule, as the draft order breaks ties), and before that the draft order.
- * Until the draft order exists (M11), a seeded order for the league and season stands in; it also breaks
- * any tie left in the standings.
+ * Until the draft order exists (M11), a seeded order stands in, drawn from `seeded`, a stream fixed for the
+ * league and season; it also breaks any tie left in the standings.
  */
-export function waiverOrder(league: League): TeamAbbr[] {
-  const rng = stream(league.random.baseSeed, 'waivers', league.season.season);
-  const seeded = [...TEAM_ABBRS]
-    .map(abbr => ({ abbr, key: rng.float() }))
+export function waiverOrder(league: League, seeded: Rng): TeamAbbr[] {
+  const draftOrder = [...TEAM_ABBRS]
+    .map(abbr => ({ abbr, key: seeded.float() }))
     .sort((a, b) => a.key - b.key)
     .map(t => t.abbr);
   const byStandings =
     (league.date.phase === 'regularSeason' && league.date.week > league.rules.roster.waiverDraftOrderWeeks) ||
     inPlayoffs(league.date);
-  if (!byStandings) return seeded;
+  if (!byStandings) return draftOrder;
   const records = leagueStandings(league).table.records;
-  const rank = new Map(seeded.map((abbr, i) => [abbr, i]));
+  const rank = new Map(draftOrder.map((abbr, i) => [abbr, i]));
   // A team that hasn't played yet sits at .500.
   const pct = (abbr: TeamAbbr) => {
     const r = records[abbr].overall;
@@ -82,11 +82,29 @@ export function placeOnWaivers(league: League, player: Player, from: TeamAbbr, c
 
 /**
  * The contract a claiming team takes over: the released deal's years from this league year on, void years
- * and proration left behind, starting on the claim date.
+ * and proration left behind, starting on the claim date. Bonuses the old deal already earned stay with the
+ * team that released him: this year's roster bonus once the league year opened, its workout bonus after
+ * June 1, and exercised option bonuses, which it paid and prorated.
  */
-export function claimedContract(old: Contract, team: TeamAbbr, id: string, date: GameDate): Contract {
+export function claimedContract(
+  old: Contract,
+  team: TeamAbbr,
+  id: string,
+  date: GameDate,
+  rules: RuleSet
+): Contract {
   const year = leagueYear(date);
-  const years = old.years.filter(y => y.year >= year && !y.isVoid);
+  const released = old.ended?.date ?? date;
+  const thisYear = leagueYear(released) === year;
+  const years = old.years
+    .filter(y => y.year >= year && !y.isVoid)
+    .map(y => ({
+      ...y,
+      rosterBonus: y.year === year && thisYear && compareDates(released, leagueYearStart(year)) > 0 ? 0 : y.rosterBonus,
+      workoutBonus: y.year === year && thisYear && afterJune1(released, rules) ? 0 : y.workoutBonus,
+      optionBonus: y.optionExercised ? 0 : y.optionBonus,
+      optionBonusYears: y.optionExercised ? null : y.optionBonusYears
+    })); // prettier-ignore
   const kept = new Set(years.map(y => y.year));
   return {
     ...old,
@@ -117,12 +135,10 @@ export function claimProblem(
   if (active >= activeLimit(league) && !makesRoom) return 'The active roster is full.';
   const old = league.contracts[entry.contractId];
   if (!old) return 'The contract is missing.';
-  const charge = capHit(
-    claimedContract(old, abbr, 'preview', league.date),
-    leagueYear(league.date),
-    league.rules
-  );
-  if (charge > capSheet(league, abbr).space) return "There isn't enough cap space for his salary.";
+  const contract = claimedContract(old, abbr, 'preview', league.date, league.rules);
+  const sheet = (change = {}) => capSheet(league, abbr, leagueYear(league.date), change);
+  const after = sheet({ add: [{ contract, status: 'active' }] }).space;
+  if (after < 0 && after < sheet().space) return "There isn't enough cap space for his salary.";
   return null;
 }
 
@@ -136,15 +152,15 @@ export interface WaiverResult {
 }
 
 /**
- * Runs the waiver wire: every player on it goes to the first team in priority that claimed him and can take
- * him, or to free agency. `aiClaims` lists the AI teams that claim a player.
+ * Runs the waiver wire: every player on it goes to the first team in priority (`order`, from waiverOrder)
+ * that claimed him and can take him, or to free agency. `aiClaims` lists the AI teams that claim a player.
  */
 export function processWaivers(
   league: League,
   rng: Rng,
+  order: readonly TeamAbbr[],
   aiClaims: (entry: WaiverEntry, player: Player) => TeamAbbr[] = () => []
 ): WaiverResult[] {
-  const order = waiverOrder(league);
   const results: WaiverResult[] = [];
   const entries = league.waivers;
   league.waivers = [];
@@ -160,7 +176,7 @@ export function processWaivers(
       null;
     if (winner) {
       if (old.ended) league.contracts[old.id] = { ...old, ended: { ...old.ended, how: 'claimed' } };
-      const contract = claimedContract(old, winner, newId(league, 'c'), league.date);
+      const contract = claimedContract(old, winner, newId(league, 'c'), league.date, league.rules);
       league.contracts[contract.id] = contract;
       const taken = new Set(
         Object.values(league.players)

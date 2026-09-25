@@ -67,7 +67,7 @@ function needsOf(players: readonly Player[]): Map<string, number> {
 export const rosterNeeds = (league: League, abbr: TeamAbbr): Map<string, number> =>
   needsOf(Object.values(league.players).filter(p => p.team === abbr));
 
-const JOINED: ReadonlySet<string> = new Set(['activated', 'claimed', 'signed', 'promoted']);
+const JOINED: ReadonlySet<string> = new Set(['activated', 'reserveReturn', 'claimed', 'signed', 'promoted']);
 
 /**
  * The weakest of a group by overall, never a player who joined the active roster this week (the team

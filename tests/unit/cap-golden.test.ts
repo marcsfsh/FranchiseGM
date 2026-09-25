@@ -11,6 +11,7 @@ import {
 } from '../../src/engine/contracts/types';
 import type { GameDate, Phase } from '../../src/engine/model/calendar';
 import { DEFAULT_RULES as R } from '../../src/engine/rules/ruleset';
+import { claimedContract } from '../../src/engine/roster/waivers';
 
 // Golden tests (spec 11.2): every number below is worked by hand. The 2026 league year's regular season has
 // 18 weeks and 17 games; a date in the offseason before a league year's season sits in the season before
@@ -149,6 +150,44 @@ describe('dead money and June 1 (spec 11.2)', () => {
   }); // prettier-ignore
 });
 
+describe('waiver claims (spec 11.2, 12.1)', () => {
+  // 2027 has a $1M roster bonus and a $250,000 workout bonus; the 2028 team option's $2M bonus, once
+  // exercised, is prorated over 2028 and 2029 ($1M each).
+  const claimable = decideOption(
+    deal({
+      years: [
+        year(2026, { base: 2_000_000 }),
+        year(2027, { base: 3_000_000, rosterBonus: 1_000_000, workoutBonus: 250_000 }),
+        year(2028, { base: 4_000_000, option: 'team', optionBonus: 2_000_000 }),
+        year(2029, { base: 5_000_000 })
+      ]
+    }),
+    2028,
+    true,
+    R
+  );
+  if (!claimable.ok) throw new Error(claimable.reason);
+  const claim = (date: GameDate) => {
+    const old = endContract(claimable.value, { date, how: 'claimed', designated: false, injured: false, terminationPay: false });
+    return { old, taken: claimedContract(old, 'KC', 'c2', date, R) };
+  }; // prettier-ignore
+
+  it('leaves the bonuses the old deal earned with the team that released him', () => {
+    // Claimed in camp, July 2027: the old team earned the roster and workout bonuses ($1.25M in 2027), and
+    // the option bonus's proration lands in 2028 ($2M). The claiming team pays salary only.
+    const { old, taken } = claim(at(2026, 'trainingCamp'));
+    expect(hits(old, [2027, 2028, 2029])).toEqual([1_250_000, 2_000_000, 0]);
+    expect(hits(taken, [2027, 2028, 2029])).toEqual([3_000_000, 4_000_000, 5_000_000]);
+  });
+
+  it('passes on the bonuses not yet earned', () => {
+    // Claimed as the 2027 league year opens: the roster bonus isn't due yet, nor the workout bonus.
+    const { old, taken } = claim(at(2026, 'freeAgency', 1));
+    expect(hits(old, [2027, 2028])).toEqual([2_000_000, 0]);
+    expect(hits(taken, [2027, 2028])).toEqual([4_250_000, 4_000_000]);
+  });
+});
+
 describe('guarantees (spec 11.2)', () => {
   it('owes injury guarantees only when he is released hurt', () => {
     const deal2 = deal({ years: [year(2026, { base: 1_000_000 }), year(2027, { base: 6_000_000, injuryGuaranteedBase: 4_000_000 })] });
@@ -188,12 +227,43 @@ describe('restructures (spec 11.2)', () => {
     ]);
   });
 
+  it('converts only salary still to come in season, and pays the weeks after it less', () => {
+    // $300,000 of the 2026 base at week 10, over 2026 to 2029: $75,000 a year. Weeks 1 to 9 paid $111,111
+    // each ($1M); weeks 10 to 18 pay what's left of the other $1M, $77,778 each ($700,000).
+    const done = restructure(vet, at(2026, 'regularSeason', 10), 300_000, 1_215_000, R);
+    if (!done.ok) throw new Error(done.reason);
+    expect(capCharge(done.value, 2026, R)).toMatchObject({ base: 1_700_000, proration: 2_575_000, total: 5_275_000 });
+    // Released before week 14: 9 weeks at the old rate and 4 at the new ($1,311,111), and the rest of the
+    // proration moves to 2027 with the 2027 guarantee.
+    const cut = release(done.value, at(2026, 'regularSeason', 14));
+    expect(capCharge(cut, 2026, R)).toMatchObject({ base: 1_311_111, total: 1_311_111 + 1_000_000 + 2_575_000 });
+    expect(capHit(cut, 2027, R)).toBe(7_500_000 + 225_000 + 8_000_000);
+    // A deal signed before week 15 pays 4 weeks of its $18M base ($4M), so no more than that can convert.
+    const late = deal({ signed: at(2026, 'regularSeason', 15), years: [year(2026, { base: 18_000_000 }), year(2027, { base: 18_000_000 })] });
+    expect(restructure(late, at(2026, 'regularSeason', 15), 16_800_000, 1_215_000, R).ok).toBe(false);
+    expect(restructure(late, at(2026, 'regularSeason', 15), 3_700_000, 1_215_000, R).ok).toBe(true);
+  }); // prettier-ignore
+
+  it("won't renegotiate a drafted rookie's deal before his fourth league year", () => {
+    const rookie = deal({
+      type: 'rookie',
+      years: [2026, 2027, 2028, 2029].map(y => year(y, { base: 3_000_000 }))
+    });
+    expect(restructure(rookie, at(2027, 'freeAgency', 2), 1_000_000, 885_000, R)).toEqual({
+      ok: false,
+      reason: "A drafted rookie's contract can't be renegotiated until after his third season (2028)."
+    });
+    // In 2029, his fourth league year and the deal's last, a void year gives the money somewhere to go.
+    expect(restructure(rookie, at(2028, 'freeAgency', 2), 1_000_000, 885_000, R, 1).ok).toBe(true);
+  });
+
   it('refuses to convert below the minimum salary or money already paid', () => {
     expect(restructure(vet, march, 7_000_000, 1_215_000, R)).toEqual({
       ok: false,
       reason: 'At most $6,785,000 of the 2027 base salary can convert.'
     });
-    // Before week 10 of 2026 half the $2M base is paid, and the minimum caps the rest at $785,000.
+    // Before week 10 of 2026, 9 of 18 weeks ($1M) are paid; the other $1M, less the minimum's share of
+    // those 9 weeks ($607,500), leaves $392,500 to convert.
     expect(restructure(vet, at(2026, 'regularSeason', 10), 100_000, 1_215_000, R).ok).toBe(true);
     expect(restructure(vet, at(2026, 'regularSeason', 10), 800_000, 1_215_000, R).ok).toBe(false);
     // In its last year, only void years give the money somewhere to go.
@@ -266,6 +336,12 @@ describe('the contract view (spec 11.2)', () => {
     expect(season[0]?.cutLate?.deadNext).toBe(7_500_000 + 8_000_000);
     // Signing bonus year: the $10M bonus is 2026 cash.
     expect(season[0]?.cash).toBe(2_000_000 + 1_000_000 + 10_000_000);
+    // A minimum deal signed before week 10 pays 9 of 18 weeks.
+    const late = {
+      ...minimumContract(R, { id: 'c2', playerId: 'p2', team: 'MIN' }, 2026, 0),
+      signed: at(2026, 'regularSeason', 10)
+    };
+    expect(contractView(late, at(2026, 'regularSeason', 10), R)[0]?.cash).toBe(442_500);
     expect(contractSummary(vet, at(2026, 'regularSeason', 5))).toEqual({
       total: 10_000_000 + 2_000_000 + 1_000_000 + 8_000_000 + 500_000 + 9_000_000 + 9_500_000,
       years: 4,

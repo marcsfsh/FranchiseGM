@@ -68,6 +68,11 @@ export interface PayRules {
   prorationYearsMax: number;
   /** June 1 release designations allowed per league year. */
   june1Designations: number;
+  /**
+   * June 1, as MM-DD (spec 11.2): a release after it splits its dead money across two league years, and a
+   * designated release before it keeps the player's cap hit on the books until the day after it.
+   */
+  june1: string;
 }
 
 export interface RookieScaleRules {
@@ -315,7 +320,8 @@ export const DEFAULT_RULES: RuleSet = {
     practiceSquadVeteranWeeklyMax: 22_850,
     paychecks: 18,
     prorationYearsMax: 5,
-    june1Designations: 2
+    june1Designations: 2,
+    june1: '06-01'
   },
   rookieScale: {
     // Fitted to recent slot values: about $33M for the first pick, $6.3M at pick 32, $2.6M at 64.
@@ -350,6 +356,8 @@ export function validateRules(rules: RuleSet): string[] {
   whole(rules.roster.practiceSquad, 'The practice squad size');
   whole(rules.roster.gameDayActives, 'Game-day actives', 1);
   whole(rules.cap.offseasonCount, 'The offseason cap count', 1);
+  if (!/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(rules.pay.june1))
+    problems.push('The June 1 date must be MM-DD.');
   whole(rules.roster.vestedVeteranSeasons, 'Seasons for a vested veteran', 1);
   whole(rules.roster.pupMinGames, 'Games on the reserve PUP list');
   whole(rules.roster.waiverDraftOrderWeeks, 'Weeks of waivers in draft order');
