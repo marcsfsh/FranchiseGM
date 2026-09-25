@@ -1,7 +1,7 @@
 # Status
-- Milestone: M5, stats storage and history v1 (M4 tagged m04-game-sim)
-- Current slice: M5 slice 1, full stat categories in the sim
-- Next slice: M5 slice 2, columnar season tables in IndexedDB
+- Milestone: M6, calibration harness v1 (M5 tagged m05-stats-history)
+- Current slice: M6 slice 1, the calibration replay core and runner
+- Next slice: M6 slice 2, sourced targets and reports
 - Open items for this milestone: none
 - Waiting on the user: the Madden roster CSV (data-raw/madden-roster.csv), which is optional and not yet available
 - Updated: 2026-09-25
