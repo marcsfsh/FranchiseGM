@@ -1,0 +1,184 @@
+/**
+ * The league's rule set (spec 16): a versioned data object. Cap, roster, contract, draft, and on-field
+ * code read rules only from here, never from hard-coded constants. Defaults follow the 2026 NFL rules
+ * and CBA (spec 12.1, 11.1, 22.2); items marked "default, review" in the spec are noted.
+ */
+
+export interface CapRules {
+  /** Salary cap for the current league year, integer dollars. 2026: $301.2M (D-2). */
+  amount: number;
+  /** Cap growth blend (spec 11.1): newCap = oldCap x (1 + w x fixedRate + (1 - w) x revenueGrowth). */
+  growthFixedRate: number;
+  growthFixedWeight: number;
+  /** Bounds on one year's change, as fractions. */
+  growthFloor: number;
+  growthCeiling: number;
+  /** Unused cap space carries over to the next league year. */
+  rollover: boolean;
+  /** Salary floor: minimum cash spending as a share of the cap over a rolling window (default, review). */
+  salaryFloorShare: number;
+  salaryFloorYears: number;
+}
+
+export interface RosterRules {
+  /** Active roster limit in season and in the offseason (spec 12.1, default, review). */
+  active: number;
+  offseason: number;
+  /** Game-day actives: 48 with at least 8 offensive linemen, otherwise 47. */
+  gameDayActives: number;
+  gameDayActivesShortOl: number;
+  gameDayMinOl: number;
+  emergencyThirdQb: boolean;
+  practiceSquad: number;
+  /** Extra practice squad spot for an international pathway player. */
+  practiceSquadInternational: number;
+  /** Players with more than `practiceSquadVeteranSeasons` accrued seasons, at most this many. */
+  practiceSquadVeterans: number;
+  practiceSquadVeteranSeasons: number;
+  elevationsPerGame: number;
+  elevationsPerPlayer: number;
+  /** Injured reserve: minimum games out, and designated-to-return activations per season. */
+  irMinGames: number;
+  irReturns: number;
+}
+
+export interface PayRules {
+  /** Minimum base salary by credited seasons; the last entry covers that many seasons and more. */
+  minimumSalary: number[];
+  /** Minimums rise with the cap after the CBA schedule ends. */
+  minimumGrowsWithCap: boolean;
+  /** Practice squad weekly pay: the minimum, and the range for veterans (2026 CBA). */
+  practiceSquadWeekly: number;
+  practiceSquadVeteranWeeklyMin: number;
+  practiceSquadVeteranWeeklyMax: number;
+  /** Weekly paychecks in a regular season. */
+  paychecks: number;
+  /** Signing bonuses prorate over the contract, at most this many years. */
+  prorationYearsMax: number;
+  /** June 1 release designations allowed per league year. */
+  june1Designations: number;
+}
+
+export interface SeasonRules {
+  /** Fixed and not votable (spec 16). */
+  games: number;
+  weeks: number;
+  playoffTeamsPerConference: number;
+  /** Week of the trade deadline (spec 22.2). */
+  tradeDeadlineWeek: number;
+  draftRounds: number;
+}
+
+export interface RuleSet {
+  /** Increases with every change, so saves and history can say which rules applied. */
+  version: number;
+  season: SeasonRules;
+  cap: CapRules;
+  roster: RosterRules;
+  pay: PayRules;
+}
+
+export const DEFAULT_RULES: RuleSet = {
+  version: 1,
+  season: {
+    games: 17,
+    weeks: 18,
+    playoffTeamsPerConference: 7,
+    tradeDeadlineWeek: 9,
+    draftRounds: 7
+  },
+  cap: {
+    amount: 301_200_000,
+    growthFixedRate: 0.07,
+    growthFixedWeight: 0.5,
+    growthFloor: 0,
+    growthCeiling: 0.1,
+    rollover: true,
+    salaryFloorShare: 0.89,
+    salaryFloorYears: 4
+  },
+  roster: {
+    active: 53,
+    offseason: 90,
+    gameDayActives: 48,
+    gameDayActivesShortOl: 47,
+    gameDayMinOl: 8,
+    emergencyThirdQb: true,
+    practiceSquad: 16,
+    practiceSquadInternational: 1,
+    practiceSquadVeterans: 6,
+    practiceSquadVeteranSeasons: 2,
+    elevationsPerGame: 2,
+    elevationsPerPlayer: 3,
+    irMinGames: 4,
+    irReturns: 8
+  },
+  pay: {
+    // 2026 CBA minimums for 0, 1, 2, 3, 4-6, and 7+ credited seasons.
+    minimumSalary: [885_000, 1_005_000, 1_075_000, 1_145_000, 1_215_000, 1_215_000, 1_215_000, 1_300_000],
+    minimumGrowsWithCap: true,
+    practiceSquadWeekly: 13_750,
+    practiceSquadVeteranWeeklyMin: 18_350,
+    practiceSquadVeteranWeeklyMax: 22_850,
+    paychecks: 18,
+    prorationYearsMax: 5,
+    june1Designations: 2
+  }
+};
+
+/** The league minimum base salary for a player with this many credited seasons. */
+export function minimumSalary(rules: RuleSet, creditedSeasons: number): number {
+  const table = rules.pay.minimumSalary;
+  const index = Math.max(0, Math.min(table.length - 1, Math.floor(creditedSeasons)));
+  return table[index] as number;
+}
+
+/** Problems with a rule set, as messages the UI can show. Empty when the rules are usable. */
+export function validateRules(rules: RuleSet): string[] {
+  const problems: string[] = [];
+  const whole = (value: number, name: string, min = 0) => {
+    if (!Number.isInteger(value) || value < min)
+      problems.push(`${name} must be a whole number of at least ${min}.`);
+  };
+  whole(rules.cap.amount, 'The salary cap', 1);
+  whole(rules.roster.active, 'The active roster limit', 1);
+  whole(rules.roster.offseason, 'The offseason roster limit', 1);
+  whole(rules.roster.practiceSquad, 'The practice squad size');
+  whole(rules.roster.gameDayActives, 'Game-day actives', 1);
+  if (rules.roster.gameDayActives > rules.roster.active)
+    problems.push('Game-day actives exceed the active roster.');
+  if (rules.roster.offseason < rules.roster.active)
+    problems.push('The offseason limit is below the active roster.');
+  if (rules.cap.growthFloor > rules.cap.growthCeiling)
+    problems.push('Cap growth floor is above the ceiling.');
+  if (rules.cap.growthFixedWeight < 0 || rules.cap.growthFixedWeight > 1)
+    problems.push('Cap growth weight must be 0 to 1.');
+  if (rules.pay.minimumSalary.length === 0) problems.push('The minimum salary table is empty.');
+  rules.pay.minimumSalary.forEach((v, i) => whole(v, `Minimum salary for ${i} seasons`, 1));
+  if (rules.pay.minimumSalary.some((v, i, a) => i > 0 && v < (a[i - 1] as number))) {
+    problems.push('Minimum salaries must not fall with experience.');
+  }
+  whole(rules.pay.prorationYearsMax, 'The proration limit', 1);
+  if (rules.season.games !== 17 || rules.season.playoffTeamsPerConference !== 7) {
+    problems.push('The season format (17 games, 14-team playoffs) is fixed.');
+  }
+  return problems;
+}
+
+type Section = Exclude<keyof RuleSet, 'version'>;
+
+/** Returns new rules with one section changed and the version bumped. Throws if the result is invalid. */
+export function changeRules<S extends Section>(
+  rules: RuleSet,
+  section: S,
+  patch: Partial<RuleSet[S]>
+): RuleSet {
+  const next = {
+    ...rules,
+    version: rules.version + 1,
+    [section]: { ...rules[section], ...patch }
+  } as RuleSet;
+  const problems = validateRules(next);
+  if (problems.length) throw new Error(problems.join(' '));
+  return next;
+}
