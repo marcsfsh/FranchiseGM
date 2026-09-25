@@ -15,6 +15,9 @@ Spec, build order, style guide, and tooling guide live in `docs/design/`. They'r
 - Post-M23 build order (M24 onward): `docs/design/franchise-gm-post-m23.md`. Read it with
   `node tools/doc.mjs post <section>`. Until M24, make the preparations its section 1.1 lists at each
   main milestone, and don't build its features early (section 1.2's sortable tables are the exception).
+- Post-M42 build order (M43 onward): `docs/design/franchise-gm-post-m42.md`. Read it with
+  `node tools/doc.mjs post42 <section>`. Until M43, make the preparations its section 1.1 lists when the
+  named milestone or kind of work comes up, and don't build its improvements early.
 
 ## Commands (all print terse output)
 - `npm run dev` · `npm run build` · `npm run build:debug`

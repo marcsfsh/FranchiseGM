@@ -10,8 +10,10 @@ The first word is the milestone id; if it's missing or "continue", use the miles
 Any text after the id is extra instructions from the user for this run: follow them.
 
 1. Print the milestone and only the spec sections it cites: `node tools/doc.mjs build <id>` for M0 to
-   M23 (checkpoints A to D), `node tools/doc.mjs post <id>` for M24 and later (checkpoints E, F, and G).
-   For M10 to M23, also check `node tools/doc.mjs post 1.1` for preparations due at this milestone.
+   M23 (checkpoints A to D), `node tools/doc.mjs post <id>` for M24 to M42 (checkpoints E, F, and G), and
+   `node tools/doc.mjs post42 <id>` for M43 and later (checkpoints H and I). Before M24, also check
+   `node tools/doc.mjs post 1.1`, and before M43 `node tools/doc.mjs post42 1.1`, for preparations due at
+   this milestone or in this kind of work.
    Open docs/KNOWN-ISSUES.md only if STATUS.md lists open items for this milestone.
 2. New milestone: write a Plan section in docs/milestones/<id>.md, at most 15 lines. List slices in
    order, each with the check that proves it.
