@@ -1,5 +1,5 @@
 // tools/doc.mjs: print one section of a design document, or its table of contents.
-// Usage: node tools/doc.mjs <spec|build|style|tooling> [section | --toc]
+// Usage: node tools/doc.mjs <spec|build|style|tooling|post> [section | --toc]
 // Examples: node tools/doc.mjs spec 11.2   node tools/doc.mjs build M4   node tools/doc.mjs style --toc
 import { readFileSync } from 'node:fs';
 
@@ -7,7 +7,8 @@ const FILES = {
   spec: 'franchise-gm-spec.md',
   build: 'franchise-gm-build-order.md',
   style: 'franchise-gm-styleguide.md',
-  tooling: 'franchise-gm-tooling.md'
+  tooling: 'franchise-gm-tooling.md',
+  post: 'franchise-gm-post-m23.md'
 };
 const [key, arg = '--toc'] = process.argv.slice(2);
 if (!FILES[key]) {
