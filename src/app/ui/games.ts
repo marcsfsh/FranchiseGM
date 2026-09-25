@@ -39,6 +39,11 @@ export interface GameCardOptions {
   prefix?: string;
   /** Seeds to show before the nicknames in the playoffs. */
   seedOf?: (abbr: TeamAbbr) => number;
+  /**
+   * The score of a game outside the season's results (a preseason game), or null before it's played; such
+   * a game links to its box score once played, and has no preview.
+   */
+  score?: { home: number; away: number } | null;
 }
 
 /**
@@ -47,7 +52,10 @@ export interface GameCardOptions {
  */
 export function gameCard(league: League, game: ScheduledGame, options: GameCardOptions = {}): HTMLElement {
   const user = league.meta.start.userTeam;
-  const result = league.season.results[game.id];
+  const result =
+    options.score === undefined
+      ? league.season.results[game.id]
+      : options.score && { homeScore: options.score.home, awayScore: options.score.away, overtime: false };
   const side = (abbr: TeamAbbr, score: number | null, won: boolean): HTMLElement => {
     const seed = options.seedOf?.(abbr);
     return h(
@@ -71,13 +79,18 @@ export function gameCard(league: League, game: ScheduledGame, options: GameCardO
     },
     text
   );
+  const linked = result || options.score === undefined;
   return h(
     'li',
     { class: 'game-card' },
     options.label ? h('p', { class: 'label' }, options.label) : null,
     side(game.away, result ? result.awayScore : null, !!result && result.awayScore > result.homeScore),
     side(game.home, result ? result.homeScore : null, !!result && result.homeScore > result.awayScore),
-    h('p', { class: 'game-status' }, ...status, link)
+    h(
+      'p',
+      { class: 'game-status' },
+      ...(linked ? [...status, link] : [String(status[0]).replace(/ · $/, '')])
+    )
   );
 }
 

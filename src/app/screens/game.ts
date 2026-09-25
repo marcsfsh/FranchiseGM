@@ -374,7 +374,7 @@ export function gameScreen(): Screen {
             const title = head.querySelector('h1');
             const tag = head.querySelector('.nameplate-tag');
             if (title) title.textContent = `${nick(record.away)} at ${nick(record.home)}`;
-            if (tag) tag.textContent = `${record.season} · ${weekLabel(league, record.week)}`;
+            if (tag) tag.textContent = `${record.season} · ${record.kind === 'preseason' ? `Preseason, week ${record.week}` : weekLabel(league, record.week)}`;
           }
           mount(body, ...played(league, game, record, lines));
         },

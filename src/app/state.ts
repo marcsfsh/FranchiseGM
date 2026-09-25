@@ -260,11 +260,16 @@ export class AppState {
           await this.store.history.record(week.league.meta.id, week.games);
           step = week;
         } else {
-          step = await this.worker.run<AdvancedStep>('advanceOffseason', {
+          const offseason: AdvancedStep = await this.worker.run<AdvancedStep>('advanceOffseason', {
             league: this.league,
             names: this.baseDb.names,
+            climate: this.baseDb.climate,
             input
           }).result;
+          // Preseason games go into history the same way, tagged so they stay out of career totals.
+          if (offseason.games.length)
+            await this.store.history.record(offseason.league.meta.id, offseason.games);
+          step = offseason;
         }
       } finally {
         edits = this.inFlight;

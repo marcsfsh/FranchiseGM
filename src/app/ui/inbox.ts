@@ -25,7 +25,7 @@ export const inboxOrder = (items: readonly InboxItem[]): InboxItem[] =>
 
 /** One message as a list item; lists of them go in `inboxList`, so readers can move message by message. */
 export function inboxMessage(league: League, item: InboxItem): HTMLElement {
-  const game = item.kind === 'result' ? userGameIn(league, item.season, item.week) : undefined;
+  const game = item.kind === 'result' ? (item.gameId ? { id: item.gameId } : userGameIn(league, item.season, item.week)) : undefined; // prettier-ignore
   return h(
     'li',
     { class: `inbox-item${item.read ? '' : ' is-unread'}` },

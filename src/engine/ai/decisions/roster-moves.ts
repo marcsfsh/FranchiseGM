@@ -292,19 +292,31 @@ export function rosterMoves(league: League, abbr: TeamAbbr, rng: Rng): DecisionL
     }
   } // prettier-ignore
 
-  // The practice squad refills with the young free agents with the most upside.
+  fillPracticeSquad(league, abbr, rng, (pool ??= freeAgents(league)), skip);
+  return logs;
+}
+
+/** The practice squad refills with the young free agents with the most upside (spec 12.1). */
+export function fillPracticeSquad(
+  league: League,
+  abbr: TeamAbbr,
+  rng: Rng,
+  pool: readonly Player[] = freeAgents(league),
+  skip: ReadonlySet<string> = new Set()
+): void {
   const today = calendarDay(league.date);
-  const young = (pool ??= freeAgents(league))
+  const young = pool
     .filter(
       p => !skip.has(p.id) && p.status === 'freeAgent' && ageOn(p.birthDate, today) <= S.practiceSquadAge
     )
     .sort((a, b) => b.potential - a.potential || b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
+  let squad = Object.values(league.players).filter(p => p.team === abbr && p.status === 'practice').length;
   for (const p of young) {
-    if (mine().filter(q => q.status === 'practice').length >= league.rules.roster.practiceSquad) break;
-    move({ kind: 'signPracticeSquad', playerId: p.id, reason: 'to fill the practice squad' });
+    if (squad >= league.rules.roster.practiceSquad) break;
+    const move = { kind: 'signPracticeSquad', team: abbr, playerId: p.id, reason: 'to fill the practice squad' } as const;
+    if (makeMove(league, move, rng).ok) squad++;
   }
-  return logs;
-}
+} // prettier-ignore
 
 /**
  * AI waiver claims (spec 12.1): an AI team claims a player who beats its weakest healthy player at his

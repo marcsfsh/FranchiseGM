@@ -68,6 +68,8 @@ export interface InboxItem {
   body: string;
   read: boolean;
   players: string[];
+  /** The game a result is about when it isn't the user's scheduled game that week: a preseason game. */
+  gameId?: string;
 }
 
 const capitalize = (text: string): string => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;

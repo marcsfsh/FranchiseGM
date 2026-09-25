@@ -219,9 +219,17 @@ export function gameDayActives(
   return dressed;
 }
 
-export function teamSetup(league: League, abbr: TeamAbbr, boost: number): TeamSetup {
+/** `resting` players sit this game out, like the starters in the preseason (spec 4.1). */
+export function teamSetup(
+  league: League,
+  abbr: TeamAbbr,
+  boost: number,
+  resting?: ReadonlySet<string>
+): TeamSetup {
   const team = league.teams[abbr];
-  const roster = Object.values(league.players).filter(p => p.team === abbr && available(league, p));
+  const roster = Object.values(league.players).filter(
+    p => p.team === abbr && available(league, p) && !resting?.has(p.id)
+  );
   const ctx = leagueFitContext(league, abbr);
   const players: Record<string, SimPlayer> = {};
   for (const p of roster) players[p.id] = simPlayer(p);
@@ -344,8 +352,14 @@ const total = (h: HomeField): number => h.crowd + h.travel + h.early + h.rest + 
  */
 export type TeamSetups = Map<TeamAbbr, TeamSetup>;
 
-function setupFor(league: League, abbr: TeamAbbr, boost: number, cache?: TeamSetups): TeamSetup {
-  if (!cache) return teamSetup(league, abbr, boost);
+function setupFor(
+  league: League,
+  abbr: TeamAbbr,
+  boost: number,
+  cache?: TeamSetups,
+  resting?: ReadonlySet<string>
+): TeamSetup {
+  if (!cache) return teamSetup(league, abbr, boost, resting);
   let base = cache.get(abbr);
   if (!base) {
     base = teamSetup(league, abbr, 0);
@@ -354,13 +368,14 @@ function setupFor(league: League, abbr: TeamAbbr, boost: number, cache?: TeamSet
   return { ...structuredClone(base), boost };
 }
 
-/** Everything the sim needs for one scheduled game. */
+/** Everything the sim needs for one scheduled game; `resting` players sit it out. */
 export function gameSetup(
   league: League,
   game: ScheduledGame,
   climate: ClimateTable | null,
   rng: Rng,
-  cache?: TeamSetups
+  cache?: TeamSetups,
+  resting?: ReadonlySet<string>
 ): GameSetup {
   const venue = venueById(game.venue);
   const month = Number(game.date.slice(5, 7)) - 1;
@@ -382,8 +397,8 @@ export function gameSetup(
     weather,
     rules: league.rules.game,
     sliders,
-    home: setupFor(league, game.home, b.home, cache),
-    away: setupFor(league, game.away, b.away, cache),
+    home: setupFor(league, game.home, b.home, cache, resting),
+    away: setupFor(league, game.away, b.away, cache, resting),
     crowd: b.crowd
   };
 }

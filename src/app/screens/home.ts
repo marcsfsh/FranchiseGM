@@ -25,7 +25,7 @@ import { gameDay, kickoff, money, record } from '../format';
 import { href } from '../router';
 import { dateLine } from '../shell';
 import type { AdvanceTarget, AppState } from '../state';
-import { weekLabel } from '../ui/games';
+import { gameCard, weekLabel } from '../ui/games';
 import { inboxList, inboxOrder } from '../ui/inbox';
 import { attributeRow, devTag, playerLink, stat, tierPlate } from '../ui/players';
 import { pageHead } from './common';
@@ -135,9 +135,9 @@ const STEP_NOTES: Record<Exclude<Phase, 'regularSeason' | 'wildCard' | 'division
   proDays: 'The draft is next: your picks join your roster when it opens.',
   draft: 'Your draft picks are on your roster. The draft room arrives in a later build.',
   udfa: 'The other teams have signed undrafted rookies; the rest are on the Free agency screen.',
-  otas: "Next season's schedule is out.",
-  trainingCamp: 'Training camp arrives in a later build.',
-  preseason: 'Preseason games arrive in a later build.',
+  otas: "Next season's schedule is out. Set your offseason program on the Training screen before camp opens.",
+  trainingCamp: "Camp brought the offseason's development, the position battles, and camp injuries. Three preseason games follow.",
+  preseason: 'Games that count only in the preseason: your starters rest while the backups and rookies play.',
   cutdown: 'Every team cuts to the in-season limit before the season starts.'
 }; // prettier-ignore
 
@@ -165,6 +165,9 @@ function offseasonCard(app: AppState, league: League): HTMLElement {
   const opener = league.upcoming?.find(g => g.week === 1 && (g.home === user || g.away === user));
   if (opener)
     body.push(h('p', { class: 'muted' }, `Your ${season} opener: ${opener.home === user ? `the ${nick(opener.away)} at home` : `at the ${nick(opener.home)}`}, ${gameDay(opener.date, opener.day)}.`)); // prettier-ignore
+  const preseason = (league.preseason?.games ?? []).filter(g => g.home === user || g.away === user);
+  if (preseason.length)
+    body.push(h('ul', { class: 'game-list', 'aria-label': 'Your preseason games' }, ...preseason.map(g => gameCard(league, g, { label: `Preseason, week ${g.week}`, score: league.preseason?.results[g.id] ?? null })))); // prettier-ignore
   const blocked = offseasonBlock(league);
   if (date.phase === 'cutdown') {
     const active = Object.values(league.players).filter(p => p.team === user && p.status === 'active').length;

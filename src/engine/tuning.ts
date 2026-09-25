@@ -5,6 +5,7 @@
  * yardage) live in the rule set (spec 16), not here. Calibration runs (spec 23) change these values,
  * and each change is logged in docs/CALIBRATION.md.
  */
+import type { Position } from './model/positions';
 import type { StatKey } from './sim/stats';
 
 export const TUNING = {
@@ -580,6 +581,50 @@ export const TUNING = {
     optionValue: 0.9,
     freeAgencyRoom: 0.04,
     tagOvr: 80
+  },
+  /**
+   * Training camp and the preseason (spec 4.1; D-30). `starters` by position set the position battles and
+   * who rests in preseason games. A battle is a starter no more than `battleGap` overall points ahead of the
+   * best backup; the backup wins at `battleOdds` less `battleEdge` for each point he trails by, and the
+   * winner's first-team snaps add `battleBump` to his position's `battleRatings` most important ratings.
+   * Camp injuries come at `injuryRate` a player times the in-game proneness terms. Preseason pairings are
+   * tried up to `pairingTries` times a week, with kickoff at `kickoff` Eastern. After the cutdown an AI team
+   * claims at most `cutdownClaims` players off waivers.
+   */
+  camp: {
+    starters: {
+      QB: 1,
+      HB: 1,
+      FB: 0,
+      WR: 3,
+      TE: 1,
+      LT: 1,
+      LG: 1,
+      C: 1,
+      RG: 1,
+      RT: 1,
+      LE: 1,
+      RE: 1,
+      DT: 2,
+      LOLB: 1,
+      MLB: 1,
+      ROLB: 1,
+      CB: 3,
+      FS: 1,
+      SS: 1,
+      K: 0,
+      P: 0,
+      LS: 0
+    } satisfies Record<Position, number> as Record<Position, number>,
+    battleGap: 2,
+    battleOdds: 0.5,
+    battleEdge: 0.12,
+    battleBump: 1,
+    battleRatings: 2,
+    injuryRate: 0.05,
+    pairingTries: 50,
+    kickoff: '19:00',
+    cutdownClaims: 2
   },
   /** Generated schedules (spec 5.2). */
   schedule: {

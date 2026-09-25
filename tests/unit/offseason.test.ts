@@ -14,6 +14,7 @@ import type { Player } from '../../src/engine/model/player';
 import { retirementChance } from '../../src/engine/progression/retirement';
 import { stream } from '../../src/engine/rng';
 import { DEFAULT_RULES as R } from '../../src/engine/rules/ruleset';
+import { TUNING } from '../../src/engine/tuning';
 import {
   advanceOffseason,
   closeSeason,
@@ -275,5 +276,15 @@ describe('stand-in draft and rosters (D-27)', () => {
     expect(Object.values(league.players).some(p => p.draft.year === 2027 && p.team)).toBe(true);
     expect(league.inbox.some(m => m.kind === 'contracts')).toBe(true);
     expect(league.season.transactions.some(t => t.kind === 'drafted')).toBe(true);
+    // After the cutdown, a few waiver claims a team, and practice squads formed.
+    const claims = league.season.transactions.filter(t => t.kind === 'claimed' && t.phase === 'cutdown');
+    for (const abbr of TEAM_ABBRS) {
+      expect(claims.filter(t => t.team === abbr).length).toBeLessThanOrEqual(TUNING.camp.cutdownClaims);
+      expect(
+        Object.values(league.players).some(p => p.team === abbr && p.status === 'practice'),
+        abbr
+      ).toBe(true);
+    }
+    expect(league.preseason).toBeNull();
   }, 60_000);
 });

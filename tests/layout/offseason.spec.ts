@@ -40,7 +40,15 @@ test('walks the offseason from the hub into the next season', async ({ page }, i
   await expect(page.locator('main .inbox-item', { hasText: /The 2027 league year opens with a \$[\d,]+ cap/ })).toContainText('Contracts · Free agency, week 1');
   await expect(page.locator('main .inbox-item', { hasText: 'Your 2027 draft class' })).toContainText('Draft · Draft');
   await expect(page.locator('main .inbox-item', { hasText: 'The 2027 schedule is out' })).toBeVisible();
+  await expect(page.locator('main .inbox-item', { hasText: 'OTAs and minicamp are underway' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
+
+  // A preseason result opens its box score, kept apart from the season's games.
+  const preseason = page.locator('main .inbox-item', { hasText: /Preseason, week 1: You (beat|lost to|tied) the / });
+  await expect(preseason).toContainText('the game counts only in the preseason');
+  await preseason.getByRole('link', { name: /^Box score: Preseason, week 1/ }).click();
+  await expect(page.locator('main .nameplate-tag')).toHaveText('2027 · Preseason, week 1');
+  await expect(page.locator('main table.line-score')).toBeVisible();
 
   // The new season's schedule.
   await goTo(page, '#/league/schedule', 'League');

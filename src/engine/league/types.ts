@@ -24,7 +24,7 @@ import type { SimSliders } from '../sim/sliders';
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 12;
+export const SAVE_SCHEMA_VERSION = 13;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -124,6 +124,11 @@ export interface League {
   seedSchedule: ScheduledGame[];
   /** Next season's schedule once it's released in the offseason (spec 5.2), until that season starts. */
   upcoming: ScheduledGame[] | null;
+  /**
+   * The coming season's preseason (spec 4.1), from training camp until the season starts: its games and
+   * the scores of those played.
+   */
+  preseason: { games: ScheduledGame[]; results: Record<string, { home: number; away: number }> } | null;
   /** The current season's results, seeds, and champion. */
   season: SeasonState;
   /** Messages for the user (spec 19.6), oldest first. */

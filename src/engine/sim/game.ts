@@ -140,7 +140,8 @@ const FRONT: readonly Slot[] = ['LEDGE', 'REDGE', 'DT1', 'DT2', 'FLEX', GOAL_LIN
 const EMERGENCY_QB: readonly Slot[] = ['RB1', 'RB2', 'SLOT', 'X', 'Z', 'TE1', 'TE2', 'FB'];
 const LINE: readonly OffenseSlot[] = ['LT', 'LG', 'C', 'RG', 'RT'];
 
-const BODY_PARTS: Record<InjurySeverity, readonly string[]> = {
+/** Body parts by severity, for injuries in games and at training camp. */
+export const BODY_PARTS: Record<InjurySeverity, readonly string[]> = {
   minor: ['ankle', 'hand', 'shoulder', 'hip', 'ribs', 'calf'],
   short: ['ankle', 'hamstring', 'knee', 'shoulder', 'groin', 'concussion'],
   medium: ['hamstring', 'knee', 'high ankle', 'shoulder', 'foot'],

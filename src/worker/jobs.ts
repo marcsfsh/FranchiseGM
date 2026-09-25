@@ -51,8 +51,13 @@ export const JOBS: Record<string, JobHandler> = {
    * week; a step the user must act on first comes back with `blocked` and the league unchanged.
    */
   advanceOffseason: payload => {
-    const { league, names, input } = payload as { league: League; names: NameData; input: AdvanceInput };
-    const { decisions: _decisions, ...step } = advanceOffseason(league, { names }, input);
+    const { league, names, climate, input } = payload as {
+      league: League;
+      names: NameData;
+      climate: ClimateTable | null;
+      input: AdvanceInput;
+    };
+    const { decisions: _decisions, ...step } = advanceOffseason(league, { names, climate }, input);
     return step;
   },
 

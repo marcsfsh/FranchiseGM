@@ -5,16 +5,23 @@
  * opens (spec 11.1), retirements after the awards (spec 10.7), the stand-in rookie class at the draft and
  * the undrafted rookies after it (D-27), the next season's schedule with the OTAs (spec 5.2), the AI's
  * cutdown at the deadline, and the next season after it. The re-sign window (spec 11.4, 11.5) opens with a
- * message about the user's decisions and closes with the AI's (D-29). Phases later milestones fill (staff
- * moves, awards and the Hall of Fame, the combine, the rules meeting) pass through.
+ * message about the user's decisions and closes with the AI's (D-29). The OTAs set depth charts for the new
+ * rosters; training camp brings its development, position battles, and injuries, and the preseason's games
+ * (D-30); after the cutdown, waiver claims and practice squads fill out the rosters. Phases later
+ * milestones fill (staff moves, awards and the Hall of Fame, the combine, the rules meeting) pass through.
  */
+import type { ClimateTable } from '../../data/climate';
 import { TEAM_ABBRS, TEAM_COLORS, type TeamAbbr } from '../../data/team-colors';
+import { decideDepthChart } from '../ai/decisions/depth-chart';
 import { capCompliance, cutdown, freeAgencySignings, offseasonClaims } from '../ai/decisions/offseason';
 import { resignDecisions } from '../ai/decisions/resign';
+import { fillPracticeSquad, waiverClaims } from '../ai/decisions/roster-moves';
 import type { DecisionLog } from '../ai/framework';
+import { dressable } from '../ai/weekly';
 import type { NameData } from '../generate/player';
 import { draftOrder, rookieReserve, signUndrafted, standInDraft } from '../generate/rookies';
 import { windowDecisions } from '../contracts/resign';
+import { orderOf } from '../league/depth';
 import { openLeagueYear } from '../league/league-year';
 import { capSheet, seasonSpace } from '../cap/sheet';
 import { activeRoster, freeAgents, type TransactionKind } from '../league/transactions';
@@ -24,13 +31,18 @@ import { fullName, type Player } from '../model/player';
 import type { RatingChange } from '../progression/change';
 import { campDevelopment, coachTraining } from '../progression/develop';
 import { retirePlayers } from '../progression/retirement';
-import { advanceLeagueRandom, leagueStream, stream, type AdvanceInput } from '../rng';
+import { programOf } from '../progression/training';
+import { advanceLeagueRandom, leagueStream, stream, type AdvanceInput, type Rng } from '../rng';
 import { activeLimit } from '../roster/rules';
 import { processWaivers, waiverOrder, type WaiverResult } from '../roster/waivers';
+import type { GameResult } from '../sim/types';
+import type { GameMeta } from '../stats/record';
 import { dollars, plural } from '../text';
+import { TUNING } from '../tuning';
+import { campInjuries, playPreseasonWeek, positionBattles, preseasonSchedule } from './camp';
 import { generateSchedule } from './generate-schedule';
 import { addToInbox, pausing, type InboxItem, type PauseEvent } from './inbox';
-import { healWeek } from './injuries';
+import { applyInjuries, healWeek } from './injuries';
 import type { NewsItem } from './news';
 import { emptySeason, leagueStandings, PLAYOFF_PHASES } from './state';
 import { winPct } from './standings';
@@ -82,9 +94,10 @@ export function nextStep(date: GameDate): GameDate {
     : { season: date.season + 1, phase: 'regularSeason', week: 1 };
 }
 
-/** What the offseason's steps need beyond the league: name lists for the rookie class. */
+/** What the offseason's steps need beyond the league: name lists for the rookie class, climate for games. */
 export interface OffseasonData {
   names: NameData;
+  climate?: ClimateTable | null;
 }
 
 export interface StepOutcome {
@@ -94,6 +107,8 @@ export interface StepOutcome {
   inbox: InboxItem[];
   pauses: InboxItem[];
   ratings: RatingChange[];
+  /** Preseason games played this step, for history. */
+  games: { result: GameResult; meta: GameMeta }[];
   /** What the user must do before the league can move on; null when the step happened. */
   blocked: string | null;
 }
@@ -111,6 +126,35 @@ const RESIGN_WORDS: Partial<Record<TransactionKind, string>> = {
 /** The teams the AI runs this step: all but the user's, unless the user's roster management is on auto. */
 const aiTeams = (league: League): TeamAbbr[] =>
   TEAM_ABBRS.filter(t => league.settings.auto.roster || t !== league.meta.start.userTeam);
+
+/**
+ * Depth charts for the rosters as they stand (spec 4.1's OTAs): every chart on auto, set as the coming
+ * season's first week would set it (the same per-team streams as the weekly management).
+ */
+function setDepthCharts(league: League, season: number): DecisionLog[] {
+  const user = league.meta.start.userTeam;
+  const seasonRng = stream(league.random.baseSeed, 'ai', season);
+  const streams = new Map(TEAM_ABBRS.map(abbr => [abbr, seasonRng.fork(abbr)] as const));
+  const logs: DecisionLog[] = [];
+  for (const abbr of TEAM_ABBRS) {
+    const team = league.teams[abbr];
+    if (abbr === user && !team.depth.auto) continue;
+    const depth = decideDepthChart(league, abbr, dressable(league, abbr), streams.get(abbr) as Rng);
+    team.depth.order = orderOf(depth.starters);
+    logs.push(...depth.logs);
+  }
+  return logs;
+}
+
+/** A preseason result from the user's side: "You beat the Bears 24-17". */
+function preseasonWords(result: GameResult, user: TeamAbbr): string {
+  const home = result.home === user;
+  const us = home ? result.score.home : result.score.away;
+  const them = home ? result.score.away : result.score.home;
+  const opponent = nick(home ? result.away : result.home);
+  if (us > them) return `You beat the ${opponent} ${us}-${them}`;
+  return us < them ? `You lost to the ${opponent} ${them}-${us}` : `You tied the ${opponent} ${us}-${them}`;
+}
 
 /**
  * The end of the season (spec 4.1, 12.1), when the Super Bowl week ends: undrafted rookies nobody signed
@@ -142,6 +186,7 @@ function startSeason(league: League, date: GameDate): void {
   league.season = { ...emptySeason(date.season), transactions: moves };
   league.schedule = schedule;
   league.upcoming = null;
+  league.preseason = null;
   league.date = { ...date };
 }
 
@@ -167,7 +212,7 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
   const step = offseasonStep(from);
   if (step === 0) throw new Error(`The ${from.phase} phase isn't part of the offseason.`);
   const blocked = offseasonBlock(league);
-  if (blocked) return { league, decisions: [], news: [], inbox: [], pauses: [], ratings: [], blocked };
+  if (blocked) return { league, decisions: [], news: [], inbox: [], pauses: [], ratings: [], games: [], blocked }; // prettier-ignore
   const to = nextStep(from);
   const user = league.meta.start.userTeam;
   const rng = (key: string) => leagueStream(league.random, 'offseason', step, key);
@@ -176,6 +221,10 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     [];
   const decisions: DecisionLog[] = [];
   const ratings: RatingChange[] = [];
+  const games: StepOutcome['games'] = [];
+  /** A step's week on the league's timeline, after the regular season and the playoffs. */
+  const timeline = (date: GameDate) =>
+    league.rules.season.weeks + PLAYOFF_PHASES.length + offseasonStep(date);
   const headline = (
     kind: NewsItem['kind'],
     text: string,
@@ -195,15 +244,27 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
       template: kind
     });
 
-  // The waiver wire clears first, as it does each week (spec 12.1).
+  // The waiver wire clears first, as it does each week (spec 12.1). Offseason claims need roster room. After
+  // the cutdown a team claims as in the season, a few players at most, and cuts back to the limit; then the
+  // practice squads form.
   const order = waiverOrder(league, stream(league.random.baseSeed, 'waivers', from.season));
+  const movesBefore = league.season.transactions.length;
+  const claimed = (abbr: TeamAbbr) =>
+    league.season.transactions.slice(movesBefore).filter(t => t.kind === 'claimed' && t.team === abbr).length;
   const waived: WaiverResult[] = processWaivers(league, rng('waivers'), order, (entry, player) =>
-    offseasonClaims(league, player, entry.from, activeLimit(league))
+    from.phase === 'cutdown'
+      ? waiverClaims(league, entry, player).filter(abbr => claimed(abbr) < TUNING.camp.cutdownClaims)
+      : offseasonClaims(league, player, entry.from, activeLimit(league))
   );
   for (const w of waived) {
     const p = league.players[w.playerId];
     if (p && w.claimedBy === user) messages.push({ kind: 'waivers', title: `You claimed ${named(p)} off waivers`, body: 'He joins your roster on his contract.', players: [p.id] });
   } // prettier-ignore
+  if (from.phase === 'cutdown')
+    for (const abbr of aiTeams(league)) {
+      cutdown(league, abbr, rng(`recut-${abbr}`));
+      fillPracticeSquad(league, abbr, rng(`squad-${abbr}`));
+    }
 
   // The step the league is in finishes.
   if (from.phase === 'awards') {
@@ -240,6 +301,24 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
         title: `Your staff made ${plural(mine.length, 'contract decision')}`,
         body: `${mine.map(t => `${named(league.players[t.playerId] as Player)}: ${RESIGN_WORDS[t.kind] ?? ''}`).join('. ')}.`,
         players: mine.map(t => t.playerId)
+      });
+  }
+  if (from.phase === 'preseason' && league.preseason) {
+    // The week's preseason games (spec 4.1): the backups play, the lines count only as preseason.
+    const played = playPreseasonWeek(league, from.week, data.climate ?? null, rng('preseason'));
+    games.push(...played);
+    for (const { result } of played) league.preseason.results[result.id] = { ...result.score };
+    const hurt = played.flatMap(p => p.result.injuries);
+    ratings.push(...applyInjuries(league, hurt, from.season, timeline(from), rng('preseasonInjuries')));
+    const mine = played.find(p => p.result.home === user || p.result.away === user)?.result;
+    const injured = hurt.filter(e => e.team === user && e.weeks > 0).map(e => league.players[e.playerId]).filter((p): p is Player => !!p); // prettier-ignore
+    if (mine)
+      messages.push({
+        kind: 'result',
+        title: `Preseason, week ${from.week}: ${preseasonWords(mine, user)}`,
+        gameId: mine.id,
+        body: `Your starters rested, and the backups and rookies played; the game counts only in the preseason.${injured.length ? ` Hurt: ${injured.map(named).join(', ')}.` : ''}`,
+        players: injured.map(p => p.id)
       });
   }
   if (from.phase === 'freeAgency') {
@@ -312,10 +391,32 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     if (mine.length)
       messages.push({ kind: 'draft', title: `You signed ${plural(mine.length, 'undrafted rookie')}`, body: mine.map(named).join(', '), players: mine.map(p => p.id) }); // prettier-ignore
   } else if (to.phase === 'trainingCamp') {
-    // Training camp (spec 10.5): the offseason's development, under each team's program.
+    // Training camp (spec 4.1, 10.5): the offseason's development under each team's program, then the
+    // position battles and camp injuries, the depth charts that follow, and the preseason schedule.
     league.date = { ...to };
     coachTraining(league);
     ratings.push(...campDevelopment(league, rng('camp')));
+    const battles = positionBattles(league, rng('battles'));
+    for (const b of battles) if (b.change) ratings.push(b.change);
+    const hurt = campInjuries(league, rng('campInjuries'));
+    ratings.push(...applyInjuries(league, hurt, to.season, timeline(to), rng('campCareer')));
+    decisions.push(...setDepthCharts(league, to.season + 1));
+    const weeks = OFFSEASON_PHASES.find(([phase]) => phase === 'preseason')?.[1] ?? 0;
+    league.preseason = { games: preseasonSchedule(to.season, weeks, rng('preseasonSchedule')), results: {} };
+    const won = battles.filter(b => b.team === user);
+    if (won.length)
+      messages.push({ kind: 'roster', title: `Camp battles decided at ${plural(won.length, 'position')}`, body: `${won.map(b => `${b.position}: ${named(b.winner)} ${b.upset ? 'won the job from' : 'held off'} ${fullName(b.loser)}`).join('. ')}.`, players: won.map(b => b.winner.id) }); // prettier-ignore
+    const mine = hurt.filter(e => e.team === user).map(e => ({ e, p: league.players[e.playerId] })).filter((x): x is { e: (typeof hurt)[number]; p: Player } => !!x.p); // prettier-ignore
+    if (mine.length)
+      messages.push({ kind: 'injury', title: `${plural(mine.length, 'player')} hurt at camp`, body: `${mine.map(({ e, p }) => `${named(p)}: ${e.bodyPart}, out ${plural(e.weeks, 'week')}`).join('. ')}.`, players: mine.map(({ p }) => p.id) }); // prettier-ignore
+    for (const b of battles)
+      if (b.upset && b.position === 'QB')
+        headline('transaction', `${named(b.winner)} wins the ${nick(b.team)} quarterback job`, [b.team], [b.winner.id], b.winner.ovr); // prettier-ignore
+    for (const e of hurt) {
+      const p = league.players[e.playerId];
+      if (p && e.severity === 'season' && p.ovr >= 80)
+        headline('injury', `${named(p)} is hurt at the ${nick(e.team)} camp: ${e.bodyPart}, out ${plural(e.weeks, 'week')}`, [e.team], [p.id], p.ovr); // prettier-ignore
+    }
   } else if (to.phase === 'otas') {
     league.upcoming = nextSchedule(league, to.season + 1);
     const opener = league.upcoming.find(g => g.week === 1 && (g.home === user || g.away === user));
@@ -325,6 +426,17 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
       body: opener
         ? `You open ${opener.home === user ? `at home against the ${nick(opener.away)}` : `at the ${nick(opener.home)}`} on ${opener.date}.`
         : '',
+      players: []
+    });
+    // OTAs and minicamp (spec 4.1): the staffs set each auto plan and depth chart for the new rosters.
+    league.date = { ...to };
+    coachTraining(league);
+    decisions.push(...setDepthCharts(league, to.season + 1));
+    const plan = league.teams[user].training;
+    messages.push({
+      kind: 'roster',
+      title: 'OTAs and minicamp are underway',
+      body: `${plan.auto ? 'Your coaches picked' : 'Your offseason program is'} ${programOf(plan.program).label.toLowerCase()} for training camp. Change it on the Training screen, and set your depth chart, before camp opens.`,
       players: []
     });
   } else if (to.phase === 'cutdown') {
@@ -357,6 +469,7 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     inbox,
     pauses: pausing(inbox, league.settings.pause),
     ratings,
+    games,
     blocked: null
   };
 }
