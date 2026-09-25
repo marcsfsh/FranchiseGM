@@ -611,6 +611,12 @@ export const TUNING = {
     calls: {
       // Situations and play calling
       goalLineYards: 3,
+      /** The red zone: inside the opponent's 20 (spec 9.2 red zone trips). */
+      redZoneYards: 20,
+      /** Deep shots need this much field in front of the offense. */
+      deepShotRoom: 20,
+      /** A standard pass rush brings four; blitzes bring blitzRushers. */
+      baseRushers: 4,
       /** Third and this many or fewer is short yardage; this many or more is long. */
       shortYardage: 4,
       longYardage: 7,
@@ -636,8 +642,7 @@ export const TUNING = {
       milkSeconds: 480,
       // Decisions
       desperationSeconds: 240,
-      /** More than one score behind (a touchdown and two-point try) with desperationYards or less to go. */
-      oneScore: 8,
+      /** More than one score behind with desperationYards or less to go, a trailing team goes for it. */
       desperationYards: 5,
       endHalfFgSeconds: 30,
       /** End of a half: with the clock stopped and this little time left, an offense in range kicks now;
@@ -658,7 +663,9 @@ export const TUNING = {
       fgFadePerYard: 0.08,
       fgPowerShare: 0.02,
       fgLongTry: [0.05, 0.95],
+      /** A field goal's distance adds the 10-yard end zone and the 7-yard hold to the line of scrimmage. */
       fgSnapYards: 17,
+      fgHoldYards: 7,
       rangePerPoint: 0.15,
       altitudeRange: 4,
       /** Wind this strong takes windRangeLoss yards off a kicker's range. */

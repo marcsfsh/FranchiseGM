@@ -62,7 +62,7 @@
 
 ## D-11: Overtime periods and possessions
 - When: 2026-09-25, M4
-- Decision: A regular-season overtime that can end tied is one period of the rule set's length. Playoff overtime, and regular-season overtime when a rule set turns ties off, plays periods that pair up like quarters: the drive carries over after the first of a pair, and after the second comes a coin toss, fresh overtime timeouts, and a kickoff. The two-minute warning applies in the second period of each pair. Both teams must finish a possession before sudden death, and a possession cut off by the end of a pair counts; a defensive score ends the game at once. With the both-teams rule off, the 2012-2021 modified sudden death applies: an opening touchdown wins, a field goal doesn't.
+- Decision: A regular-season overtime that can end tied is one period of the rule set's length. Playoff overtime, and regular-season overtime when a rule set turns ties off, plays periods that pair up like quarters: the drive carries over after the first of a pair, and after the second comes a coin toss, fresh timeouts (three per pair in the playoffs, two for a regular-season period), and a kickoff. The two-minute warning applies in the second period of each pair. Both teams must finish a possession before sudden death, and a possession cut off by the end of a pair counts; a defensive score ends the game at once. With the both-teams rule off, the 2012-2021 modified sudden death applies: an opening touchdown wins, a field goal doesn't.
 - Why: The NFL's 2022 playoff overtime rules, extended to the regular season in 2025; the rule set holds only lengths, timeouts, and the two flags.
 - Revisit if: the rules committee (M19) needs more overtime options.
 

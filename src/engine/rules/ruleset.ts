@@ -120,7 +120,10 @@ export interface GameRules {
   overtime: {
     regularSeasonSeconds: number;
     playoffSeconds: number;
+    /** Timeouts per team in a regular-season overtime period. */
     timeouts: number;
+    /** Timeouts per team in each pair of playoff overtime periods. */
+    playoffTimeouts: number;
     /** Both teams get a possession before sudden death, even after an opening touchdown. */
     bothTeamsPossess: boolean;
     /** Regular-season games tied after one overtime period end tied. */
@@ -142,6 +145,10 @@ export interface GameRules {
     /** Onside kicks only in the fourth quarter (the 2024 rule; 2025 allows any quarter). */
     onsideFourthQuarterOnly: boolean;
   };
+  /** Points for each way to score; a defensive return on a try scores defensiveTryPoints. */
+  points: { touchdown: number; fieldGoal: number; safety: number; extraPoint: number; twoPoint: number };
+  /** Yards a team must gain for a first down. */
+  yardsToGain: number;
   /** Line of scrimmage for extra-point kicks and two-point tries. */
   extraPointSpot: number;
   twoPointSpot: number;
@@ -193,6 +200,7 @@ export const DEFAULT_GAME_RULES: GameRules = {
     regularSeasonSeconds: 600,
     playoffSeconds: 900,
     timeouts: 2,
+    playoffTimeouts: 3,
     bothTeamsPossess: true,
     regularSeasonTies: true
   },
@@ -205,6 +213,8 @@ export const DEFAULT_GAME_RULES: GameRules = {
     onsideOnlyWhenTrailing: true,
     onsideFourthQuarterOnly: false
   },
+  points: { touchdown: 6, fieldGoal: 3, safety: 2, extraPoint: 1, twoPoint: 2 },
+  yardsToGain: 10,
   extraPointSpot: 15,
   twoPointSpot: 2,
   defensiveTryPoints: 2,
@@ -345,6 +355,11 @@ export function validateRules(rules: RuleSet): string[] {
   whole(g.timeoutsPerHalf, 'Timeouts per half');
   whole(g.overtime.regularSeasonSeconds, 'Regular-season overtime length', 60);
   whole(g.overtime.playoffSeconds, 'Playoff overtime length', 60);
+  whole(g.overtime.timeouts, 'Overtime timeouts');
+  whole(g.overtime.playoffTimeouts, 'Playoff overtime timeouts');
+  for (const [kind, value] of Object.entries(g.points)) whole(value, `Points for a ${kind}`, 1);
+  whole(g.yardsToGain, 'Yards to gain', 1);
+  if (g.yardsToGain > 30) problems.push('Yards to gain must be 30 or fewer.');
   whole(g.playClock, 'The play clock', 10);
   for (const [name, spot] of [
     ['The kickoff spot', g.kickoff.spot],

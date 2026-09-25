@@ -1,40 +1,8 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { parseClimate } from '../../src/data/climate';
-import { parseSchedule } from '../../src/data/schedule';
-import { createLeague, defaultStartOptions } from '../../src/engine/league/create';
-import { stream } from '../../src/engine/rng';
-import { DEFAULT_GAME_RULES, type GameRules } from '../../src/engine/rules/ruleset';
-import { simulateFrom, type GameState } from '../../src/engine/sim/game';
-import { gameSetup } from '../../src/engine/sim/setup';
-import type { GameResult } from '../../src/engine/sim/types';
-import { nameData } from '../helpers/base-data';
-
-const schedule = parseSchedule(readFileSync('data-raw/schedule-2026.csv', 'utf8'), 2026);
-const climate = parseClimate(readFileSync('data-raw/climate.csv', 'utf8'));
-const league = createLeague({
-  id: 'endgame',
-  name: 'Endgame',
-  start: defaultStartOptions('MIN', 31),
-  gameVersion: 'test',
-  names: nameData(),
-  schedule,
-  fixed: true
-});
-const game = league.schedule[3] as (typeof league.schedule)[number];
-
-/** Runs a situation many times, each with a fresh setup (the sim wears players down as it goes). */
-function run(
-  from: GameState,
-  n: number,
-  options: { playoff?: boolean; rules?: Partial<GameRules> } = {}
-): GameResult[] {
-  return Array.from({ length: n }, (_, i) => {
-    const setup = gameSetup(league, game, climate, stream(5, 'setup'));
-    const rules = { ...DEFAULT_GAME_RULES, ...options.rules };
-    return simulateFrom({ ...setup, rules, playoff: options.playoff ?? false }, stream(i, 'endgame'), from);
-  });
-}
+import { DEFAULT_GAME_RULES } from '../../src/engine/rules/ruleset';
+import type { GameState } from '../../src/engine/sim/game';
+import type { GameSetup } from '../../src/engine/sim/types';
+import { runFrom as run, situationGame as game } from '../helpers/situations';
 
 const overtimeStart: GameState = { quarter: 5, clock: 600, score: { home: 17, away: 17 }, offense: null };
 const regular = run(overtimeStart, 160);
@@ -116,6 +84,40 @@ describe('overtime (spec 16 rules)', () => {
     );
     expect(opening.length).toBeGreaterThan(5);
     for (const g of opening) expect(g.scoring).toHaveLength(1);
+    // An opening field goal doesn't: the other team gets the ball.
+    const kicked = games.filter(
+      g => g.scoring[0]?.kind === 'fieldGoal' && g.drives[0]?.result === 'fieldGoal'
+    );
+    expect(kicked.length).toBeGreaterThan(5);
+    for (const g of kicked) expect(g.drives[1]?.team).not.toBe(g.drives[0]?.team);
+  });
+
+  it('carries the drive through the first playoff overtime period and kicks off after the second', () => {
+    const tied = { home: 20, away: 20 };
+    const first = run({ quarter: 5, clock: 4, score: tied, offense: 'home', ball: 30 }, 30, {
+      playoff: true
+    });
+    for (const g of first) {
+      expect(g.drives[0]?.result).not.toBe('endOfHalf');
+      expect(g.winner).not.toBeNull();
+    }
+    const second = run(
+      {
+        quarter: 6,
+        clock: 4,
+        score: tied,
+        offense: 'home',
+        ball: 30,
+        overtimePossessions: { home: 1, away: 1 }
+      },
+      30,
+      { playoff: true }
+    ).filter(g => g.drives[0]?.result === 'endOfHalf');
+    expect(second.length).toBeGreaterThan(20);
+    for (const g of second) {
+      expect(g.drives[1]?.quarter).toBe(7);
+      expect(g.drives[1]?.clock).toBeGreaterThan(880);
+    }
   });
 });
 
@@ -136,6 +138,77 @@ describe('clock management (spec 8.3 step 8, 8.6)', () => {
       expect(g.drives).toHaveLength(1);
       expect(g.drives[0]?.result).toBe('endOfGame');
     }
+  });
+
+  it("doesn't kneel when timeouts or the two-minute warning would give the ball back", () => {
+    const lead = { home: 20, away: 17 };
+    const onlyKneels = (g: (typeof regular)[number]) => {
+      const t = g.box.home.totals;
+      return t.passAtt === 0 && t.rushYds === -t.rushAtt;
+    };
+    // 1:30 left, one defensive timeout: four kneels leave about 4 seconds for the defense.
+    const timeout = run(
+      {
+        quarter: 4,
+        clock: 90,
+        score: lead,
+        offense: 'home',
+        ball: 30,
+        timeouts: { home: 3, away: 1 },
+        running: true
+      },
+      20
+    );
+    expect(timeout.filter(onlyKneels).length).toBeLessThan(3);
+    // 2:05 left, no timeouts, but the two-minute warning will stop the clock.
+    const warning = run(
+      {
+        quarter: 4,
+        clock: 125,
+        score: lead,
+        offense: 'home',
+        ball: 30,
+        timeouts: { home: 3, away: 0 },
+        running: true
+      },
+      20
+    );
+    expect(warning.filter(onlyKneels).length).toBeLessThan(3);
+  });
+
+  it("plays an untimed down after a defensive foul on the half's last play", () => {
+    const fouls = (setup: GameSetup): GameSetup => {
+      const sliders = structuredClone(setup.sliders);
+      sliders.output.penalties = 2;
+      for (const key of [
+        'defensiveHolding',
+        'defensivePassInterference',
+        'facemask',
+        'roughingThePasser'
+      ] as const)
+        sliders.penalties[key] = { user: 2, ai: 2 };
+      return { ...setup, sliders };
+    };
+    const games = run({ quarter: 2, clock: 3, score: { home: 7, away: 7 }, offense: 'home', ball: 50 }, 200, {
+      adjust: fouls
+    });
+    const extended = games.filter(g => (g.drives[0]?.plays ?? 0) >= 2 && g.drives[0]?.quarter === 2);
+    expect(extended.length).toBeGreaterThan(3);
+    // Only a defensive foul extends the half.
+    for (const g of extended) expect(g.box.away.totals.penalties).toBeGreaterThan(0);
+  });
+
+  it('kicks off once when a tying touchdown ends regulation', () => {
+    // Down 7 at the 1 with 2 seconds left: a touchdown and the extra point send it to overtime.
+    const games = run(
+      { quarter: 4, clock: 2, score: { home: 10, away: 17 }, offense: 'home', ball: 99, distance: 1 },
+      200
+    ).filter(g => g.overtime);
+    expect(games.length).toBeGreaterThan(40);
+    // Overtime starts with the coin toss's kickoff, not a second kickoff by the team that scored.
+    const firstOvertimeDrive = games.map(g => g.drives.find(d => d.quarter === 5)?.team);
+    expect(firstOvertimeDrive.filter(t => t === game.home).length).toBeGreaterThan(10);
+    expect(firstOvertimeDrive.filter(t => t === game.away).length).toBeGreaterThan(10);
   });
 
   it('spikes or kicks to get the field goal off before the half ends', () => {
