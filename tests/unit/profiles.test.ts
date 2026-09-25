@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import measured from '../../src/data/situation-profiles.json';
 import { DEFENSE_SCHEMES, OFFENSE_SCHEMES } from '../../src/engine/schemes/ids';
-import { named, REFERENCE_PROFILE, resolveDefense, resolveOffense } from '../../src/engine/schemes/resolve';
+import { named, referenceProfile, resolveDefense, resolveOffense } from '../../src/engine/schemes/resolve';
 import { PLAY_TRIGGERS } from '../../src/engine/schemes/situations';
 import { DEFENSE_SLOTS, OFFENSE_SLOTS } from '../../src/engine/schemes/slots';
 
@@ -43,6 +43,6 @@ describe('measured situation profiles (spec 7.5)', () => {
     const power = file.offense.powerRun?.RB1?.carry as number;
     expect(blend.RB1.carry).toBeCloseTo(wc * 0.75 + power * 0.25);
     const mean = OFFENSE_SCHEMES.reduce((sum, id) => sum + (file.offense[id]?.QB?.dropback as number), 0) / 4;
-    expect(REFERENCE_PROFILE.offense.QB.dropback).toBeCloseTo(mean);
+    expect(referenceProfile().offense.QB.dropback).toBeCloseTo(mean);
   });
 });

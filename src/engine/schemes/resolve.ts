@@ -127,16 +127,32 @@ function mixProfiles<S extends string>(
   return out;
 }
 
+let estimatedOnly = false;
+
 function offenseProfile(id: OffenseSchemeId): OffenseProfile {
-  return MEASURED.offense[id] ?? estimateOffenseProfile(OFFENSES[id].tendencies);
+  const file = estimatedOnly ? undefined : MEASURED.offense[id];
+  return file ?? estimateOffenseProfile(OFFENSES[id].tendencies);
 }
 
 function defenseProfile(id: DefenseSchemeId): DefenseProfile {
-  return MEASURED.defense[id] ?? estimateDefenseProfile(DEFENSES[id].tendencies);
+  const file = estimatedOnly ? undefined : MEASURED.defense[id];
+  return file ?? estimateDefenseProfile(DEFENSES[id].tendencies);
 }
 
 const offenseCache = new Map<string, ResolvedOffense>();
 const defenseCache = new Map<string, ResolvedDefense>();
+let reference: { offense: OffenseProfile; defense: DefenseProfile } | null = null;
+
+/**
+ * Resolves schemes with estimated profiles only, ignoring the measured file. tools/measure-profiles.ts
+ * measures this way, so a new measurement never depends on the previous one.
+ */
+export function useEstimatedProfiles(on: boolean): void {
+  estimatedOnly = on;
+  offenseCache.clear();
+  defenseCache.clear();
+  reference = null;
+}
 
 export function resolveOffense(choice: OffenseChoice): ResolvedOffense {
   const k = key(choice);
@@ -209,13 +225,16 @@ function averageProfile<S extends string>(
  * The named schemes' average profile per slot: an ability is worth its tier points in a scheme that
  * triggers it this often (spec 7.3 ability value).
  */
-export const REFERENCE_PROFILE = {
-  offense: averageProfile(
-    OFFENSE_LIST.map(s => resolveOffense(named(s.id)).profile),
-    OFFENSE_SLOTS
-  ),
-  defense: averageProfile(
-    DEFENSE_LIST.map(s => resolveDefense(named(s.id)).profile),
-    DEFENSE_SLOTS
-  )
-};
+export function referenceProfile(): { offense: OffenseProfile; defense: DefenseProfile } {
+  reference ??= {
+    offense: averageProfile(
+      OFFENSE_LIST.map(s => resolveOffense(named(s.id)).profile),
+      OFFENSE_SLOTS
+    ),
+    defense: averageProfile(
+      DEFENSE_LIST.map(s => resolveDefense(named(s.id)).profile),
+      DEFENSE_SLOTS
+    )
+  };
+  return reference;
+}

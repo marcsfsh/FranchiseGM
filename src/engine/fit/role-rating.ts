@@ -11,7 +11,7 @@ import type { Player } from '../model/player';
 import { samePosition } from '../model/positions';
 import { clampRating, type RatingKey } from '../model/ratings';
 import {
-  REFERENCE_PROFILE,
+  referenceProfile,
   specialRole,
   type ResolvedDefense,
   type ResolvedOffense,
@@ -92,8 +92,8 @@ function sharesFor(
   ctx: Pick<FitContext, 'offense' | 'defense'>,
   slot: Slot
 ): [SituationShares, SituationShares] {
-  if (isOffense(slot)) return [ctx.offense.profile[slot], REFERENCE_PROFILE.offense[slot]];
-  if (isDefense(slot)) return [ctx.defense.profile[slot], REFERENCE_PROFILE.defense[slot]];
+  if (isOffense(slot)) return [ctx.offense.profile[slot], referenceProfile().offense[slot]];
+  if (isDefense(slot)) return [ctx.defense.profile[slot], referenceProfile().defense[slot]];
   const shares = SPECIAL_PROFILE[slot as SpecialSlot];
   return [shares, shares];
 }

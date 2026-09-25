@@ -10,7 +10,7 @@ import { RATING_KEYS } from '../../src/engine/model/ratings';
 import { stream } from '../../src/engine/rng';
 import { FIT_SLOTS } from '../../src/engine/schemes/slots';
 import type { StaffMember } from '../../src/engine/model/staff';
-import { named, REFERENCE_PROFILE, resolveOffense } from '../../src/engine/schemes/resolve';
+import { named, referenceProfile, resolveOffense } from '../../src/engine/schemes/resolve';
 import { CONTEXT_SHARES, PLAY_TRIGGERS, type SituationShares } from '../../src/engine/schemes/situations';
 import { DEFENSE_SLOTS, OFFENSE_SLOTS, defenseSnapShares } from '../../src/engine/schemes/slots';
 import { TUNING } from '../../src/engine/tuning';
@@ -156,12 +156,12 @@ describe('ability value (spec 7.3, 7.4)', () => {
   });
 
   it('uses the named-scheme average as the reference for each slot', () => {
-    const openField = OFFENSE_SLOTS.map(slot => REFERENCE_PROFILE.offense[slot].openField);
+    const openField = OFFENSE_SLOTS.map(slot => referenceProfile().offense[slot].openField);
     expect(Math.min(...openField)).toBeGreaterThanOrEqual(0);
     const rb = ['westCoast', 'shanahanZone', 'airRaid', 'powerRun'].map(
       id => resolveOffense(named(id as 'westCoast')).profile.RB1.openField
     );
-    expect(REFERENCE_PROFILE.offense.RB1.openField).toBeCloseTo(rb.reduce((a, b) => a + b, 0) / 4);
+    expect(referenceProfile().offense.RB1.openField).toBeCloseTo(rb.reduce((a, b) => a + b, 0) / 4);
   });
 });
 
