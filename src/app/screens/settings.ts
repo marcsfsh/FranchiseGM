@@ -1,6 +1,7 @@
 import { TEAM_ABBRS, teamFullName } from '../../data/team-colors';
 import { toast, whileBusy, type ToastAction } from '../feedback';
 import { savedAgo } from '../format';
+import { EXPORT_REMINDER, clearsSiteData } from '../platform';
 import { dateLine } from '../shell';
 import { exportToDevice, type AppState } from '../state';
 import { h } from '../dom';
@@ -180,6 +181,7 @@ function leagueSettings(ctx: ScreenContext): { node: HTMLElement; sync: () => vo
     h('p', null, `${teamFullName(start.userTeam)} · ${dateLine(league)}`),
     h('p', { class: 'muted small' }, `Seed ${start.seed} · Fictional league · Started ${start.startSeason}`),
     status,
+    clearsSiteData(navigator.userAgent) ? h('p', { class: 'hint' }, EXPORT_REMINDER) : null,
     h('div', { class: 'btn-row' }, saveButton, exportButton, switchButton)
   );
   const sync = () => {

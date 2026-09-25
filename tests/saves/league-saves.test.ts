@@ -40,11 +40,11 @@ describe('league creation (spec 3.2)', () => {
   });
 
   it('is JSON-safe, so saves and exports round-trip exactly', () => {
-    expect(JSON.parse(JSON.stringify(league))).toEqual(league);
+    expect(JSON.parse(JSON.stringify(league))).toStrictEqual(league);
   });
 
   it('repeats a seed and differs across seeds', () => {
-    expect(make(11)).toEqual(league);
+    expect(make(11)).toStrictEqual(league);
     expect(make(12).players.p1).not.toEqual(league.players.p1);
   });
 
@@ -63,7 +63,7 @@ describe('saves (spec 21)', () => {
     const summary = await store.save(league, 1000);
     expect(summary).toMatchObject({ id: 'league-a', userTeam: 'MIN', season: 2026, week: 1, edited: false });
     expect(await store.list()).toEqual([summary]);
-    expect(await store.load('league-a')).toEqual(league);
+    expect(await store.load('league-a')).toStrictEqual(league);
   });
 
   it('keeps several leagues and deletes one', async () => {
@@ -91,7 +91,7 @@ describe('saves (spec 21)', () => {
     expect(store.available).toBe(false);
     expect(store.unavailableReason).toMatch(/not available/);
     await store.save(league, 5);
-    expect(await store.load('league-a')).toEqual(league);
+    expect(await store.load('league-a')).toStrictEqual(league);
   });
 });
 
@@ -100,7 +100,7 @@ describe('export and import (spec 21)', () => {
     const blob = await exportLeague(league);
     const bytes = new Uint8Array(await blob.arrayBuffer());
     expect([bytes[0], bytes[1]]).toEqual([0x1f, 0x8b]);
-    expect(await importLeague(blob)).toEqual(league);
+    expect(await importLeague(blob)).toStrictEqual(league);
   });
 
   it('round-trips through a save store too', async () => {
@@ -116,14 +116,14 @@ describe('export and import (spec 21)', () => {
       ),
       4
     );
-    expect(await store.load(league.meta.id)).toEqual(league);
+    expect(await store.load(league.meta.id)).toStrictEqual(league);
   });
 
   it('reads plain JSON and rejects other files', async () => {
     const plain = new Blob([
       JSON.stringify({ format: 'franchise-gm-league', schema: SAVE_SCHEMA_VERSION, league })
     ]);
-    expect(await importLeague(plain)).toEqual(league);
+    expect(await importLeague(plain)).toStrictEqual(league);
     await expect(importLeague(new Blob(['hello']))).rejects.toBeInstanceOf(ImportFormatError);
     const old = new Blob([JSON.stringify({ format: 'franchise-gm-league', schema: 0, league })]);
     await expect(importLeague(old)).rejects.toBeInstanceOf(SaveVersionError);
@@ -131,6 +131,39 @@ describe('export and import (spec 21)', () => {
 
   it('names export files from the league and date', () => {
     expect(exportFileName(league)).toBe('franchise-gm-test-league-2026-week-1.json.gz');
+  });
+
+  it('refuses damaged league files before saving them (spec 21)', async () => {
+    const damaged = (change: (copy: Record<string, unknown>) => void) => {
+      const copy = structuredClone(league) as unknown as Record<string, unknown>;
+      change(copy);
+      return new Blob([
+        JSON.stringify({ format: 'franchise-gm-league', schema: SAVE_SCHEMA_VERSION, league: copy })
+      ]);
+    };
+    const cases: [(copy: Record<string, unknown>) => void, RegExp][] = [
+      [c => ((c.meta as { start: { userTeam: string } }).start.userTeam = 'XXX'), /user's team/],
+      [c => delete c.schedule, /schedule/],
+      [c => ((c.date as { phase: string }).phase = 'moonSeason'), /isn't a phase/],
+      [c => delete (c.teams as Record<string, unknown>).MIN, /team is missing/],
+      [c => ((Object.values(c.players as object)[0] as { position: string }).position = 'QBX'), /player/]
+    ];
+    for (const [change, message] of cases) {
+      const error = await importLeague(damaged(change)).catch((e: unknown) => e);
+      expect(error, String(message)).toBeInstanceOf(ImportFormatError);
+      expect((error as Error).message).toMatch(message);
+    }
+  });
+
+  it('exports a save from another version as stored, so that version can open it (spec 2.4)', async () => {
+    const store = await SaveStore.open(new IDBFactory());
+    const older = { ...structuredClone(league), schema: SAVE_SCHEMA_VERSION - 1 };
+    await store.save(older as League, 5);
+    await expect(store.load(league.meta.id)).rejects.toBeInstanceOf(SaveVersionError);
+    const file = await exportLeague(await store.loadRaw(league.meta.id));
+    const error = await importLeague(file).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(SaveVersionError);
+    expect((error as Error).message).toMatch(/older version/);
   });
 });
 

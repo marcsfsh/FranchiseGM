@@ -6,7 +6,7 @@ import type { BaseDb } from '../data/base-db';
 import type { League, LeagueSummary, StartOptions } from '../engine/league/types';
 import type { NewLeagueInput } from '../engine/league/create';
 import type { SaveStore } from '../storage/saves';
-import { exportFileName, exportLeague, importLeague } from '../storage/saves';
+import { exportFileName, exportFileNameFor, exportLeague, importLeague } from '../storage/saves';
 import type { Progress, WorkerClient } from './worker-client';
 
 export type SaveStatus =
@@ -137,10 +137,19 @@ export class AppState {
     return true;
   }
 
+  /**
+   * Exports the open league, or a saved one by ID. Saved leagues export as stored, so a save from another
+   * version of the game can still be exported and opened in the version that wrote it.
+   */
   async exportLeague(id?: string): Promise<{ blob: Blob; fileName: string }> {
-    const league = id && id !== this.league?.meta.id ? await this.store.load(id) : this.league;
-    if (!league) throw new Error('Open a league to export it.');
-    return { blob: await exportLeague(league), fileName: exportFileName(league) };
+    if (id && id !== this.league?.meta.id) {
+      const raw = await this.store.loadRaw(id);
+      const summary = this.leagues.find(l => l.id === id);
+      const fileName = summary ? exportFileNameFor(summary) : `franchise-gm-${id}.json.gz`;
+      return { blob: await exportLeague(raw), fileName };
+    }
+    if (!this.league) throw new Error('Open a league to export it.');
+    return { blob: await exportLeague(this.league), fileName: exportFileName(this.league) };
   }
 
   /** Imports a league file as a new save. A league already saved here comes in as a copy. */

@@ -4,6 +4,7 @@ import { PHASE_LABELS } from '../../engine/model/calendar';
 import { h, mount } from '../dom';
 import { dialogFrame, openDialog, toast, whileBusy } from '../feedback';
 import { savedAgo } from '../format';
+import { EXPORT_REMINDER, clearsSiteData } from '../platform';
 import { exportToDevice, type AppState } from '../state';
 import { pageHead } from './common';
 import type { Screen, ScreenContext } from './types';
@@ -161,7 +162,9 @@ export function startScreen(): Screen {
         });
       });
       const storage = app.store.available
-        ? null
+        ? clearsSiteData(navigator.userAgent)
+          ? h('p', { class: 'hint', role: 'note' }, EXPORT_REMINDER)
+          : null
         : h(
             'p',
             { class: 'empty', role: 'note' },
