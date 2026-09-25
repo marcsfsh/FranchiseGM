@@ -1,4 +1,5 @@
 import { TEAM_ABBRS, teamFullName } from '../../data/team-colors';
+import type { AutoJobs } from '../../engine/league/types';
 import { LIVE_PAUSE_EVENTS, PAUSE_LABELS } from '../../engine/season/inbox';
 import { toast, whileBusy, type ToastAction } from '../feedback';
 import { savedAgo } from '../format';
@@ -221,6 +222,37 @@ function pauseSettings(app: AppState): HTMLElement | null {
   ); // prettier-ignore
 }
 
+/** The user's jobs that run on auto (spec 22.7), beyond the switches on their own screens. */
+const AUTO_JOBS: { job: keyof AutoJobs; label: string; hint: string }[] = [
+  { job: 'roster', label: 'Roster moves', hint: 'Signings, cuts, injured reserve, the practice squad, waiver claims, and the final cutdown.' },
+  { job: 'contracts', label: 'Contracts', hint: 'Extensions, tags, tenders, and fifth-year options in the re-sign window.' }
+]; // prettier-ignore
+
+function automationSettings(app: AppState): HTMLElement | null {
+  const league = app.league;
+  if (!league) return null;
+  const status = h('p', { class: 'sr-only', role: 'status' });
+  const rows = AUTO_JOBS.map(({ job, label, hint }) => {
+    const id = `auto-${job}`;
+    const button = h('button', { class: 'switch', type: 'button', role: 'switch', id, 'aria-checked': String(league.settings.auto[job]), 'aria-labelledby': `${id}-label`, 'aria-describedby': `${id}-hint` });
+    button.addEventListener('click', () => {
+      const on = !(app.league ?? league).settings.auto[job];
+      app.edit(l => {
+        l.settings.auto[job] = on;
+      }, ['auto', job, on]);
+      button.setAttribute('aria-checked', String(on));
+      status.textContent = `${label}: ${on ? 'your staff makes them' : 'you make them'}.`;
+    });
+    return h('div', null, h('div', { class: 'switch-row' }, h('span', { class: 'field-label', id: `${id}-label` }, label), button), h('p', { class: 'muted', id: `${id}-hint` }, hint));
+  });
+  return card(
+    'Automation',
+    h('p', { class: 'muted' }, 'Jobs on auto are done by your staff, with the same AI as the other teams. The game plan, depth chart, and training have their switches on their own screens.'),
+    ...rows,
+    status
+  );
+} // prettier-ignore
+
 /** The game sim and stat sliders (spec 22.3). */
 function sliderSettings(app: AppState): HTMLElement | null {
   if (!app.league) return null;
@@ -306,6 +338,7 @@ export function settingsScreen(): Screen {
         { class: 'cards' },
         league?.node ?? null,
         pauseSettings(ctx.app),
+        automationSettings(ctx.app),
         sliderSettings(ctx.app),
         developmentSettings(ctx.app),
         display.node,

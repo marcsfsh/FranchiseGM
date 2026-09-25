@@ -12,6 +12,7 @@ export type RouteName =
   | 'freeagency'
   | 'trades'
   | 'finances'
+  | 'contracts'
   | 'league'
   | 'leagueTab'
   | 'game'
@@ -46,6 +47,7 @@ const ROUTES: readonly RouteDef[] = [
   { name: 'freeagency', path: 'free-agency' },
   { name: 'trades', path: 'trades' },
   { name: 'finances', path: 'finances' },
+  { name: 'contracts', path: 'contracts' },
   { name: 'league', path: 'league' },
   { name: 'leagueTab', path: 'league/:tab' },
   { name: 'game', path: 'game/:id' },
@@ -143,6 +145,7 @@ export function sectionOf(route: Route): RouteName {
   if (route.name === 'player') return 'roster';
   if (route.name === 'inbox') return 'home';
   if (route.name === 'training') return 'gameplan';
+  if (route.name === 'contracts') return 'finances';
   if (route.name === 'team' || route.name === 'leagueTab' || route.name === 'game') return 'league';
   if (route.name === 'newLeague') return 'start';
   if (route.name === 'dev') return 'settings';

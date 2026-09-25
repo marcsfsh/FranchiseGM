@@ -94,6 +94,45 @@ describe('offseason calendar (spec 4.1)', () => {
   }); // prettier-ignore
 });
 
+describe('the re-sign window (spec 4.1, 11.4, 11.5)', () => {
+  /** A league at the awards with every deal running out when the 2027 league year opens. */
+  const expiringLeague = (): League => {
+    const league = fresh(at(2026, 'awards'));
+    for (const c of Object.values(league.contracts)) c.years = c.years.filter(y => y.year <= 2026);
+    return league;
+  };
+  const kept = (league: League, abbr: string) =>
+    Object.values(league.players).filter(p => p.team === abbr && p.nextContractId).length;
+
+  it("opens with a message that pauses a sim, and closes with the AI teams' decisions", () => {
+    const league = expiringLeague();
+    const user = league.meta.start.userTeam;
+    const open = advanceOffseason(league, { names: nameData() }, { actions: 0, entropy: 1 });
+    expect(league.date.phase).toBe('resign');
+    const message = open.inbox.find(m => m.title === 'The re-sign window is open');
+    expect(message).toMatchObject({ kind: 'contracts', event: 'deadlines' });
+    expect(message?.body).toMatch(/run out when the 2027 league year opens\. .*The window closes when you advance to the combine\.$/);
+    expect(open.pauses).toContain(message);
+    const close = advanceOffseason(league, { names: nameData() }, { actions: 0, entropy: 2 });
+    expect(league.date.phase).toBe('combine');
+    expect(TEAM_ABBRS.filter(t => t !== user).every(t => kept(league, t) > 0)).toBe(true);
+    expect(kept(league, user)).toBe(0);
+    expect(close.inbox).toHaveLength(0);
+    expect(league.season.transactions.filter(t => t.phase === 'resign').map(t => t.kind)).toEqual(expect.arrayContaining(['extended', 'tendered']));
+  }); // prettier-ignore
+
+  it("lets the staff make the user's decisions with contracts on auto", () => {
+    const league = expiringLeague();
+    league.settings.auto.contracts = true;
+    const user = league.meta.start.userTeam;
+    const open = advanceOffseason(league, { names: nameData() }, { actions: 0, entropy: 1 });
+    expect(open.inbox.some(m => m.title === 'The re-sign window is open')).toBe(false);
+    const close = advanceOffseason(league, { names: nameData() }, { actions: 0, entropy: 2 });
+    expect(kept(league, user)).toBeGreaterThan(0);
+    expect(close.inbox[0]?.title).toMatch(/^Your staff made \d+ contract decisions?$/);
+  });
+});
+
 describe('new league year (spec 11.1)', () => {
   it('grows the cap by the fixed-rate and revenue blend, within the floor and ceiling', () => {
     // 301.2M x (1 + 0.5 x 0.07 + 0.5 x 0.05) = 301.2M x 1.06 = 319,272,000, to the nearest 100,000.

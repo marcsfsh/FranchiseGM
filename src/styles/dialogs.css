@@ -64,6 +64,20 @@ dialog::backdrop {
 [data-layout='phone'] .dialog-actions {
   flex-direction: column;
 }
+/* On a short screen (a phone in landscape, or a small phone with large text) the whole dialog scrolls, so
+   the title and the actions never squeeze its content out of view. */
+@media (max-height: 40em) {
+  dialog {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .dialog-frame {
+    max-height: none;
+  }
+  .dialog-body {
+    overflow-y: visible;
+  }
+}
 .toast-region {
   position: fixed;
   z-index: var(--z-toast);

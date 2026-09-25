@@ -1,5 +1,6 @@
 import type { RouteName } from '../router';
 import { capScreen } from './cap';
+import { contractsScreen } from './contracts';
 import { depthScreen } from './depth';
 import { devScreen } from './dev';
 import { freeAgencyScreen } from './free-agency';
@@ -32,6 +33,7 @@ export const SCREENS: Record<RouteName, () => Screen> = {
   freeagency: freeAgencyScreen,
   trades: () => placeholderScreen('Trades', 'Trade offers, the trade block, and proposals.'),
   finances: capScreen,
+  contracts: contractsScreen,
   league: leagueScreen,
   leagueTab: leagueScreen,
   game: gameScreen,

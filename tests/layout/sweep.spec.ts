@@ -41,6 +41,7 @@ const SCREENS: { hash: string; heading: string | RegExp; ready?: string }[] = [
   { hash: '#/free-agency', heading: 'Free agency', ready: 'main .card' },
   { hash: '#/trades', heading: 'Trades' },
   { hash: '#/finances', heading: 'Salary cap', ready: 'main table' },
+  { hash: '#/contracts', heading: 'Contracts', ready: 'main .card' },
   { hash: '#/league/standings', heading: 'League', ready: 'main table.standings-table' },
   { hash: '#/league/playoffs', heading: 'League', ready: 'main .seed-list' },
   { hash: '#/league/schedule', heading: 'League', ready: 'main .game-card' },

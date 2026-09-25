@@ -24,6 +24,7 @@ export function loopLeague(data: CalibrationData, seed: number): League {
     fixed: true
   });
   league.settings.auto.roster = true;
+  league.settings.auto.contracts = true;
   return league;
 }
 

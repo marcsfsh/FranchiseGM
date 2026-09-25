@@ -24,7 +24,11 @@ test('walks the offseason from the hub into the next season', async ({ page }, i
   await expect(status).toHaveText('Now: Awards and Hall of Fame.');
   await expect(page.getByRole('button', { name: 'Advance to Re-sign window' })).toBeFocused();
 
-  // The rest of the way: free agency, the draft, the schedule, and the cutdown.
+  // The rest of the way stops at the re-sign window, a deadline for the user's decisions; then free agency,
+  // the draft, the schedule, and the cutdown.
+  await page.getByRole('button', { name: 'Sim to the 2027 season' }).click();
+  await expect(status).toHaveText('Now: Re-sign window. Stopped for: The re-sign window is open.', { timeout: 60_000 });
+  await expect(card.getByRole('link', { name: 'Contracts' })).toBeVisible();
   await page.getByRole('button', { name: 'Sim to the 2027 season' }).click();
   await expect(status).toHaveText('The 2027 season is here: week 1.', { timeout: 240_000 });
   await expect(page.locator('main .hub-date')).toHaveText('2027 season · Week 1');

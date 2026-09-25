@@ -58,6 +58,14 @@ export function withCap(rules: RuleSet, cap: number): RuleSet {
       ...rules.rookieScale,
       topSigningBonus: grow(rules.rookieScale.topSigningBonus, Y.salaryRound),
       minimumSigningBonus: grow(rules.rookieScale.minimumSigningBonus, Y.salaryRound)
+    },
+    tags: {
+      ...rules.tags,
+      tenders: {
+        firstRound: grow(rules.tags.tenders.firstRound, Y.salaryRound),
+        secondRound: grow(rules.tags.tenders.secondRound, Y.salaryRound),
+        originalRound: grow(rules.tags.tenders.originalRound, Y.salaryRound)
+      }
     }
   };
 }
@@ -93,10 +101,13 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
   for (const player of Object.values(league.players)) {
     const contract = player.contractId ? league.contracts[player.contractId] : undefined;
     if (!contract || !player.team) continue;
-    if (runsInto(contract, year)) {
-      // The reserve lists clear with the new league year; a suspension carries on.
+    // The reserve lists clear with the new league year; a suspension carries on.
+    const rejoin = () => {
       if (player.status === 'ir' || player.status === 'pup' || player.status === 'nfi')
         player.status = 'active';
+    };
+    if (runsInto(contract, year)) {
+      rejoin();
       continue;
     }
     // A deal with an option year nobody exercised ends as declined, which accelerates its proration.
@@ -108,6 +119,14 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
         injured: false,
         terminationPay: false
       });
+    // A deal signed to follow this one (an extension, a tag, or a tender) takes over.
+    const next = player.nextContractId ? league.contracts[player.nextContractId] : undefined;
+    delete player.nextContractId;
+    if (next && !next.ended && next.team === player.team && runsInto(next, year)) {
+      player.contractId = next.id;
+      rejoin();
+      continue;
+    }
     expired.push({ playerId: player.id, team: player.team });
     Object.assign(player, { team: null, status: 'freeAgent', contractId: null });
   }

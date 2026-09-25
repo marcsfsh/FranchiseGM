@@ -9,6 +9,7 @@
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { capSheet } from '../cap/sheet';
 import { afterJune1, leagueYearStart } from '../contracts/cap';
+import { endPending } from '../contracts/resign';
 import type { Contract } from '../contracts/types';
 import { newId, recordTransaction } from '../league/transactions';
 import type { League } from '../league/types';
@@ -176,6 +177,8 @@ export function processWaivers(
       null;
     if (winner) {
       if (old.ended) league.contracts[old.id] = { ...old, ended: { ...old.ended, how: 'claimed' } };
+      // A deal he'd signed to follow this one doesn't go with him.
+      if (old.ended) endPending(league, player, { ...old.ended, how: 'replaced' });
       const contract = claimedContract(old, winner, newId(league, 'c'), league.date, league.rules);
       league.contracts[contract.id] = contract;
       const taken = new Set(

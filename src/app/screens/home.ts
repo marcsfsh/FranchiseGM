@@ -128,7 +128,7 @@ function startAdvance(app: AppState, target: AdvanceTarget): void {
 const STEP_NOTES: Record<Exclude<Phase, 'regularSeason' | 'wildCard' | 'divisional' | 'conference' | 'superBowl'>, string> = {
   staff: 'Coaching and staff moves arrive in a later build.',
   awards: 'Season awards and the Hall of Fame arrive in a later build. Players decide whether to retire as this phase ends.',
-  resign: 'Extensions, tags, and tenders arrive in a later build. Contracts that run out end when free agency opens.',
+  resign: 'Extend, tag, or tender your players whose deals run out, and decide fifth-year options, on the Contracts screen. The other teams decide as the window closes; deals nobody kept end when free agency opens.',
   combine: 'The combine arrives with the draft in a later build.',
   annualMeeting: 'The new league year starts when free agency opens: contracts that run out end, and the cap grows.',
   freeAgency: 'Sign free agents from the Free agency screen. The other teams sign theirs as each week ends.',
@@ -150,7 +150,13 @@ function offseasonCard(app: AppState, league: League): HTMLElement {
   const body: Child[] = [
     h('p', { class: 'label' }, `${date.season} offseason`),
     h('p', { class: 'hero-title' }, stepLabel(date)),
-    h('p', null, STEP_NOTES[date.phase as keyof typeof STEP_NOTES] ?? '')
+    h(
+      'p',
+      null,
+      date.phase === 'resign' && league.settings.auto.contracts
+        ? 'Your staff makes the contract decisions you leave open as the window closes; you can still decide any player on the Contracts screen first. Automation in Settings changes this.'
+        : (STEP_NOTES[date.phase as keyof typeof STEP_NOTES] ?? '')
+    )
   ];
   if (league.season.champion)
     body.push(
@@ -172,6 +178,8 @@ function offseasonCard(app: AppState, league: League): HTMLElement {
   );
   if (date.phase === 'cutdown')
     actions.append(h('a', { class: 'btn btn-outline', href: '#/roster' }, 'Roster'));
+  if (date.phase === 'resign')
+    actions.prepend(h('a', { class: 'btn btn-outline', href: href('contracts') }, 'Contracts'));
   if (run) {
     const stop = h('button', { class: 'btn btn-outline', type: 'button', 'data-focus': 'stop' }, 'Stop after this step');
     stop.addEventListener('click', () => {

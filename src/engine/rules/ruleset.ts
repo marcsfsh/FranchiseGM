@@ -91,6 +91,29 @@ export interface RookieScaleRules {
   udfaYears: number;
 }
 
+/** Tags, tenders, and fifth-year options (spec 11.4, 11.5, default, review). */
+export interface TagRules {
+  /** A franchise tag pays the average of this many top cap hits at the position, or this share of his last salary. */
+  franchiseTop: number;
+  priorSalaryShare: number;
+  /** A transition tag pays the average of this many top cap hits at the position. */
+  transitionTop: number;
+  /** A second straight tag costs this share of the last one; a third this share, or the quarterback tag if more. */
+  secondTag: number;
+  thirdTag: number;
+  /** Restricted free agents have exactly this many accrued seasons; players with fewer have exclusive rights. */
+  rfaSeasons: number;
+  /** Restricted free agent tenders by level; the original-round level is also the right-of-first-refusal amount. */
+  tenders: { firstRound: number; secondRound: number; originalRound: number };
+  /** A tender pays at least this share of his last base salary. */
+  tenderPriorShare: number;
+  /** Fifth-year option salary without Pro Bowls: the average of the cap hits ranked in these ranges at the position. */
+  optionPlayingTime: [number, number];
+  optionBasic: [number, number];
+  /** The playing-time level needs this share of his team's snaps. */
+  optionSnapShare: number;
+}
+
 export interface SeasonRules {
   /** Fixed and not votable (spec 16). */
   games: number;
@@ -190,6 +213,7 @@ export interface RuleSet {
   roster: RosterRules;
   pay: PayRules;
   rookieScale: RookieScaleRules;
+  tags: TagRules;
   game: GameRules;
 }
 
@@ -333,6 +357,21 @@ export const DEFAULT_RULES: RuleSet = {
     firstRoundBaseShare: 0.12,
     udfaYears: 3
   },
+  tags: {
+    franchiseTop: 5,
+    priorSalaryShare: 1.2,
+    transitionTop: 10,
+    secondTag: 1.2,
+    thirdTag: 1.44,
+    rfaSeasons: 3,
+    // The 2025 tenders ($7,458,000, $5,346,000, $3,263,000) grown with the 2026 cap; review against the
+    // 2026 figures (spec 24).
+    tenders: { firstRound: 8_046_000, secondRound: 5_767_000, originalRound: 3_520_000 },
+    tenderPriorShare: 1.1,
+    optionPlayingTime: [3, 20],
+    optionBasic: [3, 25],
+    optionSnapShare: 0.75
+  },
   game: DEFAULT_GAME_RULES
 };
 
@@ -377,6 +416,9 @@ export function validateRules(rules: RuleSet): string[] {
   whole(rules.pay.prorationYearsMax, 'The proration limit', 1);
   whole(rules.rookieScale.years, 'Rookie contract length', 1);
   whole(rules.rookieScale.topSigningBonus, 'The top rookie signing bonus', 0);
+  for (const [level, amount] of Object.entries(rules.tags.tenders)) whole(amount, `The ${level} tender`, 1);
+  whole(rules.tags.franchiseTop, 'Players averaged for the franchise tag', 1);
+  whole(rules.tags.transitionTop, 'Players averaged for the transition tag', 1);
   if (rules.season.games !== 17 || rules.season.playoffTeamsPerConference !== 7) {
     problems.push('The season format (17 games, 14-team playoffs) is fixed.');
   }

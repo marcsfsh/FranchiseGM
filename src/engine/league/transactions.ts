@@ -21,7 +21,13 @@ export type TransactionKind =
   | 'elevated'
   | 'restructured'
   /** A draft pick joining his team on a rookie deal. */
-  | 'drafted';
+  | 'drafted'
+  /** Re-sign window moves (spec 11.4, 11.5): a deal to follow his current one, and fifth-year options. */
+  | 'extended'
+  | 'tagged'
+  | 'tendered'
+  | 'optionExercised'
+  | 'optionDeclined';
 
 export interface Transaction {
   season: number;

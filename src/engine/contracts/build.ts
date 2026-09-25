@@ -196,3 +196,40 @@ export function practiceSquadSigning(
   c.years = [{ ...emptyYear(leagueYear(date)), base: weeklyPay * rules.pay.paychecks }];
   return c;
 }
+
+/**
+ * An extension (spec 11.3): a new deal signed on `date` that starts when his current one runs out, at the
+ * next league year. Each year's base is the salary or the minimum then, whichever is more.
+ */
+export function extensionContract(
+  rules: RuleSet,
+  base: Base,
+  date: GameDate,
+  offer: Offer,
+  credited: number
+): Contract {
+  const start = leagueYear(date) + 1;
+  const c = contract(base, 'extension', { ...date }, offer.signingBonus);
+  c.years = Array.from({ length: offer.years }, (_, i) => ({
+    ...emptyYear(start + i),
+    base: Math.max(offer.salary, minimumSalary(rules, credited + 1 + i))
+  }));
+  return c;
+}
+
+/**
+ * A one-year deal for next league year from a tag or a tender (spec 11.5): tags are fully guaranteed, and
+ * tenders aren't.
+ */
+export function rightsContract(
+  base: Base,
+  date: GameDate,
+  type: 'franchiseTag' | 'transitionTag' | 'rfaTender',
+  salary: number
+): Contract {
+  const c = contract(base, type, { ...date }, 0);
+  const year = { ...emptyYear(leagueYear(date) + 1), base: salary };
+  if (type !== 'rfaTender') year.guaranteedBase = salary;
+  c.years = [year];
+  return c;
+}

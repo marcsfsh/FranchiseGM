@@ -24,7 +24,7 @@ import type { SimSliders } from '../sim/sliders';
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 11;
+export const SAVE_SCHEMA_VERSION = 12;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -84,6 +84,8 @@ export interface TeamState {
 export interface AutoJobs {
   /** Signings, cuts, injured reserve, practice squad moves, and waiver claims. */
   roster: boolean;
+  /** Extensions, tags, tenders, and fifth-year options in the re-sign window (spec 11.4, 11.5). */
+  contracts: boolean;
 }
 
 /** League settings that can change mid-save (spec 22). Sections are added as their features arrive. */

@@ -63,6 +63,11 @@ export interface Player {
   /** Morale, 0 to 100. */
   morale: number;
   contractId: string | null;
+  /**
+   * A deal signed to follow his current one (an extension, a tag, or a tender in the re-sign window); it
+   * takes over when the new league year opens.
+   */
+  nextContractId?: string;
   /** The injury he's carrying, if any (spec 10.8). */
   injury: PlayerInjury | null;
   /** The season he retired after (spec 10.7); Hall of Fame candidates wait five seasons from it. */

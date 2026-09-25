@@ -107,6 +107,8 @@ export interface Contract {
   weeklyPay: number;
   /** Set when the deal ends early; dead money is computed from it. */
   ended: ContractEnd | null;
+  /** How a tag or tender deal binds him (spec 11.5), for offer sheets and compensation in M12. */
+  rights?: 'exclusive' | 'nonExclusive' | 'transition' | 'first' | 'second' | 'original' | 'refusal';
 }
 
 /** A contract year with no money in it, for building contracts. */

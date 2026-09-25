@@ -8,10 +8,31 @@
 import type { TeamAbbr } from '../../data/team-colors';
 import { capFacts, capSheet, elevationCost, type SheetChange } from '../cap/sheet';
 import { offerProblem } from '../contracts/acceptance';
-import { offerContract, practiceSquadSigning, type Offer } from '../contracts/build';
+import {
+  extensionContract,
+  offerContract,
+  practiceSquadSigning,
+  rightsContract,
+  type Offer
+} from '../contracts/build';
 import { afterJune1, capHit, payWeek, releaseImpact } from '../contracts/cap';
 import { endContract, restructure, type Outcome } from '../contracts/moves';
-import type { Contract } from '../contracts/types';
+import {
+  endPending,
+  expiring,
+  extensionProblem,
+  optionOpen,
+  optionSalary,
+  TAG_LABELS,
+  tagSalary,
+  tagUsed,
+  TENDER_LABELS,
+  tenderLevels,
+  tenderSalary,
+  type TagKind,
+  type TenderLevel
+} from '../contracts/resign';
+import { emptyYear, type Contract } from '../contracts/types';
 import {
   gamesOnReserve,
   irReturnsUsed,
@@ -44,6 +65,10 @@ export type Move = (
   | { kind: 'elevate'; team: TeamAbbr; playerId: string }
   | { kind: 'claim'; team: TeamAbbr; playerId: string }
   | { kind: 'restructure'; team: TeamAbbr; playerId: string; amount: number; voidYears?: number }
+  | { kind: 'extend'; team: TeamAbbr; playerId: string; offer: Offer }
+  | { kind: 'tag'; team: TeamAbbr; playerId: string; tag: TagKind }
+  | { kind: 'tender'; team: TeamAbbr; playerId: string; level: TenderLevel }
+  | { kind: 'option'; team: TeamAbbr; playerId: string; exercise: boolean }
 ) & { reason?: string };
 
 export interface MovePreview {
@@ -133,6 +158,8 @@ function owedTerminationPay(league: League, player: Player, contract: Contract):
 } // prettier-ignore
 
 function plan(league: League, move: Move): Outcome<Plan> {
+  if (move.kind === 'extend' || move.kind === 'tag' || move.kind === 'tender' || move.kind === 'option')
+    return resignPlan(league, move);
   const player = league.players[move.playerId];
   if (!player) return refuse('That player is no longer in the league.');
   const { rules } = league;
@@ -264,6 +291,7 @@ function plan(league: League, move: Move): Outcome<Plan> {
         }),
         apply: () => {
           league.contracts[contract.id] = endContract(contract, end);
+          endPending(league, player, end);
           league.season.elevations = league.season.elevations.filter(
             e => !(e.playerId === player.id && e.week === gameWeek(league))
           );
@@ -409,6 +437,95 @@ function plan(league: League, move: Move): Outcome<Plan> {
         apply: () => {
           league.contracts[contract.id] = done.value;
           log(league, team, 'restructured', player, move.reason);
+        }
+      });
+    } // prettier-ignore
+  }
+}
+
+/** Re-sign window moves (spec 11.4, 11.5): a deal that follows his current one, or his fifth-year option. */
+function resignPlan(
+  league: League,
+  move: Extract<Move, { kind: 'extend' | 'tag' | 'tender' | 'option' }>
+): Outcome<Plan> {
+  const player = league.players[move.playerId];
+  if (!player) return refuse('That player is no longer in the league.');
+  const { rules } = league;
+  const team = move.team;
+  const name = fullName(player);
+  const counts = rosterCounts(league, team);
+  const year = leagueYear(league.date);
+  if (player.team !== team) return refuse(`${name} isn't on your roster.`);
+  const window = league.date.phase === 'resign';
+  // A deal for next league year: its cap effect then, by the same sheet as the team's.
+  const next = (contract: Contract, notes: string[], kind: TransactionKind, extra?: (id: string) => void): Outcome<Plan> => {
+    const before = capSheet(league, team, year + 1).space;
+    const after = capSheet(league, team, year + 1, { add: [{ contract, status: 'active' }] }).space;
+    if (after < 0 && after < before)
+      return refuse(`His ${year + 1} salary of ${dollars(capHit(contract, year + 1, rules))} is more than your ${dollars(Math.max(0, before))} of ${year + 1} cap space.`);
+    return ok({
+      preview: { year: year + 1, spaceBefore: before, spaceAfter: after, deadNow: 0, deadNext: 0, active: counts.active, limit: counts.limit, practice: counts.practice, notes },
+      apply: () => {
+        const id = newId(league, 'c');
+        league.contracts[id] = { ...contract, id };
+        player.nextContractId = id;
+        extra?.(id);
+        log(league, team, kind, player, move.reason);
+      }
+    });
+  }; // prettier-ignore
+  const base = { id: 'preview', playerId: player.id, team };
+
+  switch (move.kind) {
+    case 'extend': {
+      if (!expiring(league, player)) return refuse(`${name}'s contract doesn't run out this league year.`);
+      const declined = extensionProblem(league, player, move.offer);
+      if (declined) return refuse(declined);
+      const deal = extensionContract(rules, base, league.date, move.offer, player.experience);
+      return next(deal, [`${name} signs a ${move.offer.years}-year extension from ${year + 1}.`], 'extended');
+    } // prettier-ignore
+
+    case 'tag': {
+      if (!window) return refuse('Tags are for the re-sign window.');
+      if (!expiring(league, player)) return refuse(`${name}'s contract doesn't run out this league year.`);
+      if (tagUsed(league, team)) return refuse('You can tag one player a year, and you already have.');
+      const salary = tagSalary(league, player, move.tag);
+      const deal = { ...rightsContract(base, league.date, move.tag === 'transition' ? 'transitionTag' : 'franchiseTag', salary), rights: move.tag };
+      const binds = move.tag === 'exclusive' ? 'No other team can talk to him.' : move.tag === 'nonExclusive' ? 'Other teams can make offers; you can match or take two first-round picks.' : 'Other teams can make offers; you can match.';
+      return next(deal, [`${TAG_LABELS[move.tag]}: ${name} plays ${year + 1} for ${dollars(salary)}, fully guaranteed.`, binds], 'tagged');
+    } // prettier-ignore
+
+    case 'tender': {
+      if (!window) return refuse('Tenders are for the re-sign window.');
+      if (!expiring(league, player)) return refuse(`${name}'s contract doesn't run out this league year.`);
+      if (!tenderLevels(league, player).includes(move.level)) return refuse(`${name} can't take a ${TENDER_LABELS[move.level].toLowerCase()}.`);
+      const salary = tenderSalary(league, player, move.level);
+      const deal = { ...rightsContract(base, league.date, 'rfaTender', salary), rights: move.level };
+      return next(deal, [`${TENDER_LABELS[move.level]}: ${name} plays ${year + 1} for ${dollars(salary)} if nobody else signs him.`], 'tendered');
+    } // prettier-ignore
+
+    case 'option': {
+      if (!window) return refuse('Fifth-year options are decided in the re-sign window.');
+      if (!optionOpen(league, player)) return refuse(`${name} has no fifth-year option to decide.`);
+      const contract = league.contracts[player.contractId ?? ''] as Contract;
+      if (!move.exercise)
+        return ok({
+          preview: { year, spaceBefore: capSheet(league, team).space, spaceAfter: capSheet(league, team).space, deadNow: 0, deadNext: 0, active: counts.active, limit: counts.limit, practice: counts.practice, notes: [`${name} plays out his rookie deal and can be a free agent after ${year + 1}.`] },
+          apply: () => {
+            league.contracts[contract.id] = { ...contract, fifthYearOption: 'declined' };
+            log(league, team, 'optionDeclined', player, move.reason);
+          }
+        });
+      const option = optionSalary(league, player);
+      const fifth = (contract.years.at(-1)?.year ?? year + 1) + 1;
+      const exercised: Contract = { ...contract, fifthYearOption: 'exercised', years: [...contract.years, { ...emptyYear(fifth), base: option.salary, guaranteedBase: option.salary }] };
+      const before = capSheet(league, team, fifth).space;
+      const after = capSheet(league, team, fifth, { replace: [exercised] }).space;
+      return ok({
+        preview: { year: fifth, spaceBefore: before, spaceAfter: after, deadNow: 0, deadNext: 0, active: counts.active, limit: counts.limit, practice: counts.practice, notes: [`${name} is under contract through ${fifth} at ${dollars(option.salary)} that year, fully guaranteed.`] },
+        apply: () => {
+          league.contracts[contract.id] = exercised;
+          log(league, team, 'optionExercised', player, move.reason);
         }
       });
     } // prettier-ignore

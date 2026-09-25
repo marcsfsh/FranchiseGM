@@ -39,7 +39,7 @@ export const PAUSE_LABELS: Record<PauseEvent, string> = {
 };
 
 /** Event types that can happen in this build; the settings list only these. */
-export const LIVE_PAUSE_EVENTS: readonly PauseEvent[] = ['starterInjuries'];
+export const LIVE_PAUSE_EVENTS: readonly PauseEvent[] = ['starterInjuries', 'deadlines'];
 
 export const defaultPauses = (): Record<PauseEvent, boolean> =>
   Object.fromEntries(PAUSE_EVENTS.map(e => [e, true])) as Record<PauseEvent, boolean>;

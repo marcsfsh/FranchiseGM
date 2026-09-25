@@ -119,7 +119,8 @@ export function capSheet(
   for (const c of contracts) {
     const player = league.players[c.playerId];
     const status = added.get(c.id);
-    const isCurrent = status !== undefined || (!c.ended && player?.contractId === c.id && player.team === abbr);
+    // His deal, or the one signed to follow it (an extension, tag, or tender), which charges from its first year.
+    const isCurrent = status !== undefined || (!c.ended && player?.team === abbr && (player.contractId === c.id || player.nextContractId === c.id));
     // A June 1 release keeps his whole charge on the books until June 2 (spec 11.2).
     const held = !!c.ended?.designated && leagueYear(c.ended.date) === year && current === year && !afterJune1(league.date, rules);
     const charge = capCharge(held ? { ...c, ended: null } : c, year, rules, capFacts(league, c.playerId));

@@ -4,17 +4,20 @@
  * league is in, heals the weeks that pass, and opens the next one: the new league year when free agency
  * opens (spec 11.1), retirements after the awards (spec 10.7), the stand-in rookie class at the draft and
  * the undrafted rookies after it (D-27), the next season's schedule with the OTAs (spec 5.2), the AI's
- * cutdown at the deadline, and the next season after it. Phases later milestones fill (staff moves, awards
- * and the Hall of Fame, the re-sign window's decisions, the combine, the rules meeting) pass through.
+ * cutdown at the deadline, and the next season after it. The re-sign window (spec 11.4, 11.5) opens with a
+ * message about the user's decisions and closes with the AI's (D-29). Phases later milestones fill (staff
+ * moves, awards and the Hall of Fame, the combine, the rules meeting) pass through.
  */
 import { TEAM_ABBRS, TEAM_COLORS, type TeamAbbr } from '../../data/team-colors';
 import { capCompliance, cutdown, freeAgencySignings, offseasonClaims } from '../ai/decisions/offseason';
+import { resignDecisions } from '../ai/decisions/resign';
 import type { DecisionLog } from '../ai/framework';
 import type { NameData } from '../generate/player';
 import { draftOrder, rookieReserve, signUndrafted, standInDraft } from '../generate/rookies';
+import { windowDecisions } from '../contracts/resign';
 import { openLeagueYear } from '../league/league-year';
 import { capSheet, seasonSpace } from '../cap/sheet';
-import { activeRoster, freeAgents } from '../league/transactions';
+import { activeRoster, freeAgents, type TransactionKind } from '../league/transactions';
 import type { League } from '../league/types';
 import { calendarDay, leagueYear, PHASE_LABELS, type GameDate, type Phase } from '../model/calendar';
 import { fullName, type Player } from '../model/player';
@@ -26,7 +29,7 @@ import { activeLimit } from '../roster/rules';
 import { processWaivers, waiverOrder, type WaiverResult } from '../roster/waivers';
 import { dollars, plural } from '../text';
 import { generateSchedule } from './generate-schedule';
-import { addToInbox, pausing, type InboxItem } from './inbox';
+import { addToInbox, pausing, type InboxItem, type PauseEvent } from './inbox';
 import { healWeek } from './injuries';
 import type { NewsItem } from './news';
 import { emptySeason, leagueStandings, PLAYOFF_PHASES } from './state';
@@ -97,6 +100,14 @@ export interface StepOutcome {
 
 const nick = (abbr: TeamAbbr): string => TEAM_COLORS[abbr].name;
 const named = (p: Player): string => `${fullName(p)} (${p.position})`;
+/** Re-sign window moves in the user's message, after his name. */
+const RESIGN_WORDS: Partial<Record<TransactionKind, string>> = {
+  extended: 'extended',
+  tagged: 'tagged',
+  tendered: 'tendered',
+  optionExercised: 'fifth-year option exercised',
+  optionDeclined: 'fifth-year option declined'
+};
 /** The teams the AI runs this step: all but the user's, unless the user's roster management is on auto. */
 const aiTeams = (league: League): TeamAbbr[] =>
   TEAM_ABBRS.filter(t => league.settings.auto.roster || t !== league.meta.start.userTeam);
@@ -140,10 +151,10 @@ export function offseasonBlock(league: League): string | null {
   const user = league.meta.start.userTeam;
   const over = activeRoster(league, user).length - league.rules.roster.active;
   if (over > 0)
-    return `Cut your active roster to ${league.rules.roster.active} before the season starts: release ${plural(over, 'more player')}, or turn on auto roster management in Settings.`;
+    return `Cut your active roster to ${league.rules.roster.active} before the season starts: release ${plural(over, 'more player')}, or put roster moves on auto in Settings.`;
   const space = seasonSpace(capSheet(league, user));
   return space < 0
-    ? `Get under the salary cap before the season starts: you're ${dollars(-space)} over. Release or restructure a contract, or turn on auto roster management in Settings.`
+    ? `Get under the salary cap before the season starts: you're ${dollars(-space)} over. Release or restructure a contract, or put roster moves on auto in Settings.`
     : null;
 }
 
@@ -161,7 +172,8 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
   const user = league.meta.start.userTeam;
   const rng = (key: string) => leagueStream(league.random, 'offseason', step, key);
   const news: NewsItem[] = [];
-  const messages: Omit<InboxItem, 'id' | 'season' | 'week' | 'read' | 'event'>[] = [];
+  const messages: (Omit<InboxItem, 'id' | 'season' | 'week' | 'read' | 'event'> & { event?: PauseEvent })[] =
+    [];
   const decisions: DecisionLog[] = [];
   const ratings: RatingChange[] = [];
   const headline = (
@@ -210,6 +222,26 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     const count = retired.length;
     if (count) headline('retirement', `${plural(count, 'player')} retire this offseason`, [], [], 0);
   }
+  if (from.phase === 'resign') {
+    // The window closes: the AI's extensions, tags, tenders, and options, and the user's with contracts on auto.
+    const before = league.season.transactions.length;
+    for (const abbr of TEAM_ABBRS.filter(t => league.settings.auto.contracts || t !== user))
+      resignDecisions(league, abbr, rng(`resign-${abbr}`));
+    const made = league.season.transactions.slice(before);
+    for (const t of made) {
+      const p = league.players[t.playerId];
+      if (p && t.kind === 'tagged')
+        headline('transaction', `The ${nick(t.team)} tag ${named(p)}`, [t.team], [p.id], p.ovr);
+    }
+    const mine = made.filter(t => t.team === user && league.players[t.playerId]);
+    if (mine.length)
+      messages.push({
+        kind: 'contracts',
+        title: `Your staff made ${plural(mine.length, 'contract decision')}`,
+        body: `${mine.map(t => `${named(league.players[t.playerId] as Player)}: ${RESIGN_WORDS[t.kind] ?? ''}`).join('. ')}.`,
+        players: mine.map(t => t.playerId)
+      });
+  }
   if (from.phase === 'freeAgency') {
     // Teams take turns in draft order, each keeping room for its draft class.
     const pool = freeAgents(league);
@@ -240,6 +272,18 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
       [],
       0
     );
+  } else if (to.phase === 'resign' && !league.settings.auto.contracts) {
+    league.date = { ...to };
+    const open = windowDecisions(league, user);
+    const count = open.expiring.length + open.options.length;
+    if (count)
+      messages.push({
+        kind: 'contracts',
+        event: 'deadlines',
+        title: 'The re-sign window is open',
+        body: `${open.expiring.length ? `${plural(open.expiring.length, 'contract')} of yours ${open.expiring.length === 1 ? 'runs' : 'run'} out when the ${to.season + 1} league year opens. ` : ''}${open.options.length ? `${plural(open.options.length, 'fifth-year option')} ${open.options.length === 1 ? 'is' : 'are'} yours to decide. ` : ''}Extend, tag, or tender players, and decide options, on the Contracts screen. The window closes when you advance to the ${stepLabel(nextStep(to)).toLowerCase()}.`,
+        players: [...open.options, ...open.expiring].slice(0, 5).map(p => p.id)
+      });
   } else if (to.phase === 'draft') {
     league.date = { ...to };
     const picks = standInDraft(league, data.names, rng('draft'));
@@ -303,7 +347,7 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
       : { season: to.season, week: league.rules.season.weeks + PLAYOFF_PHASES.length + offseasonStep(to) };
   news.forEach((n, i) => Object.assign(n, { ...at, id: `${at.season}-o${step}-${i}` }));
   league.season.news.push(...news);
-  const inbox: InboxItem[] = messages.map((m, i) => ({ ...m, ...at, id: `${at.season}-o${step}-${i}`, event: null, read: false })); // prettier-ignore
+  const inbox: InboxItem[] = messages.map((m, i) => ({ ...m, ...at, id: `${at.season}-o${step}-${i}`, event: m.event ?? null, read: false })); // prettier-ignore
   league.inbox = addToInbox(league.inbox, inbox);
   league.random = advanceLeagueRandom(league.random, input);
   return {

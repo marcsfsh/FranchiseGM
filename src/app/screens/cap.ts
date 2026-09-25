@@ -145,7 +145,7 @@ export function capScreen(): Screen {
           view,
           pageHead('Salary cap', teamFullName(abbr)),
           h('p', null, 'Every contract counts against the cap by its structure: salary for the weeks it runs, bonuses when earned, and signing bonuses spread over up to five years. Release, restructure, or move players from the roster.'),
-          h('div', { class: 'btn-row' }, h('a', { class: 'btn btn-outline', href: href('roster') }, 'Roster'), h('a', { class: 'btn btn-outline', href: href('freeagency') }, 'Free agency')),
+          h('div', { class: 'btn-row' }, h('a', { class: 'btn btn-outline', href: href('roster') }, 'Roster'), h('a', { class: 'btn btn-outline', href: href('freeagency') }, 'Free agency'), h('a', { class: 'btn btn-outline', href: href('contracts') }, 'Contracts')),
           yearTabs.element
         ); // prettier-ignore
       };

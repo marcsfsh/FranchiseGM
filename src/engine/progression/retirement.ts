@@ -7,6 +7,7 @@
  */
 import type { TeamAbbr } from '../../data/team-colors';
 import { endContract } from '../contracts/moves';
+import { endPending } from '../contracts/resign';
 import type { League } from '../league/types';
 import { calendarDay, leagueYear } from '../model/calendar';
 import { ageOn, type Player } from '../model/player';
@@ -58,14 +59,15 @@ export function retirePlayers(league: League, rng: Rng): { player: Player; team:
     if (!rng.chance(retirementChance(league, player, champion))) continue;
     const team = player.team;
     const contract = player.contractId ? league.contracts[player.contractId] : undefined;
-    if (contract)
-      league.contracts[contract.id] = endContract(contract, {
-        date: { ...league.date },
-        how: 'retired',
-        designated: false,
-        injured: false,
-        terminationPay: false
-      });
+    const end = {
+      date: { ...league.date },
+      how: 'retired',
+      designated: false,
+      injured: false,
+      terminationPay: false
+    } as const;
+    if (contract) league.contracts[contract.id] = endContract(contract, end);
+    endPending(league, player, end);
     Object.assign(player, { team: null, status: 'retired', contractId: null, retiredIn: league.date.season });
     retired.push({ player, team });
   }
