@@ -12,6 +12,7 @@ import type { Player } from '../../src/engine/model/player';
 import { advanceWeek, gameWeek, weekGames } from '../../src/engine/season/advance';
 import { leagueStandings } from '../../src/engine/season/state';
 import { NEUTRAL_PLAN } from '../../src/engine/sim/plan';
+import { rosterProblems } from '../../src/engine/roster/rules';
 import { available } from '../../src/engine/sim/setup';
 import { nameData } from '../helpers/base-data';
 
@@ -38,11 +39,15 @@ const CORE = ['QB', 'RB1', 'X', 'Z', 'LT', 'LG', 'C', 'RG', 'RT', 'LEDGE', 'REDG
 function expectLegal(l: League, played: ReadonlySet<string>): void {
   const limit = l.rules.roster.active;
   for (const abbr of TEAM_ABBRS) {
+    // Every roster rule and the cap (spec 12.1, 11.1), for AI teams and the user's alike.
+    expect(rosterProblems(l, abbr), abbr).toEqual([]);
     const active = Object.values(l.players).filter(p => p.team === abbr && p.status === 'active');
     if (abbr === l.meta.start.userTeam) expect(active.length).toBeLessThanOrEqual(limit);
     else expect(active.length, abbr).toBe(limit);
     for (const p of active) expect(l.contracts[p.contractId ?? '']?.team, p.id).toBe(abbr);
-    if (!played.has(abbr)) continue;
+    // The user's roster moves are the user's (spec 22.7's auto toggle arrives in M20), so only AI teams
+    // are sure to keep a full lineup through injuries.
+    if (!played.has(abbr) || abbr === l.meta.start.userTeam) continue;
     // A thin group (a lone fullback, say) can be empty for a week; the core of the lineup never is.
     const starters = startersOf(l.teams[abbr].depth.order);
     for (const slot of CORE) expect(starters[slot], `${abbr} ${slot}`).toBeDefined();

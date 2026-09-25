@@ -10,6 +10,7 @@ import { orderOf } from '../league/depth';
 import type { League } from '../league/types';
 import type { Player } from '../model/player';
 import type { Rng } from '../rng';
+import { isElevated } from '../roster/rules';
 import { cannotPlay, designation } from '../season/injuries';
 import { gameWeek, weekGames } from '../season/state';
 import { decideDepthChart } from './decisions/depth-chart';
@@ -19,10 +20,16 @@ import { decideRotation } from './decisions/rotation';
 import { rosterMoves } from './decisions/roster-moves';
 import type { DecisionLog } from './framework';
 
-/** Players who can dress this week before any rest decision: active and not held out by an injury. */
+/**
+ * Players who can dress this week before any rest decision: active or elevated from the practice squad,
+ * and not held out by an injury.
+ */
 export const dressable = (league: League, abbr: TeamAbbr): Player[] =>
   Object.values(league.players).filter(
-    p => p.team === abbr && p.status === 'active' && !cannotPlay(designation(p.injury))
+    p =>
+      p.team === abbr &&
+      (p.status === 'active' || isElevated(league, p)) &&
+      !cannotPlay(designation(p.injury))
   );
 
 /**

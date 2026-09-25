@@ -195,6 +195,13 @@ describe('restructures (spec 11.2)', () => {
     // Before week 10 of 2026 half the $2M base is paid, and the minimum caps the rest at $785,000.
     expect(restructure(vet, at(2026, 'regularSeason', 10), 100_000, 1_215_000, R).ok).toBe(true);
     expect(restructure(vet, at(2026, 'regularSeason', 10), 800_000, 1_215_000, R).ok).toBe(false);
+    // In its last year, only void years give the money somewhere to go.
+    const lastYear = at(2028, 'freeAgency', 2);
+    expect(restructure(vet, lastYear, 1_000_000, 1_215_000, R)).toEqual({
+      ok: false,
+      reason: 'The contract ends after 2029, so a restructure saves nothing unless it adds void years.'
+    });
+    expect(restructure(vet, lastYear, 1_000_000, 1_215_000, R, 1).ok).toBe(true);
   });
 });
 

@@ -170,9 +170,14 @@ describe('waivers (spec 12.1)', () => {
     const room = 53 - rosterCounts(league, 'KC').active;
     for (const p of free.slice(0, room)) Object.assign(p, { team: 'KC', status: 'active' });
     expect(claimProblem(league, 'KC', entry)).toBe('The active roster is full.');
-    expect(processWaivers(league, stream(1), () => ['KC'])).toEqual([
+    // The user's claim needs room; KC's is refused, and he clears to free agency.
+    entry.claims.push('KC');
+    const kept = structuredClone(league);
+    expect(processWaivers(league, stream(1))).toEqual([
       { playerId: player.id, from: 'MIN', claimedBy: null }
     ]);
     expect(player).toMatchObject({ team: null, status: 'freeAgent' });
+    // An AI claimant cuts someone before its next game, so a full roster doesn't stop it.
+    expect(processWaivers(kept, stream(1), () => ['KC'])[0]?.claimedBy).toBe('KC');
   });
 });

@@ -102,11 +102,19 @@ export function claimedContract(old: Contract, team: TeamAbbr, id: string, date:
   };
 }
 
-/** Why a team can't claim a player now, or null if it can: room on the active roster and cap space. */
-export function claimProblem(league: League, abbr: TeamAbbr, entry: WaiverEntry): string | null {
+/**
+ * Why a team can't claim a player now, or null if it can: room on the active roster (unless it will cut
+ * someone to make room) and cap space.
+ */
+export function claimProblem(
+  league: League,
+  abbr: TeamAbbr,
+  entry: WaiverEntry,
+  makesRoom = false
+): string | null {
   if (abbr === entry.from) return "A team can't claim a player it released.";
   const active = Object.values(league.players).filter(p => p.team === abbr && p.status === 'active').length;
-  if (active >= activeLimit(league)) return 'The active roster is full.';
+  if (active >= activeLimit(league) && !makesRoom) return 'The active roster is full.';
   const old = league.contracts[entry.contractId];
   if (!old) return 'The contract is missing.';
   const charge = capHit(
@@ -142,9 +150,12 @@ export function processWaivers(
     const player = league.players[entry.playerId];
     const old = league.contracts[entry.contractId];
     if (!player || !old) continue;
-    const claimants = new Set([...entry.claims, ...aiClaims(entry, player)]);
+    // AI claimants cut someone before their next game if the claim fills their roster.
+    const ai = new Set(aiClaims(entry, player));
+    const claimants = new Set([...entry.claims, ...ai]);
     const winner =
-      order.find(abbr => claimants.has(abbr) && claimProblem(league, abbr, entry) === null) ?? null;
+      order.find(abbr => claimants.has(abbr) && claimProblem(league, abbr, entry, ai.has(abbr)) === null) ??
+      null;
     if (winner) {
       if (old.ended) league.contracts[old.id] = { ...old, ended: { ...old.ended, how: 'claimed' } };
       const contract = claimedContract(old, winner, newId(league, 'c'), league.date);

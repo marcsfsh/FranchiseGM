@@ -181,7 +181,15 @@ export const TUNING = {
     /** Picks through this number get a guaranteed first-year base salary. */
     guaranteedFirstYearThroughPick: 64,
     /** Signing bonus range for undrafted free agents, dollars. */
-    udfaBonus: [0, 25_000]
+    udfaBonus: [0, 25_000],
+    /**
+     * Free agents' simple acceptance (M8; the full decision model is M12's). A free agent asks for his
+     * market value (spec 11.6) times `offseasonDemand` in the offseason, `inSeasonDemand` in the first week
+     * of the regular season, falling in a straight line to `lateSeasonDemand` by its last week and in the
+     * playoffs, as the unsigned lower their price; never less than his minimum salary. He signs for up to
+     * `maxYears` when the offer's yearly value (salary plus the bonus spread over the years) reaches it.
+     */
+    acceptance: { offseasonDemand: 1, inSeasonDemand: 0.6, lateSeasonDemand: 0.3, maxYears: 5 }
   },
 
   /**
@@ -391,6 +399,12 @@ export const TUNING = {
       candidatesPerGroup: 3,
       /** A free agent's score on familiarity; the team's own practice squad players score 1. */
       strangerScore: 0.9,
+      /** Free agents tried per signing when the first choices want more than the cap allows. */
+      signingTries: 4,
+      /** A waiver claim for a player this many points better than the team's weakest at his position. */
+      claimMargin: 5,
+      /** The practice squad refills with free agents this age or younger (spec 12.1). */
+      practiceSquadAge: 25,
       /**
        * Healthy players a team keeps in each group even through short injuries, signing someone for the
        * week when it falls short: a starting lineup's worth, with the line's groups at full strength.

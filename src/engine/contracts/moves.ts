@@ -66,6 +66,10 @@ export function restructure(
     };
   });
   const prorationYears = years.slice(index, index + rules.pay.prorationYearsMax).map(y => y.year);
+  if (prorationYears.length < 2)
+    return refuse(
+      `The contract ends after ${year}, so a restructure saves nothing unless it adds void years.`
+    );
   return ok({
     ...c,
     // Void years added now spread only this money: the signing bonus keeps its schedule.

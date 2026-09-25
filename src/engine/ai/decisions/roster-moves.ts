@@ -1,27 +1,25 @@
 /**
- * In-season roster moves for AI teams (spec 12.1, 14.11): injured reserve for players out at least the
- * minimum, activations for healed players while the team has designations left, and signings where the
- * roster is thinnest, from free agency or the team's own practice squad. A group that short injuries leave below a lineup's worth gets a signing for
- * the week, and a player from the deepest group makes room. The general manager decides the signings.
+ * In-season roster moves for AI teams (spec 12.1, 14.11), made through the same checked transactions as
+ * the user's: a roster over the limit (after a waiver claim) cuts its weakest player, players out at least
+ * the minimum go to injured reserve, healed ones return while the team has returns left, and the general
+ * manager signs free agents at their asking price, or promotes from the practice squad, where the roster is
+ * thinnest and the cap allows. A group that short injuries leave below a lineup's worth elevates a
+ * practice squad player for the week, or signs someone while the deepest group makes room; the practice
+ * squad refills with young free agents. Waiver claims go to AI teams that need the player or would start
+ * him over their weakest at his position.
  */
-import type { TeamAbbr } from '../../../data/team-colors';
+import { TEAM_ABBRS, type TeamAbbr } from '../../../data/team-colors';
+import { askingSalary } from '../../contracts/acceptance';
 import { ACTIVE_ROSTER } from '../../generate/league';
-import {
-  activateFromInjuredReserve,
-  freeAgents,
-  gamesOnReserve,
-  irReturnsUsed,
-  placeOnInjuredReserve,
-  promoteFromPracticeSquad,
-  releasePlayer,
-  signFreeAgent
-} from '../../league/transactions';
-import { startersOf } from '../../league/depth';
+import { freeAgents, gamesOnReserve } from '../../league/transactions';
 import type { League } from '../../league/types';
 import { calendarDay } from '../../model/calendar';
 import { ageOn, fullName, type Player } from '../../model/player';
 import type { Position } from '../../model/positions';
 import type { Rng } from '../../rng';
+import { makeMove, type Move } from '../../roster/moves';
+import { activeLimit, elevatedThisWeek } from '../../roster/rules';
+import type { WaiverEntry } from '../../roster/waivers';
 import { cannotPlay, designation } from '../../season/injuries';
 import { TUNING } from '../../tuning';
 import { familiar, need, quality, youth, type SigningOption } from '../considerations/roster';
@@ -69,13 +67,21 @@ function needsOf(players: readonly Player[]): Map<string, number> {
 export const rosterNeeds = (league: League, abbr: TeamAbbr): Map<string, number> =>
   needsOf(Object.values(league.players).filter(p => p.team === abbr));
 
-/** The weakest of a group, sparing this week's starters while anyone else is left. */
+const JOINED: ReadonlySet<string> = new Set(['activated', 'claimed', 'signed', 'promoted']);
+
+/**
+ * The weakest of a group by overall, never a player who joined the active roster this week (the team
+ * brought him in on purpose, and last week's depth chart doesn't list him yet).
+ */
 function weakest(league: League, abbr: TeamAbbr, players: readonly Player[]): Player | null {
-  const starting = new Set(Object.values(startersOf(league.teams[abbr].depth.order)));
-  const bench = players.filter(p => !starting.has(p.id));
-  const pool = bench.length ? bench : players;
-  return [...pool].sort((a, b) => a.ovr - b.ovr || (a.id < b.id ? -1 : 1))[0] ?? null;
-}
+  const { season, phase, week } = league.date;
+  const joined = new Set(
+    league.season.transactions
+      .filter(t => t.team === abbr && JOINED.has(t.kind) && t.season === season && t.phase === phase && t.week === week)
+      .map(t => t.playerId)
+  );
+  return [...players].filter(p => !joined.has(p.id)).sort((a, b) => a.ovr - b.ovr || (a.id < b.id ? -1 : 1))[0] ?? null;
+} // prettier-ignore
 
 /** The general manager's pick among the best free agents in each group (or only one group). */
 function decideSigning(
@@ -84,12 +90,14 @@ function decideSigning(
   mine: readonly Player[],
   pool: readonly Player[],
   rng: Rng,
+  skip: ReadonlySet<string>,
   only?: string
 ) {
   const needs = needsOf(mine.filter(p => p.team === abbr));
   const today = calendarDay(league.date);
   const byGroup = new Map<string, Player[]>();
   for (const p of pool) {
+    if (skip.has(p.id)) continue;
     const group = NEED_GROUP[p.position];
     if (only && group !== only) continue;
     byGroup.set(group, [...(byGroup.get(group) ?? []), p]);
@@ -110,7 +118,13 @@ function decideSigning(
         .map(p => option(p, false))
     ),
     ...mine
-      .filter(p => p.team === abbr && p.status === 'practice' && (!only || NEED_GROUP[p.position] === only))
+      .filter(
+        p =>
+          p.team === abbr &&
+          p.status === 'practice' &&
+          !skip.has(p.id) &&
+          (!only || NEED_GROUP[p.position] === only)
+      )
       .map(p => option(p, true))
   ];
   return decide(
@@ -125,85 +139,155 @@ function decideSigning(
   );
 }
 
+/** A move with the team left out, for a team making its own moves. */
+type TeamMove = Move extends infer M ? (M extends Move ? Omit<M, 'team'> : never) : never;
+
+/** The team's weakest healthy player in the group with the most to spare over its standard count. */
+function surplusCut(league: League, abbr: TeamAbbr, roster: readonly Player[]): Player | null {
+  const surplus = new Map<string, Player[]>();
+  for (const p of roster) {
+    if (!healthy(p)) continue;
+    const g = NEED_GROUP[p.position];
+    surplus.set(g, [...(surplus.get(g) ?? []), p]);
+  }
+  const deepest = [...surplus]
+    .filter(([g, players]) => players.length > (S.minHealthy[g] ?? 0))
+    .sort(
+      ([a, pa], [b, pb]) =>
+        pb.length - (TARGET.get(b) ?? 0) - (pa.length - (TARGET.get(a) ?? 0)) || (a < b ? -1 : 1)
+    )[0];
+  return deepest ? weakest(league, abbr, deepest[1]) : null;
+}
+
 export function rosterMoves(league: League, abbr: TeamAbbr, rng: Rng): DecisionLog[] {
   const logs: DecisionLog[] = [];
-  const { active: limit, irMinGames, irReturns } = league.rules.roster;
-  // The team's players, kept current as moves add them (released players drop out by team).
-  const mine = Object.values(league.players).filter(p => p.team === abbr);
-  const active = () => mine.filter(p => p.team === abbr && p.status === 'active');
+  const limit = activeLimit(league);
+  const { irMinGames } = league.rules.roster;
+  const mine = () => Object.values(league.players).filter(p => p.team === abbr);
+  const active = () => mine().filter(p => p.status === 'active');
+  const move = (m: TeamMove): boolean => makeMove(league, { ...m, team: abbr } as Move, rng).ok;
 
-  for (const p of active()) if ((p.injury?.weeksOut ?? 0) >= irMinGames) placeOnInjuredReserve(league, p);
+  // Over the limit after a waiver claim: cut the weakest player at the claimed player's position group
+  // (the claim was an upgrade there), or from the deepest group.
+  const { season, phase, week } = league.date;
+  const claimed = league.season.transactions
+    .filter(
+      t =>
+        t.team === abbr && t.kind === 'claimed' && t.season === season && t.phase === phase && t.week === week
+    )
+    .map(t => t.playerId);
+  for (let n = active().length; n > limit; n--) {
+    const group = claimed.map(id => league.players[id]).find(p => p?.team === abbr)?.position;
+    const same = group
+      ? active().filter(p => NEED_GROUP[p.position] === NEED_GROUP[group] && !claimed.includes(p.id) && healthy(p))
+      : [];
+    const cut = (same.length ? weakest(league, abbr, same) : null) ?? surplusCut(league, abbr, active());
+    if (!cut || !move({ kind: 'release', playerId: cut.id })) break;
+  } // prettier-ignore
+
+  for (const p of active())
+    if ((p.injury?.weeksOut ?? 0) >= irMinGames) move({ kind: 'injuredReserve', playerId: p.id });
 
   // Healed players who have missed the minimum games come back, best first, if they beat the weakest
   // healthy player in their group.
-  const healed = mine
+  const healed = mine()
     .filter(
       p => p.status === 'ir' && (p.injury?.weeksOut ?? 0) === 0 && gamesOnReserve(league, p) >= irMinGames
     )
     .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
   for (const p of healed) {
-    if (irReturnsUsed(league, abbr) >= irReturns) break;
-    const roster = active();
-    if (roster.length >= limit) {
+    if (active().length >= limit) {
       const group = NEED_GROUP[p.position];
       const cut = weakest(
         league,
         abbr,
-        roster.filter(q => NEED_GROUP[q.position] === group && healthy(q))
+        active().filter(q => NEED_GROUP[q.position] === group && healthy(q))
       );
       if (!cut || cut.ovr >= p.ovr) continue;
-      releasePlayer(league, cut);
+      if (!move({ kind: 'release', playerId: cut.id })) continue;
     }
-    activateFromInjuredReserve(league, p);
+    if (!move({ kind: 'activate', playerId: p.id })) break;
   }
 
-  // Free agents, looked up only when the team signs someone.
+  // Free agents, looked up only when the team signs someone; players it couldn't sign are skipped.
   let pool: Player[] | null = null;
+  const skip = new Set<string>();
   const sign = (only?: string): boolean => {
     pool ??= freeAgents(league);
-    const decision = decideSigning(league, abbr, mine, pool, rng, only);
-    const player = decision ? league.players[decision.chosen.id] : undefined;
-    if (!decision || !player) return false;
-    if (player.status === 'practice') promoteFromPracticeSquad(league, player);
-    else {
-      signFreeAgent(league, abbr, player, rng);
-      mine.push(player);
-      pool = pool.filter(p => p !== player);
+    for (let tries = 0; tries < S.signingTries; tries++) {
+      const decision = decideSigning(league, abbr, mine(), pool, rng, skip, only);
+      const player = decision ? league.players[decision.chosen.id] : undefined;
+      if (!decision || !player) return false;
+      const done =
+        player.status === 'practice'
+          ? move({ kind: 'promote', playerId: player.id })
+          : move({
+              kind: 'sign',
+              playerId: player.id,
+              offer: { years: 1, salary: askingSalary(league, player), signingBonus: 0 }
+            });
+      skip.add(player.id);
+      if (done) {
+        logs.push(decision.log);
+        return true;
+      }
     }
-    logs.push(decision.log);
-    return true;
+    return false;
   };
 
   while (active().length < limit) if (!sign()) break;
 
-  // Short injuries that leave a group below a lineup's worth: sign someone for the week, making room from
-  // the group with the most healthy players over its standard count.
+  // Short injuries that leave a group below a lineup's worth: elevate a practice squad player for the game,
+  // or sign someone, making room from the group with the most healthy players over its standard count.
   for (const [group, min] of Object.entries(S.minHealthy)) {
     const inGroup = () => active().filter(p => NEED_GROUP[p.position] === group && healthy(p)).length;
-    for (let tries = 0; inGroup() < min && tries < min; tries++) {
+    const elevated = () =>
+      elevatedThisWeek(league, abbr).filter(id => {
+        const p = league.players[id];
+        return p !== undefined && NEED_GROUP[p.position] === group;
+      }).length;
+    for (let tries = 0; inGroup() + elevated() < min && tries < min; tries++) {
+      const squad = mine()
+        .filter(p => p.status === 'practice' && NEED_GROUP[p.position] === group && healthy(p))
+        .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
+      if (squad.some(p => move({ kind: 'elevate', playerId: p.id }))) continue;
       pool ??= freeAgents(league);
-      const candidates = [...pool, ...mine.filter(p => p.team === abbr && p.status === 'practice')];
-      if (!candidates.some(p => NEED_GROUP[p.position] === group)) break;
-      const roster = active();
-      if (roster.length >= limit) {
-        const surplus = new Map<string, Player[]>();
-        for (const p of roster) {
-          if (!healthy(p)) continue;
-          const g = NEED_GROUP[p.position];
-          surplus.set(g, [...(surplus.get(g) ?? []), p]);
-        }
-        const deepest = [...surplus]
-          .filter(([g, players]) => players.length > (S.minHealthy[g] ?? 0))
-          .sort(
-            ([a, pa], [b, pb]) =>
-              pb.length - (TARGET.get(b) ?? 0) - (pa.length - (TARGET.get(a) ?? 0)) || (a < b ? -1 : 1)
-          )[0];
-        const cut = deepest ? weakest(league, abbr, deepest[1]) : null;
-        if (!cut) break;
-        releasePlayer(league, cut);
+      if (!pool.some(p => NEED_GROUP[p.position] === group && !skip.has(p.id))) break;
+      if (active().length >= limit) {
+        const cut = surplusCut(league, abbr, active());
+        if (!cut || !move({ kind: 'release', playerId: cut.id })) break;
       }
       if (!sign(group)) break;
     }
+  } // prettier-ignore
+
+  // The practice squad refills with the young free agents with the most upside.
+  const today = calendarDay(league.date);
+  const young = (pool ??= freeAgents(league))
+    .filter(
+      p => !skip.has(p.id) && p.status === 'freeAgent' && ageOn(p.birthDate, today) <= S.practiceSquadAge
+    )
+    .sort((a, b) => b.potential - a.potential || b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
+  for (const p of young) {
+    if (mine().filter(q => q.status === 'practice').length >= league.rules.roster.practiceSquad) break;
+    move({ kind: 'signPracticeSquad', playerId: p.id });
   }
   return logs;
+}
+
+/**
+ * AI waiver claims (spec 12.1): an AI team claims a player who beats its weakest healthy player at his
+ * position group by `claimMargin` points; a full roster cuts that weakest player before the next game.
+ * Teams short at a group sign free agents instead, which costs no one a roster spot.
+ */
+export function waiverClaims(league: League, entry: WaiverEntry, player: Player): TeamAbbr[] {
+  const user = league.meta.start.userTeam;
+  const group = NEED_GROUP[player.position];
+  return TEAM_ABBRS.filter(abbr => {
+    if (abbr === user || abbr === entry.from) return false;
+    const inGroup = Object.values(league.players).filter(
+      p => p.team === abbr && p.status === 'active' && NEED_GROUP[p.position] === group && healthy(p)
+    );
+    return inGroup.length > 0 && player.ovr >= Math.min(...inGroup.map(p => p.ovr)) + S.claimMargin;
+  });
 }

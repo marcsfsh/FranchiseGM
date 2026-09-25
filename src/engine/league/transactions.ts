@@ -1,18 +1,22 @@
 /**
- * Roster transactions in season (spec 12.1): injured reserve, activations, free agent signings, and
- * releases, each recorded in the season's transaction log for the news feed. M8 brings the full contract
- * model, cap previews, and waivers; until then an in-season signing is a one-year minimum deal and a
- * released player's contract simply ends.
+ * The season's transaction log (spec 12.1) and roster lookups the moves share: new IDs, the active roster,
+ * free agents, and injured reserve counts. The moves themselves are checked in src/engine/roster/moves.ts.
  */
 import type { TeamAbbr } from '../../data/team-colors';
-import { minimumContract } from '../contracts/build';
-import { pickJersey } from '../model/jerseys';
 import type { Player } from '../model/player';
-import type { Rng } from '../rng';
 import { scheduleWeek } from '../season/state';
 import type { League } from './types';
 
-export type TransactionKind = 'injuredReserve' | 'activated' | 'signed' | 'promoted' | 'released' | 'claimed';
+export type TransactionKind =
+  | 'injuredReserve'
+  | 'activated'
+  | 'signed'
+  | 'promoted'
+  | 'released'
+  | 'claimed'
+  | 'practiceSquad'
+  | 'elevated'
+  | 'restructured';
 
 export interface Transaction {
   season: number;
@@ -66,64 +70,4 @@ export function recordTransaction(
 ): void {
   const { season, phase, week } = league.date;
   league.season.transactions.push({ season, phase, week, team, kind, playerId });
-}
-
-export function placeOnInjuredReserve(league: League, player: Player): void {
-  if (!player.team || player.status !== 'active') throw new Error(`${player.id} isn't on an active roster.`);
-  player.status = 'ir';
-  recordTransaction(league, player.team, 'injuredReserve', player.id);
-}
-
-export function activateFromInjuredReserve(league: League, player: Player): void {
-  if (!player.team || player.status !== 'ir') throw new Error(`${player.id} isn't on injured reserve.`);
-  player.status = 'active';
-  recordTransaction(league, player.team, 'activated', player.id);
-}
-
-/** Signs a free agent to a one-year minimum deal and gives him a free jersey number for his position. */
-export function signFreeAgent(league: League, abbr: TeamAbbr, player: Player, rng: Rng): void {
-  if (player.status !== 'freeAgent' || player.team) throw new Error(`${player.id} isn't a free agent.`);
-  const season = league.date.season;
-  const contract = {
-    ...minimumContract(league.rules, { id: newId(league, 'c'), playerId: player.id, team: abbr }, season, player.experience),
-    signed: { ...league.date }
-  }; // prettier-ignore
-  league.contracts[contract.id] = contract;
-  const taken = new Set(
-    Object.values(league.players)
-      .filter(p => p.team === abbr && p.id !== player.id)
-      .map(p => p.jersey)
-  );
-  if (taken.has(player.jersey)) player.jersey = pickJersey(player.position, taken, t => rng.float() * t) ?? 0;
-  player.team = abbr;
-  player.status = 'active';
-  player.contractId = contract.id;
-  recordTransaction(league, abbr, 'signed', player.id);
-}
-
-/** Promotes a practice squad player to the active roster on a one-year minimum deal. */
-export function promoteFromPracticeSquad(league: League, player: Player): void {
-  const team = player.team;
-  if (!team || player.status !== 'practice') throw new Error(`${player.id} isn't on a practice squad.`);
-  if (player.contractId) delete league.contracts[player.contractId];
-  const season = league.date.season;
-  const contract = {
-    ...minimumContract(league.rules, { id: newId(league, 'c'), playerId: player.id, team }, season, player.experience),
-    signed: { ...league.date }
-  }; // prettier-ignore
-  league.contracts[contract.id] = contract;
-  player.contractId = contract.id;
-  player.status = 'active';
-  recordTransaction(league, team, 'promoted', player.id);
-}
-
-/** Releases a player to free agency; his contract ends (dead money comes with M8's cap accounting). */
-export function releasePlayer(league: League, player: Player): void {
-  const team = player.team;
-  if (!team) throw new Error(`${player.id} isn't on a team.`);
-  if (player.contractId) delete league.contracts[player.contractId];
-  player.contractId = null;
-  player.team = null;
-  player.status = 'freeAgent';
-  recordTransaction(league, team, 'released', player.id);
 }

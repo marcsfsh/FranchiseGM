@@ -4,7 +4,7 @@
  */
 import type { TeamAbbr } from '../../data/team-colors';
 import type { Rng } from '../rng';
-import { PHASES, type GameDate, type Phase } from '../model/calendar';
+import { leagueYear, PHASES, type GameDate, type Phase } from '../model/calendar';
 import { minimumSalary, type RuleSet } from '../rules/ruleset';
 import { TUNING } from '../tuning';
 import { rookieSigningBonus } from './market';
@@ -152,5 +152,47 @@ export function practiceSquadContract(
       ) * 10
     : rules.pay.practiceSquadWeekly;
   c.years = [{ ...emptyYear(season), base: c.weeklyPay * rules.pay.paychecks }];
+  return c;
+}
+
+/** A free agent offer (spec 19.4): the same base salary each year and a signing bonus. */
+export interface Offer {
+  years: number;
+  salary: number;
+  signingBonus: number;
+}
+
+/**
+ * The contract an offer makes, signed on `date` and running from its league year. Each year's base is the
+ * offered salary or the minimum for the player's credited seasons that year, whichever is more.
+ */
+export function offerContract(
+  rules: RuleSet,
+  base: Base,
+  date: GameDate,
+  offer: Offer,
+  credited: number
+): Contract {
+  const start = leagueYear(date);
+  const type =
+    offer.signingBonus === 0 && offer.salary <= minimumSalary(rules, credited) ? 'minimum' : 'veteran';
+  const c = contract(base, type, { ...date }, offer.signingBonus);
+  c.years = Array.from({ length: offer.years }, (_, i) => ({
+    ...emptyYear(start + i),
+    base: Math.max(offer.salary, minimumSalary(rules, credited + i))
+  }));
+  return c;
+}
+
+/** A practice squad deal signed on `date`, at a weekly rate through the rest of the season. */
+export function practiceSquadSigning(
+  rules: RuleSet,
+  base: Base,
+  date: GameDate,
+  weeklyPay: number
+): Contract {
+  const c = contract(base, 'practiceSquad', { ...date }, 0);
+  c.weeklyPay = weeklyPay;
+  c.years = [{ ...emptyYear(leagueYear(date)), base: weeklyPay * rules.pay.paychecks }];
   return c;
 }
