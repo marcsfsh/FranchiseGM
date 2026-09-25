@@ -3,6 +3,7 @@
  * franchises with generated players, coaches, staff, and owners. The league starts at week 1 of the
  * 2026 regular season with rosters set.
  */
+import { emptySeason } from '../season/state';
 import type { ScheduledGame } from '../../data/schedule';
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { generateFictionalLeague } from '../generate/league';
@@ -102,6 +103,7 @@ export function createLeague(input: NewLeagueInput): League {
     staff: byId(generated.staff),
     owners: byId(generated.owners),
     schedule: input.schedule.filter(g => g.season === start.startSeason).map(g => ({ ...g })),
+    season: emptySeason(start.startSeason),
     nextId: idCounters([
       ...generated.players.map(p => p.id),
       ...generated.contracts.map(c => c.id),

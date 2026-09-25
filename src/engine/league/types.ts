@@ -11,13 +11,14 @@ import type { Owner, StaffMember, StaffRole } from '../model/staff';
 import type { LeagueRandom } from '../rng';
 import type { RuleSet } from '../rules/ruleset';
 import type { TeamSchemes } from '../schemes/resolve';
+import type { SeasonState } from '../season/state';
 import type { SimSliders } from '../sim/sliders';
 
 /**
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 4;
+export const SAVE_SCHEMA_VERSION = 5;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -75,8 +76,10 @@ export interface League {
   contracts: Record<string, Contract>;
   staff: Record<string, StaffMember>;
   owners: Record<string, Owner>;
-  /** The current season's schedule. */
+  /** The current season's schedule; playoff games join it as each round is set. */
   schedule: ScheduledGame[];
+  /** The current season's results, seeds, and champion. */
+  season: SeasonState;
   /** Counters for new IDs by prefix (p, c, s, o, and more later). */
   nextId: Record<string, number>;
 }
