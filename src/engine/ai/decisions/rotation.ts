@@ -74,7 +74,8 @@ export function decideRotation(
     clamp(TUNING.situations.rb1Share + (backGap - R.backfieldGap) * R.backfieldPerPoint, R.backfieldRange),
     rigidity,
     skill,
-    rng
+    rng,
+    R.backfieldSteps
   );
   if (backfield) logs.push(backfield.log);
 

@@ -259,10 +259,10 @@ export const TUNING = {
        * points better than our others in man coverage), a rusher chipFrom points better than our line
        * blocks, and a quarterback whose escape rating is spyFrom above the reference. A case scores 0.5 at
        * its threshold, over a logistic width of focusWidth points; going without scores 0.5. Measured on
-       * generated leagues, the thresholds sit near the 70th (feature, chip), 75th (shadow), 85th (double),
+       * generated leagues, the thresholds sit near the 70th (chip), 75th (shadow), 85th (feature, double),
        * and 90th (spy) percentiles.
        */
-      featureFrom: 11,
+      featureFrom: 12,
       shadowFrom: 10.5,
       cornerFrom: 3,
       doubleFrom: 12,
@@ -273,7 +273,7 @@ export const TUNING = {
     /**
      * Rotations on auto (spec 12.3). The lead back's share is the scheme default (situations.rb1Share) when
      * his role rating beats the second back's by backfieldGap, the median in generated leagues, and moves
-     * backfieldPerPoint per point either way, on a dial across backfieldRange. The line rotates fully when its best backups are within
+     * backfieldPerPoint per point either way, on a dial of backfieldSteps settings across backfieldRange. The line rotates fully when its best backups are within
      * lineCloseGap overall points of the starters and not at all from lineFarGap points behind. A
      * situational sub needs subFrom points over the man he replaces at the job: a back's receiving and
      * blocking, a rusher's pass rush, a target's contested catching. Players back from an injury play at
@@ -282,8 +282,9 @@ export const TUNING = {
      */
     rotation: {
       backfieldGap: 8,
-      backfieldPerPoint: 0.006,
+      backfieldPerPoint: 0.005,
       backfieldRange: [0.45, 0.75],
+      backfieldSteps: 7,
       lineCloseGap: 2,
       lineFarGap: 10,
       subFrom: 3,

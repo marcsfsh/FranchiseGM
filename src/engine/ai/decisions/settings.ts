@@ -21,10 +21,11 @@ export function decideDial(
   ideal: number,
   rigidity: number,
   competence: number,
-  rng: Rng
+  rng: Rng,
+  steps: number = P.steps
 ): Decision<DialOption> | null {
-  const options: DialOption[] = Array.from({ length: P.steps }, (_, i) => ({
-    value: lo + ((hi - lo) * i) / (P.steps - 1),
+  const options: DialOption[] = Array.from({ length: steps }, (_, i) => ({
+    value: lo + ((hi - lo) * i) / (steps - 1),
     lo,
     hi,
     neutral
