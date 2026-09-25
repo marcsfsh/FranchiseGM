@@ -7,14 +7,23 @@ import type { League } from '../league/types';
 import { leagueStream } from '../rng';
 import { simulateGame } from './game';
 import { gameSetup } from './setup';
-import type { GameResult } from './types';
+import type { GameResult, GameSetup } from './types';
 
-export function simLeagueGame(league: League, gameId: string, climate: ClimateTable | null): GameResult {
+/** Plays a scheduled game, returning its setup (who dressed) with the result. */
+export function playLeagueGame(
+  league: League,
+  gameId: string,
+  climate: ClimateTable | null
+): { setup: GameSetup; result: GameResult } {
   const game = league.schedule.find(g => g.id === gameId);
   if (!game) throw new Error(`No game ${gameId} on the schedule`);
   const rng = leagueStream(league.random, 'game', game.id);
   const setup = gameSetup(league, game, climate, rng.fork('setup'));
-  return simulateGame(setup, rng.fork('plays'));
+  return { setup, result: simulateGame(setup, rng.fork('plays')) };
+}
+
+export function simLeagueGame(league: League, gameId: string, climate: ClimateTable | null): GameResult {
+  return playLeagueGame(league, gameId, climate).result;
 }
 
 export { simulateGame, gameSetup };

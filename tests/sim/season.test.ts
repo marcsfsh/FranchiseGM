@@ -63,6 +63,17 @@ describe('the season loop (spec 4.2, 5.3)', { timeout: 120_000 }, () => {
 
   it('plays week 1 through the Super Bowl: seeds, byes, re-seeding, and one champion', () => {
     const l = league();
+    // A starting quarterback's deal with two incentives, settled on his regular-season totals (spec 11.2).
+    const qb = Object.values(l.players)
+      .filter(p => p.team === 'MIN' && p.position === 'QB' && p.contractId)
+      .sort((a, b) => b.ovr - a.ovr)[0];
+    const deal = l.contracts[qb?.contractId ?? ''];
+    const entry = deal?.years.find(y => y.year === 2026);
+    if (!qb || !deal || !entry) throw new Error('no quarterback deal');
+    entry.incentives = [
+      { condition: '1 passing yard', amount: 100_000, likely: true, stat: { key: 'passYds', atLeast: 1 }, earned: null },
+      { condition: '9,000 passing yards', amount: 100_000, likely: false, stat: { key: 'passYds', atLeast: 9000 }, earned: null }
+    ]; // prettier-ignore
     const week = () => {
       const played = new Set(weekGames(l).flatMap(g => [g.home, g.away]));
       advanceWeek(l, climate, input);
@@ -75,6 +86,10 @@ describe('the season loop (spec 4.2, 5.3)', { timeout: 120_000 }, () => {
     expect(moves.some(t => t.kind === 'injuredReserve')).toBe(true);
     expect(moves.some(t => t.kind === 'signed')).toBe(true);
     expect(l.date).toMatchObject({ phase: 'wildCard', week: 1 });
+    const settled = l.contracts[deal.id]?.years.find(y => y.year === 2026)?.incentives;
+    expect(settled?.map(i => i.earned)).toEqual([true, false]);
+    expect(l.season.inactive[qb.id] ?? 0).toBeLessThan(17);
+    expect(Object.values(l.season.inactive).some(n => n > 0)).toBe(true);
     const standings = leagueStandings(l);
     for (const conference of ['AFC', 'NFC'] as const) {
       const seeds = l.season.seeds?.[conference] ?? [];

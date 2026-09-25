@@ -28,19 +28,21 @@ describe('cap hit golden tests', () => {
       {
         ...emptyYear(2028),
         base: 9_000_000,
-        incentives: [{ condition: '10 sacks', amount: 750_000, likely: true }]
+        incentives: [{ condition: '10 sacks', amount: 750_000, likely: true, stat: null, earned: null }]
       },
       {
         ...emptyYear(2029),
         base: 9_500_000,
-        incentives: [{ condition: 'Pro Bowl', amount: 1_000_000, likely: false }]
+        incentives: [{ condition: 'Pro Bowl', amount: 1_000_000, likely: false, stat: null, earned: null }]
       }
     ],
     vesting: [],
     noTrade: false,
     fifthYearOption: 'none',
     restructures: [],
-    weeklyPay: 0
+    weeklyPay: 0,
+    signingBonusYears: null,
+    ended: null
   };
 
   it('prorates a signing bonus evenly over the contract years', () => {

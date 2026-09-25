@@ -33,6 +33,11 @@ export interface SeasonState {
   awards: WeeklyAward[];
   /** Season totals of the stats the news follows, by player. */
   totals: Record<string, SeasonLine>;
+  /**
+   * Regular-season games each player's team played while he was on its roster but not active on game
+   * day, for per-game roster bonuses (spec 11.2).
+   */
+  inactive: Record<string, number>;
 }
 
 export const emptySeason = (season: number): SeasonState => ({
@@ -43,7 +48,8 @@ export const emptySeason = (season: number): SeasonState => ({
   transactions: [],
   news: [],
   awards: [],
-  totals: {}
+  totals: {},
+  inactive: {}
 });
 
 /** Playoff phases in order: round 1 is the Wild Card round, the last is the Super Bowl. */

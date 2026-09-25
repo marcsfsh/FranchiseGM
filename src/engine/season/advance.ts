@@ -5,14 +5,15 @@
  */
 import type { ClimateTable } from '../../data/climate';
 import type { DecisionLog } from '../ai/framework';
+import { settleIncentives } from '../contracts/moves';
 import { manageWeek } from '../ai/weekly';
 import type { Conference, TeamAbbr } from '../../data/teams';
 import type { League } from '../league/types';
 import type { Phase } from '../model/calendar';
 import { advanceLeagueRandom, leagueStream, stream, type AdvanceInput } from '../rng';
-import { simLeagueGame } from '../sim';
+import { playLeagueGame } from '../sim';
 import type { TeamTotals } from '../sim/stats';
-import type { GameResult } from '../sim/types';
+import type { GameResult, GameSetup } from '../sim/types';
 import type { GameMeta } from '../stats/record';
 import { playersOfTheWeek, type WeeklyAward } from './awards';
 import { addToInbox, pausing, weekInbox, type InboxItem } from './inbox';
@@ -57,6 +58,18 @@ function outcome(result: GameResult, week: number, playoff: boolean): GameOutcom
     playoff,
     overtime: result.overtime
   };
+}
+
+/** Players on a team's roster who didn't dress for its game this week (spec 11.2: per-game roster bonuses). */
+function countInactive(league: League, setups: readonly GameSetup[]): void {
+  const dressed = new Set(
+    setups.flatMap(s => [...Object.keys(s.home.players), ...Object.keys(s.away.players)])
+  );
+  const playing = new Set(setups.flatMap(s => [s.home.abbr, s.away.abbr]));
+  for (const p of Object.values(league.players)) {
+    if (!p.team || !playing.has(p.team) || p.status === 'practice' || p.status === 'freeAgent') continue;
+    if (!dressed.has(p.id)) league.season.inactive[p.id] = (league.season.inactive[p.id] ?? 0) + 1;
+  }
 }
 
 /** Seeds still alive in a conference: seeded, and without a playoff loss. */
@@ -122,8 +135,14 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     leagueStream(league.random, 'ai', week),
     stream(league.random.baseSeed, 'ai', season)
   );
-  const results = weekGames(league).map(g => simLeagueGame(league, g.id, climate));
+  const played = weekGames(league).map(g => playLeagueGame(league, g.id, climate));
+  const results = played.map(p => p.result);
   for (const r of results) league.season.results[r.id] = outcome(r, week, playoff);
+  if (!playoff)
+    countInactive(
+      league,
+      played.map(p => p.setup)
+    );
   // The week passes for every player, then this week's injuries start their clocks.
   healWeek(league);
   applyInjuries(
@@ -138,6 +157,11 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
   // Season totals and players of the week, then the calendar moves on (seeds come after week 18).
   const before = league.season.totals;
   league.season.totals = addToTotals(before, results);
+  // Incentives settle on regular-season totals once the last week is played (spec 11.2).
+  if (week === league.rules.season.weeks)
+    for (const c of Object.values(league.contracts))
+      if (c.years.some(y => y.year === season && y.incentives.length))
+        league.contracts[c.id] = settleIncentives(c, season, league.season.totals[c.playerId], league.rules);
   // Players of the week are a regular-season award; the rookie award goes to a first-year player.
   const rookies = new Set(Object.values(league.players).flatMap(p => (p.experience === 0 ? [p.id] : [])));
   const awards = playoff ? [] : playersOfTheWeek(season, week, results, rookies);

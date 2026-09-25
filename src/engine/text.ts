@@ -19,3 +19,7 @@ export function joinList(parts: readonly string[]): string {
   if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
   return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
 }
+
+/** Whole dollars in full, such as $42,500,000 (style guide 9: exact contract detail). */
+export const dollars = (n: number): string =>
+  `${n < 0 ? '−' : ''}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`;

@@ -4,7 +4,7 @@
  */
 import type { TeamAbbr } from '../../data/team-colors';
 import type { Rng } from '../rng';
-import type { GameDate } from '../model/calendar';
+import { PHASES, type GameDate, type Phase } from '../model/calendar';
 import { minimumSalary, type RuleSet } from '../rules/ruleset';
 import { TUNING } from '../tuning';
 import { rookieSigningBonus } from './market';
@@ -18,7 +18,14 @@ interface Base {
   team: TeamAbbr;
 }
 
-const signedAt = (season: number): GameDate => ({ season: season - 1, phase: 'freeAgency', week: 1 });
+/** A phase's first week in a league year: phases from free agency on fall in the season before. */
+const inLeagueYear = (year: number, phase: Phase): GameDate => ({
+  season: PHASES.indexOf(phase) >= PHASES.indexOf('freeAgency') ? year - 1 : year,
+  phase,
+  week: 1
+});
+
+const signedAt = (year: number): GameDate => inLeagueYear(year, 'freeAgency');
 
 function contract(base: Base, type: ContractType, signed: GameDate, signingBonus: number): Contract {
   return {
@@ -27,11 +34,13 @@ function contract(base: Base, type: ContractType, signed: GameDate, signingBonus
     type,
     years: [],
     signingBonus,
+    signingBonusYears: null,
     vesting: [],
     noTrade: false,
     fifthYearOption: 'none',
     restructures: [],
-    weeklyPay: 0
+    weeklyPay: 0,
+    ended: null
   };
 }
 
@@ -42,7 +51,7 @@ function contract(base: Base, type: ContractType, signed: GameDate, signingBonus
 export function rookieContract(rules: RuleSet, base: Base, draftYear: number, pick: number): Contract {
   const bonus = rookieSigningBonus(rules, pick);
   const firstRound = pick <= 32;
-  const c = contract(base, 'rookie', { season: draftYear, phase: 'draft', week: 1 }, bonus);
+  const c = contract(base, 'rookie', inLeagueYear(draftYear, 'draft'), bonus);
   c.fifthYearOption = firstRound ? 'eligible' : 'none';
   c.years = Array.from({ length: rules.rookieScale.years }, (_, i) => {
     const year = emptyYear(draftYear + i);
@@ -57,7 +66,7 @@ export function rookieContract(rules: RuleSet, base: Base, draftYear: number, pi
 
 /** An undrafted free agent deal: three minimum-salary years and a small bonus. */
 export function udfaContract(rules: RuleSet, base: Base, signedYear: number, bonus: number): Contract {
-  const c = contract(base, 'udfa', { season: signedYear, phase: 'udfa', week: 1 }, roundK(bonus));
+  const c = contract(base, 'udfa', inLeagueYear(signedYear, 'udfa'), roundK(bonus));
   c.years = Array.from({ length: rules.rookieScale.udfaYears }, (_, i) => ({
     ...emptyYear(signedYear + i),
     base: minimumSalary(rules, i)
@@ -135,7 +144,7 @@ export function practiceSquadContract(
   credited: number,
   rng: Rng
 ): Contract {
-  const c = contract(base, 'practiceSquad', { season, phase: 'cutdown', week: 1 }, 0);
+  const c = contract(base, 'practiceSquad', inLeagueYear(season, 'cutdown'), 0);
   const veteran = credited > rules.roster.practiceSquadVeteranSeasons;
   c.weeklyPay = veteran
     ? roundK(

@@ -18,6 +18,8 @@ export interface CapRules {
   /** Salary floor: minimum cash spending as a share of the cap over a rolling window (default, review). */
   salaryFloorShare: number;
   salaryFloorYears: number;
+  /** From the league year's start to the regular season only this many of the largest charges count. */
+  offseasonCount: number;
 }
 
 export interface RosterRules {
@@ -40,6 +42,8 @@ export interface RosterRules {
   /** Injured reserve: minimum games out, and designated-to-return activations per season. */
   irMinGames: number;
   irReturns: number;
+  /** Accrued seasons that make a vested veteran: his season's salary is owed once he's on the week 1 roster. */
+  vestedVeteranSeasons: number;
 }
 
 export interface PayRules {
@@ -273,7 +277,8 @@ export const DEFAULT_RULES: RuleSet = {
     growthCeiling: 0.1,
     rollover: true,
     salaryFloorShare: 0.89,
-    salaryFloorYears: 4
+    salaryFloorYears: 4,
+    offseasonCount: 51
   },
   roster: {
     active: 53,
@@ -289,7 +294,8 @@ export const DEFAULT_RULES: RuleSet = {
     elevationsPerGame: 2,
     elevationsPerPlayer: 3,
     irMinGames: 4,
-    irReturns: 8
+    irReturns: 8,
+    vestedVeteranSeasons: 4
   },
   pay: {
     // 2026 CBA minimums for 0, 1, 2, 3, 4-6, and 7+ credited seasons.
@@ -334,6 +340,8 @@ export function validateRules(rules: RuleSet): string[] {
   whole(rules.roster.offseason, 'The offseason roster limit', 1);
   whole(rules.roster.practiceSquad, 'The practice squad size');
   whole(rules.roster.gameDayActives, 'Game-day actives', 1);
+  whole(rules.cap.offseasonCount, 'The offseason cap count', 1);
+  whole(rules.roster.vestedVeteranSeasons, 'Seasons for a vested veteran', 1);
   if (rules.roster.gameDayActives > rules.roster.active)
     problems.push('Game-day actives exceed the active roster.');
   if (rules.roster.offseason < rules.roster.active)

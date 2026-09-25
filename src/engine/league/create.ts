@@ -97,7 +97,8 @@ export function createLeague(input: NewLeagueInput): League {
       resting: [],
       depth: { auto: true, order: {} },
       plan: { auto: true, plan: { ...NEUTRAL_PLAN } },
-      rotation: defaultRotation(TUNING.situations.rb1Share)
+      rotation: defaultRotation(TUNING.situations.rb1Share),
+      carryover: 0
     };
   }
 

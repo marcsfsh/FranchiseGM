@@ -21,7 +21,7 @@ import type { SimSliders } from '../sim/sliders';
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 7;
+export const SAVE_SCHEMA_VERSION = 8;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -68,6 +68,8 @@ export interface TeamState {
   plan: { auto: boolean; plan: GamePlan };
   /** Rotations and packages (spec 12.3). */
   rotation: Rotation;
+  /** Cap space carried over into the current league year (spec 11.1). */
+  carryover: number;
 }
 
 /** League settings that can change mid-save (spec 22). Sections are added as their features arrive. */
