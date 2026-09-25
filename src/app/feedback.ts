@@ -71,6 +71,21 @@ export function dialogFrame(id: string, title: string, ...body: Node[]): HTMLDia
   );
 }
 
+/**
+ * A dialog frame whose actions stay in view in a footer below the scrolling body (style guide 7.7), for
+ * dialogs whose body can run past a phone's screen.
+ */
+export function actionDialogFrame(
+  id: string,
+  title: string,
+  body: readonly Node[],
+  actions: readonly Node[]
+): HTMLDialogElement {
+  const dialog = dialogFrame(id, title, ...body);
+  dialog.querySelector('.dialog-frame')?.append(h('div', { class: 'dialog-actions' }, ...actions));
+  return dialog;
+}
+
 let region: HTMLElement | null = null;
 
 export function toastRegion(): HTMLElement {

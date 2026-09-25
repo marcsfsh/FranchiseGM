@@ -186,6 +186,11 @@ export class AppState {
   /** Edits made while a week is in the worker, to reapply to the league it sends back. */
   private inFlight: ((league: League) => void)[] | null = null;
 
+  /** Whether a week is being played in the worker; roster moves wait for it (they can't be replayed). */
+  get advancing(): boolean {
+    return this.inFlight !== null;
+  }
+
   /**
    * Applies a change to the open league from a screen (a depth chart move, a game plan setting) and saves
    * shortly after, so a burst of changes saves once. `action` describes the change for the next advance's

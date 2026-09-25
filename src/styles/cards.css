@@ -115,4 +115,6 @@
 }
 .big-number {
   font: italic 800 var(--fs-big)/1.1 var(--font-display);
+  /* A big money figure wraps rather than widening a narrow card at large text sizes. */
+  overflow-wrap: anywhere;
 }

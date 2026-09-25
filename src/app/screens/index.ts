@@ -1,6 +1,8 @@
 import type { RouteName } from '../router';
+import { capScreen } from './cap';
 import { depthScreen } from './depth';
 import { devScreen } from './dev';
+import { freeAgencyScreen } from './free-agency';
 import { gamePlanScreen } from './gameplan';
 import { placeholderScreen } from './placeholder';
 import { historyScreen } from './history';
@@ -21,9 +23,9 @@ export const SCREENS: Record<RouteName, () => Screen> = {
   staff: () => placeholderScreen('Staff', 'Your coaches, coordinators, scouts, and front office.'),
   scouting: () =>
     placeholderScreen('Scouting and draft', 'Prospects, scouting assignments, and the draft board.'),
-  freeagency: () => placeholderScreen('Free agency', 'Available players and contract offers.'),
+  freeagency: freeAgencyScreen,
   trades: () => placeholderScreen('Trades', 'Trade offers, the trade block, and proposals.'),
-  finances: () => placeholderScreen('Finances', 'Revenue, expenses, and the salary cap.'),
+  finances: capScreen,
   league: () => placeholderScreen('League', 'Standings, schedule, league stats, and news.'),
   history: historyScreen,
   settings: settingsScreen,

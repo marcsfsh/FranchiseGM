@@ -7,7 +7,7 @@ test('lists the roster with fit and opens a player with the fit breakdown', asyn
   await createLeague(page, { name: 'Fit league', team: 'SF', seed: '31' });
   await page.evaluate(() => (location.hash = '#/roster'));
   await expect(page.locator('main h1')).toHaveText('Roster');
-  await expect(page.locator('main')).toContainText('53 active players and 16 on the practice squad.');
+  await expect(page.locator('main')).toContainText('53 of 53 on the active roster, 0 on reserve lists, and 16 on the practice squad.');
   const phone = info.project.name.endsWith('phone');
   const rows = phone ? page.locator('.roster-list > li') : page.locator('.roster-table tbody tr');
   await expect(rows).toHaveCount(69);

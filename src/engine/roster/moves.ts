@@ -27,7 +27,7 @@ import type { Rng } from '../rng';
 import { minimumSalary } from '../rules/ruleset';
 import { cannotPlay, designation } from '../season/injuries';
 import { gameWeek, PLAYOFF_PHASES, weekGames } from '../season/state';
-import { dollars, plural } from '../text';
+import { dollars, plural, possessive } from '../text';
 import { elevatedThisWeek, elevationsThisSeason, practiceSquadVeteran, rosterCounts } from './rules';
 import { claimProblem, placeOnWaivers, subjectToWaivers } from './waivers';
 
@@ -379,7 +379,7 @@ function plan(league: League, move: Move): Outcome<Plan> {
       return ok({
         preview: preview({
           spaceAfter: before + now,
-          notes: [`${dollars(move.amount)} of salary becomes a bonus spread over ${plural(done.value.restructures.at(-1)?.prorationYears.length ?? 1, 'year')}.`]
+          notes: [`${dollars(move.amount)} of ${possessive(name)} salary becomes a bonus spread over ${plural(done.value.restructures.at(-1)?.prorationYears.length ?? 1, 'year')}.`]
         }),
         apply: () => {
           league.contracts[contract.id] = done.value;

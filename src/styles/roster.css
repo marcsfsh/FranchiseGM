@@ -106,6 +106,23 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* Row actions (roster moves, offers, claims) take their own line under the player, and their buttons
+   wrap rather than widen the row at narrow widths and large text sizes. */
+.list-row > .btn-row {
+  grid-column: 1 / -1;
+}
+.list-row > .btn-row > .btn {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding-inline: var(--s3);
+}
+.card .list-row {
+  padding: var(--s2);
+}
+.roster-table .moves-col {
+  width: 7.5rem;
+}
 .list-name {
   font-weight: 700;
 }
@@ -113,7 +130,7 @@
   color: var(--text-2);
   font-size: var(--fs-small);
 }
-@container roster (min-width: 640px) {
+@container roster (min-width: 40em) {
   .roster-table {
     display: table;
   }
@@ -121,7 +138,7 @@
     display: none;
   }
 }
-@container roster (min-width: 960px) {
+@container roster (min-width: 60em) {
   .roster-table .wide {
     display: table-cell;
   }

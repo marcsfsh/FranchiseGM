@@ -1,6 +1,6 @@
 /**
  * Player page (style guide 11): profile, fit in the user's schemes with the breakdown (spec 7.3, 7.7),
- * ratings, traits, abilities, and career stats with game logs (spec 9). Contracts join it in M8.
+ * ratings, traits, abilities, career stats with game logs (spec 9), and the contract (spec 11.2).
  */
 import { teamFullName } from '../../data/team-colors';
 import { ability, type Ability } from '../../engine/abilities/catalog';
@@ -17,6 +17,7 @@ import { CONTEXT_TRIGGERS, TRIGGER_LABELS } from '../../engine/schemes/situation
 import { DEFENSE_SLOTS, DUTY_SLOTS, FIT_SLOTS, OFFENSE_SLOTS } from '../../engine/schemes/slots';
 import { h, mount } from '../dom';
 import { careerCard } from '../ui/career';
+import { contractCard } from '../ui/contract';
 import { href } from '../router';
 import { fitNode, fitSentence } from '../ui/fit';
 import { attributeRow, devTag, heightText, stat, statusTag, tierPlate } from '../ui/players';
@@ -106,7 +107,8 @@ function schemeLine(ctx: FitContext): string {
 export function playerScreen(): Screen {
   const screen: Screen = {
     title: 'Player',
-    render: ({ app, route }) => {
+    render: screenCtx => {
+      const { app, route } = screenCtx;
       const league = app.league;
       const player = league?.players[route.params.id ?? ''];
       // The document title follows the page heading (WCAG 2.4.2).
@@ -287,6 +289,15 @@ export function playerScreen(): Screen {
           : h('p', { class: 'muted' }, 'No notable traits.')
       );
 
+      // The contract, with the user's roster moves; a move redraws the whole page (his status changes too).
+      const contractSlot = contractCard(app, league, player, () => {
+        const next = screen.render(screenCtx) as HTMLElement;
+        page.replaceWith(next);
+        const heading = [...next.querySelectorAll<HTMLElement>('h2')].find(e => e.textContent === 'Contract');
+        heading?.setAttribute('tabindex', '-1');
+        heading?.focus();
+      });
+
       // Career stats load from the history store (spec 9.3).
       const history = app.store.history;
       const leagueId = league.meta.id;
@@ -320,12 +331,13 @@ export function playerScreen(): Screen {
           )
       );
 
-      return h(
+      const page = h(
         'section',
         { class: 'view' },
         h('p', null, h('a', { class: 'btn btn-outline', href: href('roster') }, 'Back to roster')),
-        h('div', { class: 'stack' }, head, fitCard, ratingsCard, traitsCard, careerSlot)
+        h('div', { class: 'stack' }, head, contractSlot, fitCard, ratingsCard, traitsCard, careerSlot)
       );
+      return page;
     }
   };
   return screen;

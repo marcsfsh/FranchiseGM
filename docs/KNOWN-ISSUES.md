@@ -19,6 +19,7 @@
 - The news feed v1 covers results, upsets, big games, season milestones, injuries, signings, and weekly awards; rumors, power rankings, the injury report roundup, records and streaks in headlines, and the news effects setting arrive with M18 (spec 18.1).
 - Weekly awards are the players of the week and the rookie of the week; players of the month and the season awards with their voting arrive with M17 (spec 18.4).
 - The practice squad's international pathway exemption isn't modeled (no player carries the designation), so squads hold 16; the PUP, NFI, and suspended lists have their rules but nothing places players on them until M10's preseason and M12's suspensions.
+- Cap growth, rollover of unused space, and the salary floor (spec 11.1) take effect at the league year turnover, which M10 builds; option deadlines and settling bonuses for past years come with it. Extensions (spec 19.3's contract tools) arrive with M12's negotiations.
 - Waiver priority before week 4 of a season follows a seeded order until M11's draft order exists (D-22). Guaranteed money a released player earns from a new team doesn't offset what his old team owes.
 - Pause rules list only the event types this build raises (injuries to starters); the others appear with the milestones that create them (spec 19.6).
 - The user's team makes only the roster moves the user makes (spec 22.7's roster management auto toggle is M20's); left alone it plays short-handed through injuries, while AI teams use injured reserve, elevations, and signings.
