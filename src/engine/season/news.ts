@@ -224,20 +224,28 @@ function injuryCandidates(league: League, results: readonly GameResult[]): Candi
   return out;
 }
 
+/** Headlines for the roster moves the feed reports (spec 18.1). */
+const MOVE_TEMPLATES: Partial<Record<Transaction['kind'], readonly string[]>> = {
+  signed: ['The {T} sign {pos} {name}', 'The {T} add {pos} {name}'],
+  promoted: [
+    'The {T} promote {pos} {name} from the practice squad',
+    '{name} ({pos}) joins the {T} active roster'
+  ],
+  claimed: ['The {T} claim {pos} {name} off waivers', '{name} ({pos}) lands with the {T} on a waiver claim'],
+  released: ['The {T} release {pos} {name}', 'The {T} part ways with {pos} {name}']
+};
+
 function transactionCandidates(league: League, moves: readonly Transaction[]): Candidate[] {
   const out: Candidate[] = [];
   for (const t of moves) {
     const player = league.players[t.playerId];
-    if (!player || (t.kind !== 'signed' && t.kind !== 'promoted') || player.ovr < N.signingFrom) continue;
+    const templates = MOVE_TEMPLATES[t.kind];
+    // Releases make news only for prominent players; additions from the signing mark up.
+    const from = t.kind === 'released' ? N.prominentFrom : N.signingFrom;
+    if (!player || !templates || player.ovr < from) continue;
     out.push({
       kind: 'transaction',
-      templates:
-        t.kind === 'signed'
-          ? ['The {T} sign {pos} {name}', 'The {T} add {pos} {name}']
-          : [
-              'The {T} promote {pos} {name} from the practice squad',
-              '{name} ({pos}) joins the {T} active roster'
-            ],
+      templates,
       fill: { T: nick(t.team), pos: player.position, name: fullName(player) },
       teams: [t.team],
       players: [player.id],
@@ -245,7 +253,7 @@ function transactionCandidates(league: League, moves: readonly Transaction[]): C
     });
   }
   return out;
-}
+} // prettier-ignore
 
 function awardCandidates(league: League, awards: readonly WeeklyAward[]): Candidate[] {
   return awards.flatMap(a => {

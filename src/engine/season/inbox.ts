@@ -11,6 +11,7 @@ import { fullName } from '../model/player';
 import type { GameResult } from '../sim/types';
 import { plural, withArticle } from '../text';
 import { awardName, type WeeklyAward } from './awards';
+import type { WaiverResult } from '../roster/waivers';
 import type { NewsItem } from './news';
 import { leagueStandings } from './state';
 
@@ -43,7 +44,7 @@ export const LIVE_PAUSE_EVENTS: readonly PauseEvent[] = ['starterInjuries'];
 export const defaultPauses = (): Record<PauseEvent, boolean> =>
   Object.fromEntries(PAUSE_EVENTS.map(e => [e, true])) as Record<PauseEvent, boolean>;
 
-export type InboxKind = 'result' | 'injury' | 'award' | 'milestone' | 'playoffs';
+export type InboxKind = 'result' | 'injury' | 'award' | 'milestone' | 'playoffs' | 'waivers';
 
 export interface InboxItem {
   id: string;
@@ -70,6 +71,8 @@ export interface WeekInboxInput {
   results: readonly GameResult[];
   awards: readonly WeeklyAward[];
   news: readonly NewsItem[];
+  /** The waiver wire this week, before teams set their rosters. */
+  waivers?: readonly WaiverResult[];
 }
 
 /** The user's messages from a finished week, in the league as it stands after the week. */
@@ -133,6 +136,26 @@ export function weekInbox(league: League, input: WeekInboxInput): InboxItem[] {
       players: [a.playerId]
     });
   }
+
+  // Waivers: the user's released players, and the user's claims.
+  for (const w of input.waivers ?? []) {
+    const player = league.players[w.playerId];
+    if (!player) continue;
+    const name = `${fullName(player)} (${player.position})`;
+    const message = (title: string, body: string) =>
+      add({ kind: 'waivers', event: null, title, body, players: [player.id] });
+    if (w.claimedBy === user) message(`You claimed ${name} off waivers`, 'He joins your active roster on his contract.');
+    else if (w.claims.includes(user))
+      message(
+        w.claimedBy ? `The ${nick(w.claimedBy)} claimed ${name} ahead of you` : `Your claim for ${name} didn't go through`,
+        w.claimedBy ? 'Teams with worse records claim first.' : "Your roster was full or your cap space too short when waivers ran; he's a free agent now."
+      );
+    else if (w.from === user)
+      message(
+        w.claimedBy ? `The ${nick(w.claimedBy)} claimed ${name} off waivers` : `${name} cleared waivers`,
+        w.claimedBy ? 'They take over his contract; you keep only its proration.' : 'He is a free agent now.'
+      );
+  } // prettier-ignore
 
   for (const n of input.news)
     if (n.kind === 'milestone' && n.teams.includes(user))

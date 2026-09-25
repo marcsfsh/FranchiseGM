@@ -116,6 +116,23 @@ describe('the news feed (spec 18.1)', () => {
     expect(news.every(n => !/'s' /.test(n.headline) && !/ a [AEIOUaeiou]/.test(n.headline))).toBe(true);
   });
 
+  it('reports waiver claims and the release of prominent players', () => {
+    const league = fresh();
+    const star = starterOf(league, 'KC', 'QB');
+    const move = (kind: 'claimed' | 'released', team: TeamAbbr) =>
+      ({ season: 2026, phase: 'regularSeason', week: 4, team, kind, playerId: star }) as const;
+    const news = weekNews(
+      league,
+      { week: 4, results: [], awards: [], before: {}, after: {}, moves: [move('released', 'KC'), move('claimed', 'DEN')] },
+      stream(4, 'news')
+    ); // prettier-ignore
+    const headlines = news.filter(n => n.kind === 'transaction').map(n => n.headline);
+    expect(headlines.some(h => /^The Chiefs (release|part ways with) QB /.test(h))).toBe(true);
+    expect(
+      headlines.some(h => /Broncos claim QB .+ off waivers|lands with the Broncos on a waiver claim/.test(h))
+    ).toBe(true);
+  });
+
   it("doesn't give a team the same headline template twice within four weeks", () => {
     const league = fresh();
     const results = [game('MIN', 'GB', [24, 17])];
@@ -190,6 +207,31 @@ describe('the inbox and pause rules (spec 19.6)', () => {
     expect(hurt[0]?.body).toMatch(/^An ankle injury/);
     expect(pausing(items, league.settings.pause)).toHaveLength(1);
     expect(pausing(items, { ...league.settings.pause, starterInjuries: false })).toHaveLength(0);
+  });
+
+  it("reports the user's waiver results: claims won and lost, and released players claimed or cleared", () => {
+    const league = fresh();
+    const user = league.meta.start.userTeam;
+    const [a, b, c, d] = Object.values(league.players).filter(p => p.team === 'GB');
+    if (!a || !b || !c || !d) throw new Error('no players');
+    const items = weekInbox(league, {
+      week: 3,
+      results: [],
+      awards: [],
+      news: [],
+      waivers: [
+        { playerId: a.id, from: 'GB', claimedBy: user, claims: [user, 'KC'] },
+        { playerId: b.id, from: 'GB', claimedBy: 'KC', claims: [user, 'KC'] },
+        { playerId: c.id, from: user, claimedBy: 'DAL', claims: ['DAL'] },
+        { playerId: d.id, from: user, claimedBy: null, claims: [] }
+      ]
+    });
+    expect(items.map(i => i.kind)).toEqual(['waivers', 'waivers', 'waivers', 'waivers']);
+    expect(items[0]?.title).toMatch(/^You claimed .+ off waivers$/);
+    expect(items[1]?.title).toMatch(/^The Chiefs claimed .+ ahead of you$/);
+    expect(items[2]?.title).toMatch(/^The Cowboys claimed .+ off waivers$/);
+    expect(items[3]?.title).toMatch(/ cleared waivers$/);
+    expect(items.every(i => i.event === null)).toBe(true);
   });
 
   it('keeps the inbox to its limit by dropping the oldest read messages', () => {

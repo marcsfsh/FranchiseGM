@@ -40,7 +40,8 @@ const INBOX_LABELS: Record<InboxKind, string> = {
   injury: 'Injury update',
   award: 'Award',
   milestone: 'Milestone',
-  playoffs: 'Playoffs'
+  playoffs: 'Playoffs',
+  waivers: 'Waivers'
 };
 
 /** A card with a sign bar and an optional arrow link (style guide 11). */

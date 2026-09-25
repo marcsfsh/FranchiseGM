@@ -133,7 +133,7 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
   // Last week's waiver wire clears first (spec 12.1), then teams set their rosters, lineups, and game plans
   // before kickoff (spec 14.10).
   const movesBefore = league.season.transactions.length;
-  processWaivers(league, leagueStream(league.random, 'waivers', week), (entry, player) =>
+  const waived = processWaivers(league, leagueStream(league.random, 'waivers', week), (entry, player) =>
     waiverClaims(league, entry, player)
   );
   const decisions = manageWeek(
@@ -181,7 +181,7 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     leagueStream(league.random, 'news', week)
   );
   league.season.news.push(...news);
-  const inbox = weekInbox(league, { week, results, awards, news });
+  const inbox = weekInbox(league, { week, results, awards, news, waivers: waived });
   league.inbox = addToInbox(league.inbox, inbox);
   league.random = advanceLeagueRandom(league.random, input);
   return {

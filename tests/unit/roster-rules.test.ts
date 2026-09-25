@@ -136,7 +136,9 @@ describe('waivers (spec 12.1)', () => {
     league.waivers[0]?.claims.push(first);
     const results = processWaivers(league, stream(1), () => [second]);
     // The earlier team in priority wins.
-    expect(results).toEqual([{ playerId: player.id, from: 'MIN', claimedBy: second }]);
+    expect(results).toEqual([
+      { playerId: player.id, from: 'MIN', claimedBy: second, claims: [first, second] }
+    ]);
     expect(player).toMatchObject({ team: second, status: 'active' });
     const taken = league.contracts[player.contractId ?? ''];
     expect(taken?.signingBonus).toBe(0);
@@ -174,7 +176,7 @@ describe('waivers (spec 12.1)', () => {
     entry.claims.push('KC');
     const kept = structuredClone(league);
     expect(processWaivers(league, stream(1))).toEqual([
-      { playerId: player.id, from: 'MIN', claimedBy: null }
+      { playerId: player.id, from: 'MIN', claimedBy: null, claims: ['KC'] }
     ]);
     expect(player).toMatchObject({ team: null, status: 'freeAgent' });
     // An AI claimant cuts someone before its next game, so a full roster doesn't stop it.

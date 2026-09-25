@@ -131,6 +131,8 @@ export interface WaiverResult {
   from: TeamAbbr;
   /** The team that claimed him, or null if he cleared waivers to free agency. */
   claimedBy: TeamAbbr | null;
+  /** Every team that put in a claim. */
+  claims: TeamAbbr[];
 }
 
 /**
@@ -174,7 +176,7 @@ export function processWaivers(
     } else {
       player.status = 'freeAgent';
     }
-    results.push({ playerId: player.id, from: entry.from, claimedBy: winner });
+    results.push({ playerId: player.id, from: entry.from, claimedBy: winner, claims: [...claimants] });
   }
   return results;
 }
