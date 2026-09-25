@@ -732,6 +732,8 @@ export const TUNING = {
       pocketFactor: 0.5,
       paranoidThrowAway: 0.06,
       creditSpread: 6,
+      /** Rating points of tackle edge that multiply a pursuer's share of tackles by e. */
+      tackleSpread: 18,
       sackYards: [4, 9],
       sackSpread: 1,
       stripSack: 0.11,

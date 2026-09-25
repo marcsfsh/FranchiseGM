@@ -1446,7 +1446,9 @@ class GameSim {
       const p = this.at(def, s);
       return p ? [[s, p] as [Slot, SimPlayer]] : [];
     });
-    return this.bestOf(players, def, 'tackle');
+    // Tackles spread across the pursuit more evenly than pass rush wins do.
+    const weights = players.map(([slot, p]) => Math.exp(this.edge(def, p, slot, 'tackle') / C.tackleSpread));
+    return players.length ? (players[this.rng.weightedIndex(weights)] as [Slot, SimPlayer])[1] : null;
   }
 
   private throwBall(
