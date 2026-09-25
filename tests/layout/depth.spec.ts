@@ -17,6 +17,21 @@ test('moves players by keyboard, takes the chart back from the coach, and sets a
 
   const quarterbacks = page.locator('[data-slot="QB"] .depth-slot');
   await expect(quarterbacks.first()).toBeVisible();
+  // Each position is a column with its starter menu above its list, and the rows of columns side by side
+  // line up whatever each column holds (the Checkpoint A review).
+  const menu = await page.locator('[data-slot="QB"] .depth-pick').boundingBox();
+  const list = await page.locator('[data-slot="QB"] .depth-list').boundingBox();
+  expect(menu && list && menu.y + menu.height <= list.y).toBe(true);
+  const rowTops = await page.evaluate(() => {
+    const groups = [...document.querySelectorAll<HTMLElement>('.depth-group')].filter(g => g.offsetParent);
+    const top = groups[0]?.getBoundingClientRect().top ?? 0;
+    return groups
+      .filter(g => Math.abs(g.getBoundingClientRect().top - top) < 1)
+      .map(g => [...g.querySelectorAll('.depth-slot')].map(li => Math.round(li.getBoundingClientRect().top)));
+  });
+  if (info.project.name.endsWith('desktop')) expect(rowTops.length).toBeGreaterThan(1);
+  for (let i = 0; i < Math.min(...rowTops.map(t => t.length)); i++)
+    expect(new Set(rowTops.map(t => t[i])).size, `row ${i + 1} lines up`).toBe(1);
   const count = await quarterbacks.count();
   const first = (await quarterbacks.nth(0).locator('a').textContent()) ?? '';
   const second = (await quarterbacks.nth(1).locator('a').textContent()) ?? '';

@@ -244,20 +244,29 @@ export function depthScreen(): Screen {
         );
       }; // prettier-ignore
 
-      const slotSection = (slot: Slot, rows: DepthRow[]): HTMLElement => {
+      /** Players a slot's list shows: the first few, or all of them once expanded. */
+      const shownRows = (slot: Slot, rows: DepthRow[]): DepthRow[] =>
+        visit.expanded.has(slot) ? rows : rows.slice(0, SHOWN);
+
+      /**
+       * One slot's column. `places` is the most players any column in the panel shows: every column spans
+       * that many row tracks, so a panel's rows line up across its columns whatever each one holds.
+       */
+      const slotSection = (slot: Slot, rows: DepthRow[], places: number): HTMLElement => {
         const label = SLOT_LABELS[slot];
         const role = recipeFor(leagueFitContext(league, abbr), slot).label;
         const expanded = visit.expanded.has(slot);
-        const shown = expanded ? rows : rows.slice(0, SHOWN);
+        const shown = shownRows(slot, rows);
         const starterIndex = rows.findIndex(r => r.available);
         const list = h('ol', { class: 'depth-list', 'aria-label': `${label} depth` });
+        list.style.setProperty('--depth-rows', String(Math.max(1, shown.length)));
         shown.forEach((row, i) => {
           const player = league.players[row.id];
           if (!player) return;
           const name = fullName(player);
           const reason = unavailableReason(league, player);
-          const up = h('button', { class: 'btn btn-outline', type: 'button', 'data-dir': 'up', disabled: i === 0, 'aria-label': `Move ${name} up at ${label.toLowerCase()}` }, 'Up'); // prettier-ignore
-          const down = h('button', { class: 'btn btn-outline', type: 'button', 'data-dir': 'down', disabled: i === rows.length - 1, 'aria-label': `Move ${name} down at ${label.toLowerCase()}` }, 'Down'); // prettier-ignore
+          const up = h('button', { class: 'icon-btn', type: 'button', 'data-dir': 'up', disabled: i === 0, 'aria-label': `Move ${name} up at ${label.toLowerCase()}` }, icon('arrowUp', { size: 20, stroke: 2.5 })); // prettier-ignore
+          const down = h('button', { class: 'icon-btn', type: 'button', 'data-dir': 'down', disabled: i === rows.length - 1, 'aria-label': `Move ${name} down at ${label.toLowerCase()}` }, icon('arrowDown', { size: 20, stroke: 2.5 })); // prettier-ignore
           up.addEventListener('click', () => move(slot, row.id, i - 1, 'up'));
           down.addEventListener('click', () => move(slot, row.id, i + 1, 'down'));
           // Dragging by the handle is a shortcut for pointers (style guide 7.4); Up and Down do the same.
@@ -342,7 +351,7 @@ export function depthScreen(): Screen {
           'Make first'
         );
         makeFirst.addEventListener('click', () => move(slot, pick.value, 0, null, `starter-${slot}-go`)); // prettier-ignore
-        return h(
+        const section = h(
           'section',
           { class: 'depth-group', 'data-slot': slot },
           h(
@@ -352,10 +361,6 @@ export function depthScreen(): Screen {
             h('span', { class: 'muted' }, role)
           ),
           rows.length
-            ? list
-            : h('p', { class: 'empty' }, `Nobody on the roster can play ${label.toLowerCase()}.`),
-          more,
-          rows.length
             ? h(
                 'div',
                 { class: 'field depth-pick' },
@@ -363,8 +368,15 @@ export function depthScreen(): Screen {
                 h('div', { class: 'pick-row' }, pick, makeFirst),
                 h('p', { class: 'muted', id: `starter-${slot}-hint` }, 'Players are listed by role rating.')
               )
-            : null
+            : h('div', { class: 'depth-pick' }),
+          rows.length
+            ? list
+            : h('p', { class: 'empty depth-empty' }, `Nobody on the roster can play ${label.toLowerCase()}.`),
+          more ?? h('div', { class: 'depth-foot' })
         );
+        // The heading, the picker, the list's places, and the footer each take a row track.
+        section.style.setProperty('--depth-span', String(Math.max(1, places) + 3));
+        return section;
       };
 
       /** Questionable players (spec 10.8 playing hurt): each plays hurt unless the user rests him. */
@@ -408,7 +420,12 @@ export function depthScreen(): Screen {
 
       const unitPanel = (slots: readonly Slot[]) => () => {
         const rows = depthRows(league, abbr);
-        return h('div', { class: 'depth-grid' }, ...slots.map(slot => slotSection(slot, rows[slot] ?? [])));
+        const places = Math.max(...slots.map(slot => shownRows(slot, rows[slot] ?? []).length));
+        return h(
+          'div',
+          { class: 'depth-grid' },
+          ...slots.map(slot => slotSection(slot, rows[slot] ?? [], places))
+        );
       };
 
       const panels = tabs(

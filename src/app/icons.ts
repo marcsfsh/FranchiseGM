@@ -10,6 +10,8 @@ export const ICONS = {
   trades: 'M7 7h13l-4-4M17 17H4l4 4',
   finances: 'M12 3v18M17 7H9.5a3 3 0 0 0 0 6h5a3 3 0 0 1 0 6H6',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
+  arrowUp: 'M12 19V5M5 12l7-7 7 7',
+  arrowDown: 'M12 5v14M5 12l7 7 7-7',
   arrowRight: 'M4 12h15M13 5l7 7-7 7',
   chevron: 'M9 5l7 7-7 7',
   moon: 'M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z',
