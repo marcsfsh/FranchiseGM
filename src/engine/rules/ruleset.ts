@@ -71,6 +71,8 @@ export interface RookieScaleRules {
   minimumSigningBonus: number;
   /** First-round base salaries add this share of the signing bonus in each year. */
   firstRoundBaseShare: number;
+  /** Undrafted rookie contracts run this many years. */
+  udfaYears: number;
 }
 
 export interface SeasonRules {
@@ -146,7 +148,8 @@ export const DEFAULT_RULES: RuleSet = {
     firstRoundDecay: 0.48,
     laterPickScale: 36,
     minimumSigningBonus: 80_000,
-    firstRoundBaseShare: 0.12
+    firstRoundBaseShare: 0.12,
+    udfaYears: 3
   }
 };
 

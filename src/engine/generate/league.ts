@@ -17,6 +17,7 @@ import {
   minimumContract,
   practiceSquadContract,
   rookieContract,
+  tierFor,
   typicalBonusShare,
   udfaContract,
   veteranContract,
@@ -27,6 +28,7 @@ import { generatePlayer, type GenContext, type NameData } from './player';
 import { generateOwner, generateTeamStaff } from './staff';
 
 const L = TUNING.league;
+const C = TUNING.contracts;
 
 export interface FictionalLeague {
   season: number;
@@ -60,9 +62,39 @@ export const PRACTICE_SQUAD: readonly Position[] = [
   'QB', 'HB', 'WR', 'WR', 'TE', 'LT', 'LG', 'C', 'LE', 'DT', 'RE', 'MLB', 'ROLB', 'CB', 'CB', 'SS'
 ]; // prettier-ignore
 
-/** Position counts for one team, with the small variations real rosters show. */
-function rosterPlan(rng: Rng): Map<Position, number> {
+/** Positions that gain the next roster spot when a rule set allows more than 53, in order. */
+const GROW_ORDER: readonly Position[] = [
+  'WR',
+  'CB',
+  'DT',
+  'LOLB',
+  'LG',
+  'TE',
+  'SS',
+  'RE',
+  'HB',
+  'RT',
+  'MLB',
+  'LE'
+];
+
+/**
+ * Position counts for one team: the standard template resized to the rule set's active roster limit,
+ * with the small variations real rosters show.
+ */
+export function rosterPlan(rng: Rng, size: number): Map<Position, number> {
   const plan = new Map<Position, number>(ACTIVE_ROSTER.map(([p, n]) => [p, n]));
+  const total = () => [...plan.values()].reduce((a, b) => a + b, 0);
+  for (let i = 0; total() < size; i++) {
+    const position = GROW_ORDER[i % GROW_ORDER.length] as Position;
+    plan.set(position, (plan.get(position) ?? 0) + 1);
+  }
+  for (let i = 0; total() > size; i++) {
+    // Shrink from the deepest spots first; every position keeps at least its starters.
+    const position = GROW_ORDER[GROW_ORDER.length - 1 - (i % GROW_ORDER.length)] as Position;
+    if ((plan.get(position) ?? 0) > STARTERS[position]) plan.set(position, (plan.get(position) ?? 0) - 1);
+    if (i > GROW_ORDER.length * 10) break;
+  }
   const move = (from: Position, to: Position) => {
     if ((plan.get(from) ?? 0) > 1 || (from === 'FB' && plan.get('FB') === 1)) {
       plan.set(from, (plan.get(from) ?? 0) - 1);
@@ -71,9 +103,15 @@ function rosterPlan(rng: Rng): Map<Position, number> {
   };
   if (rng.chance(L.noFullbackShare)) move('FB', rng.pick(['TE', 'WR', 'HB'] as Position[]));
   if (rng.chance(L.thirdQbShare)) move(rng.pick(['HB', 'SS', 'MLB'] as Position[]), 'QB');
-  if (rng.chance(0.4))
+  if (rng.chance(L.extraSwapShare)) {
     move(rng.pick(['DT', 'CB', 'WR'] as Position[]), rng.pick(['LE', 'RE', 'C', 'LOLB'] as Position[]));
+  }
   return plan;
+}
+
+/** Practice squad positions, resized to the rule set's practice squad limit. */
+export function practiceSquadPlan(size: number): Position[] {
+  return Array.from({ length: size }, (_, i) => PRACTICE_SQUAD[i % PRACTICE_SQUAD.length] as Position);
 }
 
 function slotQuality(
@@ -107,7 +145,10 @@ function slotAge(rng: Rng, position: Position, depth: number, starters: number):
       : depth === starters
         ? L.age.backup
         : L.age.depth;
-  return Math.max(21, Math.min(veteranPosition ? 40 : 36, Math.round(rng.normal(mean, sd))));
+  return Math.max(
+    TUNING.generation.ageRange[0],
+    Math.min(veteranPosition ? L.maxAgeLongCareer : L.maxAge, Math.round(rng.normal(mean, sd)))
+  );
 }
 
 interface Counter {
@@ -132,7 +173,12 @@ function contractFor(
   }
   if (!('round' in player.draft) && player.experience <= 2) {
     return {
-      contract: udfaContract(rules, base, season - player.experience, rng.int(0, 25) * 1000),
+      contract: udfaContract(
+        rules,
+        base,
+        season - player.experience,
+        rng.int(C.udfaBonus[0] / 1000, C.udfaBonus[1] / 1000) * 1000
+      ),
       terms: null
     };
   }
@@ -143,10 +189,11 @@ function contractFor(
         Math.exp(rng.normal(0, TUNING.market.noise))
     )
   );
-  if (apy <= minimumSalary(rules, player.experience) * 1.1) {
+  if (apy <= minimumSalary(rules, player.experience) * C.minimumDealBand) {
     return { contract: minimumContract(rules, base, season, player.experience), terms: null };
   }
-  const length = apy >= 20_000_000 ? rng.int(3, 5) : apy >= 6_000_000 ? rng.int(2, 4) : rng.int(1, 2);
+  const [shortest, longest] = tierFor(C.length, apy).years;
+  const length = rng.int(shortest, longest);
   const elapsed = rng.int(0, length - 1);
   const terms: VeteranTerms = {
     apy,
@@ -228,7 +275,7 @@ export function generateFictionalLeague(input: LeagueInput): FictionalLeague {
     const rng = stream(seed, 'fictional', 'team', team);
     const ctx = context(rng, 'p');
     const teamOffset = rng.normal(0, L.teamSpread);
-    const plan = rosterPlan(rng);
+    const plan = rosterPlan(rng, rules.roster.active);
     const roster: Player[] = [];
     for (const [position, count] of plan) {
       const starters = Math.min(count, STARTERS[position]);
@@ -244,17 +291,26 @@ export function generateFictionalLeague(input: LeagueInput): FictionalLeague {
         );
       }
     }
-    for (const position of PRACTICE_SQUAD) {
+    // Practice squad (spec 12.1): the rule set's size, with no more veterans than the rules allow.
+    const { practiceSquad, practiceSquadVeterans, practiceSquadVeteranSeasons } = rules.roster;
+    const youngEnough = TUNING.generation.entryAge + practiceSquadVeteranSeasons;
+    let veterans = 0;
+    for (const position of practiceSquadPlan(practiceSquad)) {
       const [mean, sd] = L.practiceSquadQuality;
-      roster.push(
-        generatePlayer(ctx, {
-          position,
-          quality: rng.normal(mean, sd) + teamOffset * 0.5,
-          age: Math.max(21, Math.round(rng.normal(L.age.practiceSquad[0], L.age.practiceSquad[1]))),
-          team,
-          status: 'practice'
-        })
+      let age = Math.max(
+        TUNING.generation.ageRange[0],
+        Math.round(rng.normal(L.age.practiceSquad[0], L.age.practiceSquad[1]))
       );
+      if (veterans >= practiceSquadVeterans) age = Math.min(age, youngEnough);
+      const player = generatePlayer(ctx, {
+        position,
+        quality: rng.normal(mean, sd) + teamOffset * L.practiceSquadTeamShare,
+        age,
+        team,
+        status: 'practice'
+      });
+      if (player.experience > practiceSquadVeteranSeasons) veterans++;
+      roster.push(player);
     }
     const taken = new Set<number>();
     for (const player of roster) {

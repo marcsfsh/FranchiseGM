@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateFictionalLeague } from '../../src/engine/generate/league';
 import { capHit } from '../../src/engine/contracts/cap';
-import { DEFAULT_RULES } from '../../src/engine/rules/ruleset';
+import { DEFAULT_RULES, changeRules } from '../../src/engine/rules/ruleset';
 import { TEAM_ABBRS } from '../../src/data/team-colors';
 import { ageOn } from '../../src/engine/model/player';
 import { STAFF_ROLES } from '../../src/engine/model/staff';
@@ -102,5 +102,43 @@ describe('fictional league (build order no-CSV path)', () => {
     });
     expect(again.players.slice(0, 50)).toEqual(league.players.slice(0, 50));
     expect(again.contracts.at(-1)).toEqual(league.contracts.at(-1));
+  });
+});
+
+describe('fictional league follows the rule set (spec 12.1, 16)', () => {
+  it('keeps practice squad veterans within the limit across seeds', () => {
+    const { practiceSquadVeterans, practiceSquadVeteranSeasons } = DEFAULT_RULES.roster;
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const l = generateFictionalLeague({ seed, season: 2026, names: nameData(), rules: DEFAULT_RULES });
+      for (const team of TEAM_ABBRS) {
+        const veterans = l.players.filter(
+          p => p.team === team && p.status === 'practice' && p.experience > practiceSquadVeteranSeasons
+        );
+        expect(veterans.length, `${team} seed ${seed}`).toBeLessThanOrEqual(practiceSquadVeterans);
+      }
+    }
+  });
+
+  it('sizes rosters and practice squads from the rules', () => {
+    const rules = changeRules(changeRules(DEFAULT_RULES, 'roster', { active: 55 }), 'roster', {
+      practiceSquad: 12
+    });
+    const l = generateFictionalLeague({ seed: 9, season: 2026, names: nameData(), rules });
+    for (const team of TEAM_ABBRS) {
+      expect(
+        l.players.filter(p => p.team === team && p.status === 'active'),
+        team
+      ).toHaveLength(55);
+      expect(
+        l.players.filter(p => p.team === team && p.status === 'practice'),
+        team
+      ).toHaveLength(12);
+    }
+    const smaller = changeRules(DEFAULT_RULES, 'roster', { active: 46, gameDayActives: 45 });
+    const s = generateFictionalLeague({ seed: 9, season: 2026, names: nameData(), rules: smaller });
+    expect(s.players.filter(p => p.team === 'MIN' && p.status === 'active')).toHaveLength(46);
+    expect(
+      s.players.filter(p => p.team === 'MIN' && p.status === 'active' && p.position === 'K')
+    ).toHaveLength(1);
   });
 });

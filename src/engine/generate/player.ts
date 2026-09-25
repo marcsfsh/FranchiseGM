@@ -158,8 +158,11 @@ function pickHometown(rng: Rng, towns: Hometowns): { hometown: string; internati
 }
 
 function drawTraits(rng: Rng, position: Position, r: Ratings, tendencies: TraitTendencies): Traits {
+  const T = TUNING.traits;
   const t: Traits = { ...DEFAULT_TRAITS };
   const chance = (p: number) => rng.chance(Math.max(0, Math.min(1, p)));
+  const odds = (curve: { center: number; spread: number; scale: number; base?: number }, value: number) =>
+    (curve.base ?? 0) + curve.scale * sigmoid((value - curve.center) / curve.spread);
   const group = POSITION_GROUP[position];
   const tendency = (key: keyof Traits, fallback: number) => {
     const value = tendencies[key];
@@ -173,84 +176,98 @@ function drawTraits(rng: Rng, position: Position, r: Ratings, tendencies: TraitT
   };
   if (position === 'QB') {
     t.qbStyle = pickEnum('qbStyle', { balanced: 1 }) as Traits['qbStyle'];
-    t.sensePressure = r.awr >= 80 ? rng.pick(['ideal', 'ideal', 'average']) : r.awr >= 65 ? rng.pick(['average', 'average', 'ideal', 'triggerHappy']) : rng.pick(['paranoid', 'triggerHappy', 'oblivious', 'average']); // prettier-ignore
-    t.throwAway = chance(sigmoid((r.awr - 72) / 6));
-    t.tightSpiral = chance(sigmoid((r.thp + r.dac - 160) / 8));
+    t.sensePressure =
+      r.awr >= T.smartQbAwareness
+        ? rng.pick(['ideal', 'ideal', 'average'])
+        : r.awr >= T.averageQbAwareness
+          ? rng.pick(['average', 'average', 'ideal', 'triggerHappy'])
+          : rng.pick(['paranoid', 'triggerHappy', 'oblivious', 'average']);
+    t.throwAway = chance(odds(T.throwAway, r.awr));
+    t.tightSpiral = chance(odds(T.tightSpiral, r.thp + r.dac));
     t.forcesPasses =
-      r.awr >= 78 ? 'ideal' : r.thp >= 90 ? 'aggressive' : rng.pick(['conservative', 'ideal', 'aggressive']);
+      r.awr >= T.idealForcesAwareness
+        ? 'ideal'
+        : r.thp >= T.aggressiveForcesThrowPower
+          ? 'aggressive'
+          : rng.pick(['conservative', 'ideal', 'aggressive']);
   }
+  const [allHits, mediumHits, bigHits] = T.coversBall;
   t.coversBall =
-    r.car >= 85 ? 'forAllHits' : r.car >= 75 ? 'onMediumHits' : r.car >= 60 ? 'onBigHits' : 'never';
+    r.car >= allHits
+      ? 'forAllHits'
+      : r.car >= mediumHits
+        ? 'onMediumHits'
+        : r.car >= bigHits
+          ? 'onBigHits'
+          : 'never';
   if (['RB', 'WR', 'TE', 'QB'].includes(group)) {
-    t.fightForYards = chance(tendency('fightForYards', sigmoid((r.btk + r.trk - 140) / 10)));
+    t.fightForYards = chance(tendency('fightForYards', odds(T.fightForYards, r.btk + r.trk)));
   }
   if (['WR', 'TE', 'RB'].includes(group)) {
-    t.feetInBounds = chance(tendency('feetInBounds', sigmoid((r.cth + r.agi - 160) / 8)));
-    t.dropsOpenPasses = chance(sigmoid((60 - r.cth) / 6));
-    t.possessionCatch = chance(tendency('possessionCatch', sigmoid((r.cit - 75) / 6)));
-    t.aggressiveCatch = chance(tendency('aggressiveCatch', sigmoid((r.spc - 75) / 6)));
-    t.yacCatch = chance(tendency('yacCatch', sigmoid((r.spd + r.agi - 175) / 6)));
+    t.feetInBounds = chance(tendency('feetInBounds', odds(T.feetInBounds, r.cth + r.agi)));
+    t.dropsOpenPasses = chance(odds(T.dropsOpenPasses, 2 * T.dropsOpenPasses.center - r.cth));
+    t.possessionCatch = chance(tendency('possessionCatch', odds(T.possessionCatch, r.cit)));
+    t.aggressiveCatch = chance(tendency('aggressiveCatch', odds(T.aggressiveCatch, r.spc)));
+    t.yacCatch = chance(tendency('yacCatch', odds(T.yacCatch, r.spd + r.agi)));
   }
   if (['DL', 'LB', 'DB'].includes(group)) {
-    t.highMotor = chance(tendency('highMotor', sigmoid((r.pur + r.sta - 160) / 10)));
-    t.bigHitter = chance(tendency('bigHitter', sigmoid((r.pow - 75) / 6)));
-    t.stripsBall = chance(sigmoid((r.pow + r.tak - 160) / 10) * 0.6);
+    t.highMotor = chance(tendency('highMotor', odds(T.highMotor, r.pur + r.sta)));
+    t.bigHitter = chance(tendency('bigHitter', odds(T.bigHitter, r.pow)));
+    t.stripsBall = chance(odds(T.stripsBall, r.pow + r.tak));
     if (group !== 'DL') t.playsBall = pickEnum('playsBall', { balanced: 1 }) as Traits['playsBall'];
   }
   if (group === 'DL' || position === 'LOLB' || position === 'ROLB') {
-    t.dlSwim = chance(tendency('dlSwim', sigmoid((r.fmv - 75) / 6) * 0.7));
-    t.dlSpin = chance(tendency('dlSpin', sigmoid((r.fmv - 78) / 6) * 0.5));
-    t.dlBullRush = chance(tendency('dlBullRush', sigmoid((r.pmv - 75) / 6) * 0.7));
+    t.dlSwim = chance(tendency('dlSwim', odds(T.dlSwim, r.fmv)));
+    t.dlSpin = chance(tendency('dlSpin', odds(T.dlSpin, r.fmv)));
+    t.dlBullRush = chance(tendency('dlBullRush', odds(T.dlBullRush, r.pmv)));
   }
   if (group === 'LB') t.lbStyle = pickEnum('lbStyle', { balanced: 1 }) as Traits['lbStyle'];
   t.penalty =
-    r.awr >= 80
+    r.awr >= T.disciplinedAwareness
       ? rng.pick(['disciplined', 'normal'])
-      : r.awr < 58
+      : r.awr < T.undisciplinedAwareness
         ? rng.pick(['normal', 'undisciplined'])
         : 'normal';
-  t.clutch = chance(0.08 + 0.12 * sigmoid((r.awr - 80) / 5));
-  t.predictable = ['QB', 'RB'].includes(group) && chance(sigmoid((55 - r.awr) / 6) * 0.3);
+  t.clutch = chance(odds(T.clutch, r.awr));
+  t.predictable =
+    ['QB', 'RB'].includes(group) && chance(odds(T.predictable, 2 * T.predictable.center - r.awr));
   return t;
 }
 
 function drawPersonality(rng: Rng, ovr: number, age: number, awr: number): Personality {
-  const trait = (mean: number, sd: number) => Math.max(1, Math.min(99, Math.round(rng.normal(mean, sd))));
+  const P = TUNING.personality;
+  const trait = ([mean, sd]: readonly [number, number], shift = 0) =>
+    Math.max(1, Math.min(99, Math.round(rng.normal(mean + shift, sd))));
   return {
-    ego: trait(45 + (ovr - 70) * 0.6, 17),
-    loyalty: trait(50, 20),
-    workEthic: trait(60, 17),
-    leadership: trait(45 + (awr - 70) * 0.4 + (age - 26) * 1.5, 17),
-    competitiveness: trait(62, 15),
-    greed: trait(48 + (ovr - 70) * 0.3, 19),
-    volatility: trait(38, 18),
-    mediaStyle: trait(50, 20),
-    socialActivity: trait(50, 22)
+    ego: trait(P.ego, (ovr - P.averageOverall) * P.egoPerOverall),
+    loyalty: trait(P.loyalty),
+    workEthic: trait(P.workEthic),
+    leadership: trait(
+      P.leadership,
+      (awr - P.averageOverall) * P.leadershipPerAwareness + (age - P.leadershipPivotAge) * P.leadershipPerYear
+    ),
+    competitiveness: trait(P.competitiveness),
+    greed: trait(P.greed, (ovr - P.averageOverall) * P.greedPerOverall),
+    volatility: trait(P.volatility),
+    mediaStyle: trait(P.mediaStyle),
+    socialActivity: trait(P.socialActivity)
   };
 }
 
 function drawDevTrait(rng: Rng, potential: number, age: number): DevTrait {
   // Development describes the future, so young players with high ceilings carry the better traits.
-  const young = age <= 25 ? 1 : age <= 29 ? 0.85 : 0.7;
-  const weights = [
-    1,
-    sigmoid((potential - 78) / 4) * 0.55 * young + 0.08,
-    sigmoid((potential - 84) / 3) * 0.7 * young + 0.01,
-    sigmoid((potential - 90) / 2) * 0.5 * young
-  ];
-  return DEV_TRAITS[rng.weightedIndex(weights)] as DevTrait;
+  const D = TUNING.development;
+  const youth = age <= 25 ? D.youth.throughAge25 : age <= 29 ? D.youth.throughAge29 : D.youth.older;
+  const weight = (c: { center: number; spread: number; scale: number; base: number }) =>
+    sigmoid((potential - c.center) / c.spread) * c.scale * youth + c.base;
+  return DEV_TRAITS[
+    rng.weightedIndex([1, weight(D.star), weight(D.superstar), weight(D.xFactor)])
+  ] as DevTrait;
 }
 
 /** Peak age by position group, where ratings stop rising (spec 10.5 uses the same curve later). */
 export function peakAge(position: Position): number {
-  const group = POSITION_GROUP[position];
-  return group === 'QB' || group === 'ST'
-    ? 30
-    : group === 'RB'
-      ? 25
-      : group === 'DB' || group === 'WR'
-        ? 26
-        : 27;
+  return G.peakAge[POSITION_GROUP[position]];
 }
 
 export function generatePlayer(ctx: GenContext, req: PlayerRequest): Player {
@@ -259,7 +276,9 @@ export function generatePlayer(ctx: GenContext, req: PlayerRequest): Player {
   const archetype = template.archetypes[
     rng.weightedIndex(template.archetypes.map(a => a.weight))
   ] as Archetype;
-  const age = req.age ?? Math.max(21, Math.min(40, Math.round(rng.normal(template.age[0], template.age[1]))));
+  const [minAge, maxAge] = G.ageRange;
+  const age =
+    req.age ?? Math.max(minAge, Math.min(maxAge, Math.round(rng.normal(template.age[0], template.age[1]))));
 
   const ratings: Ratings = emptyRatings();
   for (const key of RATING_KEYS) {
@@ -267,26 +286,32 @@ export function generatePlayer(ctx: GenContext, req: PlayerRequest): Player {
     const shared = loading * req.quality;
     const own = Math.sqrt(Math.max(0, 1 - loading * loading)) * rng.normal();
     let value = mean + (archetype.adjust[key as RatingKey] ?? 0) + sd * (shared + own);
-    // Age: awareness grows with experience; athleticism fades past 29 (spec 10.5 refines this).
-    if (key === 'awr' || key === 'prc') value += Math.max(-5, Math.min(6, (age - 25) * G.awarenessPerYear));
+    // Age: awareness grows with experience; athleticism fades later (spec 10.5 refines this).
+    if (key === 'awr' || key === 'prc') {
+      value += Math.max(
+        G.awarenessRange[0],
+        Math.min(G.awarenessRange[1], (age - G.awarenessPivotAge) * G.awarenessPerYear)
+      );
+    }
     if (['spd', 'acc', 'agi', 'cod', 'jmp'].includes(key))
-      value -= Math.max(0, age - 29) * G.athleticDeclinePerYear;
-    if (key === 'sta') value -= Math.max(0, age - 31) * G.athleticDeclinePerYear;
-    if ((key === 'kpw' || key === 'kac') && age > 35) value -= (age - 35) * G.athleticDeclinePerYear;
+      value -= Math.max(0, age - G.athleticDeclineAge) * G.athleticDeclinePerYear;
+    if (key === 'sta') value -= Math.max(0, age - G.staminaDeclineAge) * G.athleticDeclinePerYear;
+    if (key === 'kpw' || key === 'kac')
+      value -= Math.max(0, age - G.kickingDeclineAge) * G.athleticDeclinePerYear;
     ratings[key] = Math.max(G.ratingFloor, clampRating(value));
   }
 
   const heightIn = Math.round(rng.normal(template.height[0] + archetype.heightAdjust, template.height[1]));
-  const height = Math.max(66, Math.min(82, heightIn));
+  const height = Math.max(G.heightRange[0], Math.min(G.heightRange[1], heightIn));
   const weightLb = rng.normal(
-    template.weight[0] + archetype.weightAdjust + (height - template.height[0]) * 4,
+    template.weight[0] + archetype.weightAdjust + (height - template.height[0]) * G.weightPerInch,
     template.weight[1]
   );
-  const weight = Math.max(160, Math.min(380, Math.round(weightLb)));
+  const weight = Math.max(G.weightRange[0], Math.min(G.weightRange[1], Math.round(weightLb)));
 
   const ovr = overall(req.position, ratings);
   const growth = Math.max(0, peakAge(req.position) - age) * rng.range(G.growthPerYearMin, G.growthPerYearMax);
-  const potential = Math.max(ovr, Math.min(99, Math.round(ovr + growth + rng.normal(0, 2))));
+  const potential = Math.max(ovr, Math.min(99, Math.round(ovr + growth + rng.normal(0, G.potentialNoise))));
 
   const birthDate = birthDateFor(rng, ctx.season, age);
   const { firstName, lastName } = pickName(ctx, Number(birthDate.slice(0, 4)));
@@ -296,14 +321,17 @@ export function generatePlayer(ctx: GenContext, req: PlayerRequest): Player {
       ? ''
       : pickCollege(rng, ctx.names.colleges, req.quality);
 
-  const experience = Math.max(0, age - 22 + (rng.chance(0.25) ? -1 : 0));
-  const draftScore = req.quality * 0.8 + rng.normal(0, 0.8);
+  const experience = Math.max(0, age - G.entryAge + (rng.chance(G.lateStartShare) ? -1 : 0));
+  const draftScore = req.quality * G.draftScoreQualityWeight + rng.normal(0, G.draftScoreNoise);
   const draftYear = ctx.season - experience;
   const draft =
     college === '' || draftScore < G.undraftedBelow
       ? { year: draftYear, undrafted: true as const }
       : (() => {
-          const round = Math.max(1, Math.min(7, Math.ceil((1.6 - draftScore) * 2.2)));
+          const round = Math.max(
+            1,
+            Math.min(7, Math.ceil((G.draftRoundBase - draftScore) * G.draftRoundScale))
+          );
           return {
             year: draftYear,
             round,
@@ -323,7 +351,10 @@ export function generatePlayer(ctx: GenContext, req: PlayerRequest): Player {
     hometown,
     height,
     weight,
-    handedness: HANDED.includes(req.position) && rng.chance(req.position === 'QB' ? 0.07 : 0.12) ? 'L' : 'R',
+    handedness:
+      HANDED.includes(req.position) && rng.chance(req.position === 'QB' ? G.leftHandedQb : G.leftFootedKicker)
+        ? 'L'
+        : 'R',
     experience,
     draft,
     ratings,
@@ -335,7 +366,7 @@ export function generatePlayer(ctx: GenContext, req: PlayerRequest): Player {
     personality: drawPersonality(rng, ovr, age, ratings.awr),
     team: req.team,
     status: req.status,
-    morale: Math.max(30, Math.min(95, Math.round(rng.normal(70, 8)))),
+    morale: Math.max(G.morale[2], Math.min(G.morale[3], Math.round(rng.normal(G.morale[0], G.morale[1])))),
     contractId: null
   };
 }

@@ -42,34 +42,41 @@ function staffName(ctx: GenContext, age: number): { firstName: string; lastName:
   throw new Error('Could not find an unused staff name');
 }
 
-function tendencies(rng: Rng): CoachTendencies {
-  return {
-    aggressiveness: clamp(rng.normal(50, 18)),
-    passLean: clamp(rng.normal(55, 15)),
-    clockManagement: clamp(rng.normal(55, 15)),
-    youthLean: clamp(rng.normal(50, 20)),
-    rigidity: clamp(rng.normal(50, 18)),
-    playerRelationships: clamp(rng.normal(55, 16)),
-    personnelPower: clamp(rng.normal(45, 20))
-  };
+/** Draws each trait from its [mean, sd] in the table. */
+function traits<K extends string>(
+  rng: Rng,
+  table: Readonly<Record<K, readonly [number, number]>>
+): Record<K, number> {
+  const out = {} as Record<K, number>;
+  for (const key of Object.keys(table) as K[]) {
+    const [mean, sd] = table[key];
+    out[key] = clamp(rng.normal(mean, sd));
+  }
+  return out;
 }
+
+const tendencies = (rng: Rng): CoachTendencies => traits(rng, S.tendencies);
 
 const REGIONS = ['Northeast', 'Southeast', 'South', 'Midwest', 'Southwest', 'West'];
 
 export function generateStaffMember(ctx: GenContext, role: StaffRole, team: TeamAbbr | null): StaffMember {
   const { rng } = ctx;
   const [ageMean, ageSd] = S.age[role];
-  const age = Math.max(28, Math.min(75, Math.round(rng.normal(ageMean, ageSd))));
+  const age = Math.max(S.ageRange[0], Math.min(S.ageRange[1], Math.round(rng.normal(ageMean, ageSd))));
   const quality = rng.normal();
   const ratings: Record<string, number> = {};
   for (const key of STAFF_RATING_KEYS[role])
-    ratings[key] = clamp(S.ratingMean + S.ratingSd * (0.7 * quality + 0.71 * rng.normal()));
+    ratings[key] = clamp(
+      S.ratingMean +
+        S.ratingSd * (S.ratingLoading * quality + Math.sqrt(1 - S.ratingLoading ** 2) * rng.normal())
+    );
   const values = Object.values(ratings);
   const overall = clamp(values.reduce((a, b) => a + b, 0) / values.length);
   const coach = ['HC', 'OC', 'DC'].includes(role);
   const [salaryLow, salaryHigh] = S.salary[role];
   const salary = Math.round((salaryLow + (salaryHigh - salaryLow) * (overall / 99) ** 2) / 10_000) * 10_000;
   const name = staffName(ctx, age);
+  const contractYears = coach ? S.coachContractYears : S.staffContractYears;
   return {
     id: ctx.newId(),
     ...name,
@@ -80,17 +87,19 @@ export function generateStaffMember(ctx: GenContext, role: StaffRole, team: Team
     abilities: [],
     offenseScheme: role === 'HC' || role === 'OC' ? rng.pick(OFFENSE_SCHEMES) : null,
     defenseScheme: role === 'HC' || role === 'DC' ? rng.pick(DEFENSE_SCHEMES) : null,
-    personality: {
-      riskTolerance: clamp(rng.normal(50, 18)),
-      patience: clamp(rng.normal(50, 18)),
-      loyalty: clamp(rng.normal(50, 18)),
-      analyticsLean: clamp(rng.normal(50, 20)),
-      ambition: clamp(rng.normal(55, 18))
-    },
+    personality: traits(rng, S.personality),
     tendencies: role === 'HC' ? tendencies(rng) : null,
-    contract: { years: rng.int(1, coach ? 5 : 3), salary },
+    contract: { years: rng.int(contractYears[0], contractYears[1]), salary },
     record: emptyRecord(),
-    yearsInRole: Math.max(0, Math.min(age - 30, Math.round(rng.range(0, (age - 30) / (coach ? 2.5 : 1.5))))),
+    yearsInRole: Math.max(
+      0,
+      Math.min(
+        age - S.firstJobAge,
+        Math.round(
+          rng.range(0, (age - S.firstJobAge) / (coach ? S.coachTenureDivisor : S.staffTenureDivisor))
+        )
+      )
+    ),
     region: role === 'SCOUT' ? rng.pick(REGIONS) : null
   };
 }
@@ -116,20 +125,16 @@ export function generateTeamStaff(ctx: GenContext, team: TeamAbbr): StaffMember[
 
 export function generateOwner(ctx: GenContext, team: TeamAbbr): Owner {
   const { rng } = ctx;
-  const age = Math.max(35, Math.min(92, Math.round(rng.normal(66, 11))));
+  const age = Math.max(
+    S.ownerAgeRange[0],
+    Math.min(S.ownerAgeRange[1], Math.round(rng.normal(S.ownerAge[0], S.ownerAge[1])))
+  );
   const name = staffName(ctx, age);
   return {
     id: ctx.newId(),
     ...name,
     team,
-    wealth: rng.weighted([1, 2, 3, 4, 5], [10, 25, 30, 25, 10]),
-    personality: {
-      patience: clamp(rng.normal(50, 20)),
-      meddling: clamp(rng.normal(40, 20)),
-      spending: clamp(rng.normal(55, 18)),
-      relocationAppetite: clamp(rng.normal(20, 15)),
-      tradition: clamp(rng.normal(55, 20)),
-      competitiveness: clamp(rng.normal(60, 18))
-    }
+    wealth: rng.weighted([1, 2, 3, 4, 5], S.ownerWealthWeights),
+    personality: traits(rng, S.owner)
   };
 }

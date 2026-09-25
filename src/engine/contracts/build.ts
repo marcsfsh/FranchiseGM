@@ -6,6 +6,7 @@ import type { TeamAbbr } from '../../data/team-colors';
 import type { Rng } from '../rng';
 import type { GameDate } from '../model/calendar';
 import { minimumSalary, type RuleSet } from '../rules/ruleset';
+import { TUNING } from '../tuning';
 import { rookieSigningBonus } from './market';
 import { emptyYear, type Contract, type ContractType } from './types';
 
@@ -47,7 +48,8 @@ export function rookieContract(rules: RuleSet, base: Base, draftYear: number, pi
     const year = emptyYear(draftYear + i);
     year.base =
       minimumSalary(rules, i) + (firstRound ? roundK(bonus * rules.rookieScale.firstRoundBaseShare) : 0);
-    year.guaranteedBase = firstRound ? year.base : i === 0 && pick <= 64 ? year.base : 0;
+    year.guaranteedBase =
+      firstRound || (i === 0 && pick <= TUNING.contracts.guaranteedFirstYearThroughPick) ? year.base : 0;
     return year;
   });
   return c;
@@ -56,7 +58,7 @@ export function rookieContract(rules: RuleSet, base: Base, draftYear: number, pi
 /** An undrafted free agent deal: three minimum-salary years and a small bonus. */
 export function udfaContract(rules: RuleSet, base: Base, signedYear: number, bonus: number): Contract {
   const c = contract(base, 'udfa', { season: signedYear, phase: 'udfa', week: 1 }, roundK(bonus));
-  c.years = Array.from({ length: 3 }, (_, i) => ({
+  c.years = Array.from({ length: rules.rookieScale.udfaYears }, (_, i) => ({
     ...emptyYear(signedYear + i),
     base: minimumSalary(rules, i)
   }));
@@ -76,13 +78,15 @@ export interface VeteranTerms {
   bonusShare: number;
 }
 
+/** Picks the tier for an average annual value from a list ordered from the highest minimum down. */
+export function tierFor<T extends { minApy: number }>(tiers: readonly T[], apy: number): T {
+  return tiers.find(t => apy >= t.minApy) ?? (tiers[tiers.length - 1] as T);
+}
+
 /** A typical signing bonus share for a deal of this size. */
 export function typicalBonusShare(rng: Rng, apy: number): number {
-  return apy >= 20_000_000
-    ? rng.range(0.32, 0.45)
-    : apy >= 5_000_000
-      ? rng.range(0.18, 0.32)
-      : rng.range(0, 0.12);
+  const [low, high] = tierFor(TUNING.contracts.bonusShare, apy).range;
+  return rng.range(low, high);
 }
 
 /**
@@ -93,12 +97,14 @@ export function veteranContract(rules: RuleSet, base: Base, season: number, term
   const start = season - terms.elapsed;
   const total = terms.apy * terms.length;
   const signingBonus = roundK(total * terms.bonusShare);
-  const weights = Array.from({ length: terms.length }, (_, i) => 1 + 0.1 * i);
+  const weights = Array.from({ length: terms.length }, (_, i) => 1 + TUNING.contracts.baseRaisePerYear * i);
   const weightSum = weights.reduce((a, b) => a + b, 0);
-  const guaranteedYears = terms.apy >= 20_000_000 ? 2 : terms.apy >= 8_000_000 ? 1 : 0;
+  const guaranteedYears = tierFor(TUNING.contracts.guaranteedYears, terms.apy).years;
   const c = contract(
     base,
-    terms.apy <= minimumSalary(rules, terms.creditedAtSigning) * 1.05 ? 'minimum' : 'veteran',
+    terms.apy <= minimumSalary(rules, terms.creditedAtSigning) * TUNING.contracts.minimumBand
+      ? 'minimum'
+      : 'veteran',
     signedAt(start),
     signingBonus
   );

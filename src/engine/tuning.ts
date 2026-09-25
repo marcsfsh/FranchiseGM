@@ -8,10 +8,16 @@
 export const TUNING = {
   /** Player generation (spec 10.2). */
   generation: {
-    /** Awareness and play recognition gained per year of age from 25 (capped at -5 and +6). */
+    /** Awareness and play recognition gained per year of age from the pivot age, within the range. */
     awarenessPerYear: 1.2,
-    /** Speed, acceleration, agility, change of direction, and jumping lost per year past 29. */
+    awarenessPivotAge: 25,
+    awarenessRange: [-5, 6],
+    /** Speed, acceleration, agility, change of direction, and jumping lost per year past the decline age;
+     * stamina and kicking decline later. */
     athleticDeclinePerYear: 1.5,
+    athleticDeclineAge: 29,
+    staminaDeclineAge: 31,
+    kickingDeclineAge: 35,
     /** Lowest rating the generator produces. */
     ratingFloor: 12,
     /** Overall points a young player is expected to gain per year until his peak age (potential). */
@@ -22,7 +28,87 @@ export const TUNING = {
     /** Share of international-hometown players who came through the International Player Pathway. */
     internationalPathwayShare: 0.25,
     /** Draft score below which a generated veteran is listed as undrafted. */
-    undraftedBelow: -0.9
+    undraftedBelow: -0.9,
+    /** Draft score = quality x weight + noise; round = ceil((base - score) x scale), clamped to 1-7. */
+    draftScoreQualityWeight: 0.8,
+    draftScoreNoise: 0.8,
+    draftRoundBase: 1.6,
+    draftRoundScale: 2.2,
+    /** Players enter the league at this age; this share started a year later (one fewer credited season). */
+    entryAge: 22,
+    lateStartShare: 0.25,
+    /** Age where ratings stop rising, by position group (spec 10.5 builds on the same curve). */
+    peakAge: { QB: 30, RB: 25, WR: 26, TE: 27, OL: 27, DL: 27, LB: 27, DB: 26, ST: 30 },
+    /** Share of left-handed quarterbacks, and of left-footed kickers and punters. */
+    leftHandedQb: 0.07,
+    leftFootedKicker: 0.12,
+    /** Body limits (inches, pounds) and pounds per inch of height above the position mean. */
+    heightRange: [66, 82],
+    weightRange: [160, 380],
+    weightPerInch: 4,
+    ageRange: [21, 40],
+    potentialNoise: 2,
+    /** Morale at generation, 0 to 100: mean, spread, and bounds. */
+    morale: [70, 8, 30, 95]
+  },
+
+  /** Traits conditional on ratings (spec 10.2): chance = scale x sigmoid((value - center) / spread). */
+  traits: {
+    throwAway: { center: 72, spread: 6, scale: 1 },
+    tightSpiral: { center: 160, spread: 8, scale: 1 },
+    fightForYards: { center: 140, spread: 10, scale: 1 },
+    feetInBounds: { center: 160, spread: 8, scale: 1 },
+    dropsOpenPasses: { center: 60, spread: 6, scale: 1 },
+    possessionCatch: { center: 75, spread: 6, scale: 1 },
+    aggressiveCatch: { center: 75, spread: 6, scale: 1 },
+    yacCatch: { center: 175, spread: 6, scale: 1 },
+    highMotor: { center: 160, spread: 10, scale: 1 },
+    bigHitter: { center: 75, spread: 6, scale: 1 },
+    stripsBall: { center: 160, spread: 10, scale: 0.6 },
+    dlSwim: { center: 75, spread: 6, scale: 0.7 },
+    dlSpin: { center: 78, spread: 6, scale: 0.5 },
+    dlBullRush: { center: 75, spread: 6, scale: 0.7 },
+    clutch: { center: 80, spread: 5, scale: 0.12, base: 0.08 },
+    predictable: { center: 55, spread: 6, scale: 0.3 },
+    /** Awareness bands for sense pressure, forcing passes, and penalties; carrying bands for covering the ball. */
+    smartQbAwareness: 80,
+    averageQbAwareness: 65,
+    idealForcesAwareness: 78,
+    aggressiveForcesThrowPower: 90,
+    disciplinedAwareness: 80,
+    undisciplinedAwareness: 58,
+    coversBall: [85, 75, 60]
+  },
+
+  /** Player personality at generation (spec 10.9): [mean, sd] plus how ratings and age shift the mean. */
+  personality: {
+    /** Overall and age that the shifts below are measured from. */
+    averageOverall: 70,
+    leadershipPivotAge: 26,
+    ego: [45, 17],
+    egoPerOverall: 0.6,
+    loyalty: [50, 20],
+    workEthic: [60, 17],
+    leadership: [45, 17],
+    leadershipPerAwareness: 0.4,
+    leadershipPerYear: 1.5,
+    competitiveness: [62, 15],
+    greed: [48, 19],
+    greedPerOverall: 0.3,
+    volatility: [38, 18],
+    mediaStyle: [50, 20],
+    socialActivity: [50, 22]
+  },
+
+  /**
+   * Development traits (spec 10.6). Odds weights relative to Normal (1): scale x sigmoid((potential -
+   * center) / spread) x youth + base, where youth favors players still growing.
+   */
+  development: {
+    star: { center: 78, spread: 4, scale: 0.55, base: 0.08 },
+    superstar: { center: 84, spread: 3, scale: 0.7, base: 0.01 },
+    xFactor: { center: 90, spread: 2, scale: 0.5, base: 0 },
+    youth: { throughAge25: 1, throughAge29: 0.85, older: 0.7 }
   },
 
   /** Veteran salary market (spec 11.6, 11.7): average annual value by position, overall, and age. */
@@ -64,6 +150,38 @@ export const TUNING = {
     topOverage: 0.08
   },
 
+  /** Contract structure for generated deals (spec 11.3, 6.5). Tiers are by average annual value. */
+  contracts: {
+    /** Signing bonus share of the total value. */
+    bonusShare: [
+      { minApy: 20_000_000, range: [0.32, 0.45] },
+      { minApy: 5_000_000, range: [0.18, 0.32] },
+      { minApy: 0, range: [0, 0.12] }
+    ],
+    /** Years of fully guaranteed base salary at signing. */
+    guaranteedYears: [
+      { minApy: 20_000_000, years: 2 },
+      { minApy: 8_000_000, years: 1 },
+      { minApy: 0, years: 0 }
+    ],
+    /** Length range in years. */
+    length: [
+      { minApy: 20_000_000, years: [3, 5] },
+      { minApy: 6_000_000, years: [2, 4] },
+      { minApy: 0, years: [1, 2] }
+    ],
+    /** Each year's base salary weight rises by this share of the first year's. */
+    baseRaisePerYear: 0.1,
+    /** A deal within this multiple of the minimum is labeled a minimum contract. */
+    minimumBand: 1.05,
+    /** A generated veteran priced within this multiple of the minimum signs a one-year minimum deal. */
+    minimumDealBand: 1.1,
+    /** Picks through this number get a guaranteed first-year base salary. */
+    guaranteedFirstYearThroughPick: 64,
+    /** Signing bonus range for undrafted free agents, dollars. */
+    udfaBonus: [0, 25_000]
+  },
+
   /** The fictional league (spec 10.2 item 4): roster quality by slot, ages, and cap use. */
   league: {
     /** Latent quality of starters, their spread, and the spread of team strength. */
@@ -83,6 +201,8 @@ export const TUNING = {
       [-1.1, 0.5]
     ],
     practiceSquadQuality: [-1.6, 0.45],
+    /** Practice squads share this much of their team's strength. */
+    practiceSquadTeamShare: 0.5,
     freeAgentQuality: [-1.5, 0.75],
     freeAgents: 300,
     youngFreeAgentShare: 0.6,
@@ -96,9 +216,13 @@ export const TUNING = {
       youngFreeAgent: [23.5, 1.2],
       veteranFreeAgent: [29, 3]
     },
-    /** Share of teams without a fullback, and carrying a third quarterback. */
+    /** Share of teams without a fullback, carrying a third quarterback, and shifting one more spot. */
     noFullbackShare: 0.3,
     thirdQbShare: 0.35,
+    extraSwapShare: 0.4,
+    /** Oldest generated player, and the oldest at the positions that last longest (QB, K, P, LS). */
+    maxAge: 36,
+    maxAgeLongCareer: 40,
     /** Each team's cap use is drawn in this range, and veteran pay scales within these limits to hit it. */
     capUseMin: 0.9,
     capUseMax: 0.985,
@@ -110,6 +234,45 @@ export const TUNING = {
   staff: {
     ratingMean: 62,
     ratingSd: 12,
+    /** How much one staff member's ratings share a common quality (the rest is independent). */
+    ratingLoading: 0.7,
+    ageRange: [28, 75],
+    /** Contract length ranges: head coach and coordinators, then everyone else. */
+    coachContractYears: [1, 5],
+    staffContractYears: [1, 3],
+    /** Seasons in the role before the league began: up to (age - 30) / divisor. */
+    firstJobAge: 30,
+    coachTenureDivisor: 2.5,
+    staffTenureDivisor: 1.5,
+    /** Personality [mean, sd] for coaches and staff (spec 14.3), and head coach tendencies. */
+    personality: {
+      riskTolerance: [50, 18],
+      patience: [50, 18],
+      loyalty: [50, 18],
+      analyticsLean: [50, 20],
+      ambition: [55, 18]
+    },
+    tendencies: {
+      aggressiveness: [50, 18],
+      passLean: [55, 15],
+      clockManagement: [55, 15],
+      youthLean: [50, 20],
+      rigidity: [50, 18],
+      playerRelationships: [55, 16],
+      personnelPower: [45, 20]
+    },
+    /** Owners (spec 14.8): age, wealth tier weights for tiers 1 to 5, and personality. */
+    ownerAge: [66, 11],
+    ownerAgeRange: [35, 92],
+    ownerWealthWeights: [10, 25, 30, 25, 10],
+    owner: {
+      patience: [50, 20],
+      meddling: [40, 20],
+      spending: [55, 18],
+      relocationAppetite: [20, 15],
+      tradition: [55, 20],
+      competitiveness: [60, 18]
+    },
     /** Share of coordinators who run the head coach's scheme. */
     coordinatorMatchesHead: 0.75,
     /** Age mean and spread by role. */
