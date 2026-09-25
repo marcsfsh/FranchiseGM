@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { TeamAbbr } from '../../src/data/team-colors';
-import { buildStandings, rankLeague, winPct, type GameScore } from '../../src/engine/season/standings';
+import {
+  buildStandings,
+  explainTiebreak,
+  rankLeague,
+  tiebreaks,
+  winPct,
+  type GameScore
+} from '../../src/engine/season/standings';
 
 /** A season's finished games, built one result at a time. */
 function season() {
@@ -112,6 +119,18 @@ describe('standings (spec 5.3)', () => {
     // GB and CHI match on everything after that, down to the coin toss.
     expect(order(teams).slice(1, 3).sort()).toEqual(['CHI', 'GB']);
     expect(teams[1]?.tiebreak).toBe('Coin toss');
+    // Explained in order: MIN over both, then the coin toss winner over the other.
+    const [second, third] = order(teams).slice(1, 3) as [TeamAbbr, TeamAbbr];
+    const table = buildStandings(s.games);
+    const notes = tiebreaks(teams, table);
+    expect(notes).toEqual([
+      { abbr: 'MIN', over: [second, third], step: 'Head-to-head' },
+      { abbr: second, over: [third], step: 'Coin toss' }
+    ]);
+    expect(notes.map(n => explainTiebreak(n, table, abbr => `the ${abbr}`))).toEqual([
+      `The MIN are ahead of the ${second} and the ${third}, also 2–2, on head-to-head record.`,
+      `The ${second} are ahead of the ${third}, also 2–2, on a coin toss.`
+    ]);
   });
 
   it('seeds division winners first, and lets only the best club of a division into a wild card tie', () => {

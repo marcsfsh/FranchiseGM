@@ -1,0 +1,98 @@
+/* The League section (spec 19.3): standings, the playoff picture and bracket. Tokens only. */
+.standings-table tr.is-us th,
+.standings-table tr.is-us td {
+  background: var(--selection-bg);
+  color: var(--selection-text);
+  font-weight: 800;
+}
+.standings-table .group-row th {
+  background: var(--surface-2);
+  font-weight: 700;
+}
+.tiebreak-notes ul,
+.seed-list,
+.matchup-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  margin: 0;
+  padding-left: var(--s5);
+}
+.tiebreak-notes li {
+  font-size: var(--fs-small);
+}
+.seed-list {
+  padding-left: 0;
+  list-style: none;
+}
+.seed-list li.is-us,
+.matchup-list li.is-us {
+  font-weight: 800;
+}
+.bracket-wrap {
+  container-type: inline-size;
+  container-name: bracket;
+}
+.bracket {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s4);
+}
+.bracket-round ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bracket-game {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.bracket-game p {
+  margin: 0;
+  font-size: var(--fs-small);
+}
+.bracket-team {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+  min-width: 0;
+}
+.bracket-team span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.bracket-team.is-winner {
+  font-weight: 800;
+}
+.bracket-team.is-us {
+  background: var(--selection-bg);
+  color: var(--selection-text);
+}
+@container bracket (min-width: 48rem) {
+  .bracket {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+/* A choice of views: a labeled row of radio buttons that wraps on narrow screens. */
+.view-switch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.view-switch > legend {
+  padding: 0;
+  margin-bottom: var(--s1);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}

@@ -2,7 +2,13 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { HISTORY_FIXTURE } from './global-setup';
-import { expectNoHorizontalOverflow, expectTouchTargets, openGame, sizeOf } from './helpers';
+import {
+  expectNoHorizontalOverflow,
+  expectRegionsMatchOverflow,
+  expectTouchTargets,
+  openGame,
+  sizeOf
+} from './helpers';
 
 // M5: career stats, game logs, and the records book from stored history (spec 9, 18.5).
 interface Fixture {
@@ -29,25 +35,6 @@ async function importFixture(page: Page): Promise<void> {
   const card = page.locator('[data-league-id]', { hasText: fixture.league.meta.name });
   await card.getByRole('button', { name: 'Continue' }).click();
   await expect(page.locator('main h1')).toHaveText('Team hub');
-}
-
-/**
- * Every table scroll area is a labeled, focusable region exactly when its table overflows. Regions update
- * on the next frame after a table appears or resizes, so the check waits for them to settle.
- */
-async function expectRegionsMatchOverflow(page: Page): Promise<void> {
-  const wrong = () =>
-    page.evaluate(() =>
-      [...document.querySelectorAll<HTMLElement>('main .table-scroll')].flatMap(el => {
-        const scrolls = el.scrollWidth > el.clientWidth + 1;
-        const region =
-          el.getAttribute('role') === 'region' && !!el.getAttribute('aria-label') && el.tabIndex === 0;
-        return scrolls === region
-          ? []
-          : [`${el.querySelector('caption')?.textContent ?? '?'} scrolls=${scrolls}`];
-      })
-    );
-  await expect.poll(wrong).toEqual([]);
 }
 
 test('shows career stats and a game log for any stored season, fast', async ({ page }, info) => {

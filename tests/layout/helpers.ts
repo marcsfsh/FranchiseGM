@@ -1,4 +1,5 @@
 import { expect, type Page, type TestInfo } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 
@@ -157,4 +158,55 @@ export async function contrastOf(page: Page, selector: string): Promise<number> 
     const back = lum(parse(bg));
     return (Math.max(fg, back) + 0.05) / (Math.min(fg, back) + 0.05);
   }, selector);
+}
+
+/**
+ * Imports a league export from the Leagues screen and opens it on the team hub. The first import opens the
+ * game with `options`; a later one in the same page switches leagues from Settings first.
+ */
+export async function importLeagueFixture(
+  page: Page,
+  file: string,
+  name: string,
+  options: OpenOptions = {}
+): Promise<void> {
+  if (page.url().startsWith(GAME_URL)) {
+    // A league is open: Settings > Switch league saves and closes it.
+    await goTo(page, '#/settings', 'Settings');
+    await page.getByRole('button', { name: 'Switch league' }).click();
+    await expect(page.locator('main h1')).toHaveText('Leagues');
+  } else await openGame(page, { ...options, hash: '#/leagues' });
+  await page.setInputFiles('#importLeagueFile', {
+    name: 'league.json.gz',
+    mimeType: 'application/gzip',
+    buffer: readFileSync(file)
+  });
+  const card = page.locator('[data-league-id]', { hasText: name });
+  await card.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.locator('main h1')).toHaveText('Team hub');
+}
+
+/** Goes to a route by its hash and waits for the screen's heading. */
+export async function goTo(page: Page, hash: string, heading: string): Promise<void> {
+  await page.evaluate(h => (location.hash = h), hash);
+  await expect(page.locator('main h1')).toHaveText(heading);
+}
+
+/**
+ * Every table scroll area is a labeled, focusable region exactly when its table overflows. Regions update
+ * on the next frame after a table appears or resizes, so the check waits for them to settle.
+ */
+export async function expectRegionsMatchOverflow(page: Page): Promise<void> {
+  const wrong = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('main .table-scroll')].flatMap(el => {
+        const scrolls = el.scrollWidth > el.clientWidth + 1;
+        const region =
+          el.getAttribute('role') === 'region' && !!el.getAttribute('aria-label') && el.tabIndex === 0;
+        return scrolls === region
+          ? []
+          : [`${el.querySelector('caption')?.textContent ?? '?'} scrolls=${scrolls}`];
+      })
+    );
+  await expect.poll(wrong).toEqual([]);
 }

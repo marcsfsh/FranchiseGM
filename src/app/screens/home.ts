@@ -16,6 +16,7 @@ import type { WinLoss } from '../../engine/season/standings';
 import { h, type Child } from '../dom';
 import { toast } from '../feedback';
 import { gameDay, kickoff, record } from '../format';
+import { href } from '../router';
 import { dateLine } from '../shell';
 import type { AdvanceTarget, AppState } from '../state';
 import { playerLink, tierPlate } from '../ui/players';
@@ -304,7 +305,7 @@ function standingsCards(league: League): HTMLElement[] {
   const cards = [
     homeCard(
       'Division standings',
-      {},
+      { arrow: ['Full standings', href('leagueTab', { tab: 'standings' })] },
       division ? h('div', { 'aria-label': `${info.conf} ${info.div} standings` }, ...division.teams.map(t => row(t.abbr))) : h('p', { class: 'empty' }, 'No standings yet.')
     )
   ]; // prettier-ignore
@@ -315,7 +316,7 @@ function standingsCards(league: League): HTMLElement[] {
     cards.push(
       homeCard(
         `${info.conf} playoff picture`,
-        {},
+        { arrow: ['Playoffs', href('leagueTab', { tab: 'playoffs' })] },
         h('p', { class: 'muted' }, league.season.seeds ? 'The seeds are set.' : 'If the season ended today.'),
         h('div', null, ...seeds.map(s => row(s.abbr, `${s.seed}.`)))
       )

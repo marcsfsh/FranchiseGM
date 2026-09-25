@@ -6,6 +6,7 @@
 import { DEFAULT_RULES } from '../rules/ruleset';
 import { team, TEAMS, type Conference, type TeamAbbr } from '../../data/teams';
 import { stream } from '../rng';
+import { joinList } from '../text';
 
 /** A finished game as the standings see it. */
 export interface GameScore {
@@ -454,4 +455,64 @@ export function rankLeague(
     };
   });
   return { table, divisions, conferences };
+}
+
+/** A club a tiebreaker placed ahead of the clubs tied with it on record, and the step that did it. */
+export interface TiebreakNote {
+  abbr: TeamAbbr;
+  over: TeamAbbr[];
+  step: string;
+}
+
+/**
+ * The tiebreakers behind one ordered list of clubs (a division, or a conference's division winners or its
+ * other clubs), in order: each club a step placed ahead of the clubs still tied with it (spec 5.3, 19.3).
+ */
+export function tiebreaks(ranked: readonly Ranked[], table: Standings): TiebreakNote[] {
+  const pct = (abbr: TeamAbbr) => winPct(table.records[abbr].overall);
+  return ranked.flatMap((r, i) => {
+    if (!r.tiebreak) return [];
+    const over = ranked
+      .slice(i + 1)
+      .filter(o => Math.abs(pct(o.abbr) - pct(r.abbr)) < EPS)
+      .map(o => o.abbr);
+    return over.length ? [{ abbr: r.abbr, over, step: r.tiebreak }] : [];
+  });
+}
+
+/** How each step reads after "on": "on head-to-head record". */
+const STEP_PHRASES: Record<string, string> = {
+  'Head-to-head': 'head-to-head record',
+  'Head-to-head sweep': 'a head-to-head sweep',
+  'Division record': 'division record',
+  'Common games': 'record in common games',
+  'Conference record': 'conference record',
+  'Strength of victory': 'strength of victory',
+  'Strength of schedule': 'strength of schedule',
+  'Points rank in the conference': 'points scored and allowed, ranked in the conference',
+  'Points rank in the league': 'points scored and allowed, ranked in the league',
+  'Net points in common games': 'net points in common games',
+  'Net points in conference games': 'net points in conference games',
+  'Net points': 'net points',
+  'Net touchdowns': 'net touchdowns',
+  'Coin toss': 'a coin toss',
+  'Division tiebreaker': 'the division tiebreaker'
+};
+
+const recordText = (r: WinLoss): string => `${r.wins}–${r.losses}${r.ties ? `–${r.ties}` : ''}`;
+
+/**
+ * A tiebreak in a sentence, where `name` gives a club as a plural noun phrase ("the Bills"): "The Bills
+ * are ahead of the Dolphins, also 10–7, on head-to-head record."
+ */
+export function explainTiebreak(
+  note: TiebreakNote,
+  table: Standings,
+  name: (abbr: TeamAbbr) => string
+): string {
+  const phrase = STEP_PHRASES[note.step] ?? note.step.toLowerCase();
+  const record = recordText(table.records[note.abbr].overall);
+  const first = name(note.abbr);
+  const subject = first.charAt(0).toUpperCase() + first.slice(1);
+  return `${subject} are ahead of ${joinList(note.over.map(name))}, also ${record}, on ${phrase}.`;
 }

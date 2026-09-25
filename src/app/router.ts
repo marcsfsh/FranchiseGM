@@ -12,6 +12,8 @@ export type RouteName =
   | 'trades'
   | 'finances'
   | 'league'
+  | 'leagueTab'
+  | 'game'
   | 'history'
   | 'settings'
   | 'player'
@@ -42,6 +44,8 @@ const ROUTES: readonly RouteDef[] = [
   { name: 'trades', path: 'trades' },
   { name: 'finances', path: 'finances' },
   { name: 'league', path: 'league' },
+  { name: 'leagueTab', path: 'league/:tab' },
+  { name: 'game', path: 'game/:id' },
   { name: 'history', path: 'history' },
   { name: 'settings', path: 'settings' },
   { name: 'player', path: 'player/:id' },
@@ -133,7 +137,7 @@ export const PHONE_TABS: readonly RouteName[] = ['home', 'roster', 'staff', 'sco
 /** The destination a route highlights in navigation. */
 export function sectionOf(route: Route): RouteName {
   if (route.name === 'player') return 'roster';
-  if (route.name === 'team') return 'league';
+  if (route.name === 'team' || route.name === 'leagueTab' || route.name === 'game') return 'league';
   if (route.name === 'newLeague') return 'start';
   if (route.name === 'dev') return 'settings';
   return route.name;

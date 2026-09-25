@@ -7,6 +7,7 @@ import { gamePlanScreen } from './gameplan';
 import { placeholderScreen } from './placeholder';
 import { historyScreen } from './history';
 import { homeScreen } from './home';
+import { leagueScreen } from './league';
 import { newLeagueScreen } from './new-league';
 import { playerScreen } from './player';
 import { rosterScreen } from './roster';
@@ -26,7 +27,9 @@ export const SCREENS: Record<RouteName, () => Screen> = {
   freeagency: freeAgencyScreen,
   trades: () => placeholderScreen('Trades', 'Trade offers, the trade block, and proposals.'),
   finances: capScreen,
-  league: () => placeholderScreen('League', 'Standings, schedule, league stats, and news.'),
+  league: leagueScreen,
+  leagueTab: leagueScreen,
+  game: () => placeholderScreen('Game', "A game's box score, scoring and drive summaries, and recap."),
   history: historyScreen,
   settings: settingsScreen,
   player: playerScreen,
