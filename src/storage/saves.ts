@@ -1,19 +1,26 @@
 /**
- * League saves (spec 21): one slot per league in IndexedDB, a summary list for the start screen,
- * gzipped JSON export and import, and save versioning without migration (spec 2.4).
+ * League saves (spec 21): one slot per league in IndexedDB with its history beside it, a summary list for
+ * the start screen, gzipped JSON export and import of both, and save versioning without migration (spec
+ * 2.4).
  */
 import { TEAM_ABBRS, isTeamAbbr } from '../data/team-colors';
 import { SAVE_SCHEMA_VERSION, summarize, type League, type LeagueSummary } from '../engine/league/types';
 import { PHASES } from '../engine/model/calendar';
 import { isPosition } from '../engine/model/positions';
+import { HISTORY_STORES, HistoryStore, type HistoryExport } from './history';
 import { Db, StorageUnavailableError, requestPersistence, type DbSpec } from './idb';
 
 export const SAVES_DB: DbSpec = {
   name: 'franchise-gm',
-  version: 2,
+  version: 3,
   // 'app' holds small records such as the last opened league, written in awaited transactions so a
-  // reload right after a change still sees it.
-  stores: [{ name: 'leagues', keyPath: 'id' }, { name: 'states' }, { name: 'app' }]
+  // reload right after a change still sees it. The history stores are keyed by league ID first.
+  stores: [
+    { name: 'leagues', keyPath: 'id' },
+    { name: 'states' },
+    { name: 'app' },
+    ...HISTORY_STORES.map(name => ({ name }))
+  ]
 };
 
 const LAST_LEAGUE = 'lastLeague';
@@ -93,11 +100,16 @@ export class SaveStore {
   private readonly memoryStates = new Map<string, League>();
   private memoryLast: string | null = null;
 
+  /** Each league's stats and records (spec 9.3). */
+  readonly history: HistoryStore;
+
   private constructor(
     private readonly db: Db | null,
     /** Why saving is unavailable, or null when IndexedDB works. */
     readonly unavailableReason: string | null
-  ) {}
+  ) {
+    this.history = new HistoryStore(db);
+  }
 
   /** Opens the save database. When the browser blocks IndexedDB, saves live in memory for the session. */
   static async open(factory?: IDBFactory | null): Promise<SaveStore> {
@@ -170,6 +182,7 @@ export class SaveStore {
   }
 
   async remove(id: string): Promise<void> {
+    await this.history.removeLeague(id);
     if (!this.db) {
       this.memoryLeagues.delete(id);
       this.memoryStates.delete(id);
@@ -184,16 +197,24 @@ export class SaveStore {
   }
 }
 
-/** A league as a gzipped JSON file (spec 21). The file records the league's own save format. */
-export async function exportLeague(league: League | unknown): Promise<Blob> {
+/**
+ * A league and its history as a gzipped JSON file (spec 21). The file records the league's own save
+ * format.
+ */
+export async function exportLeague(league: League | unknown, history?: HistoryExport | null): Promise<Blob> {
   const schema = isObject(league) ? league.schema : undefined;
-  const text = JSON.stringify({ format: EXPORT_FORMAT, schema, league });
+  const text = JSON.stringify({ format: EXPORT_FORMAT, schema, league, ...(history ? { history } : {}) });
   const gz = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
   return new Blob([await new Response(gz).arrayBuffer()], { type: 'application/gzip' });
 }
 
 /** Reads an exported league, gzipped or plain JSON. */
 export async function importLeague(file: Blob): Promise<League> {
+  return (await readLeagueFile(file)).league;
+}
+
+/** Reads an exported league and the history it carries, if any. */
+export async function readLeagueFile(file: Blob): Promise<{ league: League; history: HistoryExport | null }> {
   const head = new Uint8Array(await file.slice(0, 2).arrayBuffer());
   let text: string;
   try {
@@ -210,10 +231,24 @@ export async function importLeague(file: Blob): Promise<League> {
   } catch {
     throw new ImportFormatError();
   }
-  const envelope = parsed as { format?: unknown; schema?: unknown; league?: unknown };
+  const envelope = parsed as { format?: unknown; schema?: unknown; league?: unknown; history?: unknown };
   if (envelope.format !== EXPORT_FORMAT) throw new ImportFormatError();
   if (envelope.schema !== SAVE_SCHEMA_VERSION) throw new SaveVersionError(envelope.schema);
-  return checkLeague(envelope.league);
+  const league = checkLeague(envelope.league);
+  return { league, history: envelope.history === undefined ? null : checkHistory(envelope.history) };
+}
+
+/** Checks the shape of an exported history before it is stored. */
+function checkHistory(value: unknown): HistoryExport {
+  const h = value as Partial<HistoryExport>;
+  const lists = [h.tables, h.games, h.players, h.seasons];
+  if (
+    !isObject(value) ||
+    lists.some(list => !Array.isArray(list)) ||
+    !(h.records === null || isObject(h.records))
+  )
+    throw new ImportFormatError("This league file's history is damaged.");
+  return value as unknown as HistoryExport;
 }
 
 /** A file name like franchise-gm-my-league-2026-week-1.json.gz. */

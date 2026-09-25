@@ -1,3 +1,4 @@
+import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';

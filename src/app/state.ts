@@ -6,7 +6,7 @@ import type { BaseDb } from '../data/base-db';
 import type { League, LeagueSummary, StartOptions } from '../engine/league/types';
 import type { NewLeagueInput } from '../engine/league/create';
 import type { SaveStore } from '../storage/saves';
-import { exportFileName, exportFileNameFor, exportLeague, importLeague } from '../storage/saves';
+import { exportFileName, exportFileNameFor, exportLeague, readLeagueFile } from '../storage/saves';
 import type { Progress, WorkerClient } from './worker-client';
 
 export type SaveStatus =
@@ -146,19 +146,21 @@ export class AppState {
       const raw = await this.store.loadRaw(id);
       const summary = this.leagues.find(l => l.id === id);
       const fileName = summary ? exportFileNameFor(summary) : `franchise-gm-${id}.json.gz`;
-      return { blob: await exportLeague(raw), fileName };
+      return { blob: await exportLeague(raw, await this.store.history.exportHistory(id)), fileName };
     }
     if (!this.league) throw new Error('Open a league to export it.');
-    return { blob: await exportLeague(this.league), fileName: exportFileName(this.league) };
+    const history = await this.store.history.exportHistory(this.league.meta.id);
+    return { blob: await exportLeague(this.league, history), fileName: exportFileName(this.league) };
   }
 
   /** Imports a league file as a new save. A league already saved here comes in as a copy. */
   async importFile(file: Blob): Promise<League> {
-    const league = await importLeague(file);
+    const { league, history } = await readLeagueFile(file);
     if (this.leagues.some(l => l.id === league.meta.id)) {
       league.meta.id = newLeagueId();
       league.meta.name = `${league.meta.name} (copy)`;
     }
+    if (history) await this.store.history.importHistory(league.meta.id, history);
     await this.store.save(league);
     await this.refreshList();
     return league;

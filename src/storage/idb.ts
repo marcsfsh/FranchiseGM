@@ -102,6 +102,13 @@ export class Db {
     return (await done(this.db.transaction(store, 'readonly').objectStore(store).get(key))) as T | undefined;
   }
 
+  /** Reads several keys in one transaction; missing keys give undefined. */
+  async getMany<T>(store: string, keys: readonly IDBValidKey[]): Promise<(T | undefined)[]> {
+    if (!keys.length) return [];
+    const os = this.db.transaction(store, 'readonly').objectStore(store);
+    return (await Promise.all(keys.map(key => done(os.get(key))))) as (T | undefined)[];
+  }
+
   async getAll<T>(store: string, query?: IDBValidKey | IDBKeyRange): Promise<T[]> {
     return (await done(this.db.transaction(store, 'readonly').objectStore(store).getAll(query))) as T[];
   }
