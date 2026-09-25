@@ -1,6 +1,8 @@
 import { defineConfig, type Plugin } from 'vite';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { viteSingleFile } from 'vite-plugin-singlefile';
+import { baseDbScript, buildBaseDb } from './tools/build-db';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
   version: string;
@@ -35,6 +37,27 @@ function shellHead(): Plugin {
   };
 }
 
+/**
+ * Embeds the base database (spec 6.8) and refreshes docs/MAPPING.md, the report the import writes on
+ * every build. Both are deterministic.
+ */
+function baseDb(): Plugin {
+  let script = '';
+  return {
+    name: 'gm-base-db',
+    buildStart() {
+      const { json, mapping } = buildBaseDb();
+      script = baseDbScript(json);
+      const report = path.resolve('docs/MAPPING.md');
+      if (!existsSync(report) || readFileSync(report, 'utf8') !== mapping) writeFileSync(report, mapping);
+    },
+    transformIndexHtml: {
+      order: 'post',
+      handler: html => html.replace('</body>', () => `  ${script}\n  </body>`)
+    }
+  };
+}
+
 /** Renames the single output file to dist/game.html (or dist/game-debug.html). */
 function outputName(fileName: string): Plugin {
   return {
@@ -62,6 +85,7 @@ export default defineConfig(({ mode }) => {
       __GM_VERSION__: JSON.stringify(pkg.version)
     },
     plugins: [
+      baseDb(),
       viteSingleFile({ removeViteModuleLoader: true }),
       shellHead(),
       outputName(debug ? 'game-debug.html' : 'game.html')

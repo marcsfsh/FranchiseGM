@@ -6,6 +6,8 @@ import type { Screen } from './screens/types';
 import { createShell } from './shell';
 import { PrefsController } from './theme/controller';
 import { WorkerClient, type Progress } from './worker-client';
+import { loadBaseDb } from './base-db-loader';
+import { toast } from './feedback';
 
 const prefs = new PrefsController();
 prefs.apply();
@@ -24,6 +26,22 @@ void worker
   .run('ping', null)
   .result.then(() => (document.documentElement.dataset.worker = worker.mode))
   .catch(() => (document.documentElement.dataset.worker = 'failed'));
+
+const baseDb = loadBaseDb();
+baseDb
+  .then(({ db, readyAtMs }) => {
+    document.documentElement.dataset.baseDb = 'ready';
+    Object.assign((globalThis as unknown as { __gm: object }).__gm, {
+      baseDbReadyMs: Math.round(readyAtMs),
+      baseDbInfo: { season: db.season, source: db.source, games: db.schedule.length, staff: db.staff.length }
+    });
+  })
+  .catch((error: unknown) => {
+    document.documentElement.dataset.baseDb = 'failed';
+    toast(error instanceof Error ? error.message : 'The base database could not be read.', {
+      persistent: true
+    });
+  });
 
 /** Console and test access to the job runner. It exposes nothing that isn't already in the page. */
 Object.assign(globalThis, {
