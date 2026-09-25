@@ -66,7 +66,7 @@ export const OFFENSES: Record<OffenseSchemeId, OffenseScheme> = {
     name: 'Air Raid',
     summary: 'Four- and five-wide spread passing at tempo, with mesh and vertical concepts from the shotgun.',
     tendencies: {
-      passRate: { first: 0.66, secondShort: 0.6, secondLong: 0.76, thirdShort: 0.72, thirdLong: 0.95 },
+      passRate: { first: 0.62, secondShort: 0.56, secondLong: 0.73, thirdShort: 0.68, thirdLong: 0.94 },
       airYards: 8.4, playAction: 0.1, rpo: 0.12, screen: 0.1, qbRuns: 0.06, scramble: 0.5, tempo: 0.8,
       personnel: { '10': 0.3, '11': 0.62, '12': 0.08, '13': 0, '21': 0, '22': 0 },
       runConcepts: { insideZone: 0.45, outsideZone: 0.1, power: 0.1, counter: 0.1, draw: 0.25 },

@@ -117,6 +117,35 @@ export function practiceSquadPlan(size: number): Position[] {
   return Array.from({ length: size }, (_, i) => PRACTICE_SQUAD[i % PRACTICE_SQUAD.length] as Position);
 }
 
+/** A typical starter's latent quality at a position, stars included. */
+function typicalStarter(position: Position): number {
+  if (position === 'K' || position === 'P' || position === 'LS') return L.specialistQuality;
+  const star = L.starShare * ((L.starBonus[0] + L.starBonus[1]) / 2);
+  return L.starterQuality + star + (position === 'QB' ? L.qbStarterBonus : 0);
+}
+
+/**
+ * Cap parity (D-19): how far to move a whole roster so it lands closer to a typical one. Strength is the
+ * starters' average quality above typical, the quarterback weighted most; within balanceFrom of typical a
+ * roster stays as drawn, and beyond it only balanceKeep of the excess remains.
+ */
+function balanceShift(
+  slots: readonly { position: Position; depth: number; starters: number; quality: number }[]
+): number {
+  let sum = 0;
+  let weight = 0;
+  for (const s of slots) {
+    if (s.depth >= s.starters || s.position === 'K' || s.position === 'P' || s.position === 'LS') continue;
+    const w = s.position === 'QB' ? L.balanceQbWeight : 1;
+    sum += w * (s.quality - typicalStarter(s.position));
+    weight += w;
+  }
+  const strength = weight ? sum / weight : 0;
+  const excess = Math.abs(strength) - L.balanceFrom;
+  if (excess <= 0) return 0;
+  return Math.sign(strength) * (L.balanceFrom + excess * L.balanceKeep) - strength;
+}
+
 function slotQuality(
   rng: Rng,
   depth: number,
@@ -277,23 +306,25 @@ export function generateFictionalLeague(input: LeagueInput): FictionalLeague {
   for (const team of TEAM_ABBRS) {
     const rng = stream(seed, 'fictional', 'team', team);
     const ctx = context(rng, 'p');
-    const teamOffset = rng.normal(0, L.teamSpread);
+    // Team strength: a uniform offset, which has no long tails, and a roster balanced toward the norm.
+    const teamOffset = (rng.float() * 2 - 1) * Math.sqrt(3) * L.teamSpread;
     const plan = rosterPlan(rng, rules.roster.active);
-    const roster: Player[] = [];
+    const slots: { position: Position; depth: number; starters: number; quality: number }[] = [];
     for (const [position, count] of plan) {
       const starters = Math.min(count, STARTERS[position]);
-      for (let depth = 0; depth < count; depth++) {
-        roster.push(
-          generatePlayer(ctx, {
-            position,
-            quality: slotQuality(rng, depth, starters, position, teamOffset),
-            age: slotAge(rng, position, depth, starters),
-            team,
-            status: 'active'
-          })
-        );
-      }
+      for (let depth = 0; depth < count; depth++)
+        slots.push({ position, depth, starters, quality: slotQuality(rng, depth, starters, position, 0) });
     }
+    const shift = teamOffset + balanceShift(slots);
+    const roster: Player[] = slots.map(s =>
+      generatePlayer(ctx, {
+        position: s.position,
+        quality: s.quality + shift,
+        age: slotAge(rng, s.position, s.depth, s.starters),
+        team,
+        status: 'active'
+      })
+    );
     // Practice squad (spec 12.1): the rule set's size, with no more veterans than the rules allow.
     const { practiceSquad, practiceSquadVeterans, practiceSquadVeteranSeasons } = rules.roster;
     const youngEnough = TUNING.generation.entryAge + practiceSquadVeteranSeasons;

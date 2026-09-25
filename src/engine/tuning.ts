@@ -192,8 +192,16 @@ export const TUNING = {
     starShare: 0.1,
     /** Starting quarterbacks are the most concentrated talent in the league. */
     qbStarterBonus: 0.4,
+    /**
+     * Cap parity (D-19): a roster's starters more than balanceFrom above or below typical (average latent
+     * quality, the quarterback counting balanceQbWeight times) keep only balanceKeep of the excess.
+     */
+    balanceFrom: 0.15,
+    balanceKeep: 0.3,
+    balanceQbWeight: 4,
     starBonus: [0.8, 1.7],
-    teamSpread: 0.3,
+    /** The sd of a uniform team strength offset. */
+    teamSpread: 0.15,
     /** Quality [mean, sd] for the first, second, and deeper backups at a position. */
     depthQuality: [
       [-0.15, 0.6],
@@ -343,7 +351,7 @@ export const TUNING = {
     attemptShare: 0.9,
     contestedShare: 0.14,
     /** The lead back's share of running back snaps. */
-    rb1Share: 0.7,
+    rb1Share: 0.6,
     /** Carries by the back on the field when a back runs it (the fullback gets the rest). */
     backCarryShare: 0.95,
     fullbackCarryShare: 0.05,
@@ -456,9 +464,9 @@ export const TUNING = {
   sim: {
     /** Log-odds per rating point of matchup difference, for each resolution. */
     // prettier-ignore
-    edge: { pressure: 0.045, sack: 0.04, completion: 0.035, separation: 0.04, interception: 0.04, stuff: 0.04, breakaway: 0.045, fumble: 0.03, kick: 0.03 },
+    edge: { pressure: 0.045, sack: 0.04, completion: 0.035, separation: 0.04, interception: 0.025, stuff: 0.04, breakaway: 0.045, fumble: 0.03, kick: 0.03 },
     /** Rating points per point of fit (spec 7.3), per unit of cohesion execution, and for team form sd. */
-    fitPoints: 0.5,
+    fitPoints: 0.7,
     /** Adaptive play calling (spec 7.6): the largest pass-rate shift, reached at this many rating points of
      * pass-over-run edge with a fully flexible coach. */
     leanMax: 0.05,
@@ -468,25 +476,25 @@ export const TUNING = {
     halftimeShift: 0.07,
     halftimeNeutralGap: 1.5,
     halftimeScale: 4,
-    formSd: 0.8,
+    formSd: 1.75,
     /** Halftime adjustments need at least this many dropbacks and runs to judge by. */
     halftimeMinPlays: 5,
     /** Pass protection: pressure base rate, blitz and simulated pressure boosts (log-odds). */
     pressureBase: 0.31,
     blitzPressure: 0.45,
     simPressure: 0.2,
-    sackGivenPressure: 0.18,
+    sackGivenPressure: 0.2,
     scrambleGivenPressure: 0.08,
     scrambleTendency: 0.12,
     throwAwayGivenPressure: 0.06,
     throwAwayTrait: 0.07,
     groundingGivenThrowAway: 0.05,
     /** Completion by depth (short, intermediate, deep, screen), and the pressure penalty (log-odds). */
-    completion: { short: 0.755, intermediate: 0.595, deep: 0.37, screen: 0.86 },
+    completion: { short: 0.771, intermediate: 0.617, deep: 0.391, screen: 0.871 },
     pressureCompletion: -0.75,
     dropShare: 0.075,
     /** Interceptions per attempt by depth, and log-odds shifts. */
-    interception: { short: 0.013, intermediate: 0.022, deep: 0.04, screen: 0.003 },
+    interception: { short: 0.0125, intermediate: 0.0213, deep: 0.0385, screen: 0.0029 },
     interceptionPressure: 0.45,
     interceptionAggressive: 0.25,
     /** Air yards: short mean above 1, intermediate span, deep mean past 20. */
@@ -494,21 +502,21 @@ export const TUNING = {
     airDeepMean: 11,
     screenAir: [-3, 1],
     /** Yards after catch means by depth, and the broken-tackle chance and extra yards. */
-    yac: { short: 4.5, intermediate: 3, deep: 4.5, screen: 6 },
-    brokenTackle: 0.07,
+    yac: { short: 4.3, intermediate: 2.85, deep: 4.3, screen: 5.7 },
+    brokenTackle: 0.065,
     brokenTackleYards: 11,
     /** Runs: stuff rate, stuff depth, gain shape and mean, breakaway chance and extra yards. */
     stuff: 0.17,
     stuffYards: 3,
-    runGainMean: 4.5,
+    runGainMean: 4.52,
     runGainShape: 1.6,
-    breakaway: 0.065,
+    breakaway: 0.06,
     breakawayYards: 14,
     /** Yards of mean gain per rating point of run block edge. */
     blockYardsPerPoint: 0.06,
     /** Fumbles per carry and per catch, share lost, and rain or snow log-odds. */
-    fumbleCarry: 0.011,
-    fumbleCatch: 0.004,
+    fumbleCarry: 0.016,
+    fumbleCatch: 0.007,
     fumbleLost: 0.5,
     fumbleWet: 0.35,
     /** Scrambles and designed quarterback runs. */
@@ -517,8 +525,8 @@ export const TUNING = {
     outOfBoundsRun: 0.12,
     outOfBoundsCatch: 0.25,
     /** Fourth downs: go rates by yards to go (1, 2, 3 to 5, 6 or more) in plus territory, and at midfield. */
-    goRate: [0.62, 0.42, 0.22, 0.06],
-    goRateOwnHalf: [0.22, 0.1, 0.03, 0.005],
+    goRate: [0.82, 0.57, 0.31, 0.09],
+    goRateOwnHalf: [0.31, 0.14, 0.045, 0.008],
     /** Two-point tries: base rate of touchdowns and success rate. */
     twoPointBase: 0.04,
     twoPointSuccess: 0.48,
@@ -528,30 +536,30 @@ export const TUNING = {
     fgMaxDistance: 62,
     fgCold: -0.25,
     fgWet: -0.35,
-    fgWindPerMph: -0.03,
+    fgWindPerMph: -0.06,
     fgAltitude: 0.35,
     /** Kickoffs: shares of returnable kicks, touchbacks, and short kicks; landing depth; return yards. */
-    kickoffReturnable: 0.66,
+    kickoffReturnable: 0.78,
     kickoffShort: 0.015,
     kickoffLandingRollTouchback: 0.03,
-    kickoffLanding: [1, 14],
-    kickReturnMean: 23,
+    kickoffLanding: [0, 10],
+    kickReturnMean: 24.5,
     kickReturnSd: 7,
-    returnTouchdown: 0.004,
+    returnTouchdown: 0.007,
     onsideRecovery: 0.12,
     /** Punts: gross mean and spread, fair catches, returns, and return yards. */
-    puntMean: 50,
+    puntMean: 52.2,
     puntSd: 6,
     puntFairCatch: 0.28,
     puntReturned: 0.44,
-    puntReturnMean: 8,
+    puntReturnMean: 7.5,
     puntBlocked: 0.004,
     /** Penalties per play (offense or defense snap), before discipline, crowd, and slider multipliers. */
     // prettier-ignore
     penaltyRates: {
       falseStart: 0.0194, delayOfGame: 0.0049, illegalFormation: 0.0065, offensiveHoldingRun: 0.0179,
       offensiveHoldingPass: 0.0259, offensivePassInterference: 0.0065, offside: 0.013, defensiveHolding: 0.0114,
-      illegalContact: 0.0049, defensivePassInterference: 0.0179, roughingThePasser: 0.013, unnecessaryRoughness: 0.0082,
+      illegalContact: 0.0049, defensivePassInterference: 0.021, roughingThePasser: 0.0145, unnecessaryRoughness: 0.0095,
       facemask: 0.0056, illegalUseOfHands: 0.0065, unsportsmanlikeConduct: 0.0024, illegalBlockInBack: 0.06,
       kickCatchInterference: 0.0049, runningIntoKicker: 0.0065
     },
@@ -559,8 +567,8 @@ export const TUNING = {
     discipline: { disciplined: 0.75, normal: 1, undisciplined: 1.45 },
     crowdFalseStart: 0.6,
     /** In-game injuries per involvement, and the severity mix (minor, 1-2 weeks, 3-6 weeks, season). */
-    injuryRate: 0.0018,
-    injurySeverity: [0.55, 0.25, 0.12, 0.08],
+    injuryRate: 0.009,
+    injurySeverity: [0.4, 0.33, 0.17, 0.1],
     /** Fatigue: energy spent per snap by position group, recovery per snap off the field, the energy
      * where ratings start to suffer, rating points lost per energy point, and substitution thresholds. */
     fatigue: { QB: 0.5, RB: 2.6, WR: 1.4, TE: 1.7, OL: 0.9, DL: 3.1, LB: 2.1, DB: 1.5, ST: 0.3 },
@@ -572,7 +580,7 @@ export const TUNING = {
     subAt: { QB: 20, RB: 62, WR: 52, TE: 58, OL: 35, DL: 68, LB: 58, DB: 52, ST: 10 },
     /** Home field (spec 17.3): rating points for the home team from the crowd, travel per time zone, and
      * rest; the combined effect is about 1.5 to 2.5 points a game. */
-    homeCrowd: 0.5,
+    homeCrowd: 0.65,
     travelPerZone: 0.2,
     shortWeek: 0.6,
     afterBye: 0.4,
@@ -628,6 +636,24 @@ export const TUNING = {
       lateTrailingSeconds: 420,
       lateTrailingPass: 0.82,
       leadingRunShift: 0.62,
+      /**
+       * Protecting a lead (spec 8.6 conservatism when leading): from leads past protectFrom points, full at
+       * protectFrom + protectRamp; protectEarly of the effect at the start of the second half, all of it by
+       * the end. At full strength the offense cuts its pass rate by protectPassCut and lets the play clock
+       * run, and the defense plays soft: short passes gain softShortLogit, deep ones lose softDeepLogit,
+       * yards after the catch shrink by softYac, and a lighter rush loses softPressureLogit.
+       */
+      protectFrom: 6,
+      protectRamp: 12,
+      protectEarly: 0.6,
+      protectPassCut: 0.35,
+      softShortLogit: 1.2,
+      softDeepLogit: 0.3,
+      softYac: 0.1,
+      softPressureLogit: 1.5,
+      /** In the last preventSeconds, a lead of any size is protected at least this hard. */
+      preventSeconds: 300,
+      preventLate: 1,
       twoMinutePass: 0.8,
       goalLinePass: 0.72,
       wetPassShift: 0.9,
@@ -636,7 +662,14 @@ export const TUNING = {
       deepLateBoost: 1.35,
       deepShortYardage: 0.5,
       screenThirdLong: 0.5,
-      blitzThirdDown: 1.25,
+      /**
+       * Throwing to the sticks: on third and fourth down from sticksFrom yards to go, the intermediate share
+       * grows by up to sticksShift, all of it by sticksFrom + sticksRamp - 1 yards.
+       */
+      sticksFrom: 5,
+      sticksRamp: 5,
+      sticksShift: 0.25,
+      blitzThirdDown: 1.05,
       hurrySeconds: 240,
       hurryHalfSeconds: 120,
       milkSeconds: 480,
@@ -731,12 +764,12 @@ export const TUNING = {
       scramblerFactor: 1.8,
       pocketFactor: 0.5,
       paranoidThrowAway: 0.06,
-      creditSpread: 6,
+      creditSpread: 18,
       /** Rating points of tackle edge that multiply a pursuer's share of tackles by e. */
       tackleSpread: 18,
       sackYards: [4, 9],
       sackSpread: 1,
-      stripSack: 0.11,
+      stripSack: 0.15,
       stripLost: 0.55,
       scrambleMin: 3,
       scrambleBurst: 0.08,
@@ -745,18 +778,24 @@ export const TUNING = {
       scrambleOutOfBounds: 0.35,
       minTargetShare: 0.02,
       uncovered: 12,
+      /** Backs run checkdowns into open space: rating points of separation on their routes. */
+      backfieldSeparation: 18,
+      /** A pressured quarterback favors his backs by this factor when choosing a target. */
+      checkdownFavor: 2.6,
       pressWeight: 0.05,
       playActionSeparation: 2.5,
       blitzSeparation: 2.5,
       cohesionSeparation: 20,
       /** How much target choice follows separation, per rating point. */
-      openness: 0.06,
+      openness: 0.018,
       // prettier-ignore
       deepFavor: { X: 1.5, Z: 1.5, SLOT: 0.7, EXTRA: 0.8, TE1: 0.5, TE2: 0.3, RB1: 0.1, RB2: 0.1, FB: 0.05 },
       // prettier-ignore
       screenFavor: { X: 0.8, Z: 0.6, SLOT: 1.3, EXTRA: 0.6, TE1: 0.6, TE2: 0.3, RB1: 3, RB2: 3, FB: 0.5 },
       poiseWeight: 0.4,
       calmMph: 10,
+      /** Wind's effect on completions by pass depth, relative to intermediate throws. */
+      windDepth: { screen: 0.3, short: 0.7, intermediate: 1, deep: 1.5 },
       playsBallLogit: 0.15,
       intSeparation: 0.02,
       contestedSep: -3,
@@ -768,7 +807,7 @@ export const TUNING = {
       bootlegPerOutsideZone: 0.6,
       /** Inside the 20 the field compresses: harder completions, and more stuffed runs inside
        * goalLineStuffYards. */
-      redZoneCompletion: -0.6,
+      redZoneCompletion: -1.25,
       goalLineStuff: 0.75,
       goalLineStuffYards: 5,
       dropsTrait: 2.5,
@@ -781,7 +820,14 @@ export const TUNING = {
       yacTrait: 1.12,
       openFieldYards: 8,
       stripsLogit: 0.35,
-      intReturnMean: 9,
+      intReturnMean: 7,
+      /**
+       * Turnover returns: this share breaks free for a long return with this mean (pick-sixes and scoop and
+       * scores); other fumble recoveries go a few yards.
+       */
+      returnBreakaway: 0.14,
+      returnBreakawayMean: 55,
+      fumbleReturnMean: 3,
       // Running
       leadWeight: 0.5,
       teBlockWeight: 0.6,
@@ -802,7 +848,7 @@ export const TUNING = {
       outOfBoundsInside: 0.5,
       outOfBoundsOutside: 1.6,
       /** Artificial turf is a little faster (rating points of burst and elusiveness) and a little riskier. */
-      turfSpeed: 0.5,
+      turfSpeed: 1.5,
       turfInjury: 1.08,
       coversBall: { never: 0.55, onBigHits: 0, onMediumHits: -0.15, forAllHits: -0.3, always: -0.45 },
       // Kicking
@@ -870,7 +916,9 @@ export const TUNING = {
     heatFatigue: 0.25,
     altitudeFatigue: 0.2,
     wetPassLogit: -0.15,
-    windDeepLogitPerMph: -0.02
+    /** Domes and closed roofs: dry ball, still air, and a fast track (spec 17.2). */
+    indoorPassLogit: 0.15,
+    windPassLogitPerMph: -0.03
   },
 
   /**

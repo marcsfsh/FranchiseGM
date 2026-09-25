@@ -169,12 +169,13 @@ describe('repeatability (spec 8.9)', () => {
       ...weighted,
       random: advanceLeagueRandom(weighted.random, { actions: 1, entropy })
     });
-    const a = sim(moved(1), 30);
-    const b = sim(moved(2), 30);
+    const a = sim(moved(1), 48);
+    const b = sim(moved(2), 48);
     expect(a.map(g => g.score)).not.toEqual(b.map(g => g.score));
     const mean = (rs: GameResult[]) =>
       rs.reduce((sum, g) => sum + g.score.home + g.score.away, 0) / rs.length;
-    expect(Math.abs(mean(a) - mean(b))).toBeLessThan(8);
+    // Game totals vary with an sd near 14, so two 48-game means differ by under 10 points (3.5 sd).
+    expect(Math.abs(mean(a) - mean(b))).toBeLessThan(10);
   });
 });
 

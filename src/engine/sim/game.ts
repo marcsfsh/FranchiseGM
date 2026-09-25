@@ -63,6 +63,8 @@ interface DefenseCall {
   shell: Shell;
   blitz: boolean;
   simPressure: boolean;
+  /** Soft coverage while protecting a lead, 0 to 1: short passes come easier, big plays harder. */
+  soft: number;
 }
 
 /** What a scrimmage play did, before penalties. */
@@ -738,6 +740,25 @@ class GameSim {
     return this.quarter >= 4 && this.lateHalf() && this.margin > 0 && this.clock <= C.milkSeconds;
   }
 
+  /**
+   * How hard a side protects its lead, 0 to 1 (spec 8.6 conservatism when leading): nothing before the
+   * second half, in overtime, or with a one-score lead, then rising with the lead and the clock, scaled by
+   * the head coach's conservatism.
+   */
+  private protecting(side: Side): number {
+    if (this.quarter < 3 || this.quarter > 4) return 0;
+    const lead = this.score[side] - this.score[other(side)];
+    if (lead <= 0) return 0;
+    const coach = this.teams[side].coach.conservatism / 50;
+    // In the last minutes any lead is protected, a one-score lead included (the prevent defense).
+    const late = this.quarter === 4 && this.clock <= C.preventSeconds ? C.preventLate : 0;
+    if (lead <= C.protectFrom) return Math.min(1, late * coach);
+    const size = Math.min(1, (lead - C.protectFrom) / C.protectRamp);
+    const q = this.setup.rules.quarterSeconds;
+    const progress = ((this.quarter - 3) * q + (q - this.clock)) / (2 * q);
+    return Math.min(1, Math.max(late, size * (C.protectEarly + (1 - C.protectEarly) * progress)) * coach);
+  }
+
   private fgDistance(): number {
     return 100 - this.ball + C.fgSnapYards;
   }
@@ -1025,6 +1046,11 @@ class GameSim {
     return out;
   }
 
+  /** Between-snap seconds for an offense protecting a lead: toward the whole play clock. */
+  private slowed(runoff: number): number {
+    return runoff + (this.fullRunoff - runoff) * this.protecting(this.offense);
+  }
+
   /** Seconds the offense lets run between snaps when it wants the clock to run: nearly the whole play clock. */
   private get fullRunoff(): number {
     return this.setup.rules.playClock - K.playClockMargin;
@@ -1124,6 +1150,7 @@ class GameSim {
     else if (this.quarter >= 4 && deficit > 0 && this.clock <= C.hurrySeconds)
       pass = Math.max(pass, C.lateTrailingPass);
     if (this.milking()) pass *= C.leadingRunShift;
+    else pass *= 1 - C.protectPassCut * this.protecting(this.offense);
     if (this.quarter === 2 && this.clock <= C.hurryHalfSeconds) pass = Math.max(pass, C.twoMinutePass);
     if (goal <= C.goalLineYards) pass *= C.goalLinePass;
     const w = this.setup.weather;
@@ -1139,13 +1166,18 @@ class GameSim {
       if (goal < C.deepShotRoom) deep = 0;
       const screen =
         this.down === 3 && this.distance >= C.longYardage ? t.screen * C.screenThirdLong : t.screen;
+      // On third and fourth down with room to go, more throws go past the line to gain.
+      const sticks =
+        this.down >= 3 && this.distance >= C.sticksFrom
+          ? C.sticksShift * Math.min(1, (this.distance - C.sticksFrom + 1) / C.sticksRamp)
+          : 0;
       const r = this.rng.float();
       const depth: Depth =
         r < screen
           ? 'screen'
           : r < screen + deep
             ? 'deep'
-            : r < screen + deep + TUNING.situations.intermediateShare
+            : r < screen + deep + TUNING.situations.intermediateShare + sticks
               ? 'intermediate'
               : 'short';
       const playAction =
@@ -1162,7 +1194,9 @@ class GameSim {
 
   private defenseCall(): DefenseCall {
     const t = this.teams[other(this.offense)].tendencies.defense;
-    const blitz = this.rng.chance(t.blitz * (this.down === 3 ? C.blitzThirdDown : 1));
+    // A defense protecting a lead plays soft and rarely blitzes.
+    const soft = this.protecting(other(this.offense));
+    const blitz = this.rng.chance(t.blitz * (this.down === 3 ? C.blitzThirdDown : 1) * (1 - soft));
     const shells = Object.keys(t.shells) as Shell[];
     return {
       man: this.rng.chance(t.man),
@@ -1171,7 +1205,8 @@ class GameSim {
         shells.map(s => t.shells[s])
       ),
       blitz,
-      simPressure: !blitz && this.rng.chance(t.simPressure)
+      simPressure: !blitz && this.rng.chance(t.simPressure * (1 - soft)),
+      soft
     };
   }
 
@@ -1270,7 +1305,8 @@ class GameSim {
         S.edge.pressure * (rush - block) +
         blitzEdge -
         cohesion * C.cohesionLogit -
-        (passBlockSlider - 1) * C.sliderLogit
+        (passBlockSlider - 1) * C.sliderLogit -
+        dcall.soft * C.softPressureLogit
     );
     if (call.depth === 'screen') pPressure *= C.screenPressure;
     if (call.playAction) pPressure *= C.playActionPressure;
@@ -1389,6 +1425,7 @@ class GameSim {
           sack: true,
           incomplete: false,
           turnover: 'fumble',
+          returnYards: this.turnoverReturn(C.fumbleReturnMean),
           stops: true,
           tackler: rusher,
           description: `${qb.short} sacked and fumbles`
@@ -1470,6 +1507,7 @@ class GameSim {
       routes.push({ slot, tslot, player, share: share + C.minTargetShare });
     }
     if (!routes.length) return base;
+    const back = (tslot: TargetSlot | 'EXTRA') => tslot === 'RB1' || tslot === 'RB2' || tslot === 'FB';
     const coverTrig: PlayTrigger = dcall.man ? 'versusMan' : 'versusZone';
     const depthTrig: PlayTrigger = call.depth === 'deep' ? 'deepPass' : 'shortPass';
     const routeId: CompositeId =
@@ -1497,7 +1535,8 @@ class GameSim {
         reaction +
         press +
         (call.playAction ? C.playActionSeparation : 0) +
-        (dcall.blitz ? C.blitzSeparation : 0) -
+        (dcall.blitz ? C.blitzSeparation : 0) +
+        (back(r.tslot) ? C.backfieldSeparation : 0) -
         this.teams[def].cohesion.defense.execution * C.cohesionSeparation;
       return { ...r, defender, defSlot, sep };
     });
@@ -1507,7 +1546,14 @@ class GameSim {
         : call.depth === 'screen'
           ? (C.screenFavor[tslot] ?? 1)
           : 1;
-    const weights = scored.map(r => r.share * depthFavor(r.tslot) * Math.exp(r.sep * C.openness));
+    // Under pressure the quarterback checks the ball down to his backs.
+    const weights = scored.map(
+      r =>
+        r.share *
+        depthFavor(r.tslot) *
+        (pressured && back(r.tslot) ? C.checkdownFavor : 1) *
+        Math.exp(r.sep * C.openness)
+    );
     const target = scored[this.rng.weightedIndex(weights)] as (typeof scored)[number];
     const rec = target.player;
     const defender = target.defender;
@@ -1550,9 +1596,11 @@ class GameSim {
       (pressured ? this.edge(off, qb, 'QB', 'poise', qbTriggers) * C.poiseWeight : 0);
     const weather = this.setup.weather;
     const impact = this.setup.sliders.general.weatherImpact;
-    const wetLogit = weather.precipitation !== 'none' ? S.wetPassLogit * impact : 0;
+    const wetLogit =
+      weather.precipitation !== 'none' ? S.wetPassLogit * impact : weather.indoor ? S.indoorPassLogit : 0;
+    // Wind hurts every throw, the long ones most (spec 17.2).
     const windLogit =
-      call.depth === 'deep' ? S.windDeepLogitPerMph * Math.max(0, weather.windMph - C.calmMph) * impact : 0;
+      S.windPassLogitPerMph * C.windDepth[call.depth] * Math.max(0, weather.windMph - C.calmMph) * impact;
     const depthKey = call.depth;
     const decision = this.edge(off, qb, 'QB', 'decision', qbTriggers);
     const hawk =
@@ -1594,6 +1642,7 @@ class GameSim {
           (pressured ? S.pressureCompletion : 0) +
           (this.inRedZone ? C.redZoneCompletion + (this.output('scoring') - 1) * C.sliderLogit : 0) +
           wetLogit + windLogit + (call.playAction ? C.playActionLogit : 0) +
+          dcall.soft * (call.depth === 'deep' ? -C.softDeepLogit : C.softShortLogit) +
           (this.slider(off, 'qbAccuracy') - 1) * C.sliderLogit + (this.slider(off, 'wrCatching') - 1) * C.sliderLogit -
           (this.slider(def, 'passCoverage') - 1) * C.sliderLogit + (this.output('passingEfficiency') - 1) * C.sliderLogit
       ); // prettier-ignore
@@ -1625,7 +1674,10 @@ class GameSim {
     const tackle = tacklePlayer ? this.edge(def, tacklePlayer, tacklerSlot, 'tackle', ['openField']) : 0;
     const yacMean = Math.max(
       C.yacFloor,
-      S.yac[depthKey] * (1 + (elusive - tackle) * C.yacPerPoint) * (rec.traits.yacCatch ? C.yacTrait : 1)
+      S.yac[depthKey] *
+        (1 + (elusive - tackle) * C.yacPerPoint) *
+        (rec.traits.yacCatch ? C.yacTrait : 1) *
+        (1 - C.softYac * dcall.soft)
     );
     let yac = Math.round(-Math.log(1 - this.rng.float()) * yacMean);
     const broken = this.rng.chance(
@@ -1682,6 +1734,7 @@ class GameSim {
           yards,
           incomplete: false,
           turnover: 'fumble',
+          returnYards: this.turnoverReturn(C.fumbleReturnMean),
           air,
           ballCarrier: rec,
           tackler: tacklePlayer,
@@ -1722,7 +1775,7 @@ class GameSim {
     this.add(off, qb, 'passInt');
     this.add(def, defender, 'defInt');
     this.add(def, defender, 'passesDefended');
-    const back = Math.round(-Math.log(1 - this.rng.float()) * C.intReturnMean);
+    const back = this.turnoverReturn(C.intReturnMean);
     this.add(def, defender, 'defIntYds', back);
     return {
       ...base,
@@ -1733,6 +1786,12 @@ class GameSim {
       ballCarrier: rec,
       description: `${qb.short} intercepted by ${defender.short}`
     };
+  }
+
+  /** Yards a turnover is returned: usually short, now and then a breakaway (spec 8.3 step 5). */
+  private turnoverReturn(mean: number): number {
+    const breakaway = this.rng.chance(C.returnBreakaway);
+    return Math.round(-Math.log(1 - this.rng.float()) * (breakaway ? C.returnBreakawayMean : mean));
   }
 
   // ---------------------------------------------------------------------------------------------------
@@ -1921,6 +1980,7 @@ class GameSim {
           ...base,
           yards,
           turnover: 'fumble',
+          returnYards: this.turnoverReturn(C.fumbleReturnMean),
           stops: true,
           tackler,
           description: `${carrier.short} fumbles`
@@ -2328,7 +2388,7 @@ class GameSim {
         ? K.runoff.hurry + (1 - skill / 100) * K.clockWaste
         : this.milking()
           ? this.fullRunoff
-          : K.runoff.normal + (0.5 - tempo) * K.tempoSpread;
+          : this.slowed(K.runoff.normal + (0.5 - tempo) * K.tempoSpread);
     if (!this.tick(Math.min(this.setup.rules.playClock, runoff), true)) this.endPeriod();
   }
 
@@ -2732,7 +2792,8 @@ class GameSim {
       const total = Math.min(100 - caught, back);
       this.add(receiver, returner, 'kickReturnYds', total);
       this.long(receiver, returner, 'kickReturnLong', total);
-      start = caught + total;
+      // A returner tackled at the goal line after a catch there has the ball at the 1.
+      start = Math.max(1, caught + total);
       // The receiving team has the ball during the return.
       this.offense = receiver;
       this.tick(K.returnSeconds);

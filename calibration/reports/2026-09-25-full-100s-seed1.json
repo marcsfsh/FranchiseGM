@@ -1,0 +1,1498 @@
+{
+  "version": 1,
+  "mode": "full",
+  "seed": 1,
+  "seasons": 100,
+  "leagues": 10,
+  "perLeague": 10,
+  "experiments": 10,
+  "created": "2026-09-25",
+  "seconds": 130.516105631,
+  "counts": {
+    "pass": 63,
+    "warn": 0,
+    "fail": 0,
+    "info": 9,
+    "pending": 4
+  },
+  "results": [
+    {
+      "id": "games.homeWinRate",
+      "group": "games",
+      "label": "Home win rate",
+      "format": "pct",
+      "value": 0.5547148288973384,
+      "n": 26300,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.52,
+          0.58
+        ],
+        "warn": [
+          0.5,
+          0.6
+        ],
+        "ci": [
+          0.47,
+          0.63
+        ],
+        "source": "FOX Sports \"Where has home-field advantage gone\" and PFF home-field data: home teams won between 51% and 57% of games in 2021-2024, 53.3% in 2024.",
+        "note": "Neutral and international sites are left out; ties count half."
+      }
+    },
+    {
+      "id": "games.homeMargin",
+      "group": "games",
+      "label": "Home field, points per game",
+      "format": "signed1",
+      "value": 1.888783269961977,
+      "n": 26300,
+      "status": "pass",
+      "target": {
+        "pass": [
+          1.5,
+          2.7
+        ],
+        "warn": [
+          1,
+          3.3
+        ],
+        "ci": [
+          0.5,
+          4
+        ],
+        "source": "Spec 23.2 (roughly 1.5 to 2.5 points in recent seasons); FOX Sports: the average home margin slid from +2.7 to +1.7 points.",
+        "note": "The spec 17.3 home field model, measured as the mean home margin."
+      }
+    },
+    {
+      "id": "games.pointsPerTeam",
+      "group": "games",
+      "label": "Points per team game",
+      "format": "dec1",
+      "value": 23.491875,
+      "n": 27200,
+      "status": "pass",
+      "target": {
+        "pass": [
+          21.5,
+          23.5
+        ],
+        "warn": [
+          20.5,
+          24.5
+        ],
+        "ci": [
+          19.5,
+          25.5
+        ],
+        "source": "StatMuse league averages by year 2021-2024 (statmuse.com/nfl/ask/nfl-league-average-...): 23.0, 21.9, 21.8, and 22.9 points per team game."
+      }
+    },
+    {
+      "id": "games.oneScoreShare",
+      "group": "games",
+      "label": "Games decided by 8 or fewer",
+      "format": "pct",
+      "value": 0.5013235294117647,
+      "n": 27200,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.46,
+          0.55
+        ],
+        "warn": [
+          0.43,
+          0.58
+        ],
+        "ci": [
+          0.4,
+          0.61
+        ],
+        "source": "NFL Analytics \"Half of NFL games are one-score games\" (nflanalytic.com): 50.7% of regular-season games since 1999 were decided by 8 or fewer."
+      }
+    },
+    {
+      "id": "games.closeShare",
+      "group": "games",
+      "label": "Games decided by 1 to 3",
+      "format": "pct",
+      "value": 0.21536764705882352,
+      "n": 27200,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.19,
+          0.27
+        ],
+        "warn": [
+          0.16,
+          0.3
+        ],
+        "source": "NFL Analytics \"Half of NFL games are one-score games\": 23.3% decided by 1 to 3 points since 1999."
+      }
+    },
+    {
+      "id": "games.blowoutShare",
+      "group": "games",
+      "label": "Games decided by 17 or more",
+      "format": "pct",
+      "value": 0.2509191176470588,
+      "n": 27200,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.18,
+          0.26
+        ],
+        "warn": [
+          0.15,
+          0.29
+        ],
+        "ci": [
+          0.12,
+          0.32
+        ],
+        "source": "betting.us \"NFL Blowout Stats Reveal Parity Problem\": 21.6% of games in 2015-2024 were decided by 17 or more (26.9% across 1999-2025)."
+      }
+    },
+    {
+      "id": "games.overtimeRate",
+      "group": "games",
+      "label": "Overtime games",
+      "format": "pct",
+      "value": 0.06327205882352942,
+      "n": 27200,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.045,
+          0.085
+        ],
+        "warn": [
+          0.03,
+          0.1
+        ],
+        "ci": [
+          0.02,
+          0.12
+        ],
+        "source": "thesportsgeek.com and Wikipedia \"List of NFL tied games\": 16 overtime games of 272 in 2024 (5.9%); Scott Kacsmar: 21 in 2021 (7.7%)."
+      }
+    },
+    {
+      "id": "games.tieRate",
+      "group": "games",
+      "label": "Ties",
+      "format": "pct",
+      "value": 0.004154411764705882,
+      "n": 27200,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0,
+          0.01
+        ],
+        "warn": [
+          0,
+          0.02
+        ],
+        "source": "Wikipedia \"List of NFL tied games\": none in 2023 or 2024, and about one a season (0.4%) since 2012."
+      }
+    },
+    {
+      "id": "games.comebackRate",
+      "group": "games",
+      "label": "Winner trailed in the 4th quarter",
+      "format": "pct",
+      "value": 0.24860294117647058,
+      "n": 27200,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.19,
+          0.28
+        ],
+        "warn": [
+          0.15,
+          0.32
+        ],
+        "ci": [
+          0.12,
+          0.35
+        ],
+        "source": "Scott Kacsmar, \"NFL 2021: Close Game Summary\" (captaincomeback.blog): 54 to 73 fourth-quarter comeback wins a season in 2017-2021 (about 20% to 26% of games, playoffs included); a record 85 in 2022.",
+        "note": "Measured as the winner trailing at some point in the fourth quarter or overtime."
+      }
+    },
+    {
+      "id": "games.favoriteWinRate",
+      "group": "games",
+      "label": "Favorites win (by rating gap)",
+      "format": "pct",
+      "value": 0.6525551470588236,
+      "n": 27200,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.63,
+          0.72
+        ],
+        "warn": [
+          0.6,
+          0.75
+        ],
+        "ci": [
+          0.56,
+          0.78
+        ],
+        "source": "ESPN \"NFL betting favorites on verge of completing historic season\": favorites win about 66% straight up over the long run and won 71.7% in 2024.",
+        "note": "Favorites by fitted team ratings plus home field; each league's ratings are fitted over all its replays, the sim's stand-in for the closing line."
+      }
+    },
+    {
+      "id": "games.favoriteWinRateUnder3",
+      "group": "games",
+      "label": "Favorites by 0 to 3 points",
+      "format": "pct",
+      "value": 0.5492971887550201,
+      "n": 9960,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.5,
+          0.59
+        ],
+        "warn": [
+          0.47,
+          0.62
+        ],
+        "source": "Stern's normal model of margins around the spread (sd 13.5 to 13.9): 50% to 59% for spreads under 3; SportingCharts: favorites of 3 or fewer won about half since 2015."
+      }
+    },
+    {
+      "id": "games.favoriteWinRate3to7",
+      "group": "games",
+      "label": "Favorites by 3 to 7 points",
+      "format": "pct",
+      "value": 0.6550052137643378,
+      "n": 9590,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.58,
+          0.69
+        ],
+        "warn": [
+          0.55,
+          0.72
+        ],
+        "source": "Stern's normal model (sd 13.5 to 13.9): 59% to 70% for spreads of 3 to 7."
+      }
+    },
+    {
+      "id": "games.favoriteWinRate7to10",
+      "group": "games",
+      "label": "Favorites by 7 to 10 points",
+      "format": "pct",
+      "value": 0.7412114014251782,
+      "n": 4210,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.68,
+          0.79
+        ],
+        "warn": [
+          0.64,
+          0.82
+        ],
+        "source": "Stern's normal model (sd 13.5 to 13.9): 70% to 77% for spreads of 7 to 10."
+      }
+    },
+    {
+      "id": "games.favoriteWinRate10Plus",
+      "group": "games",
+      "label": "Favorites by 10+ points",
+      "format": "pct",
+      "value": 0.8361918604651163,
+      "n": 3440,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.78,
+          0.92
+        ],
+        "warn": [
+          0.74,
+          0.95
+        ],
+        "source": "ESPN: favorites of 10 or more win over 80%; Stern's normal model gives 77% at 10 points and more beyond."
+      }
+    },
+    {
+      "id": "games.marginSd",
+      "group": "games",
+      "label": "Margin spread around the rating gap (sd)",
+      "format": "dec1",
+      "value": 13.098792314161336,
+      "n": 27200,
+      "status": "pass",
+      "target": {
+        "pass": [
+          12.8,
+          14.4
+        ],
+        "warn": [
+          12,
+          15.2
+        ],
+        "ci": [
+          11,
+          16.5
+        ],
+        "source": "Hal Stern (1986, 1991): margins around the spread are normal with sd 13.86; 13.59 for 1992-2011 (\"The Performance of Betting Lines for Predicting the Outcome of NFL Games\", arXiv 1211.4000); about 13.5 recently (nfelo \"Margin Probabilities from NFL Spreads\").",
+        "note": "Final margin minus the fitted rating gap."
+      }
+    },
+    {
+      "id": "games.ratingSd",
+      "group": "games",
+      "label": "Team rating spread (sd, points)",
+      "format": "dec1",
+      "value": 4.3835415600277345,
+      "n": 320,
+      "status": "info",
+      "target": null
+    },
+    {
+      "id": "seasons.winSd",
+      "group": "seasons",
+      "label": "Team wins, sd",
+      "format": "dec2",
+      "value": 2.9522502011177845,
+      "n": 3200,
+      "status": "pass",
+      "target": {
+        "pass": [
+          2.8,
+          3.5
+        ],
+        "warn": [
+          2.5,
+          3.8
+        ],
+        "ci": [
+          2.3,
+          4.1
+        ],
+        "source": "Harvard Sports Analysis Collective, \"This NFL season did not have as much parity as you think\": the sd of team wins was 3.20 in 2017 and mostly 2.6 to 3.4 in 16-game seasons, about 2.8 to 3.6 over 17 games.",
+        "note": "Pure chance alone gives about 2.06 over 17 games."
+      }
+    },
+    {
+      "id": "seasons.bestRecord",
+      "group": "seasons",
+      "label": "Most wins in a season (mean)",
+      "format": "dec1",
+      "value": 14.635,
+      "n": 100,
+      "status": "pass",
+      "target": {
+        "pass": [
+          12.8,
+          15.2
+        ],
+        "warn": [
+          12,
+          16
+        ],
+        "source": "NFL standings 2021-2024 (Wikipedia season pages): the best records had 13, 14, 13, and 15 wins."
+      }
+    },
+    {
+      "id": "seasons.worstRecord",
+      "group": "seasons",
+      "label": "Fewest wins in a season (mean)",
+      "format": "dec1",
+      "value": 2.7,
+      "n": 100,
+      "status": "pass",
+      "target": {
+        "pass": [
+          2,
+          4
+        ],
+        "warn": [
+          1.3,
+          4.7
+        ],
+        "source": "NFL standings 2021-2024 (Wikipedia season pages): the worst records had 3, 3, 2, and 3 wins.",
+        "note": "Ties count half."
+      }
+    },
+    {
+      "id": "seasons.manyWinsPerDecade",
+      "group": "seasons",
+      "label": "15-win teams per decade",
+      "format": "dec1",
+      "value": 6.8,
+      "n": 100,
+      "status": "pass",
+      "target": {
+        "pass": [
+          2,
+          8
+        ],
+        "warn": [
+          1,
+          10
+        ],
+        "source": "NFL standings (Wikipedia season pages): 12 teams won 14 or more of 16 games in 2004-2020 (2004 PIT and NE, 2005 IND, 2006 SD, 2007 NE, 2009 IND, 2010 NE, 2011 GB, 2015 CAR, 2016 NE, 2019 BAL, 2020 KC), about 7 a decade; two won 15 of 17 in 2021-2024.",
+        "note": "14 of 16 is the 16-game equivalent of 15 of 17 (the same 88% of games)."
+      }
+    },
+    {
+      "id": "seasons.fewWinsPerDecade",
+      "group": "seasons",
+      "label": "2-or-fewer-win teams per decade",
+      "format": "dec1",
+      "value": 5.7,
+      "n": 100,
+      "status": "pass",
+      "target": {
+        "pass": [
+          3,
+          10
+        ],
+        "warn": [
+          1.5,
+          13
+        ],
+        "source": "NFL standings 2004-2024 (Wikipedia season pages): 18 teams won 2 or fewer, about 8.6 a decade, though only one in the four 17-game seasons."
+      }
+    },
+    {
+      "id": "seasons.perfectOrWinlessPer100",
+      "group": "seasons",
+      "label": "Perfect or winless teams per 100 seasons",
+      "format": "dec1",
+      "value": 2,
+      "n": 100,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0,
+          5
+        ],
+        "warn": [
+          0,
+          8
+        ],
+        "source": "Spec 23.2: perfect and winless seasons must be extremely rare, a handful per 100 simulated seasons at most. The NFL had four in 1976-2025 (1976 TB, 2007 NE, 2008 DET, 2017 CLE)."
+      }
+    },
+    {
+      "id": "stats.passAtt",
+      "group": "stats",
+      "label": "Pass attempts per team game",
+      "format": "dec1",
+      "value": 33.637224264705885,
+      "n": 54400,
+      "status": "pass",
+      "target": {
+        "pass": [
+          32,
+          35
+        ],
+        "warn": [
+          30.5,
+          36.5
+        ],
+        "ci": [
+          29,
+          38
+        ],
+        "source": "StatMuse league averages by year 2021-2024 (statmuse.com/nfl/ask/nfl-league-average-...): 34.4, 33.3, 33.7, and 32.7 pass attempts per team game."
+      }
+    },
+    {
+      "id": "stats.cmpPct",
+      "group": "stats",
+      "label": "Completion rate",
+      "format": "pct",
+      "value": 0.6400198921778383,
+      "n": 1829865,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.635,
+          0.665
+        ],
+        "warn": [
+          0.62,
+          0.68
+        ],
+        "ci": [
+          0.6,
+          0.7
+        ],
+        "source": "StatMuse league averages by year 2021-2024 (statmuse.com/nfl/ask/nfl-league-average-...): 64.8%, 64.2%, 64.5%, and 65.3%."
+      }
+    },
+    {
+      "id": "stats.ypa",
+      "group": "stats",
+      "label": "Yards per pass attempt",
+      "format": "dec2",
+      "value": 7.199850262177811,
+      "n": 1829865,
+      "status": "pass",
+      "target": {
+        "pass": [
+          6.8,
+          7.3
+        ],
+        "warn": [
+          6.6,
+          7.5
+        ],
+        "ci": [
+          6.3,
+          7.8
+        ],
+        "source": "StatMuse league averages by year 2021-2024 (statmuse.com/nfl/ask/nfl-league-average-...): 7.1, 7.0, 7.0, and 7.1 yards per attempt."
+      }
+    },
+    {
+      "id": "stats.tdPct",
+      "group": "stats",
+      "label": "Touchdown rate",
+      "format": "pct",
+      "value": 0.04404751170168291,
+      "n": 1829865,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.039,
+          0.048
+        ],
+        "warn": [
+          0.035,
+          0.052
+        ],
+        "source": "StatMuse league averages by year 2021-2024 (statmuse.com/nfl/ask/nfl-league-average-...): 4.49%, 4.15%, 4.12%, and 4.54% of attempts."
+      }
+    },
+    {
+      "id": "stats.intPct",
+      "group": "stats",
+      "label": "Interception rate",
+      "format": "pct",
+      "value": 0.022114199681397263,
+      "n": 1829865,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.02,
+          0.026
+        ],
+        "warn": [
+          0.018,
+          0.029
+        ],
+        "source": "StatMuse league averages by year 2021-2024 (statmuse.com/nfl/ask/nfl-league-average-...): 2.35%, 2.31%, 2.35%, and 2.17% of attempts."
+      }
+    },
+    {
+      "id": "stats.sackPct",
+      "group": "stats",
+      "label": "Sack rate",
+      "format": "pct",
+      "value": 0.06572377796078915,
+      "n": 1958591,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.06,
+          0.073
+        ],
+        "warn": [
+          0.055,
+          0.08
+        ],
+        "source": "StatMuse league averages by year 2021-2024 (statmuse.com/nfl/ask/nfl-league-average-...): sacks per dropback 6.2%, 6.7%, 7.1%, and 6.9%."
+      }
+    },
+    {
+      "id": "stats.rushAtt",
+      "group": "stats",
+      "label": "Rush attempts per team game",
+      "format": "dec1",
+      "value": 26.505441176470587,
+      "n": 54400,
+      "status": "pass",
+      "target": {
+        "pass": [
+          25.5,
+          28.5
+        ],
+        "warn": [
+          24.5,
+          29.5
+        ],
+        "ci": [
+          23,
+          31
+        ],
+        "source": "StatMuse league averages by year 2021-2024 (statmuse.com/nfl/ask/nfl-league-average-...): 26.6, 27.3, 26.8, and 27.0 rush attempts per team game."
+      }
+    },
+    {
+      "id": "stats.ypc",
+      "group": "stats",
+      "label": "Yards per carry",
+      "format": "dec2",
+      "value": 4.2099728413144915,
+      "n": 1441896,
+      "status": "pass",
+      "target": {
+        "pass": [
+          4.15,
+          4.55
+        ],
+        "warn": [
+          4,
+          4.7
+        ],
+        "ci": [
+          3.8,
+          4.9
+        ],
+        "source": "StatMuse league averages by year 2021-2024 (statmuse.com/nfl/ask/nfl-league-average-...): 4.3, 4.5, 4.2, and 4.4 yards per carry."
+      }
+    },
+    {
+      "id": "stats.thirdDownPct",
+      "group": "stats",
+      "label": "Third-down conversions",
+      "format": "pct",
+      "value": 0.4053810526187617,
+      "n": 657009,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.375,
+          0.415
+        ],
+        "warn": [
+          0.36,
+          0.43
+        ],
+        "source": "StatMuse league averages by year 2021-2024 (statmuse.com/nfl/ask/nfl-league-average-...): 40.4%, 39.4%, 38.8%, and 39.7%."
+      }
+    },
+    {
+      "id": "stats.fourthDownAtt",
+      "group": "stats",
+      "label": "Fourth-down attempts per team game",
+      "format": "dec2",
+      "value": 1.2576654411764705,
+      "n": 54400,
+      "status": "pass",
+      "target": {
+        "pass": [
+          1.2,
+          1.7
+        ],
+        "warn": [
+          1,
+          1.9
+        ],
+        "source": "StatMuse league averages by year 2021-2024 (statmuse.com/nfl/ask/nfl-league-average-...): 793, 736, 799, and 766 fourth-down tries, 1.35 to 1.47 per team game."
+      }
+    },
+    {
+      "id": "stats.fourthDownPct",
+      "group": "stats",
+      "label": "Fourth-down conversions",
+      "format": "pct",
+      "value": 0.5086162795796366,
+      "n": 68417,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.48,
+          0.59
+        ],
+        "warn": [
+          0.44,
+          0.62
+        ],
+        "source": "StatMuse league averages by year 2021-2024 (statmuse.com/nfl/ask/nfl-league-average-...): 53.1%, 50.7%, 51.6%, and 56.8%."
+      }
+    },
+    {
+      "id": "stats.redZoneTdPct",
+      "group": "stats",
+      "label": "Red zone touchdowns",
+      "format": "pct",
+      "value": 0.5660943091748584,
+      "n": 196439,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.52,
+          0.62
+        ],
+        "warn": [
+          0.48,
+          0.66
+        ],
+        "source": "TeamRankings \"Red Zone Scoring Percentage (TD only)\": team rates run from the mid 40s to the high 60s (SF led 2023 at 67.2%; TB's 65.7% was fourth in 2024).",
+        "note": "The league average was behind paywalls and blocked pages, so the band is wide; tighten it when a sourced average is found."
+      }
+    },
+    {
+      "id": "stats.turnovers",
+      "group": "stats",
+      "label": "Turnovers per team game",
+      "format": "dec2",
+      "value": 1.2800367647058823,
+      "n": 54400,
+      "status": "pass",
+      "target": {
+        "pass": [
+          1.15,
+          1.45
+        ],
+        "warn": [
+          1.05,
+          1.6
+        ],
+        "source": "StatMuse league averages by year 2021-2024 (statmuse.com/nfl/ask/nfl-league-average-...): 1.30, 1.31, 1.35, and 1.21 turnovers per team game."
+      }
+    },
+    {
+      "id": "stats.penalties",
+      "group": "stats",
+      "label": "Penalties per team game",
+      "format": "dec2",
+      "value": 6.2724448529411765,
+      "n": 54400,
+      "status": "pass",
+      "target": {
+        "pass": [
+          5.5,
+          6.6
+        ],
+        "warn": [
+          5,
+          7.2
+        ],
+        "ci": [
+          4.5,
+          7.8
+        ],
+        "source": "StatMuse league averages by year 2021-2024 (statmuse.com/nfl/ask/nfl-league-average-...): 5.92, 5.60, 5.71, and 6.44 accepted penalties per team game."
+      }
+    },
+    {
+      "id": "stats.penaltyYds",
+      "group": "stats",
+      "label": "Penalty yards per team game",
+      "format": "dec1",
+      "value": 47.40194852941176,
+      "n": 54400,
+      "status": "pass",
+      "target": {
+        "pass": [
+          45,
+          54
+        ],
+        "warn": [
+          40,
+          58
+        ],
+        "source": "StatMuse league averages by year 2021-2024 (statmuse.com/nfl/ask/nfl-league-average-...): 51.0, 46.1, 47.1, and 52.2 penalty yards per team game."
+      }
+    },
+    {
+      "id": "stats.fgPctUnder40",
+      "group": "stats",
+      "label": "Field goals under 40 yards",
+      "format": "pct",
+      "value": 0.967086400295099,
+      "n": 59641,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.91,
+          0.975
+        ],
+        "warn": [
+          0.88,
+          0.985
+        ],
+        "source": "TeamRankings 2024 field goal rates by distance (via web search): 93.8% from 20-29 and 92.9% from 30-39."
+      }
+    },
+    {
+      "id": "stats.fgPct40s",
+      "group": "stats",
+      "label": "Field goals from 40 to 49",
+      "format": "pct",
+      "value": 0.8549759806332035,
+      "n": 26437,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.78,
+          0.88
+        ],
+        "warn": [
+          0.74,
+          0.91
+        ],
+        "source": "TeamRankings 2024: 83.8% from 40-49; Sharp Football \"NFL Field Goal Trends\": about 82% from 40-45 and 74% from 45-50 in 2019-2023."
+      }
+    },
+    {
+      "id": "stats.fgPct50Plus",
+      "group": "stats",
+      "label": "Field goals from 50 or more",
+      "format": "pct",
+      "value": 0.6604279029896061,
+      "n": 27997,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.62,
+          0.78
+        ],
+        "warn": [
+          0.56,
+          0.82
+        ],
+        "source": "2024 reports give 71.7% (Sharp Football, the highest in at least ten years) to 76.7% (TeamRankings) from 50 or more; about 71% from 50-55 in 2019-2023."
+      }
+    },
+    {
+      "id": "stats.puntAvg",
+      "group": "stats",
+      "label": "Gross punt average",
+      "format": "dec1",
+      "value": 46.76451743260416,
+      "n": 205391,
+      "status": "pass",
+      "target": {
+        "pass": [
+          45.3,
+          48
+        ],
+        "warn": [
+          44.3,
+          49
+        ],
+        "source": "StatMuse punting by year: gross averages 45.6, 46.8, 47.3, and 47.3 in 2021-2024."
+      }
+    },
+    {
+      "id": "stats.kickoffReturnRate",
+      "group": "stats",
+      "label": "Kickoffs returned",
+      "format": "pct",
+      "value": 0.7532990632080896,
+      "n": 295690,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.68,
+          0.82
+        ],
+        "warn": [
+          0.6,
+          0.88
+        ],
+        "source": "PFF \"NFL kickoffs are evolving as returns surged in 2025\" and TSN: 74.5% to 76% of kickoffs were returned in 2025, with touchbacks at the 35.",
+        "note": "The rule set uses the 2025 kickoff rules."
+      }
+    },
+    {
+      "id": "stats.kickReturnAvg",
+      "group": "stats",
+      "label": "Kick return average",
+      "format": "dec1",
+      "value": 25.731704251087578,
+      "n": 222743,
+      "status": "pass",
+      "target": {
+        "pass": [
+          24.5,
+          28
+        ],
+        "warn": [
+          23,
+          29.5
+        ],
+        "source": "PFF: kick returns averaged 25.9 yards in 2025 and 27.6 in 2024."
+      }
+    },
+    {
+      "id": "stats.puntReturnAvg",
+      "group": "stats",
+      "label": "Punt return average",
+      "format": "dec1",
+      "value": 9.971672027537949,
+      "n": 70884,
+      "status": "pass",
+      "target": {
+        "pass": [
+          8.5,
+          10.5
+        ],
+        "warn": [
+          7.5,
+          11.5
+        ],
+        "source": "StatMuse returns by year: 8.9, 9.0, 9.6, and 9.9 yards per punt return in 2021-2024."
+      }
+    },
+    {
+      "id": "leaders.passYds",
+      "group": "leaders",
+      "label": "Passing yards leader",
+      "format": "int",
+      "value": 5321.52,
+      "n": 100,
+      "status": "pass",
+      "target": {
+        "pass": [
+          4500,
+          5400
+        ],
+        "warn": [
+          4300,
+          5700
+        ],
+        "ci": [
+          4000,
+          6200
+        ],
+        "source": "Wikipedia \"List of NFL annual passing yards leaders\", 2014-2025 seasons: 4,577 to 5,316."
+      }
+    },
+    {
+      "id": "leaders.rushYds",
+      "group": "leaders",
+      "label": "Rushing yards leader",
+      "format": "int",
+      "value": 1763.17,
+      "n": 100,
+      "status": "pass",
+      "target": {
+        "pass": [
+          1400,
+          2050
+        ],
+        "warn": [
+          1250,
+          2250
+        ],
+        "source": "Wikipedia \"List of NFL annual rushing yards leaders\", 2014-2025 seasons: 1,327 to 2,027."
+      }
+    },
+    {
+      "id": "leaders.recYds",
+      "group": "leaders",
+      "label": "Receiving yards leader",
+      "format": "int",
+      "value": 1767.94,
+      "n": 100,
+      "status": "pass",
+      "target": {
+        "pass": [
+          1500,
+          1950
+        ],
+        "warn": [
+          1400,
+          2100
+        ],
+        "source": "Wikipedia \"List of NFL annual receiving yards leaders\", 2014-2025 seasons: 1,448 to 1,947."
+      }
+    },
+    {
+      "id": "leaders.receptions",
+      "group": "leaders",
+      "label": "Receptions leader",
+      "format": "int",
+      "value": 130.53,
+      "n": 100,
+      "status": "pass",
+      "target": {
+        "pass": [
+          110,
+          150
+        ],
+        "warn": [
+          100,
+          162
+        ],
+        "source": "Wikipedia \"List of NFL annual receptions leaders\", 2014-2025 seasons: 107 to 149."
+      }
+    },
+    {
+      "id": "leaders.sacks",
+      "group": "leaders",
+      "label": "Sacks leader",
+      "format": "int",
+      "value": 21.56,
+      "n": 100,
+      "status": "pass",
+      "target": {
+        "pass": [
+          15,
+          23
+        ],
+        "warn": [
+          13,
+          26
+        ],
+        "source": "Wikipedia \"List of NFL annual sacks leaders\", 2014-2025 seasons: 15 to 23."
+      }
+    },
+    {
+      "id": "leaders.defInt",
+      "group": "leaders",
+      "label": "Interceptions leader",
+      "format": "int",
+      "value": 10.13,
+      "n": 100,
+      "status": "pass",
+      "target": {
+        "pass": [
+          6,
+          11
+        ],
+        "warn": [
+          5,
+          13
+        ],
+        "source": "Wikipedia \"List of NFL annual interceptions leaders\", 2014-2025 seasons: 6 to 11."
+      }
+    },
+    {
+      "id": "leaders.passers4000",
+      "group": "leaders",
+      "label": "4,000-yard passers",
+      "format": "dec1",
+      "value": 10.35,
+      "n": 100,
+      "status": "pass",
+      "target": {
+        "pass": [
+          7,
+          14
+        ],
+        "warn": [
+          5,
+          17
+        ],
+        "source": "Sports Illustrated, \"Using sportsbooks to pick 4,000-yard passers\": nine in 2022, the fewest since 2017."
+      }
+    },
+    {
+      "id": "leaders.rushers1000",
+      "group": "leaders",
+      "label": "1,000-yard rushers",
+      "format": "dec1",
+      "value": 15.71,
+      "n": 100,
+      "status": "pass",
+      "target": {
+        "pass": [
+          8,
+          18
+        ],
+        "warn": [
+          5,
+          22
+        ],
+        "source": "FOX Sports (via Wausau Pilot), \"1,000-yard rushers are keeping pace with 1,000-yard receivers\": 110 1,000-yard rushing seasons in the last decade, about 11 a season, and more in 2024."
+      }
+    },
+    {
+      "id": "leaders.receivers1000",
+      "group": "leaders",
+      "label": "1,000-yard receivers",
+      "format": "dec1",
+      "value": 28.91,
+      "n": 100,
+      "status": "pass",
+      "target": {
+        "pass": [
+          18,
+          30
+        ],
+        "warn": [
+          14,
+          35
+        ],
+        "source": "FOX Sports (via Wausau Pilot): 233 1,000-yard receiving seasons in the last decade, about 23 a season."
+      }
+    },
+    {
+      "id": "leaders.topTargetShare",
+      "group": "leaders",
+      "label": "Team's top target share",
+      "format": "pct",
+      "value": 0.24109733753864396,
+      "n": 3200,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.22,
+          0.29
+        ],
+        "warn": [
+          0.2,
+          0.32
+        ],
+        "source": "Fantasy Footballers, \"The Path to a WR1 Fantasy Season\": a team's WR1 mostly sees 20% or more of its targets, and near 30% is rare."
+      }
+    },
+    {
+      "id": "leaders.maxTargetShare",
+      "group": "leaders",
+      "label": "Highest target share in the league",
+      "format": "pct",
+      "value": 0.31295379478680835,
+      "n": 100,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.28,
+          0.35
+        ],
+        "warn": [
+          0.26,
+          0.38
+        ],
+        "source": "Sharp Football \"Odds & Trends: Fantasy Wide Receiver Production Heading Into 2024\": three receivers passed a 30% target share in 2023, the most since 2014."
+      }
+    },
+    {
+      "id": "leaders.leadBackShare",
+      "group": "leaders",
+      "label": "Lead back's share of running back carries",
+      "format": "pct",
+      "value": 0.5604395103338398,
+      "n": 3200,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.5,
+          0.7
+        ],
+        "warn": [
+          0.44,
+          0.78
+        ],
+        "source": "PFF \"Examining team running back usage and tendencies for 2024\": lead backs took about 50% to 65% of their teams' running back carries."
+      }
+    },
+    {
+      "id": "injuries.missed",
+      "group": "injuries",
+      "label": "Injuries costing a game, per team season",
+      "format": "dec1",
+      "value": 21.7046875,
+      "n": 3200,
+      "status": "pass",
+      "target": {
+        "pass": [
+          18,
+          30
+        ],
+        "warn": [
+          13,
+          36
+        ],
+        "ci": [
+          10,
+          40
+        ],
+        "source": "Orthopaedic Journal of Sports Medicine, \"Injury Rates Remained Elevated in the Second NFL Season After the Onset of the COVID-19 Pandemic\" (PMC9742207): injuries costing at least one game numbered about 645 a season in 2018-2020 (20 per team) and 824 in 2021 (25.8 per team).",
+        "note": "In-game injuries only until the M7 season loop adds practice injuries and carry-over."
+      }
+    },
+    {
+      "id": "injuries.gamesLost",
+      "group": "injuries",
+      "label": "Games lost to injury, per team season",
+      "format": "dec1",
+      "value": 67.70875,
+      "n": 3200,
+      "status": "pass",
+      "target": {
+        "pass": [
+          60,
+          140
+        ],
+        "warn": [
+          45,
+          180
+        ],
+        "source": "Football Outsiders adjusted games lost (via FTN): 80.9, 79.3, and 68.9 per team for starters and key reserves in 2021-2023; Sports Info Solutions counted about 95 to over 140 total games missed per team in 2024."
+      }
+    },
+    {
+      "id": "injuries.seasonEnding",
+      "group": "injuries",
+      "label": "Season-ending injuries, per team season",
+      "format": "dec1",
+      "value": 3.9528125,
+      "n": 3200,
+      "status": "info",
+      "target": null
+    },
+    {
+      "id": "injuries.all",
+      "group": "injuries",
+      "label": "All in-game injuries, per team season",
+      "format": "dec1",
+      "value": 39.0959375,
+      "n": 3200,
+      "status": "info",
+      "target": null
+    },
+    {
+      "id": "effects.fit",
+      "group": "effects",
+      "label": "Fit: best versus worst fit, same players",
+      "format": "pct",
+      "value": 0.05889561792966753,
+      "n": 10,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.04,
+          0.15
+        ],
+        "warn": [
+          0.02,
+          0.25
+        ],
+        "ci": [
+          0,
+          0.35
+        ],
+        "source": "Design target, spec 7.3: best versus worst fit for the same player produces meaningful but not dominant stat differences.",
+        "note": "Meaningful: at least a 4% change in per-play production. Not dominant: at most 15%. Mean of the six groups, each measured as the change from the worst arm to the best."
+      }
+    },
+    {
+      "id": "effects.fit.passing",
+      "group": "effects",
+      "label": "Fit effect, yards per attempt",
+      "format": "pct",
+      "value": 0.024423821555165103,
+      "n": 4649,
+      "status": "info",
+      "target": null
+    },
+    {
+      "id": "effects.fit.rushing",
+      "group": "effects",
+      "label": "Fit effect, yards per carry",
+      "format": "pct",
+      "value": 0.0809223384705737,
+      "n": 4268,
+      "status": "info",
+      "target": null
+    },
+    {
+      "id": "effects.fit.receiving",
+      "group": "effects",
+      "label": "Fit effect, yards per target",
+      "format": "pct",
+      "value": 0.06722324918325615,
+      "n": 18724,
+      "status": "info",
+      "target": null
+    },
+    {
+      "id": "effects.fit.protection",
+      "group": "effects",
+      "label": "Fit effect, pressures allowed",
+      "format": "pct",
+      "value": 0.09636669784473116,
+      "n": 24465,
+      "status": "info",
+      "target": null
+    },
+    {
+      "id": "effects.fit.passRush",
+      "group": "effects",
+      "label": "Fit effect, pressures",
+      "format": "pct",
+      "value": 0.03784929509435854,
+      "n": 19052,
+      "status": "info",
+      "target": null
+    },
+    {
+      "id": "effects.fit.coverage",
+      "group": "effects",
+      "label": "Fit effect, yards allowed per target",
+      "format": "pct",
+      "value": 0.046588305429920526,
+      "n": 22725,
+      "status": "info",
+      "target": null
+    },
+    {
+      "id": "effects.windPoints",
+      "group": "effects",
+      "label": "Wind 16+ mph versus calm, points per team",
+      "format": "signed1",
+      "value": -2.3615833344348225,
+      "n": 1083,
+      "status": "pass",
+      "target": {
+        "pass": [
+          -3.2,
+          -1
+        ],
+        "warn": [
+          -4.5,
+          -0.3
+        ],
+        "source": "NFL Analytics \"Weather & NFL Scoring: It's the Wind\" (7,276 games, 1999-2025): outdoor games average 44.7 total points in calm air (0-5 mph) and 40.5 at 16 mph or more, 2.1 fewer per team."
+      }
+    },
+    {
+      "id": "effects.domePoints",
+      "group": "effects",
+      "label": "Indoors versus outdoors, points per team",
+      "format": "signed1",
+      "value": 1.5982400263128902,
+      "n": 6538,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.8,
+          2.7
+        ],
+        "warn": [
+          0.2,
+          3.5
+        ],
+        "source": "NFL Analytics \"Weather & NFL Scoring\": domes and closed roofs average 46.9 total points against 43.4 outdoors, 1.75 more per team."
+      }
+    },
+    {
+      "id": "effects.coldPoints",
+      "group": "effects",
+      "label": "Freezing versus mild, points per team",
+      "format": "signed1",
+      "value": -0.7102679466561881,
+      "n": 1701,
+      "status": "pass",
+      "target": {
+        "pass": [
+          -1.2,
+          0.6
+        ],
+        "warn": [
+          -2,
+          1.2
+        ],
+        "source": "NFL Analytics \"Weather & NFL Scoring\": 43.4 total points at 32°F or colder (384 games) against 43.7 at 50-69°F, about the same."
+      }
+    },
+    {
+      "id": "effects.windCompletion",
+      "group": "effects",
+      "label": "Wind 20+ mph versus under 10, completion rate",
+      "format": "pctPoints",
+      "value": -0.05760125764276669,
+      "n": 17825,
+      "status": "pass",
+      "target": {
+        "pass": [
+          -0.08,
+          -0.03
+        ],
+        "warn": [
+          -0.11,
+          -0.015
+        ],
+        "source": "The Spax, \"Analyzing the Effect of Weather in the NFL\": completion rate 60.3% with wind under 10 mph and 54.7% at 20 mph or more."
+      }
+    },
+    {
+      "id": "effects.windFieldGoal",
+      "group": "effects",
+      "label": "Wind 20+ mph versus under 10, field goal rate",
+      "format": "pctPoints",
+      "value": -0.06944359380643228,
+      "n": 1138,
+      "status": "pass",
+      "target": {
+        "pass": [
+          -0.11,
+          -0.03
+        ],
+        "warn": [
+          -0.15,
+          -0.01
+        ],
+        "source": "The Spax, \"Analyzing the Effect of Weather in the NFL\": field goals 83.8% with wind under 10 mph and 76.9% at 20 mph or more."
+      }
+    },
+    {
+      "id": "effects.cohesion",
+      "group": "effects",
+      "label": "Cohesion",
+      "format": "signed1",
+      "value": null,
+      "n": 0,
+      "status": "pending",
+      "target": null
+    },
+    {
+      "id": "effects.coaching",
+      "group": "effects",
+      "label": "Coaching quality",
+      "format": "signed1",
+      "value": null,
+      "n": 0,
+      "status": "pending",
+      "target": null
+    },
+    {
+      "id": "effects.facilities",
+      "group": "effects",
+      "label": "Facilities",
+      "format": "signed1",
+      "value": null,
+      "n": 0,
+      "status": "pending",
+      "target": null
+    },
+    {
+      "id": "effects.lockerRoom",
+      "group": "effects",
+      "label": "Locker room",
+      "format": "signed1",
+      "value": null,
+      "n": 0,
+      "status": "pending",
+      "target": null
+    }
+  ]
+}
