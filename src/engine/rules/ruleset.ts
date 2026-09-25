@@ -83,6 +83,8 @@ export interface SeasonRules {
   /** Week of the trade deadline (spec 22.2). */
   tradeDeadlineWeek: number;
   draftRounds: number;
+  /** Wild card ties use common games only when every tied club played at least this many (spec 5.3). */
+  commonGamesMin: number;
 }
 
 export const PENALTY_IDS = [
@@ -260,7 +262,8 @@ export const DEFAULT_RULES: RuleSet = {
     weeks: 18,
     playoffTeamsPerConference: 7,
     tradeDeadlineWeek: 9,
-    draftRounds: 7
+    draftRounds: 7,
+    commonGamesMin: 4
   },
   cap: {
     amount: 301_200_000,

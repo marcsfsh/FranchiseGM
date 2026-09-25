@@ -8,6 +8,7 @@ import { createLeague, defaultStartOptions } from '../../src/engine/league/creat
 import { startersOf } from '../../src/engine/league/depth';
 import { depthRows, moveInDepth } from '../../src/engine/league/depth-view';
 import type { League } from '../../src/engine/league/types';
+import type { Player } from '../../src/engine/model/player';
 import { advanceWeek, gameWeek, weekGames } from '../../src/engine/season/advance';
 import { leagueStandings } from '../../src/engine/season/state';
 import { NEUTRAL_PLAN } from '../../src/engine/sim/plan';
@@ -133,22 +134,26 @@ describe('a season with the user managing (spec 12.2, 8.7)', { timeout: 180_000 
     l.teams[user].depth = { auto: false, order: moved.order };
     l.teams[user].plan = { auto: false, plan: { ...NEUTRAL_PLAN, passLean: 0.15, blitz: 1.5 } };
     let started = 0;
+    let ready = 0;
     let games = 0;
     while (l.date.phase !== 'staff') {
+      const healthy = available(l, l.players[backup] as Player);
       const week = advanceWeek(l, climate, input);
       for (const { result } of week.games) {
         const side = result.home === user ? 'home' : result.away === user ? 'away' : null;
         if (!side) continue;
         games++;
-        // He starts whenever he's healthy; the user's plan and chart are never overwritten.
-        if ((result.box[side].players[backup]?.started ?? 0) > 0) started++;
+        // He starts every game he's healthy for; the user's plan and chart are never overwritten.
+        if (healthy) ready++;
+        if (healthy && (result.box[side].players[backup]?.started ?? 0) > 0) started++;
       }
       expect(l.teams[user].depth.auto).toBe(false);
       expect(l.teams[user].depth.order.QB?.[0]).toBe(backup);
       expect(l.teams[user].plan.plan.passLean).toBe(0.15);
     }
     expect(games).toBeGreaterThanOrEqual(14);
-    expect(started).toBeGreaterThanOrEqual(games - 4);
+    expect(ready).toBeGreaterThan(0);
+    expect(started).toBe(ready);
     expect(l.season.champion).not.toBeNull();
     // AI teams kept managing: their depth charts changed hands and plans varied by opponent.
     expect(l.season.transactions.some(t => t.team !== user)).toBe(true);

@@ -204,6 +204,24 @@ describe('rotations on auto (spec 12.3)', () => {
     expect(rotation.rb1Share).toBeGreaterThanOrEqual(0.35);
     expect(logs.map(l => l.decision)).toContain('Rotation: pass-rush specialist');
   });
+
+  it('names a goal-line back and a dime linebacker who beat the starters at the job', () => {
+    const league = fresh();
+    const roster = dressable(league, TEAM);
+    const { starters } = decideDepthChart(league, TEAM, roster, stream(1));
+    const starting = new Set(Object.values(starters));
+    const bruiser = roster.find(p => !starting.has(p.id) && p.position === 'HB');
+    const cover = roster.find(p => !starting.has(p.id) && ['MLB', 'LOLB', 'ROLB'].includes(p.position));
+    if (!bruiser || !cover) throw new Error('no players');
+    bruiser.ratings = { ...bruiser.ratings, trk: 99, btk: 99, str: 95, sfa: 95, car: 99 };
+    cover.ratings = { ...cover.ratings, zcv: 99, mcv: 99, prc: 95, spd: 92, prs: 90 };
+    const { rotation, logs } = decideRotation(league, TEAM, roster, starters, stream(2));
+    expect(rotation.subs.goalLineBack).toBe(bruiser.id);
+    expect(rotation.subs.dimeBacker).toBe(cover.id);
+    expect(logs.map(l => l.decision)).toEqual(
+      expect.arrayContaining(['Rotation: goal-line back', 'Rotation: dime linebacker'])
+    );
+  });
 });
 
 describe('injury replacements (spec 12.1, 14.11)', () => {

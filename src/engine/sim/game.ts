@@ -717,16 +717,20 @@ class GameSim {
     const offense = this.offense;
     const rb1Share = this.rb1Share(offense);
     const subs = this.teams[offense].rotation.subs;
-    const thirdDownBack = this.down >= 3 ? this.ready(offense, subs.thirdDownBack, used) : null;
+    const shortYardage =
+      100 - this.ball <= C.goalLineYards || (this.down >= 3 && this.distance <= C.shortYardageBack);
+    const back =
+      (shortYardage ? this.ready(offense, subs.goalLineBack, used) : null) ??
+      (this.down >= 3 ? this.ready(offense, subs.thirdDownBack, used) : null);
     const redZone = this.inRedZone ? this.ready(offense, subs.redZoneTarget, used) : null;
     const redZoneSlot: Slot | null = redZone ? (redZone.position === 'TE' ? 'TE1' : 'SLOT') : null;
     for (const slot of PERSONNEL_SLOTS[personnel]) {
       // The lead back splits snaps with the change-of-pace back by the team's rotation (spec 12.3).
       const s: Slot = slot === 'RB1' && !this.rng.chance(rb1Share) ? 'RB2' : slot;
-      // Situational subs (spec 12.3): the third-down back, and a big target in the red zone.
+      // Situational subs (spec 12.3): the goal-line or third-down back, and a big target in the red zone.
       const sub =
-        slot === 'RB1' && thirdDownBack && !used.has(thirdDownBack)
-          ? thirdDownBack
+        slot === 'RB1' && back && !used.has(back)
+          ? back
           : s === redZoneSlot && redZone && !used.has(redZone)
             ? redZone
             : null;
@@ -751,8 +755,16 @@ class GameSim {
     }
     const def: OnField = new Map();
     const dUsed = new Set<SimPlayer>();
+    // In dime the team's dime linebacker, if it names one, is the lone linebacker (spec 12.3).
+    const dimeBacker =
+      pkg === 'dime'
+        ? this.ready(other(offense), this.teams[other(offense)].rotation.subs.dimeBacker, dUsed)
+        : null;
     for (const slot of PACKAGE_SLOTS[pkg]) {
-      const p = this.pick(other(offense), slot, dUsed, 0, true);
+      const p =
+        slot === 'MIKE' && dimeBacker && !dUsed.has(dimeBacker)
+          ? dimeBacker
+          : this.pick(other(offense), slot, dUsed, 0, true);
       if (p) {
         def.set(slot, p);
         dUsed.add(p);

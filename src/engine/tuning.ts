@@ -239,6 +239,26 @@ export const TUNING = {
     }
   } as const, // prettier-ignore
 
+  /**
+   * Game plans and rotations (spec 8.7, 12.3): the limits the user and the AI plan within. Plan dials add
+   * to the scheme's rates (blitz multiplies them); rotation shares are of a unit's snaps.
+   */
+  gamePlan: {
+    limits: {
+      passLean: [-0.15, 0.15],
+      blitz: [0.5, 1.5],
+      man: [-0.3, 0.3],
+      press: [-0.3, 0.3],
+      nickel: [-0.2, 0.2],
+      spread: [-0.3, 0.3],
+      twoHigh: [-0.3, 0.3],
+      rb1Share: [0.35, 0.9],
+      lineRotation: [0, 1],
+      snapLimit: [0.3, 1],
+      devSnaps: [0, 0.5]
+    }
+  } as const,
+
   /** The AI decision framework (spec 14.1, 14.5). */
   ai: {
     /** Softmax temperature at competence 100 and 0: how far a decision-maker wanders from the best option. */
@@ -283,6 +303,8 @@ export const TUNING = {
       riskWeight: 1.5,
       regularStakes: 0.5,
       stakesWeight: 0.5,
+      /** Stakes shade the choice from this floor up; they never veto it. */
+      stakesFloor: 0.5,
       /** A player who isn't starting counts as this many points worse than the man ahead of him. */
       benchEdge: -5
     },
@@ -293,10 +315,14 @@ export const TUNING = {
      * trails our rush and falls poisePerPoint per point of their quarterback's poise; man and press move
      * coverPerPoint per point that man coverage beats zone and pressPerPoint per point our corners out-rate
      * their receivers off the line; nickel moves nickelPerShare per share of three-receiver personnel above
-     * spreadShare. Each dial's options are scored by how close they sit to the ideal, and by how close to
-     * the scheme's normal (weight: the head coach's rigidity out of 100).
+     * spreadShare. Each dial's options are scored by how close they sit to the ideal (1 on it, 0 exploitSpan
+     * of the dial away), and by how close to the scheme's normal (1 on it, comfortFloor comfortSpan of the dial
+     * away; weight: the head coach's rigidity out of 100).
      */
     plan: {
+      exploitSpan: 0.5,
+      comfortFloor: 0.3,
+      comfortSpan: 1,
       readNoise: 6,
       leanPerPoint: 0.005,
       blitzPerPoint: 0.04,
@@ -804,8 +830,12 @@ export const TUNING = {
     tiredAt: 85,
     tiredPoints: 0.15,
     subAt: { QB: 20, RB: 62, WR: 52, TE: 58, OL: 35, DL: 68, LB: 58, DB: 52, ST: 10 },
-    /** Game-day actives (spec 12.1): defensive groups dressed at least, for a rotating line and dime with backups. */
-    dressDefense: { DL: 6, LB: 4, DB: 8 },
+    /**
+     * Game-day actives (spec 12.1): quarterbacks dressed, backs and receivers dressed beyond the most the
+     * team's personnel puts on the field, and defensive groups dressed at least, for a rotating line and dime
+     * with backups.
+     */
+    dress: { QB: 2, spare: { RB: 1, WR: 1 }, defense: { DL: 6, LB: 4, DB: 8 } },
     /** Home field (spec 17.3): rating points for the home team from the crowd, travel per time zone, and
      * rest; the combined effect is about 1.5 to 2.5 points a game. */
     homeCrowd: 0.65,
@@ -912,10 +942,12 @@ export const TUNING = {
       /**
        * Rotation plans (spec 12.3): snap limits apply once a unit has played snapLimitFrom snaps; a
        * pass-rush specialist comes in on second and passRushDown.second or more, and on third or fourth and
-       * passRushDown.third or more.
+       * passRushDown.third or more; the goal-line back comes in inside goalLineYards of the end zone and on
+       * third or fourth and shortYardageBack or less.
        */
       snapLimitFrom: 10,
       passRushDown: { second: 9, third: 5 },
+      shortYardageBack: 2,
       featureTargets: 0.1,
       featureCarries: 0.1,
       doubleSeparation: 10,

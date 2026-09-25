@@ -2,6 +2,7 @@
  * What a team brings to a game beyond its roster and schemes: the week's game plan (spec 8.7) and its
  * rotations and packages (spec 12.3). The coaching staff sets them each week, or the user does.
  */
+import { TUNING } from '../tuning';
 
 export interface GamePlan {
   /** Added to the pass rate on every down: the run and pass balance for this opponent. */
@@ -38,6 +39,10 @@ export interface SituationalSubs {
   passRusher: string | null;
   /** A big target inside the 20, in for the slot receiver or the lead tight end. */
   redZoneTarget: string | null;
+  /** The back at the goal line and on third or fourth and short. */
+  goalLineBack: string | null;
+  /** The lone linebacker in the dime package. */
+  dimeBacker: string | null;
 }
 
 export interface Rotation {
@@ -53,19 +58,7 @@ export interface Rotation {
 }
 
 /** The limits the user and the AI plan within. */
-export const PLAN_LIMITS = {
-  passLean: [-0.15, 0.15],
-  blitz: [0.5, 1.5],
-  man: [-0.3, 0.3],
-  press: [-0.3, 0.3],
-  nickel: [-0.2, 0.2],
-  spread: [-0.3, 0.3],
-  twoHigh: [-0.3, 0.3],
-  rb1Share: [0.35, 0.9],
-  lineRotation: [0, 1],
-  snapLimit: [0.3, 1],
-  devSnaps: [0, 0.5]
-} as const;
+export const PLAN_LIMITS = TUNING.gamePlan.limits;
 
 export const NEUTRAL_PLAN: GamePlan = {
   passLean: 0,
@@ -82,7 +75,13 @@ export const NEUTRAL_PLAN: GamePlan = {
   spy: false
 };
 
-export const NO_SUBS: SituationalSubs = { thirdDownBack: null, passRusher: null, redZoneTarget: null };
+export const NO_SUBS: SituationalSubs = {
+  thirdDownBack: null,
+  passRusher: null,
+  redZoneTarget: null,
+  goalLineBack: null,
+  dimeBacker: null
+};
 
 export const defaultRotation = (rb1Share: number): Rotation => ({
   rb1Share,

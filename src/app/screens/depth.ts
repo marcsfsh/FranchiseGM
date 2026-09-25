@@ -22,6 +22,7 @@ import {
 import { designation } from '../../engine/season/injuries';
 import { PLAN_LIMITS, type Rotation, type SituationalSubs } from '../../engine/sim/plan';
 import { joinList } from '../../engine/text';
+import { TUNING } from '../../engine/tuning';
 import { h } from '../dom';
 import { playerLink, tierPlate } from '../ui/players';
 import { tabs } from '../ui/tabs';
@@ -286,6 +287,43 @@ export function depthScreen(): Screen {
         );
       };
 
+      /** Questionable players (spec 10.8 playing hurt): each plays hurt unless the user rests him. */
+      const restHost = h('div');
+      const drawRest = () => {
+        const questionable = Object.values(league.players)
+          .filter(p => p.team === abbr && p.status === 'active' && designation(p.injury) === 'questionable')
+          .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
+        if (!questionable.length) {
+          restHost.replaceChildren();
+          return;
+        }
+        const boxes = questionable.map(p => {
+          const box = h('input', { type: 'checkbox', id: `rest-${p.id}`, checked: team.resting.includes(p.id) });
+          box.addEventListener('change', () => {
+            const tookOver = change(l => {
+              const resting = l.teams[abbr].resting.filter(id => id !== p.id);
+              l.teams[abbr].resting = box.checked ? [...resting, p.id] : resting;
+            });
+            announce(`${fullName(p)} ${box.checked ? 'rests' : 'plays hurt'} this week.${tookOver}`);
+          });
+          return h('label', { class: 'check-target check-left' }, box, `Rest ${fullName(p)} (${p.position}, OVR ${p.ovr})`);
+        });
+        restHost.replaceChildren(
+          h(
+            'section',
+            { class: 'card' },
+            h('div', { class: 'signbar' }, h('h2', { class: 'signbar-title' }, 'Questionable this week')),
+            h(
+              'div',
+              { class: 'card-body' },
+              h('p', { class: 'muted' }, 'A questionable player plays hurt unless you rest him: he loses a few rating points and is likelier to get hurt again.'),
+              ...boxes
+            )
+          )
+        );
+      }; // prettier-ignore
+      drawRest();
+
       const unitPanel = (slots: readonly Slot[]) => () => {
         const rows = depthRows(league, abbr);
         return h('div', { class: 'depth-grid' }, ...slots.map(slot => slotSection(slot, rows[slot] ?? [])));
@@ -317,10 +355,14 @@ export function depthScreen(): Screen {
         if (!next || next === league) return;
         league = next;
         team = next.teams[abbr];
-        const key = focusKey(panels.element);
+        const key = focusKey(panels.element) ?? focusKey(restHost);
         syncAuto();
+        drawRest();
         panels.refresh();
-        if (key) panels.element.querySelector<HTMLElement>(key)?.focus();
+        if (key)
+          (
+            panels.element.querySelector<HTMLElement>(key) ?? restHost.querySelector<HTMLElement>(key)
+          )?.focus();
       });
 
       return h(
@@ -343,6 +385,7 @@ export function depthScreen(): Screen {
           ),
           autoHint
         ),
+        restHost,
         panels.element,
         status
       );
@@ -520,10 +563,11 @@ function packagesPanel(
     );
   };
 
-  const young = (p: Player) => ageOn(p.birthDate, today) <= 25;
+  const young = (p: Player) => ageOn(p.birthDate, today) <= TUNING.ai.depth.youngAge;
   const isBack = (p: Player) => p.position === 'HB' || p.position === 'FB';
   const rusher = (p: Player) => ['LE', 'RE', 'DT', 'LOLB', 'ROLB'].includes(p.position);
   const target = (p: Player) => p.position === 'WR' || p.position === 'TE';
+  const linebacker = (p: Player) => ['MLB', 'LOLB', 'ROLB'].includes(p.position);
 
   return h(
     'div',
@@ -535,9 +579,11 @@ function packagesPanel(
       h(
         'div',
         { class: 'card-body' },
-        subField('thirdDownBack', 'Third-down back', 'Comes in at running back on third down.', isBack),
+        subField('thirdDownBack', 'Third-down back', 'Comes in at running back on third down. A goal-line back, if you name one, takes third and short.', isBack),
         subField('passRusher', 'Pass-rush specialist', 'Comes in for your weaker edge rusher on passing downs.', rusher),
         subField('redZoneTarget', 'Red zone target', 'Comes in at tight end or slot receiver inside the 20.', target),
+        subField('goalLineBack', 'Goal-line back', 'Comes in at running back at the goal line and on third or fourth and short.', isBack),
+        subField('dimeBacker', 'Dime linebacker', 'Plays the lone linebacker spot in your dime package.', linebacker),
         h('div', { class: 'btn-row' }, applySubs)
       )
     ),

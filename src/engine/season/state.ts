@@ -77,5 +77,6 @@ export const coinSeed = (league: League): number =>
 /** Standings from the regular season's finished games (spec 5.3). */
 export function leagueStandings(league: League): LeagueStandings {
   const scores = Object.values(league.season.results).filter(g => !g.playoff);
-  return rankLeague(scores, coinSeed(league), league.rules.season.playoffTeamsPerConference);
+  const { playoffTeamsPerConference, commonGamesMin } = league.rules.season;
+  return rankLeague(scores, coinSeed(league), playoffTeamsPerConference, commonGamesMin);
 }

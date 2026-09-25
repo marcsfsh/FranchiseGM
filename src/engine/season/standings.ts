@@ -3,6 +3,7 @@
  * of steps for division ties and one for wild card ties, each in a two-club and a three-or-more-club form.
  * When a step leaves fewer clubs tied, the procedure starts over with them; a seeded coin toss ends it.
  */
+import { DEFAULT_RULES } from '../rules/ruleset';
 import { team, TEAMS, type Conference, type TeamAbbr } from '../../data/teams';
 import { stream } from '../rng';
 
@@ -143,6 +144,8 @@ interface Context {
   coinSeed: number;
   /** Each team's place in its division, used when a wild card tie holds clubs from one division. */
   divisionPlace: Map<TeamAbbr, number>;
+  /** Wild card ties use common games only when each club played at least this many. */
+  commonGamesMin: number;
 }
 
 /** Scores for the tied clubs (higher is better), or null when the step doesn't apply to them. */
@@ -240,7 +243,7 @@ const STEP = {
     name: 'Common games',
     score: (tied, ctx) => {
       const common = commonOpponents(ctx, tied);
-      if (tied.some(abbr => against(ctx, abbr, common).games < 4)) return null;
+      if (tied.some(abbr => against(ctx, abbr, common).games < ctx.commonGamesMin)) return null;
       return scores(tied, abbr => winPct(against(ctx, abbr, common).record));
     }
   },
@@ -418,10 +421,11 @@ export interface LeagueStandings {
 export function rankLeague(
   scores: readonly GameScore[],
   coinSeed: number,
-  playoffTeamsPerConference: number
+  playoffTeamsPerConference: number,
+  commonGamesMin: number = DEFAULT_RULES.season.commonGamesMin
 ): LeagueStandings {
   const table = buildStandings(scores);
-  const ctx: Context = { table, coinSeed, divisionPlace: new Map() };
+  const ctx: Context = { table, coinSeed, divisionPlace: new Map(), commonGamesMin };
   const divisions: DivisionStandings[] = [];
   for (const conference of ['AFC', 'NFC'] as const)
     for (const division of ['East', 'North', 'South', 'West'] as const) {

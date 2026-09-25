@@ -120,8 +120,13 @@ export function decideRotation(
   };
   const bench = roster.filter(p => !starting.has(p.id));
   const receivingBack = (p: Player) => edge(p, 'routeShort', 'hands', 'passBlock');
+  const powerBack = (p: Player) => edge(p, 'power', 'ballSecurity');
   const rusher = (p: Player) => edge(p, 'passRush');
   const target = (p: Player) => edge(p, 'contested');
+  const cover = (p: Player) => edge(p, 'zoneCover', 'manCover');
+  // The dime linebacker can be any linebacker off the dime front, starters at other spots included.
+  const front = new Set((['LEDGE', 'REDGE', 'DT1', 'DT2', 'MIKE'] as const).map(s => starters[s]));
+  const mike = at('MIKE');
   const edges = (['LEDGE', 'REDGE'] as const).flatMap(s => (at(s) ? [rusher(at(s) as Player)] : []));
   const bigTargets = bench.filter(p => p.position === 'WR' || p.position === 'TE');
   const bestTarget = [...bigTargets].sort((a, b) => target(b) - target(a))[0];
@@ -139,7 +144,19 @@ export function decideRotation(
       rusher,
       edges.length ? Math.min(...edges) : null
     ),
-    redZoneTarget: sub('red zone target', bigTargets, target, replaced ? target(replaced) : null)
+    redZoneTarget: sub('red zone target', bigTargets, target, replaced ? target(replaced) : null),
+    goalLineBack: sub(
+      'goal-line back',
+      bench.filter(p => p.position === 'HB'),
+      powerBack,
+      rb1 ? powerBack(rb1) : null
+    ),
+    dimeBacker: sub(
+      'dime linebacker',
+      roster.filter(p => ['MLB', 'LOLB', 'ROLB'].includes(p.position) && !front.has(p.id)),
+      cover,
+      mike ? cover(mike) : null
+    )
   };
 
   // Snap limits for players back from an injury.

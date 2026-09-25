@@ -160,11 +160,11 @@ function dressNeeds(personnel: Record<Personnel, number>): Partial<Record<Positi
   const used = PERSONNEL.filter(p => personnel[p] > 0);
   const most = (count: (p: Personnel) => number) => Math.max(0, ...used.map(count));
   return {
-    QB: 2,
-    RB: most(p => Number(p[0])) + 1,
-    WR: most(p => 5 - Number(p[0]) - Number(p[1])) + 1,
+    QB: S.dress.QB,
+    RB: most(p => Number(p[0])) + S.dress.spare.RB,
+    WR: most(p => 5 - Number(p[0]) - Number(p[1])) + S.dress.spare.WR,
     TE: most(p => Number(p[1])),
-    ...S.dressDefense
+    ...S.dress.defense
   };
 }
 

@@ -15,18 +15,18 @@ export interface DialOption {
   neutral: number;
 }
 
-/** How close the setting sits to what the report calls for: 1 on the ideal, 0 half the dial away. */
+/** How close the setting sits to what the report calls for: 1 on the ideal, 0 exploitSpan of the dial away. */
 export const exploit = (ideal: number): Consideration<DialOption> => ({
   name: 'exploit',
   input: o => Math.abs(o.value - ideal) / (o.hi - o.lo),
-  curve: curves.linear(0.5, 0)
+  curve: curves.linear(P.exploitSpan, 0)
 });
 
 /** How close the setting sits to the scheme's normal; rigid coaches weigh this more. */
 export const comfort = (): Consideration<DialOption> => ({
   name: 'comfort',
   input: o => Math.abs(o.value - o.neutral) / (o.hi - o.lo),
-  curve: curves.lift(0.3, curves.linear(1, 0))
+  curve: curves.lift(P.comfortFloor, curves.linear(P.comfortSpan, 0))
 });
 
 /** Building the plan around a player, or not: `margin` is how far his case clears its threshold. */

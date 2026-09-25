@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { GamePlan, Rotation } from '../../src/engine/sim/plan';
+import { NO_SUBS, type GamePlan, type Rotation } from '../../src/engine/sim/plan';
 import { TUNING } from '../../src/engine/tuning';
 import type { GameResult, GameSetup, TeamSetup } from '../../src/engine/sim/types';
 import { kickoffStart, runFrom } from '../helpers/situations';
@@ -158,7 +158,7 @@ describe('rotation plans in the sim (spec 12.3)', { timeout: 60_000 }, () => {
     });
     const planned = runFrom(kickoffStart, N, {
       adjust: withRotation(s => ({
-        subs: { thirdDownBack: backup, passRusher: null, redZoneTarget: null },
+        subs: { ...NO_SUBS, thirdDownBack: backup },
         snapLimits: { [starter(s.home, 'LT')]: 0.5 }
       })),
       seed: 'rotation'
@@ -172,6 +172,35 @@ describe('rotation plans in the sim (spec 12.3)', { timeout: 60_000 }, () => {
     const share = snaps(planned, tackle, 'snapsOffense', 'home') / unit(planned, 'plays', 'home');
     expect(share).toBeLessThan(0.6);
     expect(share).toBeGreaterThan(0.4);
+  });
+
+  it('brings in a goal-line back and a dime linebacker', () => {
+    let back = '';
+    let backer = '';
+    const run = (named: boolean) =>
+      runFrom(kickoffStart, N, {
+        adjust: s => {
+          const starting = new Set(Object.values(s.home.depth).map(order => order?.[0]));
+          back = s.home.depth.RB1?.find(id => !starting.has(id)) ?? '';
+          backer = s.home.depth.MIKE?.find(id => !starting.has(id)) ?? '';
+          // A defense that plays a lot of dime, so the dime linebacker's snaps show.
+          const defense = { ...s.home.tendencies.defense, packages: { base: 0.2, nickel: 0.4, dime: 0.4 } };
+          const home = { ...s.home, tendencies: { ...s.home.tendencies, defense } };
+          const subs = named ? { ...NO_SUBS, goalLineBack: back, dimeBacker: backer } : NO_SUBS;
+          return withRotation(() => ({ subs }))({ ...s, home });
+        },
+        seed: 'short'
+      });
+    const none = run(false);
+    const named = run(true);
+    expect(back).not.toBe('');
+    expect(backer).not.toBe('');
+    expect(snaps(named, back, 'snapsOffense', 'home')).toBeGreaterThan(
+      snaps(none, back, 'snapsOffense', 'home') + N
+    );
+    expect(snaps(named, backer, 'snapsDefense', 'home')).toBeGreaterThan(
+      snaps(none, backer, 'snapsDefense', 'home') + 5 * N
+    );
   });
 
   it('plans development snaps for a young backup', () => {

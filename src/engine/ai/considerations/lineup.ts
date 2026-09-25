@@ -86,5 +86,5 @@ export const reinjury = (): Consideration<RestOption> => ({
 export const stakes = (): Consideration<RestOption> => ({
   name: 'stakes',
   input: o => (o.play ? o.stakes : 1 - o.stakes),
-  curve: curves.lift(0.5, curves.linear(0, 1))
+  curve: curves.lift(R.stakesFloor, curves.linear(0, 1))
 });

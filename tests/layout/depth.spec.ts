@@ -81,6 +81,22 @@ test('moves players by keyboard, takes the chart back from the coach, and sets a
     'Your head coach will set the depth chart'
   );
 
+  // A questionable player plays hurt unless the user rests him (spec 10.8).
+  const hurt = await page.evaluate(() => {
+    type P = { id: string; team: string | null; status: string; position: string; firstName: string; lastName: string; injury: unknown };
+    const app = (globalThis as unknown as { __gm: { app: { league: { players: Record<string, P> } } } }).__gm.app;
+    const qb = Object.values(app.league.players).find(p => p.team === 'SF' && p.status === 'active' && p.position === 'WR') as P;
+    qb.injury = { bodyPart: 'ankle', severity: 'minor', weeksOut: 0, lingering: 3, fragile: 0, season: 2026, week: 1, career: false };
+    return `${qb.firstName} ${qb.lastName}`;
+  }); // prettier-ignore
+  await page.evaluate(() => (location.hash = '#/'));
+  await page.evaluate(() => (location.hash = '#/depth-chart'));
+  const rest = page.getByLabel(new RegExp(`^Rest ${hurt} \\(WR`));
+  await rest.focus();
+  await page.keyboard.press('Space');
+  await expect(page.locator('main [role="status"]')).toContainText(`${hurt} rests this week.`);
+  await expect(rest).toBeChecked();
+
   // Large text reflows without sideways scrolling, down to 320 pixels wide.
   await page.getByRole('tab', { name: 'Offense' }).click();
   await page.evaluate(() => (document.documentElement.style.fontSize = '200%'));
