@@ -128,10 +128,13 @@ describe('waivers (spec 12.1)', () => {
     const oldId = player.contractId as string;
     waive(league, player);
     expect(player.status).toBe('waivers');
-    const order = orderOf(league).filter(abbr => abbr !== 'MIN');
+    // Two claimants with the cap space for his deal, the later one in priority claiming first. Both make
+    // room: a player each goes on injured reserve.
+    const entry = league.waivers[0];
+    if (!entry) throw new Error('no waiver entry');
+    const order = orderOf(league).filter(abbr => claimProblem(league, abbr, entry, true) === null);
     const first = order[3] as TeamAbbr;
     const second = order[1] as TeamAbbr;
-    // Both claimants make room: a player each goes on injured reserve.
     for (const abbr of [first, second]) {
       const hurt = mine(league, abbr, 'active')[0];
       if (hurt) hurt.status = 'ir';

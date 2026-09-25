@@ -109,7 +109,7 @@ describe('the news feed (spec 18.1)', () => {
     );
     const headlines = news.map(n => n.headline);
     expect(headlines.some(h => /Vikings .*Packers 27–24/.test(h))).toBe(true);
-    expect(headlines.some(h => /Bills .*Chiefs 38–10/.test(h))).toBe(true);
+    expect(headlines.some(h => /Bills .*Chiefs,? 38–10/.test(h))).toBe(true);
     expect(news.some(n => n.kind === 'performance' && n.players.includes(rusher))).toBe(true);
     const milestone = news.find(n => n.kind === 'milestone');
     expect(milestone?.headline).toMatch(/1,000 rushing yards/);
@@ -144,9 +144,11 @@ describe('the news feed (spec 18.1)', () => {
         stream(week, 'news')
       );
       league.season.news.push(...news);
-      const result = news.find(n => n.kind === 'result');
-      expect(templates.has(result?.template ?? '')).toBe(false);
-      templates.add(result?.template ?? '');
+      // The game's story: a result, or an upset when the Vikings were the weaker team.
+      const story = news.find(n => n.kind === 'result' || n.kind === 'upset');
+      expect(story).toBeDefined();
+      expect(templates.has(story?.template ?? '')).toBe(false);
+      templates.add(story?.template ?? '');
     }
   });
 });

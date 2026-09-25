@@ -11,7 +11,8 @@ test('plays a week from the hub and shows the result, inbox, news, and standings
   const play = page.getByRole('button', { name: 'Play week 1' });
   await play.focus();
   await page.keyboard.press('Enter');
-  await expect(status).toHaveText('Played a week.', { timeout: 60_000 });
+  // An injury to a starter adds why a longer advance would stop.
+  await expect(status).toHaveText(/^Played a week\.( Stopped for: .+\.)?$/, { timeout: 60_000 });
   await expect(page.getByRole('button', { name: 'Play week 2' })).toBeFocused();
   await expect(page.locator('main .hub-date')).toHaveText('2026 season · Week 2');
 

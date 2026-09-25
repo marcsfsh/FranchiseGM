@@ -279,6 +279,25 @@ function fitUnderCap(
   return contracts;
 }
 
+/**
+ * Team strength offsets (C-20): the league's contenders, middle teams, and rebuilding teams, in an order
+ * drawn from `rng`. Each tier centers on its offset (`tierGap` above average, average, `tierGap` below)
+ * with its teams evenly spaced across `tierWidth`, so every league has the same shape and no league's best
+ * or worst team runs far past another's.
+ */
+export function strengthTiers(rng: Rng): Map<TeamAbbr, number> {
+  const order = [...TEAM_ABBRS]
+    .map(abbr => ({ abbr, key: rng.float() }))
+    .sort((a, b) => a.key - b.key)
+    .map(t => t.abbr);
+  const offsets: number[] = [];
+  L.tiers.forEach((count, tier) => {
+    const center = L.tierGap * ((L.tiers.length - 1) / 2 - tier);
+    for (let i = 0; i < count; i++) offsets.push(center + L.tierWidth * (0.5 - (i + 0.5) / count));
+  });
+  return new Map(order.map((abbr, i) => [abbr, offsets[i] ?? 0] as const));
+}
+
 export function generateFictionalLeague(input: LeagueInput): FictionalLeague {
   const { seed, season, names, rules } = input;
   const counts = new Map<string, number>();
@@ -302,12 +321,15 @@ export function generateFictionalLeague(input: LeagueInput): FictionalLeague {
   const contracts: Contract[] = [];
   const staff: StaffMember[] = [];
   const owners: Owner[] = [];
+  const tiers = strengthTiers(stream(seed, 'fictional', 'tiers'));
 
   for (const team of TEAM_ABBRS) {
     const rng = stream(seed, 'fictional', 'team', team);
     const ctx = context(rng, 'p');
-    // Team strength: a uniform offset, which has no long tails, and a roster balanced toward the norm.
-    const teamOffset = (rng.float() * 2 - 1) * Math.sqrt(3) * L.teamSpread;
+    // Team strength: its tier and place in it, and a roster balanced toward the norm. The draw that set a
+    // uniform offset before C-20 stays, so the rest of the team's stream is unchanged.
+    rng.float();
+    const teamOffset = tiers.get(team) ?? 0;
     const plan = rosterPlan(rng, rules.roster.active);
     const slots: { position: Position; depth: number; starters: number; quality: number }[] = [];
     for (const [position, count] of plan) {

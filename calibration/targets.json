@@ -105,37 +105,37 @@
       "warn": [2.5, 3.8],
       "ci": [2.3, 4.1],
       "source": "Harvard Sports Analysis Collective, \"This NFL season did not have as much parity as you think\": the sd of team wins was 3.20 in 2017 and mostly 2.6 to 3.4 in 16-game seasons, about 2.8 to 3.6 over 17 games.",
-      "note": "Pure chance alone gives about 2.06 over 17 games."
+      "note": "Judged on weekly-loop seasons (C-20). Pure chance alone gives about 2.06 over 17 games."
     },
     "seasons.bestRecord": {
       "pass": [12.8, 15.2],
       "warn": [12.0, 16.0],
       "source": "NFL standings 2021-2024 (Wikipedia season pages): the best records had 13, 14, 13, and 15 wins.",
-      "note": "The mean of each replay season's most wins, ties counting half."
+      "note": "The mean of each weekly-loop season's most wins, ties counting half (C-20)."
     },
     "seasons.worstRecord": {
       "pass": [2.0, 4.0],
       "warn": [1.3, 4.7],
       "source": "NFL standings 2021-2024 (Wikipedia season pages): the worst records had 3, 3, 2, and 3 wins.",
-      "note": "Ties count half."
+      "note": "Judged on weekly-loop seasons (C-20). Ties count half."
     },
     "seasons.manyWinsPerDecade": {
       "pass": [2.0, 8.0],
       "warn": [1.0, 10.0],
       "source": "NFL standings (Wikipedia season pages): 12 teams won 14 or more of 16 games in 2004-2020 (2004 PIT and NE, 2005 IND, 2006 SD, 2007 NE, 2009 IND, 2010 NE, 2011 GB, 2015 CAR, 2016 NE, 2019 BAL, 2020 KC), about 7 a decade; two won 15 of 17 in 2021-2024.",
-      "note": "14 of 16 is the 16-game equivalent of 15 of 17 (the same 88% of games)."
+      "note": "Per 10 weekly-loop seasons (C-20). 14 of 16 is the 16-game equivalent of 15 of 17 (the same 88% of games)."
     },
     "seasons.fewWinsPerDecade": {
       "pass": [3.0, 10.0],
       "warn": [1.5, 13.0],
       "source": "NFL standings 2004-2024 (Wikipedia season pages): 18 teams won 2 or fewer, about 8.6 a decade, though only one in the four 17-game seasons.",
-      "note": "Teams with 2 or fewer wins, per 10 replay seasons."
+      "note": "Teams with 2 or fewer wins, per 10 weekly-loop seasons (C-20)."
     },
     "seasons.perfectOrWinlessPer100": {
       "pass": [0.0, 5.0],
       "warn": [0.0, 8.0],
       "source": "Spec 23.2: perfect and winless seasons must be extremely rare, a handful per 100 simulated seasons at most. The NFL had four in 1976-2025 (1976 TB, 2007 NE, 2008 DET, 2017 CLE).",
-      "note": "Perfect means no losses or ties; winless means no wins, ties or not. Per 100 replay seasons."
+      "note": "Perfect means no losses or ties; winless means no wins, ties or not. Per 100 weekly-loop seasons (C-20): a rare event, so a full run plays 100 of them."
     },
     "stats.passAtt": {
       "pass": [32.0, 35.0],

@@ -459,8 +459,15 @@ export const TUNING = {
     balanceKeep: 0.2,
     balanceQbWeight: 4,
     starBonus: [0.8, 1.7],
-    /** The sd of a uniform team strength offset. */
-    teamSpread: 0.2,
+    /**
+     * Team strength tiers (C-20): every league has this many contenders, middle teams, and rebuilding
+     * teams. Contenders center `tierGap` above average and rebuilding teams as far below it; within a tier,
+     * teams are evenly spaced across `tierWidth`. More teams sit near the tiers' centers and fewer at the
+     * extremes than a single spread with the same sd would put there.
+     */
+    tiers: [10, 12, 10],
+    tierGap: 0.33,
+    tierWidth: 0.2,
     /** Quality [mean, sd] for the first, second, and deeper backups at a position. */
     depthQuality: [
       [-0.15, 0.6],
@@ -922,7 +929,7 @@ export const TUNING = {
       protectFrom: 5,
       protectRamp: 12,
       protectEarly: 0.6,
-      protectPassCut: 0.4,
+      protectPassCut: 0.5,
       softShortLogit: 1.2,
       softDeepLogit: 0.3,
       softYac: 0.1,
