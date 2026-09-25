@@ -93,6 +93,29 @@ function coachStyle(league: League, abbr: TeamAbbr): CoachStyle {
   };
 }
 
+/**
+ * How much more the roster's passing game outclasses its running game, in rating points: the starting
+ * quarterback, top three receivers, and pass protection against the line's run blocking and the lead back.
+ */
+function passRunBalance(players: Record<string, SimPlayer>, depth: Record<Slot, string[]>): number {
+  const at = (slot: Slot) => players[depth[slot]?.[0] ?? ''];
+  const mean = (values: number[]) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0);
+  const line = (['LT', 'LG', 'C', 'RG', 'RT'] as const).flatMap(s => (at(s) ? [at(s) as SimPlayer] : []));
+  const receivers = (['X', 'Z', 'SLOT'] as const).flatMap(s => (at(s) ? [at(s) as SimPlayer] : []));
+  const qb = at('QB');
+  const back = at('RB1');
+  const passing = mean([
+    qb?.edges.accMid ?? 0,
+    mean(receivers.map(r => r.edges.routeMid)),
+    mean(line.map(p => p.edges.passBlock))
+  ]);
+  const running = mean([
+    mean(line.map(p => (p.edges.runBlockZone + p.edges.runBlockGap) / 2)),
+    back ? (back.edges.vision + back.edges.elusive) / 2 : 0
+  ]);
+  return passing - running;
+}
+
 export function teamSetup(league: League, abbr: TeamAbbr, boost: number): TeamSetup {
   const roster = Object.values(league.players).filter(p => p.team === abbr && p.status === 'active');
   const ctx = leagueFitContext(league, abbr);
@@ -114,7 +137,9 @@ export function teamSetup(league: League, abbr: TeamAbbr, boost: number): TeamSe
     tendencies: { offense: adapted.offense, defense: adapted.defense },
     coach: coachStyle(league, abbr),
     cohesion: teamCohesion(lineup, ctx, flexibility),
-    boost
+    boost,
+    lean:
+      Math.max(-1, Math.min(1, passRunBalance(players, depth) / S.leanScale)) * S.leanMax * (flexibility / 99)
   };
 }
 

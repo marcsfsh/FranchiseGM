@@ -176,6 +176,8 @@ class GameSim {
   private overtime = false;
   private readonly otPossessions: Record<Side, number> = { home: 0, away: 0 };
   private drive: Drive | null = null;
+  /** Halftime pass-rate adjustments (spec 8.6). */
+  private readonly adjust: Record<Side, number> = { home: 0, away: 0 };
   private plays = 0;
   private redZoneCounted = false;
   /** Players on the field this play, by side and slot. */
@@ -425,6 +427,7 @@ class GameSim {
     }
     if (this.quarter === 2) {
       this.endDrive('endOfHalf');
+      this.halftime();
       this.quarter = 3;
       this.clock = rules.quarterSeconds;
       this.warned = false;
@@ -446,6 +449,24 @@ class GameSim {
     if (this.quarter === 5) {
       const receiver: Side = this.rng.chance(0.5) ? 'home' : 'away';
       this.kickoff(other(receiver));
+    }
+  }
+
+  /**
+   * Halftime adjustments (spec 8.6): each staff shifts its second-half pass rate toward whichever of
+   * passing and running gained more per play, scaled by the head coach's adjustment skill.
+   */
+  private halftime(): void {
+    for (const side of ['home', 'away'] as const) {
+      const lines = Object.values(this.lines[side]);
+      const sum = (k: StatKey) => lines.reduce((total, l) => total + l[k], 0);
+      const dropbacks = sum('passAtt') + sum('sacked');
+      const runs = sum('rushAtt');
+      if (dropbacks < 5 || runs < 5) continue;
+      const gap =
+        (sum('passYds') - sum('sackYds')) / dropbacks - sum('rushYds') / runs - S.halftimeNeutralGap;
+      const skill = this.teams[side].coach.halftime / 100;
+      this.adjust[side] = clamp(gap / S.halftimeScale, -1, 1) * S.halftimeShift * skill;
     }
   }
 
@@ -735,7 +756,7 @@ class GameSim {
   private callPlay(): Call {
     const team = this.teams[this.offense];
     const t = team.tendencies.offense;
-    let pass = t.passRate[DOWN_BUCKETS(this.down, this.distance)];
+    let pass = t.passRate[DOWN_BUCKETS(this.down, this.distance)] + team.lean + this.adjust[this.offense];
     const goal = 100 - this.ball;
     const deficit = -this.margin;
     if (this.quarter >= 4 && deficit > 3 && this.clock <= C.lateTrailingSeconds)
@@ -851,6 +872,15 @@ class GameSim {
     for (const [slot] of blockers)
       this.note(off, slot, 'passRush', ...(dcall.blitz ? (['facingBlitz'] as const) : []));
     for (const [slot] of rushers) this.note(def, slot, 'passRush');
+    // Everyone else is in a route or in coverage against man or zone (spec 7.5 situations).
+    const coverTrigger: PlayTrigger = dcall.man ? 'versusMan' : 'versusZone';
+    const rushing = new Set(rushers.map(([, p]) => p));
+    const blocking = new Set(blockers.map(([, p]) => p));
+    for (const [slot, p] of this.field[def])
+      if (!rushing.has(p)) this.note(def, slot, 'coverage', coverTrigger);
+    for (const [slot, p] of this.field[off])
+      if (slot !== 'QB' && !blocking.has(p) && !LINE.includes(slot as OffenseSlot))
+        this.note(off, slot, coverTrigger);
     this.note(
       off,
       'QB',
@@ -1039,8 +1069,6 @@ class GameSim {
     const scored = routes.map(r => {
       const defSlot = COVERAGE[r.tslot].find(s => this.at(def, s)) ?? null;
       const defender = defSlot ? this.at(def, defSlot) : null;
-      this.note(off, r.slot, coverTrig);
-      if (defSlot) this.note(def, defSlot, 'coverage', coverTrig);
       const route = this.edge(off, r.player, r.slot, routeId, [coverTrig, depthTrig]);
       const cover =
         defender && defSlot
@@ -1076,6 +1104,12 @@ class GameSim {
     this.note(off, target.slot, 'target', depthTrig);
     this.note(off, 'QB', depthTrig);
     if (target.defSlot) this.note(def, target.defSlot, depthTrig);
+    // Deep safeties are in on every deep ball: the free safety always, the strong safety in two-high shells.
+    if (call.depth === 'deep') {
+      if (target.defSlot !== 'FS') this.note(def, 'FS', 'deepPass');
+      const twoHigh = dcall.shell === 'cover2' || dcall.shell === 'cover4' || dcall.shell === 'cover6';
+      if (twoHigh && target.defSlot !== 'SS') this.note(def, 'SS', 'deepPass');
+    }
     this.add(off, qb, 'passAtt');
     this.add(off, rec, 'targets');
 
@@ -1087,8 +1121,16 @@ class GameSim {
       depthTrig,
       ...(pressured ? (['facingBlitz'] as const) : [])
     ];
+    // Play-action bootlegs move the quarterback out of the pocket to throw on the run.
+    const bootleg = call.playAction && this.rng.chance(C.bootlegShare);
+    if (bootleg) {
+      qbTriggers.push('outsidePocket');
+      this.note(off, 'QB', 'outsidePocket');
+    }
     const acc =
-      this.edge(off, qb, 'QB', accId, qbTriggers) +
+      (bootleg
+        ? (this.edge(off, qb, 'QB', accId, qbTriggers) + this.edge(off, qb, 'QB', 'onRun', qbTriggers)) / 2
+        : this.edge(off, qb, 'QB', accId, qbTriggers)) +
       (pressured ? this.edge(off, qb, 'QB', 'poise', qbTriggers) * C.poiseWeight : 0);
     const weather = this.setup.weather;
     const impact = this.setup.sliders.general.weatherImpact;
@@ -1291,7 +1333,8 @@ class GameSim {
       (call.concept === 'counter' && this.rng.chance(TUNING.situations.counterInside));
     const lane: PlayTrigger = inside ? 'insideRun' : 'outsideRun';
     const zone = call.concept === 'insideZone' || call.concept === 'outsideZone';
-    this.note(off, carrierSlot, 'carry', lane);
+    // Gap runs go downhill into the line: the carrier meets contact there on every one.
+    this.note(off, carrierSlot, 'carry', lane, ...(zone ? [] : (['contactAtLine'] as const)));
 
     // Blocking against the front (spec 8.3: run block types against block shedding and power moves).
     let block = 0;
@@ -1299,7 +1342,7 @@ class GameSim {
     for (const slot of [...LINE, 'TE1', 'TE2', 'FB'] as Slot[]) {
       const p = this.at(off, slot);
       if (!p) continue;
-      this.note(off, slot, lane);
+      this.note(off, slot, lane, ...(LINE.includes(slot as OffenseSlot) ? (['contactAtLine'] as const) : []));
       const weight = slot === 'FB' ? C.leadWeight : slot === 'TE1' || slot === 'TE2' ? C.teBlockWeight : 1;
       const id: CompositeId = slot === 'FB' ? 'leadBlock' : zone ? 'runBlockZone' : 'runBlockGap';
       block += weight * this.edge(off, p, slot, id, [lane, 'contactAtLine']);
@@ -1312,7 +1355,7 @@ class GameSim {
     for (const slot of box) {
       const p = this.at(def, slot);
       if (!p) continue;
-      this.note(def, slot, lane);
+      this.note(def, slot, lane, ...(FRONT.includes(slot) ? (['contactAtLine'] as const) : []));
       const weight = slot === 'SS' ? C.safetyBoxWeight : 1;
       stop += weight * this.edge(def, p, slot, 'runStop', [lane, 'contactAtLine']);
       dcount += weight;
@@ -1348,7 +1391,7 @@ class GameSim {
     if (this.rng.chance(pStuff)) {
       yards = -Math.floor(this.rng.float() * S.stuffYards);
       tackler = this.tacklerFor(['DT1', 'DT2', 'LEDGE', 'REDGE', 'FLEX', 'MIKE']);
-      this.note(off, carrierSlot, 'contactAtLine');
+      if (zone) this.note(off, carrierSlot, 'contactAtLine');
       if (tackler) {
         const slot = this.slotOf(def, tackler);
         if (slot) this.note(def, slot, 'contactAtLine');
@@ -1367,7 +1410,9 @@ class GameSim {
       let g = 0;
       for (let i = 0; i < Math.round(shape); i++) g -= Math.log(1 - this.rng.float());
       yards = Math.round((g / Math.round(shape)) * mean) + (this.rng.float() < 0.5 ? 0 : -1) + 1;
-      if (yards <= 2) this.note(off, carrierSlot, 'contactAtLine');
+      if (yards <= 2 && zone) this.note(off, carrierSlot, 'contactAtLine');
+      // Outside runs that turn the corner put the back in space.
+      if (!inside && yards >= C.edgeYards) this.note(off, carrierSlot, 'openField');
       const pursuers: DefenseSlot[] = ['MIKE', 'WILL', 'SS', 'FS', 'NCB', 'CB1', 'CB2'];
       tackler = this.tacklerFor(pursuers);
       const tackle = tackler
@@ -1381,6 +1426,7 @@ class GameSim {
         this.rng.chance(
           sigmoid(
             logit(S.breakaway) +
+              (inside ? 0 : C.outsideBreakaway) +
               S.edge.breakaway * (breakEdge - tackle) -
               (this.slider(def, 'tackling') - 1) * C.sliderLogit
           )

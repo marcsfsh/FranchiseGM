@@ -2,6 +2,7 @@
  * Resolves a team's scheme choice (a named scheme or a blend of two, spec 7.2) into tendencies, a role
  * recipe per depth chart slot, and a situation profile. Results are cached by choice.
  */
+import measured from '../../data/situation-profiles.json';
 import { DEFENSES, DEFENSE_LIST, OFFENSES, OFFENSE_LIST, SPECIAL_ROLES } from './catalog';
 import type { DefenseSchemeId, OffenseSchemeId } from './ids';
 import { ROLES, type RatingWeights, type RoleId, type RoleRecipe, type TraitAdjustment } from './roles';
@@ -101,6 +102,39 @@ function choiceName<Id extends string>(c: SchemeChoice<Id>, nameOf: (id: Id) => 
 
 const key = (c: SchemeChoice<string>): string => (isBlend(c) ? `${c.base}+${c.blend}@${c.weight}` : c.base);
 
+/**
+ * Situation profiles measured by running the sim (spec 7.5, tools/measure-profiles.ts). A named scheme
+ * uses its measured profile, a blend mixes its two schemes' profiles, and anything unmeasured falls back
+ * to the estimate from its tendencies.
+ */
+interface MeasuredFile {
+  offense: Partial<Record<OffenseSchemeId, OffenseProfile>>;
+  defense: Partial<Record<DefenseSchemeId, DefenseProfile>>;
+}
+const MEASURED = measured as unknown as MeasuredFile;
+
+function mixProfiles<S extends string>(
+  a: Record<S, SituationShares>,
+  b: Record<S, SituationShares>,
+  w: number
+): Record<S, SituationShares> {
+  const out = {} as Record<S, SituationShares>;
+  for (const slot of Object.keys(a) as S[]) {
+    const shares = {} as SituationShares;
+    for (const t of PLAY_TRIGGERS) shares[t] = a[slot][t] * w + (b[slot]?.[t] ?? 0) * (1 - w);
+    out[slot] = shares;
+  }
+  return out;
+}
+
+function offenseProfile(id: OffenseSchemeId): OffenseProfile {
+  return MEASURED.offense[id] ?? estimateOffenseProfile(OFFENSES[id].tendencies);
+}
+
+function defenseProfile(id: DefenseSchemeId): DefenseProfile {
+  return MEASURED.defense[id] ?? estimateDefenseProfile(DEFENSES[id].tendencies);
+}
+
 const offenseCache = new Map<string, ResolvedOffense>();
 const defenseCache = new Map<string, ResolvedDefense>();
 
@@ -120,7 +154,9 @@ export function resolveOffense(choice: OffenseChoice): ResolvedOffense {
     name: choiceName(choice, id => OFFENSES[id].name),
     tendencies,
     roles,
-    profile: estimateOffenseProfile(tendencies)
+    profile: b
+      ? mixProfiles(offenseProfile(choice.base), offenseProfile(b.id), w)
+      : offenseProfile(choice.base)
   };
   offenseCache.set(k, resolved);
   return resolved;
@@ -142,7 +178,9 @@ export function resolveDefense(choice: DefenseChoice): ResolvedDefense {
     name: choiceName(choice, id => DEFENSES[id].name),
     tendencies,
     roles,
-    profile: estimateDefenseProfile(tendencies)
+    profile: b
+      ? mixProfiles(defenseProfile(choice.base), defenseProfile(b.id), w)
+      : defenseProfile(choice.base)
   };
   defenseCache.set(k, resolved);
   return resolved;

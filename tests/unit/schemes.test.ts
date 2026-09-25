@@ -142,7 +142,7 @@ describe('snap shares and situation profiles (spec 7.5)', () => {
     expect(d.WILL).toBeCloseTo(0.8);
   });
 
-  it('keeps every estimated share between 0 and 1', () => {
+  it('keeps every share between 0 and 1', () => {
     for (const s of OFFENSE_LIST) {
       const profile = resolveOffense(named(s.id)).profile;
       for (const slot of OFFENSE_SLOTS)
@@ -173,6 +173,7 @@ describe('snap shares and situation profiles (spec 7.5)', () => {
     const c3 = resolveDefense(named('cover3')).profile;
     expect(man.CB1.versusMan).toBeGreaterThan(c3.CB1.versusMan);
     expect(man.MIKE.passRush).toBeGreaterThan(c3.MIKE.passRush);
-    expect(c3.FS.deepPass).toBeGreaterThan(resolveDefense(named('fourThreeOver')).profile.FS.deepPass);
+    // Two-high shells put the strong safety deep more often than single-high Cover 3.
+    expect(resolveDefense(named('fourThreeOver')).profile.SS.deepPass).toBeGreaterThan(c3.SS.deepPass);
   });
 });

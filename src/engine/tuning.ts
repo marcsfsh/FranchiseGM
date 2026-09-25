@@ -459,6 +459,15 @@ export const TUNING = {
     edge: { pressure: 0.045, sack: 0.04, completion: 0.035, separation: 0.04, interception: 0.04, stuff: 0.04, breakaway: 0.045, fumble: 0.03, kick: 0.03 },
     /** Rating points per point of fit (spec 7.3), per unit of cohesion execution, and for team form sd. */
     fitPoints: 0.5,
+    /** Adaptive play calling (spec 7.6): the largest pass-rate shift, reached at this many rating points of
+     * pass-over-run edge with a fully flexible coach. */
+    leanMax: 0.05,
+    leanScale: 6,
+    /** Halftime adjustments (spec 8.6): the largest pass-rate shift toward what worked, at full skill, and
+     * the yards-per-play gap between passing and running that counts as neutral. */
+    halftimeShift: 0.07,
+    halftimeNeutralGap: 1.5,
+    halftimeScale: 4,
     formSd: 0.8,
     /** Pass protection: pressure base rate, blitz and simulated pressure boosts (log-odds). */
     pressureBase: 0.31,
@@ -682,6 +691,8 @@ export const TUNING = {
       contestedSep: -3,
       handsWeight: 0.02,
       playActionLogit: 0.15,
+      /** Share of play-action passes thrown on a bootleg, outside the pocket. */
+      bootlegShare: 0.35,
       /** Inside the 20 the field compresses: harder completions and more stuffed runs near the goal. */
       redZoneCompletion: -0.45,
       goalLineStuff: 0.6,
@@ -703,6 +714,9 @@ export const TUNING = {
       carrierYardsPerPoint: 0.05,
       efficiencyYards: 3,
       breakawayStart: 6,
+      /** Outside runs break away a little more often, and reach the open field once they gain edgeYards. */
+      outsideBreakaway: 0.2,
+      edgeYards: 6,
       coversBall: { never: 0.55, onBigHits: 0, onMediumHits: -0.15, forAllHits: -0.3, always: -0.45 },
       // Kicking
       longKick: 40,

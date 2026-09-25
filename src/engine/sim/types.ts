@@ -71,6 +71,11 @@ export interface TeamSetup {
   cohesion: Cohesion;
   /** Rating points for today: form (spec 8.5) plus home field (spec 17.3), negative for visitors. */
   boost: number;
+  /**
+   * Adaptive play calling (spec 7.6): the pass-rate shift toward what the roster does well, within the
+   * limit the head coach's flexibility allows.
+   */
+  lean: number;
 }
 
 export type Precipitation = 'none' | 'rain' | 'snow';
