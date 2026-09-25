@@ -19,7 +19,7 @@ Spec, build order, style guide, and tooling guide live in `docs/design/`. They'r
 ## Commands (all print terse output)
 - `npm run dev` · `npm run build` · `npm run build:debug`
 - `npm test` · `npm run layout` · `npm run typecheck` · `npm run lint`
-- `npm run check`: typecheck, lint, and unit tests. Run before every commit.
+- `npm run check`: typecheck, lint, the format check CI runs, and unit tests. Run before every commit.
 - `npm run calibrate -- --seasons 100`
 - If `node_modules/` is missing (a fresh clone), run `npm ci` first. The hooks skip their checks without it.
 
@@ -39,7 +39,9 @@ Spec, build order, style guide, and tooling guide live in `docs/design/`. They'r
 ## How to work
 - Plan first for changes that touch more than 2 or 3 files. Just do small, clear fixes.
 - Report checks as one line each: the command and its result.
-- One logical change per commit, conventional commit messages. Tag milestones `mNN-slug`.
+- One logical change per commit, conventional commit messages. Don't tag milestones (tags can't be pushed
+  from here): a milestone ends when CI is green on its final commit, whose SHA goes in its report and in
+  `docs/STATUS.md`.
 - Update `docs/STATUS.md` before ending a working session. Project facts go in `docs/`, not auto memory.
 
 ## When compacting

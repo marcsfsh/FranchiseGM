@@ -20,12 +20,19 @@ Any text after the id is extra instructions from the user for this run: follow t
 4. When the spec is silent, decide and continue. Use the decision skill only for choices a future
    session would need to know.
 5. When every "done when" item is met:
-   - Have the spec-reviewer subagent review the milestone (range: previous milestone tag to HEAD)
-     against the "done when" list. Fix gaps that affect correctness or the criteria.
+   - Have the spec-reviewer subagent review the milestone (range: the previous milestone's final commit,
+     listed in docs/STATUS.md, to HEAD) against the "done when" list. Fix gaps that affect correctness or
+     the criteria.
    - If the sim, AI, economy, or player development changed, run the calibrate skill.
    - Write the Report section of docs/milestones/<id>.md, at most 20 lines, including the sizes and times
      `npm run measure` prints (post-M23 section 2.18: measured, never enforced). Update docs/STATUS.md.
-     Tag `<id>-<slug>`, then push the branch and the tag.
+     Commit and push the branch. Don't tag: this environment can't push tags (HTTP 403).
+   - A milestone isn't done until the latest CI run on its final commit is green. Find the run with
+     `mcp__github__actions_list` (list_workflow_runs, filtered to the branch) and read a failure with
+     `mcp__github__get_job_logs`. The next milestone's plan can start while it runs. If CI is red, fix it
+     and push; the fix is the new final commit, so check its run the same way.
+   - Record the final commit's full SHA in the report ("Final commit: <sha>, CI green") and in
+     docs/STATUS.md's milestone list, in a docs-only commit, and push.
 6. If the build order marks a checkpoint here, stop and summarize for the user. Otherwise continue
    with the next milestone.
 

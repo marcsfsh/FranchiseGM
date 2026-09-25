@@ -5,6 +5,8 @@
 - Post-M23 build order registered: docs/design/franchise-gm-post-m23.md (`node tools/doc.mjs post <section>`).
   Its section 1.1 preparations apply at M10, M11, M13, M17, M18, M20, and any sim work; its section 2.18
   responsiveness rules apply now.
+- Final commits (full SHAs and CI runs in each report): M0 e46f12b, M1 099af55, M2 6757e33, M3 121a201,
+  M4 ea5cf29, M5 b6c1a0f, M6 6181ac5, M7 fb00815, M8 6d7c1f6, M9 1ac12bc. CI was green on M0, M1, and M7.
 - Open items for this milestone: none
 - Waiting on the user: the Madden roster CSV (data-raw/madden-roster.csv), which is optional and not yet available
 - Updated: 2026-09-25
