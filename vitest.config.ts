@@ -11,6 +11,9 @@ export default defineConfig({
     ],
     environment: 'node',
     pool: 'threads',
+    // Sim tests play hundreds of games; a busy machine (layout tests running alongside) can take several
+    // times longer than the default 5 seconds.
+    testTimeout: 20_000,
     passWithNoTests: true
   }
 });
