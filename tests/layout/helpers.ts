@@ -57,17 +57,41 @@ export async function createLeague(page: Page, options: LeagueOptions = {}): Pro
 export async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   const { overflow, culprits } = await page.evaluate(() => {
     const width = window.innerWidth;
+    const name = (el: Element) =>
+      `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}${[...el.classList].map(c => `.${c}`).join('')}`;
+    const snippet = (text: string | null) => `"${(text ?? '').trim().slice(0, 30)}"`;
     const past = (el: Element) => el.getBoundingClientRect().right > width + 0.5;
-    // The deepest elements reaching past the viewport, to name the cause in the failure.
-    const culprits = [...document.querySelectorAll('body *')]
+    // To name the cause in a failure: the deepest boxes reaching past the viewport, text that does (which
+    // no box shows), and the deepest elements whose content is wider than the page (pseudo-elements).
+    const boxes = [...document.querySelectorAll('body *')]
       .filter(el => past(el) && ![...el.children].some(past))
-      .slice(0, 6)
       .map(el => {
         const r = el.getBoundingClientRect();
-        const name = `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}${[...el.classList].map(c => `.${c}`).join('')}`;
-        return `${name} right=${Math.round(r.right)} width=${Math.round(r.width)} "${(el.textContent ?? '').trim().slice(0, 30)}"`;
+        return `${name(el)} right=${Math.round(r.right)} width=${Math.round(r.width)} ${snippet(el.textContent)}`;
       });
-    return { overflow: document.documentElement.scrollWidth - width, culprits };
+    const texts: string[] = [];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.textContent?.trim() || !node.parentElement) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const right = Math.max(0, ...[...range.getClientRects()].map(r => r.right));
+      if (right > width + 0.5)
+        texts.push(
+          `text in ${name(node.parentElement)} right=${Math.round(right)} ${snippet(node.textContent)}`
+        );
+    }
+    // Elements that clip their content (scroll regions, screen reader text) can't widen the page.
+    const wide = (el: Element) =>
+      getComputedStyle(el).overflowX === 'visible' &&
+      el.getBoundingClientRect().left + el.scrollWidth > width + 0.5;
+    const contents = [...document.querySelectorAll('body *')]
+      .filter(el => wide(el) && ![...el.children].some(wide))
+      .map(el => `content of ${name(el)} scrollWidth=${el.scrollWidth} clientWidth=${el.clientWidth}`);
+    return {
+      overflow: document.documentElement.scrollWidth - width,
+      culprits: [...boxes.slice(0, 4), ...texts.slice(0, 4), ...contents.slice(0, 4)]
+    };
   });
   expect(
     overflow,
