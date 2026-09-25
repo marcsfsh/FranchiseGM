@@ -126,10 +126,10 @@
 .line-score th[scope='row'] {
   width: 100%;
 }
+/* A list item keeps the native disclosure triangle; the padding makes a full-size target. */
 .box-more summary {
-  display: flex;
-  align-items: center;
-  min-height: var(--tap);
+  display: list-item;
+  padding: var(--s3) 0;
   font-weight: 700;
   cursor: pointer;
 }

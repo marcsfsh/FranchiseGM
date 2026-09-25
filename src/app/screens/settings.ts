@@ -6,8 +6,9 @@ import { EXPORT_REMINDER, clearsSiteData } from '../platform';
 import { dateLine } from '../shell';
 import { exportToDevice, type AppState } from '../state';
 import { devMenuOn, tapVersion } from '../dev-menu';
-import { h } from '../dom';
+import { h, mount } from '../dom';
 import { layoutNote } from '../theme/prefs';
+import { slidersCard } from '../ui/sliders';
 import type { PrefsController } from '../theme/controller';
 import { card, pageHead } from './common';
 import type { Screen, ScreenContext } from './types';
@@ -219,6 +220,24 @@ function pauseSettings(app: AppState): HTMLElement | null {
   ); // prettier-ignore
 }
 
+/** The game sim and stat sliders (spec 22.3). */
+function sliderSettings(app: AppState): HTMLElement | null {
+  if (!app.league) return null;
+  const body = h('div', { class: 'stack' });
+  const draw = () =>
+    mount(
+      body,
+      ...slidersCard(app, () => {
+        draw();
+        body.querySelector<HTMLButtonElement>('.btn-row button')?.focus();
+        const status = body.querySelector('[role="status"]');
+        if (status) status.textContent = 'Every slider is back to 100%.';
+      })
+    );
+  draw();
+  return card('Game sim and stat sliders', body);
+}
+
 /** The developer tools entry (spec 23.5), shown once the menu is on. */
 const devCard = () =>
   card(
@@ -267,6 +286,7 @@ export function settingsScreen(): Screen {
         { class: 'cards' },
         league?.node ?? null,
         pauseSettings(ctx.app),
+        sliderSettings(ctx.app),
         display.node,
         devMenuOn() ? devCard() : null
       );

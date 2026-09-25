@@ -5,10 +5,11 @@ import { venueById } from '../../src/data/stadiums';
 import type { TeamAbbr } from '../../src/data/team-colors';
 import { homeStadium } from '../../src/data/teams';
 import { createLeague, defaultStartOptions } from '../../src/engine/league/create';
-import { homeField } from '../../src/engine/sim/setup';
+import { gameSetup, homeField } from '../../src/engine/sim/setup';
 import { defaultSliders } from '../../src/engine/sim/sliders';
 import type { GameWeather } from '../../src/engine/sim/types';
 import { TUNING } from '../../src/engine/tuning';
+import { stream } from '../../src/engine/rng';
 import { nameData } from '../helpers/base-data';
 
 const S = TUNING.sim;
@@ -67,5 +68,20 @@ describe('home field sources (spec 17.3)', () => {
     const calm = { ...sliders, general: { ...sliders.general, weatherImpact: 0 } };
     const g = game('MIN', 'GB');
     expect(homeField(league, g, venueById(g.venue), cold, calm).away.cold).toBeCloseTo(0);
+  });
+});
+
+describe('sim sliders (spec 22.3)', () => {
+  it("reach every game from the league's settings, where the Settings screen changes them", () => {
+    const l = structuredClone(league);
+    l.settings.sim.general.homeField = 0;
+    l.settings.sim.gameplay.fgAccuracy.user = 1.5;
+    const g = game('CHI', 'GB');
+    const setup = gameSetup(l, g, null, stream(4));
+    expect(setup.sliders.general.homeField).toBe(0);
+    expect(setup.sliders.gameplay.fgAccuracy).toEqual({ user: 1.5, ai: 1 });
+    // No home field at all: no crowd, and no extra false starts for the visitors.
+    expect(setup.crowd).toBe(1);
+    expect(homeField(l, g, venueById(g.venue), mild, setup.sliders).home.crowd).toBe(0);
   });
 });
