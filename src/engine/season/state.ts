@@ -5,6 +5,8 @@
 import type { ScheduledGame } from '../../data/schedule';
 import type { Conference, TeamAbbr } from '../../data/teams';
 import type { Transaction } from '../league/transactions';
+import type { WeeklyAward } from './awards';
+import type { NewsItem, SeasonLine } from './news';
 import type { League } from '../league/types';
 import type { Phase } from '../model/calendar';
 import { stream } from '../rng';
@@ -25,6 +27,12 @@ export interface SeasonState {
   champion: TeamAbbr | null;
   /** Roster moves this season, oldest first (spec 12.1). */
   transactions: Transaction[];
+  /** The news feed (spec 18.1), oldest week first. */
+  news: NewsItem[];
+  /** Players of the week (spec 18.4). */
+  awards: WeeklyAward[];
+  /** Season totals of the stats the news follows, by player. */
+  totals: Record<string, SeasonLine>;
 }
 
 export const emptySeason = (season: number): SeasonState => ({
@@ -32,7 +40,10 @@ export const emptySeason = (season: number): SeasonState => ({
   results: {},
   seeds: null,
   champion: null,
-  transactions: []
+  transactions: [],
+  news: [],
+  awards: [],
+  totals: {}
 });
 
 /** Playoff phases in order: round 1 is the Wild Card round, the last is the Super Bowl. */

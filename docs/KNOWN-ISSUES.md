@@ -17,6 +17,9 @@
 - Game plans v1 (spec 8.7) set one run and pass balance for every down, with no red zone or two-minute overrides and no formation shares; M14's coaching adds them.
 - In-season signings are one-year minimum deals and releases leave no dead money until M8's contract model; the practice squad isn't refilled after a promotion until M8.
 - The generated free agent pool (300 players) can run short at a position late in a season; M10's offseason and M12's free agency refill it.
+- The news feed v1 covers results, upsets, big games, season milestones, injuries, signings, and players of the week; rumors, power rankings, the injury report roundup, records and streaks in headlines, and the news effects setting arrive with M18 (spec 18.1).
+- Pause rules list only the event types this build raises (injuries to starters); the others appear with the milestones that create them (spec 19.6).
+- The user's team gets no automatic roster moves: until M8's transactions screens it plays short-handed through injuries, while AI teams use injured reserve and sign replacements.
 - The dev menu has only the calibration runner; the AI decision log (M14), sim inspector, performance overlay, and fixed-seed toggle arrive later (spec 23.5).
 - Games lost to injury is measured without a target: no public all-player count was found. Football Outsiders' adjusted games lost (starters and key reserves, camp injuries included) was 68.9 to 80.9 per team in 2021-2023.
 - Pass volume barely falls as passing efficiency rises: team pass attempts against yards per attempt correlate about -0.05 in replays and -0.54 in the 2024 NFL, because good passing teams don't lead and run enough. The passing leader is held near the NFL mean by a league-wide pass rate shift (C-13); M7's opponent-tailored game plans and M14's coaching should carry more of it.

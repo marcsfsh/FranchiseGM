@@ -4,6 +4,7 @@
  * 2026 regular season with rosters set.
  */
 import { defaultRotation, NEUTRAL_PLAN } from '../sim/plan';
+import { defaultPauses } from '../season/inbox';
 import { emptySeason } from '../season/state';
 import type { ScheduledGame } from '../../data/schedule';
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
@@ -106,7 +107,7 @@ export function createLeague(input: NewLeagueInput): League {
     date: { season: start.startSeason, phase: 'regularSeason', week: 1 },
     random: createLeagueRandom(start.seed, input.fixed ?? false),
     rules,
-    settings: { version: 1, fitCap: TUNING.fit.cap, sim: defaultSliders() },
+    settings: { version: 1, fitCap: TUNING.fit.cap, sim: defaultSliders(), pause: defaultPauses() },
     teams,
     players: byId(generated.players),
     contracts: byId(generated.contracts),
@@ -114,6 +115,7 @@ export function createLeague(input: NewLeagueInput): League {
     owners: byId(generated.owners),
     schedule: input.schedule.filter(g => g.season === start.startSeason).map(g => ({ ...g })),
     season: emptySeason(start.startSeason),
+    inbox: [],
     nextId: idCounters([
       ...generated.players.map(p => p.id),
       ...generated.contracts.map(c => c.id),

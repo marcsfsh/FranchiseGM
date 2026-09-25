@@ -5,6 +5,8 @@
  * yardage) live in the rule set (spec 16), not here. Calibration runs (spec 23) change these values,
  * and each change is logged in docs/CALIBRATION.md.
  */
+import type { StatKey } from './sim/stats';
+
 export const TUNING = {
   /** Player generation (spec 10.2). */
   generation: {
@@ -181,6 +183,61 @@ export const TUNING = {
     /** Signing bonus range for undrafted free agents, dollars. */
     udfaBonus: [0, 25_000]
   },
+
+  /**
+   * Players of the week (spec 18.4): game score weights per stat. Offense counts yards, scores, catches, and
+   * turnovers; defense counts stops and takeaways; special teams count kicks, returns, and pinned punts,
+   * less missedKick per missed field goal. A player on a winning team scores winnerEdge times as much.
+   */
+  awards: {
+    offense: {
+      passYds: 0.04, passTd: 4, passInt: -3, rushYds: 0.1, rushTd: 6, recYds: 0.1, recTd: 6, receptions: 0.5,
+      fumblesLost: -3
+    },
+    defense: {
+      tackles: 1, tacklesForLoss: 1.5, sacks: 4, qbHits: 1, defInt: 5, defIntTd: 6, forcedFumbles: 3,
+      fumbleRecoveries: 2, fumbleReturnTd: 6, passesDefended: 1.5, safeties: 4
+    },
+    special: {
+      fgMade: 3, fgMade50: 2, xpMade: 0.5, kickReturnYds: 0.05, kickReturnTd: 8, puntReturnYds: 0.08,
+      puntReturnTd: 8, puntsIn20: 1.5
+    },
+    missedKick: 3,
+    winnerEdge: 1.1
+  } as {
+    offense: Partial<Record<StatKey, number>>;
+    defense: Partial<Record<StatKey, number>>;
+    special: Partial<Record<StatKey, number>>;
+    missedKick: number;
+    winnerEdge: number;
+  }, // prettier-ignore
+
+  /**
+   * The news feed (spec 18.1). Newsworthiness: a result scores `result` (tie `tie`), plus perUpsetPoint per
+   * point the loser's best 22 out-rate the winner's from upsetGap up, `overtime`, and blowoutBonus from a
+   * `blowout` margin; playoff games multiply by playoffStakes and the Super Bowl by superBowlStakes. A big
+   * game scores `performance` times how far past its mark (bigGame) it went; a season milestone scores
+   * `milestone` times its rank among the stat's marks; an injury scores `injury` per week out, up to
+   * injuryWeeksCap, and seasonEnding more for the season, for players rated injuryFrom or more; a signing
+   * of a player rated signingFrom or more scores `transaction`; a player of the week scores `award`.
+   * Players add perOverall per overall point above prominentFrom. The feed keeps perWeek items a week,
+   * and a team sees a template once in templateWeeks weeks.
+   */
+  news: {
+    result: 3, tie: 6, upsetGap: 2, perUpsetPoint: 3, overtime: 3, blowout: 21, blowoutBonus: 1,
+    playoffStakes: 3, superBowlStakes: 6, performance: 6, milestone: 4, injury: 1, injuryWeeksCap: 6,
+    seasonEnding: 3, injuryFrom: 72, signingFrom: 68, transaction: 1, award: 4, prominentFrom: 70, perOverall: 0.3,
+    perWeek: 12, templateWeeks: 4,
+    bigGame: { passYds: 400, passTd: 5, rushYds: 175, recYds: 175, sacks: 3, defInt: 2 },
+    milestones: {
+      passYds: [3000, 4000, 5000], rushYds: [1000, 1500, 2000], recYds: [1000, 1500], sacks: [10, 15, 20],
+      passTd: [30, 40], defInt: [6, 9]
+    },
+    milestoneWords: {
+      passYds: 'passing yard', rushYds: 'rushing yard', recYds: 'receiving yard', sacks: 'sack',
+      passTd: 'touchdown pass', defInt: 'interception'
+    }
+  } as const, // prettier-ignore
 
   /** The AI decision framework (spec 14.1, 14.5). */
   ai: {

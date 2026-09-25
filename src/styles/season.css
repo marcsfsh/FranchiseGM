@@ -1,0 +1,15 @@
+/* The season on the team hub (style guide 7.6): unread inbox messages and advance progress. Tokens only. */
+.inbox-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+.inbox-item.is-unread {
+  box-shadow: inset var(--s1) 0 0 var(--selection-indicator);
+}
+.advance-progress {
+  font-weight: 700;
+}
+.news-list li {
+  display: block;
+}

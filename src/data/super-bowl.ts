@@ -21,3 +21,21 @@ export function superBowlVenue(season: number): string {
 
 /** The Super Bowl's number: the 2026 season ends with Super Bowl LXI. */
 export const superBowlNumber = (season: number): number => season - 1965;
+
+const ROMAN: readonly [number, string][] = [
+  [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'],
+  [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']
+]; // prettier-ignore
+
+/** The Super Bowl's name: Roman numerals, except Super Bowl 50 (2015 season), which the NFL wrote in digits. */
+export function superBowlName(season: number): string {
+  let n = superBowlNumber(season);
+  if (n === 50) return 'Super Bowl 50';
+  let numeral = '';
+  for (const [value, letters] of ROMAN)
+    while (n >= value) {
+      numeral += letters;
+      n -= value;
+    }
+  return `Super Bowl ${numeral}`;
+}

@@ -9,7 +9,8 @@ test('creates a league, reloads, and continues it', async ({ page }) => {
   await expect(page.getByText('No leagues yet.')).toBeVisible();
   await createLeague(page, { name: 'Reload league', team: 'DET', seed: '77' });
   await expect(page.locator('html')).toHaveAttribute('data-team', 'DET');
-  await expect(page.locator('main')).toContainText("You're the general manager of the Detroit Lions.");
+  await expect(page.locator('main .nameplate-tag')).toHaveText('Detroit Lions');
+  await expect(page.locator('main .hub-date')).toHaveText('2026 season · Week 1');
   await expectNoHorizontalOverflow(page);
 
   await page.reload();

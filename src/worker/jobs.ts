@@ -1,5 +1,6 @@
 /** The worker's job table. Later milestones add season sims and AI batches. */
-import { hashWords, stream } from '../engine/rng';
+import { hashWords, stream, type AdvanceInput } from '../engine/rng';
+import { advanceWeek } from '../engine/season/advance';
 import type { ClimateTable } from '../data/climate';
 import type { RunSample } from '../engine/calibration/metrics';
 import type { CalibrationData } from '../engine/calibration/replay';
@@ -25,6 +26,20 @@ export const JOBS: Record<string, JobHandler> = {
       ...input,
       onProgress: (done, total) => ctx.progress(done, total, 'Building teams')
     });
+  },
+
+  /**
+   * Plays the league's current week (spec 4.2): weekly management, the games, injuries, awards, news, and
+   * the inbox. Returns everything but the AI decision log, which stays in the worker until M14's viewer.
+   */
+  advanceWeek: payload => {
+    const { league, climate, input } = payload as {
+      league: League;
+      climate: ClimateTable | null;
+      input: AdvanceInput;
+    };
+    const { decisions: _decisions, ...week } = advanceWeek(league, climate, input);
+    return week;
   },
 
   /** Simulates one scheduled game (spec 8) and reports how long the sim took. */

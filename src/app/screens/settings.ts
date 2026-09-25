@@ -1,4 +1,5 @@
 import { TEAM_ABBRS, teamFullName } from '../../data/team-colors';
+import { LIVE_PAUSE_EVENTS, PAUSE_LABELS } from '../../engine/season/inbox';
 import { toast, whileBusy, type ToastAction } from '../feedback';
 import { savedAgo } from '../format';
 import { EXPORT_REMINDER, clearsSiteData } from '../platform';
@@ -192,6 +193,32 @@ function leagueSettings(ctx: ScreenContext): { node: HTMLElement; sync: () => vo
   return { node, sync };
 }
 
+/** Which events stop a multi-week advance (spec 19.6): only the ones this build can raise. */
+function pauseSettings(app: AppState): HTMLElement | null {
+  const league = app.league;
+  if (!league) return null;
+  const status = h('p', { class: 'sr-only', role: 'status' });
+  const boxes = LIVE_PAUSE_EVENTS.map(event => {
+    const box = h('input', { type: 'checkbox', checked: league.settings.pause[event] });
+    box.addEventListener('change', () => {
+      app.edit(
+        l => {
+          l.settings.pause[event] = box.checked;
+        },
+        ['pause', event, box.checked]
+      );
+      status.textContent = `${PAUSE_LABELS[event]}: ${box.checked ? 'the sim stops' : 'they wait in your inbox'}.`;
+    });
+    return h('label', { class: 'check-target check-left' }, box, PAUSE_LABELS[event]);
+  });
+  return card(
+    'Pause the sim for',
+    h('p', { class: 'muted' }, 'Simming several weeks stops after a week with one of these. Everything else waits in your inbox.'),
+    ...boxes,
+    status
+  ); // prettier-ignore
+}
+
 /** The developer tools entry (spec 23.5), shown once the menu is on. */
 const devCard = () =>
   card(
@@ -239,6 +266,7 @@ export function settingsScreen(): Screen {
         'div',
         { class: 'cards' },
         league?.node ?? null,
+        pauseSettings(ctx.app),
         display.node,
         devMenuOn() ? devCard() : null
       );

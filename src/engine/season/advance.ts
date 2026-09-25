@@ -14,7 +14,10 @@ import { simLeagueGame } from '../sim';
 import type { TeamTotals } from '../sim/stats';
 import type { GameResult } from '../sim/types';
 import type { GameMeta } from '../stats/record';
+import { playersOfTheWeek, type WeeklyAward } from './awards';
+import { addToInbox, pausing, weekInbox, type InboxItem } from './inbox';
 import { applyInjuries, healWeek } from './injuries';
+import { addToTotals, weekNews, type NewsItem } from './news';
 import { conferenceRound, superBowl, type Seed } from './playoffs';
 import { playoffSchedule } from './schedule';
 import { gameWeek, leagueStandings, PLAYOFF_PHASES, weekGames, type GameOutcome } from './state';
@@ -30,6 +33,12 @@ export interface WeekOutcome {
   games: { result: GameResult; meta: GameMeta }[];
   /** Every AI decision made before the games (spec 14.10), for the debug log. */
   decisions: DecisionLog[];
+  /** The week's news, players of the week, and the user's new messages (spec 18.1, 18.4, 19.6). */
+  news: NewsItem[];
+  awards: WeeklyAward[];
+  inbox: InboxItem[];
+  /** New messages that stop a multi-week advance under the user's pause settings. */
+  pauses: InboxItem[];
 }
 
 const touchdowns = (t: TeamTotals): number =>
@@ -107,6 +116,7 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
   const season = league.season.season;
   const playoff = week > league.rules.season.weeks;
   // Teams set their rosters, lineups, and game plans before kickoff (spec 14.10).
+  const movesBefore = league.season.transactions.length;
   const decisions = manageWeek(
     league,
     leagueStream(league.random, 'ai', week),
@@ -123,7 +133,23 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     week,
     leagueStream(league.random, 'injuries', week)
   );
+  // Season totals and players of the week, then the calendar moves on (seeds come after week 18).
+  const before = league.season.totals;
+  league.season.totals = addToTotals(before, results);
+  // Players of the week are a regular-season award.
+  const awards = playoff ? [] : playersOfTheWeek(season, week, results);
+  league.season.awards.push(...awards);
   moveOn(league);
+  // News and the inbox (spec 18.1, 19.6).
+  const moves = league.season.transactions.slice(movesBefore);
+  const news = weekNews(
+    league,
+    { week, results, awards, before, after: league.season.totals, moves },
+    leagueStream(league.random, 'news', week)
+  );
+  league.season.news.push(...news);
+  const inbox = weekInbox(league, { week, results, awards, news });
+  league.inbox = addToInbox(league.inbox, inbox);
   league.random = advanceLeagueRandom(league.random, input);
   return {
     league,
@@ -131,6 +157,10 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
       result,
       meta: { season, week, kind: playoff ? 'playoffs' : 'regular' }
     })),
-    decisions
+    decisions,
+    news,
+    awards,
+    inbox,
+    pauses: pausing(inbox, league.settings.pause)
   };
 }

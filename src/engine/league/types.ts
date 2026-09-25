@@ -12,6 +12,7 @@ import type { DepthOrder } from './depth';
 import type { LeagueRandom } from '../rng';
 import type { RuleSet } from '../rules/ruleset';
 import type { TeamSchemes } from '../schemes/resolve';
+import type { InboxItem, PauseEvent } from '../season/inbox';
 import type { SeasonState } from '../season/state';
 import type { GamePlan, Rotation } from '../sim/plan';
 import type { SimSliders } from '../sim/sliders';
@@ -76,6 +77,8 @@ export interface LeagueSettings {
   fitCap: number;
   /** Game sim and stat sliders (spec 22.3). */
   sim: SimSliders;
+  /** Event types that stop a multi-week advance (spec 19.6). */
+  pause: Record<PauseEvent, boolean>;
 }
 
 export interface League {
@@ -94,6 +97,8 @@ export interface League {
   schedule: ScheduledGame[];
   /** The current season's results, seeds, and champion. */
   season: SeasonState;
+  /** Messages for the user (spec 19.6), oldest first. */
+  inbox: InboxItem[];
   /** Counters for new IDs by prefix (p, c, s, o, and more later). */
   nextId: Record<string, number>;
 }

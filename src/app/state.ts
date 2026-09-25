@@ -8,6 +8,10 @@ import type { CalibrationReport } from '../engine/calibration/report';
 import type { RunPlan } from '../engine/calibration/run';
 import type { TargetsFile } from '../engine/calibration/targets';
 import type { League, LeagueSummary, StartOptions } from '../engine/league/types';
+import { digestActions, freshSeed } from '../engine/rng';
+import type { WeekOutcome } from '../engine/season/advance';
+import type { InboxItem } from '../engine/season/inbox';
+import { gameWeek } from '../engine/season/state';
 import type { NewLeagueInput } from '../engine/league/create';
 import type { SaveStore } from '../storage/saves';
 import { exportFileName, exportFileNameFor, exportLeague, readLeagueFile } from '../storage/saves';
@@ -18,6 +22,19 @@ export type SaveStatus =
   | { state: 'saving' }
   | { state: 'failed'; message: string }
   | { state: 'none' };
+
+/** How far an advance goes: one week, to the end of the regular season, or through the Super Bowl. */
+export type AdvanceTarget = 'week' | 'playoffs' | 'season';
+
+type AdvancedWeek = Omit<WeekOutcome, 'decisions'>;
+
+export interface AdvanceReport {
+  weeks: number;
+  /** Messages that stopped the advance. */
+  pauses: InboxItem[];
+  /** The user stopped it between weeks. */
+  stopped: boolean;
+}
 
 /** How long an edit waits for the next one before the league saves. */
 const EDIT_SAVE_DELAY_MS = 600;
@@ -189,6 +206,41 @@ export class AppState {
     clearTimeout(this.pendingSave);
     this.pendingSave = null;
     await this.save();
+  }
+
+  /**
+   * Advances week by week in the worker (spec 4.2), stopping at the target, at a message that pauses under
+   * the user's settings (spec 19.6), or between weeks once `signal` aborts. Each week's games go into
+   * history before the league takes the new week, so a failed write leaves the week to replay; then the
+   * league autosaves (spec 21).
+   */
+  async advance(
+    target: AdvanceTarget,
+    onWeek: (league: League, weeks: number) => void,
+    signal?: AbortSignal
+  ): Promise<AdvanceReport> {
+    if (!this.league) throw new Error('Open a league to advance it.');
+    await this.flush();
+    const pauses: InboxItem[] = [];
+    let weeks = 0;
+    while (this.league && gameWeek(this.league) !== null && !signal?.aborted) {
+      const input = { actions: digestActions(this.actions), entropy: freshSeed() };
+      const week: AdvancedWeek = await this.worker.run<AdvancedWeek>('advanceWeek', {
+        league: this.league,
+        climate: this.baseDb.climate,
+        input
+      }).result;
+      await this.store.history.record(week.league.meta.id, week.games);
+      this.actions = [];
+      this.league = week.league;
+      await this.save();
+      weeks++;
+      onWeek(week.league, weeks);
+      pauses.push(...week.pauses);
+      if (target === 'week' || pauses.length) break;
+      if (target === 'playoffs' && week.league.date.phase !== 'regularSeason') break;
+    }
+    return { weeks, pauses, stopped: signal?.aborted === true };
   }
 
   /** Autosave hook (spec 21): after every week and every offseason phase. */
