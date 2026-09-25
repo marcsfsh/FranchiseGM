@@ -136,3 +136,11 @@
 .box-more > .stack {
   margin-top: var(--s3);
 }
+/* A club's name as a link: a full-size target even for a short name like "Jets". */
+.team-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  min-width: var(--tap);
+  font-weight: 700;
+}

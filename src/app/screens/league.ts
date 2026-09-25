@@ -18,7 +18,9 @@ import {
 import { gameWeek, leagueStandings, PLAYOFF_PHASES } from '../../engine/season/state';
 import { h, mount, type Child } from '../dom';
 import { record } from '../format';
-import { gameCard, nick, weekLabel } from '../ui/games';
+import { href } from '../router';
+import { clubSeason, gameCard, nick, teamLink, weekLabel } from '../ui/games';
+import { playerLink } from '../ui/players';
 import { scrollRegion, statHeader } from '../ui/stat-table';
 import { tabs } from '../ui/tabs';
 import { card, pageHead } from './common';
@@ -26,7 +28,7 @@ import { statsPanel } from './league-stats';
 import type { AppState } from '../state';
 import type { Screen } from './types';
 
-export const LEAGUE_TABS = ['standings', 'playoffs', 'schedule', 'stats'] as const;
+export const LEAGUE_TABS = ['standings', 'playoffs', 'schedule', 'stats', 'news'] as const;
 export type LeagueTab = (typeof LEAGUE_TABS)[number];
 
 type StandingsView = 'divisions' | 'conferences';
@@ -37,12 +39,14 @@ const STANDINGS_VIEWS: { id: StandingsView; label: string }[] = [
 ];
 
 /** The tab, standings view, and schedule filters, kept for the session. A null week follows the season. */
-const choice: { tab: LeagueTab; standings: StandingsView; week: number | null; team: TeamAbbr | 'all' } = {
-  tab: 'standings',
-  standings: 'divisions',
-  week: null,
-  team: 'all'
-};
+const choice: {
+  tab: LeagueTab;
+  standings: StandingsView;
+  week: number | null;
+  team: TeamAbbr | 'all';
+  newsWeek: number | null;
+  newsMine: boolean;
+} = { tab: 'standings', standings: 'divisions', week: null, team: 'all', newsWeek: null, newsMine: false };
 
 const CONFERENCES: readonly Conference[] = ['AFC', 'NFC'];
 
@@ -55,7 +59,7 @@ function teamHeader(abbr: TeamAbbr, user: TeamAbbr): HTMLElement {
   return h(
     'th',
     { scope: 'row' },
-    nick(abbr),
+    teamLink(abbr),
     abbr === user ? h('span', { class: 'sr-only' }, ' (your team)') : null
   );
 }
@@ -379,12 +383,9 @@ function schedulePanel(league: League): HTMLElement {
       if (announce) status.textContent = `${weekLabel(league, shownWeek)}: ${games.length} ${games.length === 1 ? 'game' : 'games'}.`;
     } else {
       const club = choice.team;
-      const games = league.schedule.filter(g => g.home === club || g.away === club).sort((a, b) => a.week - b.week);
-      const played = new Set(games.map(g => g.week));
-      const regular = Array.from({ length: league.rules.season.weeks }, (_, i) => i + 1);
-      const items = [...regular.filter(w => !played.has(w)).map(w => ({ week: w, node: h('li', { class: 'game-card is-bye' }, h('p', { class: 'label' }, weekLabel(league, w)), h('p', null, 'Bye')) })), ...games.map(g => ({ week: g.week, node: gameCard(league, g, { label: weekLabel(league, g.week) }) }))].sort((a, b) => a.week - b.week);
-      mount(body, h('ul', { class: 'game-list', 'aria-label': `${nick(club)} schedule` }, ...items.map(i => i.node)));
-      if (announce) status.textContent = `${nick(club)} schedule: ${games.length} games.`;
+      const games = league.schedule.filter(g => g.home === club || g.away === club).length;
+      mount(body, h('div', { class: 'btn-row' }, h('a', { class: 'btn btn-outline', href: href('team', { abbr: club, tab: 'roster' }) }, `${nick(club)} team page`)), clubSeason(league, club));
+      if (announce) status.textContent = `${nick(club)} schedule: ${games} games.`;
     }
   }; // prettier-ignore
   week.addEventListener('change', () => {
@@ -410,17 +411,78 @@ function schedulePanel(league: League): HTMLElement {
   );
 }
 
+const AWARD_WORDS = { offense: 'offense', defense: 'defense', special: 'special teams' } as const;
+
+/** The news feed (spec 18.1): a week's stories, most newsworthy first, and its players of the week. */
+function newsPanel(league: League): HTMLElement {
+  const user = league.meta.start.userTeam;
+  const weeks = [
+    ...new Set([...league.season.news.map(n => n.week), ...league.season.awards.map(a => a.week)])
+  ].sort((a, b) => b - a);
+  if (!weeks.length)
+    return h('p', { class: 'empty' }, "The week's biggest stories appear here once games are played.");
+  if (choice.newsWeek !== null && !weeks.includes(choice.newsWeek)) choice.newsWeek = null;
+  const week = h(
+    'select',
+    { class: 'select', id: 'newsWeek' },
+    ...weeks.map(w => h('option', { value: String(w) }, weekLabel(league, w)))
+  );
+  const mine = h('input', { type: 'checkbox', id: 'newsMine', checked: choice.newsMine });
+  const body = h('div', { class: 'stack' });
+  const status = h('p', { class: 'sr-only', role: 'status' });
+  const draw = (announce: boolean) => {
+    const shown = choice.newsWeek ?? weeks[0] ?? 1;
+    week.value = String(shown);
+    const stories = league.season.news.filter(n => n.week === shown && n.kind !== 'award' && (!choice.newsMine || n.teams.includes(user))).sort((a, b) => b.score - a.score);
+    const awards = league.season.awards.filter(a => a.week === shown && (!choice.newsMine || a.team === user));
+    const award = (a: (typeof awards)[number]) => {
+      const p = league.players[a.playerId];
+      const label = a.category === 'rookie' ? 'Rookie' : `${a.conference} ${AWARD_WORDS[a.category]}`;
+      return h('li', null, `${label}: `, p ? playerLink(p) : 'A former player', `, ${nick(a.team)}: ${a.line}.`);
+    };
+    mount(
+      body,
+      card(`News: ${weekLabel(league, shown)}`, stories.length ? h('ul', { class: 'preview-list news-list' }, ...stories.map(n => h('li', null, n.headline))) : h('p', { class: 'empty' }, choice.newsMine ? `No stories about the ${nick(user)} this week.` : 'No stories this week.')),
+      awards.length ? card('Players of the week', h('ul', { class: 'plain-list' }, ...awards.map(award))) : null
+    );
+    if (announce) status.textContent = `${weekLabel(league, shown)}: ${stories.length} ${stories.length === 1 ? 'story' : 'stories'}.`;
+  }; // prettier-ignore
+  week.addEventListener('change', () => {
+    choice.newsWeek = Number(week.value);
+    draw(true);
+  });
+  mine.addEventListener('change', () => {
+    choice.newsMine = mine.checked;
+    draw(true);
+  });
+  draw(false);
+  return h(
+    'div',
+    { class: 'stack' },
+    h(
+      'div',
+      { class: 'filterbar' },
+      h('div', { class: 'field' }, h('label', { for: 'newsWeek' }, 'Week'), week),
+      h('label', { class: 'check-target check-left' }, mine, `Only the ${nick(user)}`)
+    ),
+    status,
+    body
+  );
+}
+
 const TAB_LABELS: Record<LeagueTab, string> = {
   standings: 'Standings',
   playoffs: 'Playoffs',
   schedule: 'Schedule',
-  stats: 'Stats'
+  stats: 'Stats',
+  news: 'News'
 };
 const PANELS: Record<LeagueTab, (league: League, app: AppState) => Child> = {
   standings: standingsPanel,
   playoffs: playoffsPanel,
   schedule: schedulePanel,
-  stats: (league, app) => statsPanel(app, league)
+  stats: (league, app) => statsPanel(app, league),
+  news: newsPanel
 };
 
 export const isLeagueTab = (tab: string | undefined): tab is LeagueTab =>

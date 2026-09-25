@@ -7,20 +7,25 @@ import { superBowlName } from '../../data/super-bowl';
 import { TEAM_COLORS, teamFullName, type TeamAbbr } from '../../data/team-colors';
 import { team as teamInfo } from '../../data/teams';
 import type { League } from '../../engine/league/types';
-import { PHASE_LABELS } from '../../engine/model/calendar';
-import type { Player } from '../../engine/model/player';
-import type { InboxItem, InboxKind } from '../../engine/season/inbox';
+import { capFacts, capSheet } from '../../engine/cap/sheet';
+import { capHit } from '../../engine/contracts/cap';
+import { contractSummary } from '../../engine/contracts/view';
+import { calendarDay, leagueYear, PHASE_LABELS } from '../../engine/model/calendar';
+import { ageOn, type Player } from '../../engine/model/player';
+import { RATING_LABELS, type RatingKey } from '../../engine/model/ratings';
+import { HAND_SET_FORMULAS } from '../../engine/ratings/overall';
 import { designation } from '../../engine/season/injuries';
 import { gameWeek, leagueStandings } from '../../engine/season/state';
 import type { WinLoss } from '../../engine/season/standings';
 import { h, type Child } from '../dom';
 import { toast } from '../feedback';
-import { gameDay, kickoff, record } from '../format';
+import { gameDay, kickoff, money, record } from '../format';
 import { href } from '../router';
 import { dateLine } from '../shell';
 import type { AdvanceTarget, AppState } from '../state';
-import { userGameIn, weekLabel } from '../ui/games';
-import { playerLink, tierPlate } from '../ui/players';
+import { weekLabel } from '../ui/games';
+import { inboxMessage, inboxOrder } from '../ui/inbox';
+import { attributeRow, devTag, playerLink, stat, tierPlate } from '../ui/players';
 import { pageHead } from './common';
 import type { Screen } from './types';
 
@@ -36,15 +41,6 @@ let view: { refresh(): void; announce(message: string): void } | null = null;
 
 const nick = (abbr: TeamAbbr): string => TEAM_COLORS[abbr].name;
 const winLoss = (r: WinLoss | undefined): string => (r ? record(r.wins, r.losses, r.ties) : record(0, 0));
-
-const INBOX_LABELS: Record<InboxKind, string> = {
-  result: 'Game result',
-  injury: 'Injury update',
-  award: 'Award',
-  milestone: 'Milestone',
-  playoffs: 'Playoffs',
-  waivers: 'Waivers'
-};
 
 /** A card with a sign bar and an optional arrow link (style guide 11). */
 function homeCard(
@@ -152,6 +148,8 @@ function nextGameCard(app: AppState, league: League): HTMLElement {
   const actions = h('div', { class: 'btn-row' });
   if (next && opponent)
     actions.append(h('a', { class: 'btn btn-outline', href: '#/game-plan' }, 'Set game plan'));
+  // Quick actions (spec 19.2): the lineup is on the roster card; offers to free agents start here.
+  actions.append(h('a', { class: 'btn btn-outline', href: href('freeagency') }, 'Free agency'));
   if (run) {
     const stop = h(
       'button',
@@ -226,8 +224,7 @@ function rosterCard(league: League): HTMLElement {
 }
 
 function inboxCard(app: AppState, league: League): HTMLElement {
-  // Newest week first; within a week, in the order filed (the result leads).
-  const items = [...league.inbox].sort((a, b) => b.season - a.season || b.week - a.week);
+  const items = inboxOrder(league.inbox);
   const unread = items.filter(i => !i.read).length;
   const shown = items.slice(0, 6);
   const markRead = h(
@@ -246,22 +243,10 @@ function inboxCard(app: AppState, league: League): HTMLElement {
     view?.refresh();
     view?.announce('All messages marked as read.');
   });
-  const message = (item: InboxItem) => {
-    // A result links to its box score.
-    const game = item.kind === 'result' ? userGameIn(league, item.season, item.week) : undefined;
-    return h(
-      'div',
-      { class: `inbox-item${item.read ? '' : ' is-unread'}` },
-      h('p', { class: 'label' }, `${INBOX_LABELS[item.kind]} · ${weekLabel(league, item.week)}${item.read ? '' : ' · New'}`),
-      h('p', null, h('strong', null, item.title)),
-      item.body ? h('p', { class: 'muted' }, item.body) : null,
-      game ? h('a', { class: 'inbox-link', href: href('game', { id: game.id }), 'aria-label': `Box score: ${item.title}` }, 'Box score') : null
-    );
-  }; // prettier-ignore
   return homeCard(
     unread ? `Inbox (${unread} new)` : 'Inbox',
-    {},
-    shown.length ? h('div', null, ...shown.map(message)) : h('p', { class: 'empty' }, 'No messages yet. Results, injuries, and awards for your team arrive here each week.'),
+    { arrow: ['All messages', href('inbox')] },
+    shown.length ? h('div', null, ...shown.map(item => inboxMessage(league, item))) : h('p', { class: 'empty' }, 'No messages yet. Results, injuries, and awards for your team arrive here each week.'),
     h('div', { class: 'btn-row' }, markRead)
   ); // prettier-ignore
 }
@@ -279,12 +264,62 @@ function newsCard(league: League): HTMLElement {
   }; // prettier-ignore
   return homeCard(
     last ? `News: ${weekLabel(league, last)}` : 'News',
-    {},
+    { arrow: ['All news', href('leagueTab', { tab: 'news' })] },
     stories.length
       ? h('ul', { class: 'preview-list news-list' }, ...stories.slice(0, 8).map(n => h('li', null, n.headline)))
       : h('p', { class: 'empty' }, "The week's biggest stories appear here once games are played."),
     awards.length ? h('h3', { class: 'label' }, 'Players of the week') : null,
     awards.length ? h('ul', { class: 'preview-list news-list' }, ...awards.map(award)) : null
+  ); // prettier-ignore
+}
+
+/** The cap summary (style guide 4.4): space left this league year, and where the money goes. */
+function capCard(league: League): HTMLElement {
+  const sheet = capSheet(league, league.meta.start.userTeam);
+  const row = (label: string, value: string) =>
+    h('div', { class: 'kv' }, h('span', { class: 'label' }, label), h('span', null, value));
+  return homeCard(
+    `${sheet.year} cap`,
+    { arrow: ['Cap sheet', href('finances')] },
+    h('span', { class: 'label' }, 'Cap space'),
+    h('p', { class: `big-number${sheet.space < 0 ? ' delta-bad' : ''}` }, money(sheet.space)),
+    h('div', { class: 'stack' }, row('Salary cap', money(sheet.cap)), row('Used', money(sheet.used)), row('Dead money', money(sheet.dead)))
+  ); // prettier-ignore
+}
+
+/** Players featured on the hub in turn, one a week. */
+const FEATURED_POOL = 5;
+
+/** A featured player (style guide 7.6): one of the club's best, a different one each week. */
+function featuredCard(league: League): HTMLElement | null {
+  const user = league.meta.start.userTeam;
+  const best = Object.values(league.players)
+    .filter(p => p.team === user && p.status === 'active')
+    .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1))
+    .slice(0, FEATURED_POOL);
+  const week = gameWeek(league) ?? league.date.week;
+  const p = best[(week - 1 + best.length) % Math.max(1, best.length)];
+  if (!p) return null;
+  const contract = p.contractId ? league.contracts[p.contractId] : undefined;
+  const year = leagueYear(league.date);
+  const hit = contract ? capHit(contract, year, league.rules, capFacts(league, p.id)) : 0;
+  const left = contract ? contractSummary(contract, league.date).remaining : 0;
+  const d = designation(p.injury);
+  const weeks = p.injury?.weeksOut ?? 0;
+  const health = d
+    ? `${STATUS_WORDS[d]}${d === 'out' ? `, ${weeks} ${weeks === 1 ? 'week' : 'weeks'}` : ''}`
+    : 'Healthy';
+  // The ratings his overall weighs most.
+  const key = (Object.entries(HAND_SET_FORMULAS[p.position].coefficients) as [RatingKey, number][])
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([k]) => k);
+  return homeCard(
+    'Featured player',
+    { arrow: ['Player page', href('player', { id: p.id })] },
+    h('div', { class: 'featured-head' }, tierPlate(p.ovr, { large: true }), h('div', null, h('p', { class: 'hero-title' }, playerLink(p)), h('p', { class: 'muted' }, `${p.position} · #${p.jersey} · age ${ageOn(p.birthDate, calendarDay(league.date))}`))),
+    h('div', { class: 'stat-grid' }, stat('Development', devTag(p.dev)), stat(`${year} cap hit`, money(hit)), stat('Years left', String(left)), stat('Health', health)),
+    h('div', { class: 'stack' }, ...key.map(k => attributeRow(RATING_LABELS[k], p.ratings[k])))
   ); // prettier-ignore
 }
 
@@ -340,7 +375,7 @@ export function homeScreen(): Screen {
         date.textContent = dateLine(l);
         const active = document.activeElement;
         const key = active instanceof HTMLElement && cards.contains(active) ? active.dataset.focus : undefined;
-        cards.replaceChildren(nextGameCard(app, l), rosterCard(l), inboxCard(app, l), newsCard(l), ...standingsCards(l));
+        cards.replaceChildren(...[nextGameCard(app, l), rosterCard(l), inboxCard(app, l), newsCard(l), ...standingsCards(l), capCard(l), featuredCard(l)].filter(c => c !== null));
         // Keep focus on the control the user was using: the advance buttons hand it to Stop while a run goes
         // and take it back when it ends; a disabled button hands it to the play button.
         if (key) {

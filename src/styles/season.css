@@ -20,3 +20,22 @@
   min-height: var(--tap);
   font-weight: 700;
 }
+/* The featured player's header: a large overall plate beside the name. */
+.featured-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  min-width: 0;
+}
+.featured-head > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.featured-head p {
+  margin: 0;
+}
+/* A name inside a sentence of the news list keeps to its own width. */
+.news-list a {
+  flex: none;
+  min-width: 0;
+}

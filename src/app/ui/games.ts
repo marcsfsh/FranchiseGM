@@ -76,3 +76,19 @@ export function gameCard(league: League, game: ScheduledGame, options: GameCardO
     h('p', { class: 'game-status' }, ...status, link)
   );
 }
+
+/** A club's season, week by week: its games (with results once played) and its bye. */
+export function clubSeason(league: League, club: TeamAbbr): HTMLElement {
+  const games = league.schedule.filter(g => g.home === club || g.away === club);
+  const playing = new Set(games.map(g => g.week));
+  const byes = Array.from({ length: league.rules.season.weeks }, (_, i) => i + 1).filter(w => !playing.has(w));
+  const items = [
+    ...byes.map(w => ({ week: w, node: h('li', { class: 'game-card is-bye' }, h('p', { class: 'label' }, weekLabel(league, w)), h('p', null, 'Bye')) })),
+    ...games.map(g => ({ week: g.week, node: gameCard(league, g, { label: weekLabel(league, g.week) }) }))
+  ].sort((a, b) => a.week - b.week);
+  return h('ul', { class: 'game-list', 'aria-label': `${nick(club)} schedule` }, ...items.map(i => i.node));
+} // prettier-ignore
+
+/** A link to a club's page. */
+export const teamLink = (abbr: TeamAbbr, text = nick(abbr)): HTMLAnchorElement =>
+  h('a', { class: 'team-link', href: href('team', { abbr, tab: 'roster' }) }, text);
