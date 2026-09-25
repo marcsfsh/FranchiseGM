@@ -87,7 +87,15 @@ export async function expectNoHorizontalOverflow(page: Page): Promise<void> {
       el.getBoundingClientRect().left + el.scrollWidth > width + 0.5;
     const contents = [...document.querySelectorAll('body *')]
       .filter(el => wide(el) && ![...el.children].some(wide))
-      .map(el => `content of ${name(el)} scrollWidth=${el.scrollWidth} clientWidth=${el.clientWidth}`);
+      .map(el => {
+        const kids = [...el.children]
+          .map(c => {
+            const r = c.getBoundingClientRect();
+            return `${name(c)}[w=${Math.round(r.width)} sw=${c.scrollWidth} ${getComputedStyle(c).overflowX}]`;
+          })
+          .join(' ');
+        return `content of ${name(el)} scrollWidth=${el.scrollWidth} clientWidth=${el.clientWidth} ${snippet(el.textContent)} children ${kids}`;
+      });
     return {
       overflow: document.documentElement.scrollWidth - width,
       culprits: [...boxes.slice(0, 4), ...texts.slice(0, 4), ...contents.slice(0, 4)]
