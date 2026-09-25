@@ -259,13 +259,3 @@ describe('league-level output (spec 23 targets, checked loosely until M6)', () =
     expect(sacks / (att + sacks)).toBeLessThan(0.1);
   });
 });
-
-describe('speed (M4 done-when)', () => {
-  it('sims a game in well under 100 ms', () => {
-    const ids = base.schedule.slice(100, 120).map(g => g.id);
-    const started = performance.now();
-    for (const id of ids) simLeagueGame(base, id, climate);
-    const perGame = (performance.now() - started) / ids.length;
-    expect(perGame).toBeLessThan(100);
-  });
-});

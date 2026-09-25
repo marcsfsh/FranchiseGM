@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { createLeague, openGame } from './helpers';
 
-// M4 done-when: a single game sims in under 100 ms on desktop, in the worker (spec 2.3).
-test('sims a game in the worker in under 100 ms', async ({ page }, info) => {
+// M4: a game sims in the worker (spec 2.3). Its time is measured for milestone reports, never enforced
+// (post-M23 section 2.18).
+test('sims a game in the worker', async ({ page }, info) => {
   test.skip(!info.project.name.endsWith('desktop'), 'A desktop timing.');
   await openGame(page);
   await createLeague(page, { name: 'Sim league', team: 'KC', seed: '44' });
@@ -32,5 +33,7 @@ test('sims a game in the worker in under 100 ms', async ({ page }, info) => {
   expect(out.last?.recap.length).toBeGreaterThan(0);
   // Other layout tests share the CPU while the suite runs in parallel, so the fastest of seven runs, the one
   // they disturbed least, measures the sim itself.
-  expect(Math.min(...out.times)).toBeLessThan(100);
+  console.log(
+    `Measured: a game sims in ${Math.min(...out.times).toFixed(1)} ms in the worker (fastest of 7).`
+  );
 });

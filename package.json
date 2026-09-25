@@ -16,7 +16,8 @@
     "lint": "eslint . --quiet --format unix",
     "check": "npm run typecheck && npm run lint && npm test",
     "layout": "playwright test --reporter=line",
-    "calibrate": "node tools/calibrate.mjs"
+    "calibrate": "node tools/calibrate.mjs",
+    "measure": "tsx tools/measure.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

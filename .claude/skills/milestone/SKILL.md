@@ -23,7 +23,8 @@ Any text after the id is extra instructions from the user for this run: follow t
    - Have the spec-reviewer subagent review the milestone (range: previous milestone tag to HEAD)
      against the "done when" list. Fix gaps that affect correctness or the criteria.
    - If the sim, AI, economy, or player development changed, run the calibrate skill.
-   - Write the Report section of docs/milestones/<id>.md, at most 20 lines. Update docs/STATUS.md.
+   - Write the Report section of docs/milestones/<id>.md, at most 20 lines, including the sizes and times
+     `npm run measure` prints (post-M23 section 2.18: measured, never enforced). Update docs/STATUS.md.
      Tag `<id>-<slug>`, then push the branch and the tag.
 6. If the build order marks a checkpoint here, stop and summarize for the user. Otherwise continue
    with the next milestone.

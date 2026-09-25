@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { openGame } from './helpers';
 
-// M1 done-when: the base database embeds in game.html and loads at startup in under 1 second on desktop.
-test('the embedded base database loads at startup in under a second', async ({ page }, info) => {
+// M1: the base database embeds in game.html and loads at startup. The load time is measured for milestone
+// reports, never enforced (post-M23 section 2.18).
+test('the embedded base database loads at startup', async ({ page }, info) => {
   test.skip(!info.project.name.endsWith('desktop'), 'Desktop timing only.');
   await openGame(page);
   await expect(page.locator('html')).toHaveAttribute('data-base-db', 'ready');
@@ -16,5 +17,5 @@ test('the embedded base database loads at startup in under a second', async ({ p
   });
   expect(info2.games).toBe(272);
   expect(info2.season).toBe(2026);
-  expect(info2.ms).toBeLessThan(1000);
+  console.log(`Measured: the base database is ready ${Math.round(info2.ms)} ms after startup.`);
 });
