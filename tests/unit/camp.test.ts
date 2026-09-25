@@ -48,12 +48,14 @@ describe('position battles (spec 4.1)', () => {
   }); // prettier-ignore
 
   it('lets the backup win about half the even battles', () => {
+    // One league: each time, the two quarterbacks start even again and the camp draws its own stream.
+    const league = fresh('trainingCamp');
+    const [starter, backup] = qbs(league, 'MIN') as [Player, Player];
+    const even = { ...starter.ratings };
+    const ovr = starter.ovr;
     let upsets = 0;
     for (let i = 0; i < 200; i++) {
-      const league = fresh('trainingCamp');
-      const [starter, backup] = qbs(league, 'MIN') as [Player, Player];
-      backup.ratings = { ...starter.ratings };
-      backup.ovr = starter.ovr;
+      for (const p of [starter, backup]) Object.assign(p, { ratings: { ...even }, ovr });
       const qb = positionBattles(league, stream(i, 'battles')).find(b => b.team === 'MIN' && b.position === 'QB');
       if (qb?.upset) upsets++;
     }
