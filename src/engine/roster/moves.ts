@@ -56,7 +56,13 @@ import { minimumSalary } from '../rules/ruleset';
 import { cannotPlay, designation } from '../season/injuries';
 import { gameWeek, PLAYOFF_PHASES, weekGames } from '../season/state';
 import { dollars, plural, possessive } from '../text';
-import { elevatedThisWeek, elevationsThisSeason, practiceSquadVeteran, rosterCounts } from './rules';
+import {
+  elevatedThisWeek,
+  elevationsThisSeason,
+  practiceSquadVeteran,
+  rosterCounts,
+  type RosterCounts
+} from './rules';
 import { claimedContract, claimProblem, placeOnWaivers, subjectToWaivers } from './waivers';
 import { putContract } from '../league/contract-index';
 
@@ -113,7 +119,24 @@ export interface MoveOptions {
    * league's rule enforcement is off (post-M23 2.10.1; D-46).
    */
   enforce?: boolean;
+  /**
+   * The team's roster counts and cap space now, from a caller previewing many moves for one team without
+   * making any, so each preview needn't count them again.
+   */
+  known?: TeamNow;
 }
+
+/** A team's roster counts and cap space on the league's date. */
+export interface TeamNow {
+  counts: RosterCounts;
+  space: number;
+}
+
+/** A team's roster counts and cap space now, for previewing many of its moves. */
+export const teamNow = (league: League, team: TeamAbbr): TeamNow => ({
+  counts: rosterCounts(league, team),
+  space: capSheet(league, team).space
+});
 
 const ok = <T>(value: T): Outcome<T> => ({ ok: true, value });
 const refuse = <T>(reason: string): Outcome<T> => ({ ok: false, reason });
@@ -180,7 +203,7 @@ function owedTerminationPay(league: League, player: Player, contract: Contract):
   );
 } // prettier-ignore
 
-function plan(league: League, move: Move, enforce: boolean): Outcome<Plan> {
+function plan(league: League, move: Move, enforce: boolean, known?: TeamNow): Outcome<Plan> {
   if (move.kind === 'extend' || move.kind === 'tag' || move.kind === 'tender' || move.kind === 'option')
     return resignPlan(league, move, enforce);
   const player = league.players[move.playerId];
@@ -189,8 +212,8 @@ function plan(league: League, move: Move, enforce: boolean): Outcome<Plan> {
   const team = move.team;
   const name = fullName(player);
   const year = leagueYear(league.date);
-  const counts = rosterCounts(league, team);
-  const before = capSheet(league, team).space;
+  const counts = known?.counts ?? rosterCounts(league, team);
+  const before = known?.space ?? capSheet(league, team).space;
   const contract = player.contractId ? league.contracts[player.contractId] : undefined;
   const preview = (change: Partial<MovePreview>): MovePreview => ({
     year,
@@ -576,7 +599,7 @@ function resignPlan(
 
 /** What a move would do, or why it can't be made. */
 export function previewMove(league: League, move: Move, options: MoveOptions = {}): Outcome<MovePreview> {
-  const p = plan(league, move, options.enforce ?? true);
+  const p = plan(league, move, options.enforce ?? true, options.known);
   return p.ok ? ok(p.value.preview) : p;
 }
 

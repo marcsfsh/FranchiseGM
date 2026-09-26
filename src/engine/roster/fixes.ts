@@ -18,7 +18,7 @@ import { minimumSalary } from '../rules/ruleset';
 import { cannotPlay, designation } from '../season/injuries';
 import { TUNING } from '../tuning';
 import { gameDayProblem } from './legality';
-import { previewMove, type Move, type MovePreview } from './moves';
+import { previewMove, teamNow, type Move, type MovePreview, type TeamNow } from './moves';
 
 export interface Fix {
   move: Move;
@@ -29,8 +29,8 @@ export interface Fix {
 export const saved = (fix: Fix): number => fix.preview.spaceAfter - fix.preview.spaceBefore;
 
 /** A move with its preview, or null when the rules refuse it. */
-function fixOf(league: League, move: Move): Fix | null {
-  const preview = previewMove(league, move);
+function fixOf(league: League, move: Move, known?: TeamNow): Fix | null {
+  const preview = previewMove(league, move, { known });
   return preview.ok ? { move, preview: preview.value } : null;
 }
 
@@ -42,6 +42,7 @@ const byId = (a: Fix, b: Fix): number => (a.move.playerId < b.move.playerId ? -1
 /** Restructures that free cap space this league year, each converting all it can, the most saved first. */
 export function restructureFixes(league: League, abbr: TeamAbbr): Fix[] {
   const fixes: Fix[] = [];
+  const known = teamNow(league, abbr);
   for (const p of teamPlayers(league, abbr)) {
     const contract = p.contractId ? league.contracts[p.contractId] : undefined;
     if (!contract || contract.ended) continue;
@@ -52,7 +53,7 @@ export function restructureFixes(league: League, abbr: TeamAbbr): Fix[] {
       league.rules
     );
     if (amount <= 0) continue;
-    const fix = fixOf(league, { kind: 'restructure', team: abbr, playerId: p.id, amount, reason: 'to get under the salary cap' }); // prettier-ignore
+    const fix = fixOf(league, { kind: 'restructure', team: abbr, playerId: p.id, amount, reason: 'to get under the salary cap' }, known); // prettier-ignore
     if (fix && saved(fix) > 0) fixes.push(fix);
   }
   return fixes.sort((a, b) => saved(b) - saved(a) || byId(a, b));
@@ -60,8 +61,9 @@ export function restructureFixes(league: League, abbr: TeamAbbr): Fix[] {
 
 /** Releases that free cap space this league year, the most saved first. */
 export function releaseFixes(league: League, abbr: TeamAbbr): Fix[] {
+  const known = teamNow(league, abbr);
   const fixes = teamPlayers(league, abbr).flatMap(p => {
-    const fix = fixOf(league, { kind: 'release', team: abbr, playerId: p.id, reason: 'to get under the salary cap' }); // prettier-ignore
+    const fix = fixOf(league, { kind: 'release', team: abbr, playerId: p.id, reason: 'to get under the salary cap' }, known); // prettier-ignore
     return fix && saved(fix) > 0 ? [fix] : [];
   });
   return fixes.sort((a, b) => saved(b) - saved(a) || byId(a, b));
@@ -117,6 +119,7 @@ export function fillFixes(
       (a.id < b.id ? -1 : 1)
   );
   const fixes: Fix[] = [];
+  const known = teamNow(league, abbr);
   for (const p of [...first, ...rest]) {
     if (fixes.length >= limit) break;
     const reason = 'to fill the active roster';
@@ -124,7 +127,7 @@ export function fillFixes(
       p.status === 'practice'
         ? { kind: 'promote', team: abbr, playerId: p.id, reason }
         : { kind: 'sign', team: abbr, playerId: p.id, offer: { years: 1, salary: asks.get(p) ?? askingSalary(league, p, abbr), signingBonus: 0 }, reason }; // prettier-ignore
-    const fix = fixOf(league, move);
+    const fix = fixOf(league, move, known);
     if (fix) fixes.push(fix);
   }
   return fixes;
@@ -144,8 +147,9 @@ export function gameDayFixes(league: League, abbr: TeamAbbr, limit: number): Fix
   const squad = teamPlayers(league, abbr)
     .filter(p => p.status === 'practice' && healthy(p) && fits(p.position))
     .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
+  const known = teamNow(league, abbr);
   const elevations = squad.flatMap(p => {
-    const fix = fixOf(league, { kind: 'elevate', team: abbr, playerId: p.id, reason: 'to dress a full game-day roster' }); // prettier-ignore
+    const fix = fixOf(league, { kind: 'elevate', team: abbr, playerId: p.id, reason: 'to dress a full game-day roster' }, known); // prettier-ignore
     return fix ? [fix] : [];
   });
   const fills = fillFixes(league, abbr, limit, fits);
@@ -155,7 +159,7 @@ export function gameDayFixes(league: League, abbr: TeamAbbr, limit: number): Fix
         .filter(p => p.status === 'active' && !healthy(p))
         .sort((a, b) => (b.injury?.weeksOut ?? 0) - (a.injury?.weeksOut ?? 0) || (a.id < b.id ? -1 : 1))
         .flatMap(p => {
-          const fix = fixOf(league, { kind: 'injuredReserve', team: abbr, playerId: p.id, reason: 'to open a roster spot' }); // prettier-ignore
+          const fix = fixOf(league, { kind: 'injuredReserve', team: abbr, playerId: p.id, reason: 'to open a roster spot' }, known); // prettier-ignore
           return fix ? [fix] : [];
         });
   return [...elevations, ...fills, ...reserve].slice(0, limit);
