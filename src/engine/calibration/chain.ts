@@ -2,13 +2,17 @@
  * Seasons chained through the offseason, for the aging metrics (spec 23.3): a generated league played week
  * by week through the Super Bowl and then a step at a time through the offseason into the next season, as
  * the game does it, with the user's club on auto. Each season's week 1 players are recorded (the active
- * rosters for the roster metrics, everyone not retired for the aging curves), and each offseason's
- * retirements.
+ * rosters for the roster metrics, everyone not retired for the aging curves, and each pick's round and
+ * whether he starts, for the draft's hit rates), and each offseason's retirements.
  */
+import { TEAM_ABBRS } from '../../data/team-colors';
+import { startersOf } from '../league/depth';
 import { calendarDay } from '../model/calendar';
 import type { League } from '../league/types';
 import { ageOn } from '../model/player';
 import { POSITION_GROUP, type PositionGroup } from '../model/positions';
+import { DEFAULT_RULES } from '../rules/ruleset';
+import type { Slot } from '../schemes/slots';
 import { advanceWeek } from '../season/advance';
 import { advanceOffseason } from '../season/offseason';
 import { gameWeek } from '../season/state';
@@ -26,6 +30,9 @@ export interface ChainPlayer {
   experience: number;
   accrued: number;
   active: boolean;
+  /** His draft, when a team drafted him; and whether he's a base starter on his team's depth chart. */
+  draft: { year: number; round: number } | null;
+  starter: boolean;
 }
 
 export interface ChainSnapshot {
@@ -55,9 +62,26 @@ const YEAR_MS = 365.25 * 86_400_000;
 const exactAge = (birthDate: string, day: string): number =>
   (Date.parse(day) - Date.parse(birthDate)) / YEAR_MS;
 
-/** Every player not retired on the season's opening day. */
-function snapshot(league: League): ChainSnapshot {
+/** The base starters on a depth chart, 11 a side; specialists and situational players don't count. */
+const BASE_SLOTS: readonly Slot[] = [
+  'QB', 'RB1', 'X', 'Z', 'SLOT', 'TE1', 'LT', 'LG', 'C', 'RG', 'RT',
+  'LEDGE', 'REDGE', 'DT1', 'DT2', 'FLEX', 'MIKE', 'WILL', 'CB1', 'CB2', 'FS', 'SS'
+]; // prettier-ignore
+
+/**
+ * Every player not retired on the season's opening day. A team's starters are the first players at each base
+ * slot of its depth chart who are on its active roster, since a chart set at camp can still list players
+ * cut since.
+ */
+export function snapshot(league: League): ChainSnapshot {
   const day = calendarDay(league.date);
+  const starters = new Set(
+    TEAM_ABBRS.flatMap(abbr => {
+      const onRoster = (id: string) => league.players[id]?.team === abbr && league.players[id]?.status === 'active'; // prettier-ignore
+      const firsts = startersOf(league.teams[abbr].depth.order, onRoster);
+      return BASE_SLOTS.flatMap(slot => firsts[slot] ?? []);
+    })
+  );
   const players = Object.values(league.players)
     .filter(p => p.status !== 'retired')
     .map(p => ({
@@ -68,7 +92,9 @@ function snapshot(league: League): ChainSnapshot {
       ovr: p.ovr,
       experience: p.experience,
       accrued: p.accrued,
-      active: p.team !== null && p.status === 'active'
+      active: p.team !== null && p.status === 'active',
+      draft: 'round' in p.draft ? { year: p.draft.year, round: p.draft.round } : null,
+      starter: starters.has(p.id)
     }));
   return { season: league.date.season, teams: Object.keys(league.teams).length, players };
 }
@@ -190,5 +216,57 @@ export function computeAging(samples: readonly AgingFacts[]): Map<string, Metric
   const retired = samples.flatMap(s => s.retirements);
   out.set('aging.retireAge', { value: mean(retired.map(r => r.age)), n: retired.length });
   out.set('aging.retireExperience', { value: mean(retired.map(r => r.experience)), n: retired.length });
+  for (const [id, value] of draftHits(samples)) out.set(id, value);
+  return out;
+}
+
+/** Seasons a pick is followed, from his first, and the seasons as a starter that make him a hit (D-50). */
+const FOLLOWED = 8;
+const HIT_SEASONS = 4;
+
+/**
+ * Draft hit rates by round (spec 23.3; D-50): of the picks in the drafts the chained leagues held with at
+ * least FOLLOWED seasons left to play, specialists apart, the share who were base starters on week 1's depth
+ * chart in HIT_SEASONS or more of their first FOLLOWED seasons. With them, the quarterbacks each of those
+ * drafts took in its first round.
+ */
+export function draftHits(samples: readonly AgingFacts[]): Map<string, MetricValue> {
+  const rounds = Array.from({ length: DEFAULT_RULES.season.draftRounds }, () => ({ picks: 0, hits: 0 }));
+  let drafts = 0;
+  let quarterbacks = 0;
+  for (const facts of samples) {
+    const first = facts.snapshots[0]?.season;
+    const last = facts.snapshots.at(-1)?.season;
+    if (first === undefined || last === undefined) continue;
+    const picks = new Map<string, number>();
+    const starts = new Map<string, number>();
+    for (const snap of facts.snapshots)
+      for (const p of snap.players) {
+        if (!p.draft || p.group === 'ST' || p.draft.year <= first || p.draft.year + FOLLOWED - 1 > last)
+          continue;
+        picks.set(p.id, p.draft.round);
+        if (p.starter && snap.season < p.draft.year + FOLLOWED) starts.set(p.id, (starts.get(p.id) ?? 0) + 1);
+      }
+    for (const [id, round] of picks) {
+      const cell = rounds[round - 1];
+      if (!cell) continue;
+      cell.picks++;
+      if ((starts.get(id) ?? 0) >= HIT_SEASONS) cell.hits++;
+    }
+    // Every draft the chain held, followed or not: its first-round quarterbacks.
+    const firstRound = new Map<number, Set<string>>();
+    for (let year = first + 1; year <= last; year++) firstRound.set(year, new Set());
+    for (const snap of facts.snapshots)
+      for (const p of snap.players)
+        if (p.draft?.round === 1 && p.group === 'QB') firstRound.get(p.draft.year)?.add(p.id);
+    for (const qbs of firstRound.values()) {
+      drafts++;
+      quarterbacks += qbs.size;
+    }
+  }
+  const out = new Map<string, MetricValue>(
+    rounds.map((c, i) => [`draft.starterRate.R${i + 1}`, { value: c.picks ? c.hits / c.picks : null, n: c.picks }]) // prettier-ignore
+  );
+  out.set('draft.qbsFirstRound', { value: drafts ? quarterbacks / drafts : null, n: drafts });
   return out;
 }

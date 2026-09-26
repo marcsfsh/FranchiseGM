@@ -5,13 +5,13 @@
  * reports to calibration/reports/, and prints the summary. Exits with 1 when a metric fails.
  *
  *   npm run calibrate -- [--seasons 100] [--per-league 10] [--experiments N] [--loop-seasons N]
- *                        [--chains N] [--chain-seasons 10] [--seed 1] [--workers N] [--ci]
+ *                        [--chains N] [--chain-seasons 20] [--seed 1] [--workers N] [--ci]
  *                        [--out calibration/reports]
  *
  * --ci runs the CI subset against its wide bands (spec 23.1: 20 seasons in CI). Weekly-loop seasons default
  * to 100 in a full run, since perfect and winless seasons are rare, and 8 in CI; each takes about as long as
- * one and a half replays. Chained leagues, for the aging metrics, default to 3 of 10 seasons in a full run
- * and none in CI; a chained season takes about as long as three replays.
+ * one and a half replays. Chained leagues, for the aging metrics and the draft's hit rates, default to 3 of
+ * 20 seasons in a full run and none in CI; a chained season takes about as long as three replays.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
@@ -37,7 +37,7 @@ const { values } = parseArgs({
     experiments: { type: 'string' },
     'loop-seasons': { type: 'string' },
     chains: { type: 'string' },
-    'chain-seasons': { type: 'string', default: '10' },
+    'chain-seasons': { type: 'string', default: '20' },
     seed: { type: 'string', default: '1' },
     workers: { type: 'string' },
     ci: { type: 'boolean', default: false },

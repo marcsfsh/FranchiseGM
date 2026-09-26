@@ -8,7 +8,8 @@ import type { TeamAbbr } from '../../data/team-colors';
 import { FIT_GROUP_IDS, FIT_GROUPS, type FitArm, type FitGroup } from './experiment';
 import type { GameFact, ReplayFacts, TeamFact } from './replay';
 
-export type MetricGroup = 'games' | 'seasons' | 'stats' | 'leaders' | 'injuries' | 'effects' | 'aging';
+export type MetricGroup =
+  'games' | 'seasons' | 'stats' | 'leaders' | 'injuries' | 'effects' | 'aging' | 'draft';
 
 export const GROUP_TITLES: Record<MetricGroup, string> = {
   games: 'Games',
@@ -17,7 +18,8 @@ export const GROUP_TITLES: Record<MetricGroup, string> = {
   leaders: 'Stat leaders and shares',
   injuries: 'Injuries',
   effects: 'Effect sizes',
-  aging: 'Aging and development'
+  aging: 'Aging and development',
+  draft: 'The draft'
 };
 
 /** How a value prints: a share as a percentage, a change in percentage points, or a number. */
@@ -175,6 +177,11 @@ for (const group of ['QB', 'RB', 'WR', 'TE', 'OL', 'DL', 'LB', 'DB'])
   def(`aging.peakAge.${group}`, 'aging', `Peak age, ${group}`, 'dec1');
 def('aging.retireAge', 'aging', 'Average age at retirement', 'dec1');
 def('aging.retireExperience', 'aging', 'Average credited seasons at retirement', 'dec1');
+
+// The draft (spec 23.3; D-50): hit rates by round, from the chained leagues' own drafts.
+for (let round = 1; round <= 7; round++)
+  def(`draft.starterRate.R${round}`, 'draft', `Round ${round} picks who start 4 or more seasons`, 'pct');
+def('draft.qbsFirstRound', 'draft', 'Quarterbacks taken in a first round', 'dec1');
 
 function fitLabel(group: FitGroup): string {
   const labels: Record<FitGroup, string> = {

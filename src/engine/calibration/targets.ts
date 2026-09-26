@@ -36,8 +36,8 @@ export type Source = 'replays' | 'loop' | 'chain';
  */
 export const LOOP_GROUPS: readonly MetricGroup[] = ['seasons'];
 
-/** Metric groups the chained leagues decide: aging needs seasons played through the offseason. */
-export const CHAIN_GROUPS: readonly MetricGroup[] = ['aging'];
+/** Metric groups the chained leagues decide: aging and the draft need seasons played through the offseason. */
+export const CHAIN_GROUPS: readonly MetricGroup[] = ['aging', 'draft'];
 
 export const decidedBy = (def: Pick<MetricDef, 'group'>): Source =>
   CHAIN_GROUPS.includes(def.group) ? 'chain' : LOOP_GROUPS.includes(def.group) ? 'loop' : 'replays';
