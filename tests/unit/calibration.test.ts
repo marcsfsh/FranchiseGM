@@ -258,11 +258,20 @@ describe('calibration targets and reports (spec 23.2)', { timeout: 30_000 }, () 
 
   it('judges chained seasons from the third, with the economy from week 1 sheets and each league year', () => {
     const cap = 100;
-    /** A chained season: every team 8-8-1 but one 17-0 team, spaces of 1 to 32, and cash of 0.9 caps. */
+    /**
+     * A chained season: every team 8-8-1 but one 17-0 team, spaces of 1 to 32, and cash of 0.9 caps; new
+     * deals at 0.8 to 1.2 of the market for receivers, 1.1 for quarterbacks, and 1.3 for a lone kicker.
+     */
+    const deals: ChainSeason['market']['deals'] = [
+      ...[0.8, 0.9, 1, 1.1, 1.2].map((toMarket, i) => ({ group: 'WR' as const, toMarket, mover: i === 4 })),
+      { group: 'QB', toMarket: 1.1, mover: true },
+      { group: 'QB', toMarket: 1.1, mover: false },
+      { group: 'ST', toMarket: 1.3, mover: false }
+    ];
     const season = (n: number, cash = 90): ChainSeason => ({
       season: 2025 + n,
       records: TEAM_ABBRS.map((_, i) => (i === 0 ? { wins: 17, losses: 0, ties: 0 } : { wins: 8, losses: 8, ties: 1 })),
-      market: { cap, space: TEAM_ABBRS.map((_, i) => i + 1 - (i === 0 ? 3 : 0)), dead: 320, topQb: 22, topOther: 15, movers: 64, topMover: 12 },
+      market: { cap, space: TEAM_ABBRS.map((_, i) => i + 1 - (i === 0 ? 3 : 0)), dead: 320, topQb: 22, topOther: 15, movers: 64, topMover: 12, deals },
       comp: n === 1 ? null : { netLoss: 30, netValue: 1, supplemental: 1 },
       cash: TEAM_ABBRS.map((_, i) => (i === 1 ? cash - 10 : cash)),
       cashCap: cap
@@ -279,6 +288,10 @@ describe('calibration targets and reports (spec 23.2)', { timeout: 30_000 }, () 
     expect(m.get('economy.topQbShare')?.value).toBeCloseTo(0.22);
     expect(m.get('economy.faMovers')?.value).toBe(2);
     expect(m.get('economy.compNetLoss')).toEqual({ value: 30, n: 10 });
+    // Deals pool over the judged seasons; the spread counts groups with 20 deals or more, not the kicker's 10.
+    expect(m.get('economy.marketPay')).toEqual({ value: 1.1, n: 80 });
+    expect(m.get('economy.faMarketPay')).toMatchObject({ value: 1.15, n: 20 });
+    expect(m.get('economy.marketPaySpread')?.value).toBeCloseTo(0.1);
     expect(m.get('economy.cashShare')?.value).toBeCloseTo(0.9 - 0.1 / 32);
     // Floor windows of 4 years from the chain's second: seasons 5 to 8 and 9 to 12, a team at 80% in each.
     expect(m.get('economy.cashLow')).toEqual({ value: 0.8, n: 2 });

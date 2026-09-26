@@ -556,9 +556,9 @@
       "note": "Dead money on the week 1 cap sheets (proration and money owed from deals that ended), as a share of the league's caps. Summer's figures run below the fall's, which add in-season releases."
     },
     "economy.topQbShare": {
-      "pass": [0.2, 0.26],
+      "pass": [0.19, 0.26],
       "warn": [0.16, 0.3],
-      "source": "The richest quarterback deals by yearly value as each season opened: Joe Burrow's $55M (September 2023), 24.5% of the $224.8M cap; Dak Prescott's $60M (September 2024), 23.5% of $255.4M, still the richest in 2025 at 21.5% of $279.2M.",
+      "source": "The richest quarterback deals by yearly value as each season opened: Joe Burrow's $55M (September 2023), 24.5% of the $224.8M cap; Dak Prescott's $60M (September 2024), 23.5% of $255.4M, still the richest in 2025 at 21.5% of $279.2M. The market curve's top for 2026 (tuning market), Dak Prescott's $60M against the $301.2M cap, is 19.9%, and the richest deal's share falls between new records as the cap grows.",
       "note": "The largest yearly value of a quarterback's deal on week 1, as a share of the cap; the mean over seasons."
     },
     "economy.topOtherShare": {
@@ -572,6 +572,24 @@
       "warn": [0.07, 0.24],
       "source": "The richest deals unrestricted free agents signed with new teams: Kirk Cousins's $45M a year with Atlanta (March 2024), 17.6% of the $255.4M cap; Sam Darnold's $33.5M a year with Seattle (March 2025), 12.0% of $279.2M.",
       "note": "Among the unrestricted free agents whose deals ran out as the league year opened and who signed with a new team, the largest yearly value by week 1, as a share of the cap; the mean over seasons."
+    },
+    "economy.marketPay": {
+      "pass": [0.9, 1.15],
+      "warn": [0.8, 1.3],
+      "source": "The market curve (tuning market) prices each position, rating, and age from the 2026 market, its tops the richest deals at each position against the $301.2M cap; D-60 has the money new deals settle for center on it.",
+      "note": "Veteran deals that start the league year (re-signings, extensions, and free agents), for players rated 70 or more: each one's yearly value over the market price for the player at week 1, the median over every judged season's deals. Rookie deals, tags, tenders, and the practice squad don't count."
+    },
+    "economy.faMarketPay": {
+      "pass": [0.9, 1.25],
+      "warn": [0.8, 1.4],
+      "source": "The market curve (tuning market) and D-60, as for new deals: free agents who change teams sign at the market's price or over it, where teams with room compete for them (D-60's room premium).",
+      "note": "The median of the same ratio for the unrestricted free agents who signed with a new team."
+    },
+    "economy.marketPaySpread": {
+      "pass": [0, 0.3],
+      "warn": [0, 0.45],
+      "source": "The market curve (tuning market) prices every position against its own top, so each position group's new deals should center on it about alike.",
+      "note": "The widest gap between position groups' median ratios, counting groups with 20 deals or more."
     },
     "economy.compNetLoss": {
       "pass": [28, 32],

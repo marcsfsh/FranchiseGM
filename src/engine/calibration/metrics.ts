@@ -197,6 +197,9 @@ def('economy.topQbShare', 'economy', "Richest quarterback deal's yearly value, s
 def('economy.topOtherShare', 'economy', "Richest deal apart from quarterbacks', share of the cap", 'pct');
 def('economy.faMovers', 'economy', 'Unrestricted free agents who signed with a new team, per team', 'dec1');
 def('economy.faTopShare', 'economy', "Richest of their deals' yearly value, share of the cap", 'pct');
+def('economy.marketPay', 'economy', "New veteran deals' yearly value over the market price, median", 'dec2');
+def('economy.faMarketPay', 'economy', 'The same for free agents who changed teams', 'dec2');
+def('economy.marketPaySpread', 'economy', "Widest gap between position groups' medians", 'dec2');
 def('economy.compNetLoss', 'economy', 'Compensatory picks for net losses, per draft', 'dec1');
 def('economy.cashShare', 'economy', 'Cash paid in a league year, share of the cap', 'pct');
 def('economy.cashLow', 'economy', "Lowest team's cash over a floor window, share of its caps", 'pct');
@@ -608,6 +611,9 @@ export function computeMetrics(samples: readonly RunSample[]): Map<string, Metri
 /** A chain's first season that its records and economy count from: creation settings shape the first two (D-40). */
 export const CHAIN_JUDGED_FROM = 3;
 
+/** New deals a position group needs for its median to count toward the market's spread. */
+const DEALS_PER_GROUP = 20;
+
 const median = (values: readonly number[]): number => {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = sorted.length >> 1;
@@ -657,6 +663,23 @@ export function chainSeasonMetrics(chains: readonly (readonly ChainSeason[])[]):
     'economy.faTopShare',
     perSeason(s => s.market.topMover / s.market.cap)
   );
+  // New deals against the market's prices, over every judged season's deals; the spread counts the position
+  // groups with DEALS_PER_GROUP deals or more.
+  const deals = judged.flatMap(s => s.market.deals);
+  const movers = deals.filter(d => d.mover);
+  out.set('economy.marketPay', {
+    value: deals.length ? median(deals.map(d => d.toMarket)) : null,
+    n: deals.length
+  });
+  out.set('economy.faMarketPay', { value: movers.length ? median(movers.map(d => d.toMarket)) : null, n: movers.length }); // prettier-ignore
+  const byGroup = new Map<string, number[]>();
+  for (const d of deals) {
+    const list = byGroup.get(d.group) ?? [];
+    list.push(d.toMarket);
+    byGroup.set(d.group, list);
+  }
+  const groups = [...byGroup.values()].filter(g => g.length >= DEALS_PER_GROUP).map(median);
+  out.set('economy.marketPaySpread', { value: groups.length > 1 ? Math.max(...groups) - Math.min(...groups) : null, n: groups.length }); // prettier-ignore
   const comps = judged.flatMap(s => (s.comp ? [s.comp.netLoss] : []));
   out.set('economy.compNetLoss', { value: mean(comps), n: comps.length });
   // Cash counts from each chain's second salary floor window: the generated league's deals carry bonuses

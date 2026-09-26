@@ -10,6 +10,7 @@
 import { TEAM_ABBRS } from '../../data/team-colors';
 import { teamCash } from '../cap/floor';
 import { capSheet } from '../cap/sheet';
+import { marketValue } from '../contracts/market';
 import { contractSummary } from '../contracts/view';
 import { compensatoryPicks, type CompensatoryPick } from '../draft/compensatory';
 import { latestDraftOrder } from '../draft/picks';
@@ -73,7 +74,16 @@ export interface MarketFacts {
   movers: number;
   /** The largest yearly value among their new deals. */
   topMover: number;
+  /**
+   * The veteran deals that start this league year, for players rated `MARKET_FROM` or more still with the
+   * team that signed them: each one's yearly value over the market's price for the player at week 1 (spec
+   * 23.3), his position group, and whether he's one of the free agents who changed teams.
+   */
+  deals: { group: PositionGroup; toMarket: number; mover: boolean }[];
 }
+
+/** Players whose market price is well over the minimum salary: about 4 times it at 70 for most positions. */
+const MARKET_FROM = 70;
 
 /** A chained season's records and economy. */
 export interface ChainSeason {
@@ -154,12 +164,22 @@ export function marketFacts(league: League): MarketFacts {
   let movers = 0;
   let topMover = 0;
   const gone = league.departures;
+  const moved = new Set<string>();
   for (const [id, from] of Object.entries(gone?.year === year ? gone.players : {})) {
     const p = league.players[id];
     const c = p?.team && p.contractId ? league.contracts[p.contractId] : undefined;
     if (!p?.team || p.team === from || !c || c.team !== p.team || leagueYear(c.signed) !== year) continue;
     movers++;
+    moved.add(id);
     topMover = Math.max(topMover, contractSummary(c, league.date).apy);
+  }
+  const day = calendarDay(league.date);
+  const deals: MarketFacts['deals'] = [];
+  for (const p of Object.values(league.players)) {
+    const c = p.team && p.contractId ? league.contracts[p.contractId] : undefined;
+    if (!c || c.type !== 'veteran' || c.team !== p.team || c.years[0]?.year !== year || p.ovr < MARKET_FROM) continue; // prettier-ignore
+    const market = marketValue(league.rules, p.position, p.ovr, ageOn(p.birthDate, day), p.experience);
+    deals.push({ group: POSITION_GROUP[p.position], toMarket: contractSummary(c, league.date).apy / market, mover: moved.has(p.id) }); // prettier-ignore
   }
   return {
     cap: league.rules.cap.amount,
@@ -168,7 +188,8 @@ export function marketFacts(league: League): MarketFacts {
     topQb,
     topOther,
     movers,
-    topMover
+    topMover,
+    deals
   };
 }
 
