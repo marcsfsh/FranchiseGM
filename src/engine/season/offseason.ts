@@ -385,19 +385,26 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
       if (text) headline('transaction', text, [e.team], [e.player.id], e.player.ovr);
     }
   };
-  const answer = () =>
-    demands(
-      answerDemands(
-        league,
-        deciders,
-        (team, p, offer) =>
-          makeMove(
-            league,
-            { kind: 'extend', team, playerId: p.id, offer, reason: 'to end his demand' },
-            rng(`demand-${p.id}`)
-          ).ok
-      )
+  const answer = (): DemandEvent[] => {
+    const events = answerDemands(
+      league,
+      deciders,
+      (team, p, offer) =>
+        makeMove(
+          league,
+          { kind: 'extend', team, playerId: p.id, offer, reason: 'to end his demand' },
+          rng(`demand-${p.id}`)
+        ).ok
     );
+    demands(events);
+    return events;
+  };
+  // A team that gets a holdout back sets its roster right now, as in the season (D-46, D-62): one who
+  // reports at the cutdown would leave it a player over the limit.
+  const settle = (events: readonly DemandEvent[]) => {
+    for (const abbr of new Set(events.map(e => e.team)))
+      if (abbr !== user || league.settings.auto.roster) makeLegal(league, abbr, rng(`legal-${abbr}`));
+  };
 
   // The waiver wire clears first, as it does each week (spec 12.1). Offseason claims need roster room. After
   // the cutdown a team claims as in the season, a few players at most, and cuts back to the limit; then the
@@ -523,8 +530,9 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
 
   // A step of camp, the preseason, or the cutdown passes for every holdout and trade request.
   if (from.phase === 'trainingCamp' || from.phase === 'preseason' || from.phase === 'cutdown') {
-    demands(stepDemands(league, from.phase === 'trainingCamp' ? 'camp' : from.phase, rng('demands')));
-    answer();
+    const stepped = stepDemands(league, from.phase === 'trainingCamp' ? 'camp' : from.phase, rng('demands'));
+    demands(stepped);
+    settle([...stepped, ...answer()]);
   }
 
   // The weeks between the two dates pass for every injury.

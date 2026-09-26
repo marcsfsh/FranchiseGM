@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { TeamAbbr } from '../../src/data/team-colors';
+import { TEAM_ABBRS, type TeamAbbr } from '../../src/data/team-colors';
 import { emptyYear, type Contract } from '../../src/engine/contracts/types';
 import {
   answerDemands,
@@ -14,8 +14,10 @@ import type { League } from '../../src/engine/league/types';
 import type { Player } from '../../src/engine/model/player';
 import { stream, type Rng } from '../../src/engine/rng';
 import { makeMove } from '../../src/engine/roster/moves';
-import { rosterCounts } from '../../src/engine/roster/rules';
+import { activeLimit, rosterCounts } from '../../src/engine/roster/rules';
+import { advanceOffseason } from '../../src/engine/season/offseason';
 import { TUNING } from '../../src/engine/tuning';
+import { nameData } from '../helpers/base-data';
 import { situationLeague } from '../helpers/situations';
 import { putContract } from '../../src/engine/league/contract-index';
 
@@ -132,6 +134,19 @@ describe('holdouts (spec 11.9)', () => {
     clearDemands(league);
     expect(other.status).toBe('active');
     expect(other.demand).toBeUndefined();
+  }); // prettier-ignore
+
+  it('leave a team at the roster limit when they come back at the cutdown, after its cuts (D-62)', () => {
+    const league = atCamp();
+    league.settings.auto.roster = true;
+    const p = underpaid(league, 'GB');
+    campDemands(league, fixed(0));
+    expect(p.status).toBe('holdout');
+    // The cutdown's step: every team cuts to the limit, and then he reports or GB signs him to end it.
+    league.date = { season: 2025, phase: 'cutdown', week: 1 };
+    expect(advanceOffseason(league, { names: nameData() }, { actions: 0, entropy: 1 }).blocked).toBeNull();
+    expect(p).toMatchObject({ status: 'active', team: 'GB' });
+    for (const abbr of TEAM_ABBRS) expect(rosterCounts(league, abbr).active, abbr).toBeLessThanOrEqual(activeLimit(league));
   }); // prettier-ignore
 });
 
