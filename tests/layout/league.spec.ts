@@ -21,9 +21,9 @@ test('shows standings by division and by conference, with the tiebreakers that o
   const us = page.locator('main tr.is-us');
   await expect(us).toHaveCount(1);
   await expect(us.locator('th')).toHaveText('Vikings (your team)');
-  // Clubs tied on record are explained.
+  // Clubs tied on winning percentage are explained, with the same record or after a bye.
   const notes = page.locator('main .tiebreak-notes li');
-  await expect(notes.first()).toHaveText(/^The \S+ are ahead of the \S+( and the \S+)?, also \d+–\d+(–\d+)?, on .+\.$/);
+  await expect(notes.first()).toHaveText(/^The \S+ are ahead of the \S+( and the \S+)?, (also \d+–\d+(–\d+)?|with the same winning percentage \(\d?\.\d{3}\)), on .+\.$/);
   await expectRegionsMatchOverflow(page);
   await expectNoHorizontalOverflow(page);
   await expectTouchTargets(page, 'main', phone ? 48 : 44);
