@@ -10,13 +10,13 @@
   "chains": 3,
   "chainSeasons": 20,
   "created": "2026-09-26",
-  "seconds": 2152.285946819,
+  "seconds": 2344.249863584,
   "counts": {
-    "pass": 82,
+    "pass": 94,
     "warn": 2,
-    "fail": 0,
-    "info": 14,
-    "pending": 4
+    "fail": 4,
+    "info": 15,
+    "pending": 3
   },
   "results": [
     {
@@ -24,7 +24,7 @@
       "group": "games",
       "label": "Home win rate",
       "format": "pct",
-      "value": 0.546977186311787,
+      "value": 0.5456083650190114,
       "n": 26300,
       "status": "pass",
       "target": {
@@ -45,11 +45,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.546977186311787,
+        "value": 0.5456083650190114,
         "n": 26300
       },
       "loop": {
-        "value": 0.544809885931559,
+        "value": 0.5483460076045628,
         "n": 26300
       },
       "chain": {
@@ -62,7 +62,7 @@
       "group": "games",
       "label": "Home field, points per game",
       "format": "signed1",
-      "value": 1.6242205323193917,
+      "value": 1.715893536121673,
       "n": 26300,
       "status": "pass",
       "target": {
@@ -83,11 +83,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 1.6242205323193917,
+        "value": 1.715893536121673,
         "n": 26300
       },
       "loop": {
-        "value": 1.5876425855513308,
+        "value": 1.7695437262357414,
         "n": 26300
       },
       "chain": {
@@ -100,7 +100,7 @@
       "group": "games",
       "label": "Points per team game",
       "format": "dec1",
-      "value": 22.67795955882353,
+      "value": 22.702886029411765,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -121,11 +121,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 22.67795955882353,
+        "value": 22.702886029411765,
         "n": 27200
       },
       "loop": {
-        "value": 22.300220588235295,
+        "value": 22.302426470588234,
         "n": 27200
       },
       "chain": {
@@ -138,7 +138,7 @@
       "group": "games",
       "label": "Games decided by 8 or fewer",
       "format": "pct",
-      "value": 0.49573529411764705,
+      "value": 0.48996323529411767,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -159,11 +159,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.49573529411764705,
+        "value": 0.48996323529411767,
         "n": 27200
       },
       "loop": {
-        "value": 0.5077573529411765,
+        "value": 0.5011029411764706,
         "n": 27200
       },
       "chain": {
@@ -176,7 +176,7 @@
       "group": "games",
       "label": "Games decided by 1 to 3",
       "format": "pct",
-      "value": 0.21143382352941176,
+      "value": 0.2013970588235294,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -193,11 +193,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.21143382352941176,
+        "value": 0.2013970588235294,
         "n": 27200
       },
       "loop": {
-        "value": 0.21591911764705882,
+        "value": 0.21334558823529412,
         "n": 27200
       },
       "chain": {
@@ -210,7 +210,7 @@
       "group": "games",
       "label": "Games decided by 17 or more",
       "format": "pct",
-      "value": 0.2546691176470588,
+      "value": 0.2596691176470588,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -231,11 +231,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.2546691176470588,
+        "value": 0.2596691176470588,
         "n": 27200
       },
       "loop": {
-        "value": 0.243125,
+        "value": 0.2485294117647059,
         "n": 27200
       },
       "chain": {
@@ -248,7 +248,7 @@
       "group": "games",
       "label": "Overtime games",
       "format": "pct",
-      "value": 0.05830882352941177,
+      "value": 0.0605514705882353,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -269,11 +269,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.05830882352941177,
+        "value": 0.0605514705882353,
         "n": 27200
       },
       "loop": {
-        "value": 0.06518382352941177,
+        "value": 0.06161764705882353,
         "n": 27200
       },
       "chain": {
@@ -286,7 +286,7 @@
       "group": "games",
       "label": "Ties",
       "format": "pct",
-      "value": 0.003970588235294117,
+      "value": 0.004301470588235294,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -303,11 +303,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.003970588235294117,
+        "value": 0.004301470588235294,
         "n": 27200
       },
       "loop": {
-        "value": 0.0048529411764705885,
+        "value": 0.0041911764705882355,
         "n": 27200
       },
       "chain": {
@@ -320,7 +320,7 @@
       "group": "games",
       "label": "Winner trailed in the 4th quarter",
       "format": "pct",
-      "value": 0.24474264705882354,
+      "value": 0.24003676470588237,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -341,11 +341,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.24474264705882354,
+        "value": 0.24003676470588237,
         "n": 27200
       },
       "loop": {
-        "value": 0.24525735294117648,
+        "value": 0.2425,
         "n": 27200
       },
       "chain": {
@@ -358,7 +358,7 @@
       "group": "games",
       "label": "Favorites win (by rating gap)",
       "format": "pct",
-      "value": 0.6648161764705882,
+      "value": 0.6628492647058823,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -379,11 +379,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.6648161764705882,
+        "value": 0.6628492647058823,
         "n": 27200
       },
       "loop": {
-        "value": 0.6876470588235294,
+        "value": 0.6963235294117647,
         "n": 27200
       },
       "chain": {
@@ -396,8 +396,8 @@
       "group": "games",
       "label": "Favorites by 0 to 3 points",
       "format": "pct",
-      "value": 0.5501726121979287,
-      "n": 8690,
+      "value": 0.5445402298850575,
+      "n": 8700,
       "status": "pass",
       "target": {
         "pass": [
@@ -413,12 +413,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.5501726121979287,
-        "n": 8690
+        "value": 0.5445402298850575,
+        "n": 8700
       },
       "loop": {
-        "value": 0.5455602946878635,
-        "n": 7737
+        "value": 0.5481935654008439,
+        "n": 7584
       },
       "chain": {
         "value": null,
@@ -430,8 +430,8 @@
       "group": "games",
       "label": "Favorites by 3 to 7 points",
       "format": "pct",
-      "value": 0.651313025210084,
-      "n": 9520,
+      "value": 0.6487830687830688,
+      "n": 9450,
       "status": "pass",
       "target": {
         "pass": [
@@ -447,12 +447,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.651313025210084,
-        "n": 9520
+        "value": 0.6487830687830688,
+        "n": 9450
       },
       "loop": {
-        "value": 0.6528150134048257,
-        "n": 8952
+        "value": 0.6642377978255841,
+        "n": 8646
       },
       "chain": {
         "value": null,
@@ -464,8 +464,8 @@
       "group": "games",
       "label": "Favorites by 7 to 10 points",
       "format": "pct",
-      "value": 0.7367965367965368,
-      "n": 4620,
+      "value": 0.7394557823129252,
+      "n": 4410,
       "status": "pass",
       "target": {
         "pass": [
@@ -481,12 +481,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.7367965367965368,
-        "n": 4620
+        "value": 0.7394557823129252,
+        "n": 4410
       },
       "loop": {
-        "value": 0.7654716175842936,
-        "n": 4686
+        "value": 0.7621349022903972,
+        "n": 4759
       },
       "chain": {
         "value": null,
@@ -498,8 +498,8 @@
       "group": "games",
       "label": "Favorites by 10+ points",
       "format": "pct",
-      "value": 0.8461098398169337,
-      "n": 4370,
+      "value": 0.8405172413793104,
+      "n": 4640,
       "status": "pass",
       "target": {
         "pass": [
@@ -515,12 +515,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.8461098398169337,
-        "n": 4370
+        "value": 0.8405172413793104,
+        "n": 4640
       },
       "loop": {
-        "value": 0.8672961373390558,
-        "n": 5825
+        "value": 0.8714377716953792,
+        "n": 6211
       },
       "chain": {
         "value": null,
@@ -532,7 +532,7 @@
       "group": "games",
       "label": "Margin spread around the rating gap (sd)",
       "format": "dec1",
-      "value": 13.01905561010358,
+      "value": 13.234136087431699,
       "n": 27200,
       "status": "pass",
       "target": {
@@ -553,11 +553,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 13.01905561010358,
+        "value": 13.234136087431699,
         "n": 27200
       },
       "loop": {
-        "value": 12.034056600084718,
+        "value": 11.998833738309376,
         "n": 27200
       },
       "chain": {
@@ -570,17 +570,17 @@
       "group": "games",
       "label": "Team rating spread (sd, points)",
       "format": "dec1",
-      "value": 4.707321746358562,
+      "value": 4.708592684116945,
       "n": 320,
       "status": "info",
       "target": null,
       "decidedBy": "replays",
       "replays": {
-        "value": 4.707321746358562,
+        "value": 4.708592684116945,
         "n": 320
       },
       "loop": {
-        "value": 5.5445460393270345,
+        "value": 5.6582879416517775,
         "n": 3200
       },
       "chain": {
@@ -593,9 +593,9 @@
       "group": "seasons",
       "label": "Team wins, sd",
       "format": "dec2",
-      "value": 2.990375185490944,
-      "n": 3200,
-      "status": "pass",
+      "value": 2.4862468926297545,
+      "n": 1728,
+      "status": "fail",
       "target": {
         "pass": [
           2.8,
@@ -610,20 +610,20 @@
           4.1
         ],
         "source": "Harvard Sports Analysis Collective, \"This NFL season did not have as much parity as you think\": the sd of team wins was 3.20 in 2017 and mostly 2.6 to 3.4 in 16-game seasons, about 2.8 to 3.6 over 17 games.",
-        "note": "Judged on weekly-loop seasons (C-20). Pure chance alone gives about 2.06 over 17 games."
+        "note": "Judged on chained seasons from each league's third (D-40), or on weekly-loop seasons in a run without chains (C-20). Pure chance alone gives about 2.06 over 17 games."
       },
-      "decidedBy": "loop",
+      "decidedBy": "chain",
       "replays": {
-        "value": 3.122348875446176,
+        "value": 3.1060173454119666,
         "n": 3200
       },
       "loop": {
-        "value": 2.990375185490944,
+        "value": 3.0762954588270612,
         "n": 3200
       },
       "chain": {
-        "value": null,
-        "n": 0
+        "value": 2.4862468926297545,
+        "n": 1728
       }
     },
     {
@@ -631,8 +631,8 @@
       "group": "seasons",
       "label": "Most wins in a season (mean)",
       "format": "dec1",
-      "value": 14.49,
-      "n": 100,
+      "value": 13.435185185185185,
+      "n": 54,
       "status": "pass",
       "target": {
         "pass": [
@@ -644,20 +644,20 @@
           16
         ],
         "source": "NFL standings 2021-2024 (Wikipedia season pages): the best records had 13, 14, 13, and 15 wins.",
-        "note": "The mean of each weekly-loop season's most wins, ties counting half (C-20)."
+        "note": "The mean of each season's most wins, ties counting half: chained seasons from each league's third (D-40), or weekly-loop seasons without chains (C-20)."
       },
-      "decidedBy": "loop",
+      "decidedBy": "chain",
       "replays": {
-        "value": 14.515,
+        "value": 14.495,
         "n": 100
       },
       "loop": {
-        "value": 14.49,
+        "value": 14.645,
         "n": 100
       },
       "chain": {
-        "value": null,
-        "n": 0
+        "value": 13.435185185185185,
+        "n": 54
       }
     },
     {
@@ -665,8 +665,8 @@
       "group": "seasons",
       "label": "Fewest wins in a season (mean)",
       "format": "dec1",
-      "value": 2.67,
-      "n": 100,
+      "value": 3.537037037037037,
+      "n": 54,
       "status": "pass",
       "target": {
         "pass": [
@@ -678,20 +678,20 @@
           4.7
         ],
         "source": "NFL standings 2021-2024 (Wikipedia season pages): the worst records had 3, 3, 2, and 3 wins.",
-        "note": "Judged on weekly-loop seasons (C-20). Ties count half."
+        "note": "Judged on chained seasons from each league's third (D-40), or on weekly-loop seasons without chains (C-20). Ties count half."
       },
-      "decidedBy": "loop",
+      "decidedBy": "chain",
       "replays": {
-        "value": 2.195,
+        "value": 2.1,
         "n": 100
       },
       "loop": {
-        "value": 2.67,
+        "value": 2.63,
         "n": 100
       },
       "chain": {
-        "value": null,
-        "n": 0
+        "value": 3.537037037037037,
+        "n": 54
       }
     },
     {
@@ -699,9 +699,9 @@
       "group": "seasons",
       "label": "15-win teams per decade",
       "format": "dec1",
-      "value": 6.2,
-      "n": 100,
-      "status": "pass",
+      "value": 0.9259259259259259,
+      "n": 54,
+      "status": "fail",
       "target": {
         "pass": [
           2,
@@ -712,20 +712,20 @@
           10
         ],
         "source": "NFL standings (Wikipedia season pages): 12 teams won 14 or more of 16 games in 2004-2020 (2004 PIT and NE, 2005 IND, 2006 SD, 2007 NE, 2009 IND, 2010 NE, 2011 GB, 2015 CAR, 2016 NE, 2019 BAL, 2020 KC), about 7 a decade; two won 15 of 17 in 2021-2024.",
-        "note": "Per 10 weekly-loop seasons (C-20). 14 of 16 is the 16-game equivalent of 15 of 17 (the same 88% of games)."
+        "note": "Per 10 chained seasons from each league's third (D-40), or weekly-loop seasons without chains (C-20). 14 of 16 is the 16-game equivalent of 15 of 17 (the same 88% of games)."
       },
-      "decidedBy": "loop",
+      "decidedBy": "chain",
       "replays": {
-        "value": 6,
+        "value": 6.4,
         "n": 100
       },
       "loop": {
-        "value": 6.2,
+        "value": 7.1,
         "n": 100
       },
       "chain": {
-        "value": null,
-        "n": 0
+        "value": 0.9259259259259259,
+        "n": 54
       }
     },
     {
@@ -733,9 +733,9 @@
       "group": "seasons",
       "label": "2-or-fewer-win teams per decade",
       "format": "dec1",
-      "value": 5,
-      "n": 100,
-      "status": "pass",
+      "value": 1.2962962962962963,
+      "n": 54,
+      "status": "fail",
       "target": {
         "pass": [
           3,
@@ -746,20 +746,20 @@
           13
         ],
         "source": "NFL standings 2004-2024 (Wikipedia season pages): 18 teams won 2 or fewer, about 8.6 a decade, though only one in the four 17-game seasons.",
-        "note": "Teams with 2 or fewer wins, per 10 weekly-loop seasons (C-20)."
+        "note": "Teams with 2 or fewer wins, per 10 chained seasons from each league's third (D-40), or weekly-loop seasons without chains (C-20)."
       },
-      "decidedBy": "loop",
+      "decidedBy": "chain",
       "replays": {
-        "value": 8.3,
+        "value": 8.4,
         "n": 100
       },
       "loop": {
-        "value": 5,
+        "value": 5.3,
         "n": 100
       },
       "chain": {
-        "value": null,
-        "n": 0
+        "value": 1.2962962962962963,
+        "n": 54
       }
     },
     {
@@ -767,9 +767,9 @@
       "group": "seasons",
       "label": "Perfect or winless teams per 100 seasons",
       "format": "dec1",
-      "value": 6,
-      "n": 100,
-      "status": "pass",
+      "value": 0,
+      "n": 54,
+      "status": "fail",
       "target": {
         "pass": [
           3,
@@ -780,20 +780,20 @@
           14
         ],
         "source": "NFL standings (Pro Football Reference season pages): 3 perfect or winless teams in the 44 full seasons from 1981 to 2025 (2007 NE 16-0, 2008 DET 0-16, 2017 CLE 0-16), about 6.8 per 100 seasons; the 1982 Colts' 0-8-1 came in a strike-shortened season.",
-        "note": "Perfect means no losses or ties; winless means no wins, ties or not. Per 100 weekly-loop seasons (C-20). A rare event, so a full run plays 100 of them, and at the NFL's rate 100 seasons land from 3 to 11 about 9 times in 10 (D-40)."
+        "note": "Perfect means no losses or ties; winless means no wins, ties or not. Per 100 chained seasons from each league's third (D-40), or weekly-loop seasons without chains (C-20). A rare event: a full run's 5 chains give 90 seasons, and at the NFL's rate 90 seasons land from 3 to 11 per 100 about 9 times in 10."
       },
-      "decidedBy": "loop",
+      "decidedBy": "chain",
       "replays": {
-        "value": 6,
+        "value": 8,
         "n": 100
       },
       "loop": {
-        "value": 6,
+        "value": 4,
         "n": 100
       },
       "chain": {
-        "value": null,
-        "n": 0
+        "value": 0,
+        "n": 54
       }
     },
     {
@@ -801,7 +801,7 @@
       "group": "stats",
       "label": "Pass attempts per team game",
       "format": "dec1",
-      "value": 32.699871323529415,
+      "value": 32.68501838235294,
       "n": 54400,
       "status": "pass",
       "target": {
@@ -822,11 +822,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 32.699871323529415,
+        "value": 32.68501838235294,
         "n": 54400
       },
       "loop": {
-        "value": 32.355275735294114,
+        "value": 32.42733455882353,
         "n": 54400
       },
       "chain": {
@@ -839,8 +839,8 @@
       "group": "stats",
       "label": "Completion rate",
       "format": "pct",
-      "value": 0.6469821060862693,
-      "n": 1778873,
+      "value": 0.6473492251408132,
+      "n": 1778065,
       "status": "pass",
       "target": {
         "pass": [
@@ -860,12 +860,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.6469821060862693,
-        "n": 1778873
+        "value": 0.6473492251408132,
+        "n": 1778065
       },
       "loop": {
-        "value": 0.647795869275342,
-        "n": 1760127
+        "value": 0.6471074750275928,
+        "n": 1764047
       },
       "chain": {
         "value": null,
@@ -877,8 +877,8 @@
       "group": "stats",
       "label": "Yards per pass attempt",
       "format": "dec2",
-      "value": 7.087567240606834,
-      "n": 1778873,
+      "value": 7.083322600692326,
+      "n": 1778065,
       "status": "pass",
       "target": {
         "pass": [
@@ -898,12 +898,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 7.087567240606834,
-        "n": 1778873
+        "value": 7.083322600692326,
+        "n": 1778065
       },
       "loop": {
-        "value": 7.049437909878094,
-        "n": 1760127
+        "value": 7.038659400798278,
+        "n": 1764047
       },
       "chain": {
         "value": null,
@@ -915,8 +915,8 @@
       "group": "stats",
       "label": "Touchdown rate",
       "format": "pct",
-      "value": 0.043948612407968414,
-      "n": 1778873,
+      "value": 0.04400626523777252,
+      "n": 1778065,
       "status": "pass",
       "target": {
         "pass": [
@@ -932,12 +932,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.043948612407968414,
-        "n": 1778873
+        "value": 0.04400626523777252,
+        "n": 1778065
       },
       "loop": {
-        "value": 0.043198019233839376,
-        "n": 1760127
+        "value": 0.04314794333711063,
+        "n": 1764047
       },
       "chain": {
         "value": null,
@@ -949,8 +949,8 @@
       "group": "stats",
       "label": "Interception rate",
       "format": "pct",
-      "value": 0.021992576198525696,
-      "n": 1778873,
+      "value": 0.021733176233714742,
+      "n": 1778065,
       "status": "pass",
       "target": {
         "pass": [
@@ -966,12 +966,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.021992576198525696,
-        "n": 1778873
+        "value": 0.021733176233714742,
+        "n": 1778065
       },
       "loop": {
-        "value": 0.021955802052920043,
-        "n": 1760127
+        "value": 0.021750554265277514,
+        "n": 1764047
       },
       "chain": {
         "value": null,
@@ -983,8 +983,8 @@
       "group": "stats",
       "label": "Sack rate",
       "format": "pct",
-      "value": 0.06469570996451479,
-      "n": 1901919,
+      "value": 0.0646498983146428,
+      "n": 1900962,
       "status": "pass",
       "target": {
         "pass": [
@@ -1000,12 +1000,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.06469570996451479,
-        "n": 1901919
+        "value": 0.0646498983146428,
+        "n": 1900962
       },
       "loop": {
-        "value": 0.06313134270205362,
-        "n": 1878734
+        "value": 0.06263891995925458,
+        "n": 1881929
       },
       "chain": {
         "value": null,
@@ -1017,7 +1017,7 @@
       "group": "stats",
       "label": "Rush attempts per team game",
       "format": "dec1",
-      "value": 26.99376838235294,
+      "value": 27.01237132352941,
       "n": 54400,
       "status": "pass",
       "target": {
@@ -1038,11 +1038,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 26.99376838235294,
+        "value": 27.01237132352941,
         "n": 54400
       },
       "loop": {
-        "value": 27.141507352941176,
+        "value": 27.121305147058823,
         "n": 54400
       },
       "chain": {
@@ -1055,8 +1055,8 @@
       "group": "stats",
       "label": "Yards per carry",
       "format": "dec2",
-      "value": 4.286420272652798,
-      "n": 1468461,
+      "value": 4.297465145667869,
+      "n": 1469473,
       "status": "pass",
       "target": {
         "pass": [
@@ -1076,12 +1076,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 4.286420272652798,
-        "n": 1468461
+        "value": 4.297465145667869,
+        "n": 1469473
       },
       "loop": {
-        "value": 4.262505604477622,
-        "n": 1476498
+        "value": 4.262868552845704,
+        "n": 1475399
       },
       "chain": {
         "value": null,
@@ -1093,8 +1093,8 @@
       "group": "stats",
       "label": "Third-down conversions",
       "format": "pct",
-      "value": 0.403560570626754,
-      "n": 649952,
+      "value": 0.4034880929665717,
+      "n": 649868,
       "status": "pass",
       "target": {
         "pass": [
@@ -1110,12 +1110,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.403560570626754,
-        "n": 649952
+        "value": 0.4034880929665717,
+        "n": 649868
       },
       "loop": {
-        "value": 0.4034278363206618,
-        "n": 649856
+        "value": 0.4042218704765948,
+        "n": 650091
       },
       "chain": {
         "value": null,
@@ -1127,7 +1127,7 @@
       "group": "stats",
       "label": "Fourth-down attempts per team game",
       "format": "dec2",
-      "value": 1.4031066176470588,
+      "value": 1.4106617647058823,
       "n": 54400,
       "status": "pass",
       "target": {
@@ -1144,11 +1144,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 1.4031066176470588,
+        "value": 1.4106617647058823,
         "n": 54400
       },
       "loop": {
-        "value": 1.4105147058823528,
+        "value": 1.408106617647059,
         "n": 54400
       },
       "chain": {
@@ -1161,8 +1161,8 @@
       "group": "stats",
       "label": "Fourth-down conversions",
       "format": "pct",
-      "value": 0.5146405691152773,
-      "n": 76329,
+      "value": 0.5166145426114152,
+      "n": 76740,
       "status": "pass",
       "target": {
         "pass": [
@@ -1178,12 +1178,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.5146405691152773,
-        "n": 76329
+        "value": 0.5166145426114152,
+        "n": 76740
       },
       "loop": {
-        "value": 0.5200307563988948,
-        "n": 76732
+        "value": 0.5187660735499536,
+        "n": 76601
       },
       "chain": {
         "value": null,
@@ -1195,8 +1195,8 @@
       "group": "stats",
       "label": "Red zone touchdowns",
       "format": "pct",
-      "value": 0.5558776051202442,
-      "n": 193897,
+      "value": 0.5605837758614461,
+      "n": 193773,
       "status": "pass",
       "target": {
         "pass": [
@@ -1212,12 +1212,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.5558776051202442,
-        "n": 193897
+        "value": 0.5605837758614461,
+        "n": 193773
       },
       "loop": {
-        "value": 0.5522257676413663,
-        "n": 191170
+        "value": 0.55452562419246,
+        "n": 191167
       },
       "chain": {
         "value": null,
@@ -1229,7 +1229,7 @@
       "group": "stats",
       "label": "Turnovers per team game",
       "format": "dec2",
-      "value": 1.2573161764705882,
+      "value": 1.2464338235294117,
       "n": 54400,
       "status": "pass",
       "target": {
@@ -1246,11 +1246,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 1.2573161764705882,
+        "value": 1.2464338235294117,
         "n": 54400
       },
       "loop": {
-        "value": 1.2375919117647058,
+        "value": 1.2273161764705882,
         "n": 54400
       },
       "chain": {
@@ -1263,7 +1263,7 @@
       "group": "stats",
       "label": "Penalties per team game",
       "format": "dec2",
-      "value": 6.267628676470588,
+      "value": 6.283731617647059,
       "n": 54400,
       "status": "pass",
       "target": {
@@ -1284,11 +1284,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 6.267628676470588,
+        "value": 6.283731617647059,
         "n": 54400
       },
       "loop": {
-        "value": 6.214117647058823,
+        "value": 6.140551470588235,
         "n": 54400
       },
       "chain": {
@@ -1301,7 +1301,7 @@
       "group": "stats",
       "label": "Penalty yards per team game",
       "format": "dec1",
-      "value": 47.042941176470585,
+      "value": 47.17356617647059,
       "n": 54400,
       "status": "pass",
       "target": {
@@ -1318,11 +1318,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 47.042941176470585,
+        "value": 47.17356617647059,
         "n": 54400
       },
       "loop": {
-        "value": 46.78568014705883,
+        "value": 46.146158088235296,
         "n": 54400
       },
       "chain": {
@@ -1335,8 +1335,8 @@
       "group": "stats",
       "label": "Field goals under 40 yards",
       "format": "pct",
-      "value": 0.9575219418540867,
-      "n": 58336,
+      "value": 0.9570383753452739,
+      "n": 57563,
       "status": "pass",
       "target": {
         "pass": [
@@ -1352,12 +1352,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.9575219418540867,
-        "n": 58336
+        "value": 0.9570383753452739,
+        "n": 57563
       },
       "loop": {
-        "value": 0.9578667581239818,
-        "n": 58315
+        "value": 0.9568787440611444,
+        "n": 58092
       },
       "chain": {
         "value": null,
@@ -1369,8 +1369,8 @@
       "group": "stats",
       "label": "Field goals from 40 to 49",
       "format": "pct",
-      "value": 0.7771946564885496,
-      "n": 25152,
+      "value": 0.7791747132778938,
+      "n": 25373,
       "status": "pass",
       "target": {
         "pass": [
@@ -1386,12 +1386,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.7771946564885496,
-        "n": 25152
+        "value": 0.7791747132778938,
+        "n": 25373
       },
       "loop": {
-        "value": 0.7796698037964588,
-        "n": 25076
+        "value": 0.7806508425729496,
+        "n": 24983
       },
       "chain": {
         "value": null,
@@ -1403,8 +1403,8 @@
       "group": "stats",
       "label": "Field goals from 50 or more",
       "format": "pct",
-      "value": 0.6851879419426871,
-      "n": 26870,
+      "value": 0.682536066818527,
+      "n": 26340,
       "status": "pass",
       "target": {
         "pass": [
@@ -1420,12 +1420,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.6851879419426871,
-        "n": 26870
+        "value": 0.682536066818527,
+        "n": 26340
       },
       "loop": {
-        "value": 0.6914150559887653,
-        "n": 27059
+        "value": 0.6881297345002574,
+        "n": 27194
       },
       "chain": {
         "value": null,
@@ -1437,8 +1437,8 @@
       "group": "stats",
       "label": "Gross punt average",
       "format": "dec1",
-      "value": 46.805868858244885,
-      "n": 198335,
+      "value": 46.80511358503067,
+      "n": 199234,
       "status": "pass",
       "target": {
         "pass": [
@@ -1454,12 +1454,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 46.805868858244885,
-        "n": 198335
+        "value": 46.80511358503067,
+        "n": 199234
       },
       "loop": {
-        "value": 46.905022263956624,
-        "n": 198078
+        "value": 46.89546950521896,
+        "n": 198411
       },
       "chain": {
         "value": null,
@@ -1471,8 +1471,8 @@
       "group": "stats",
       "label": "Kickoffs returned",
       "format": "pct",
-      "value": 0.7552553652334962,
-      "n": 286707,
+      "value": 0.756414643685225,
+      "n": 286376,
       "status": "pass",
       "target": {
         "pass": [
@@ -1488,12 +1488,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.7552553652334962,
-        "n": 286707
+        "value": 0.756414643685225,
+        "n": 286376
       },
       "loop": {
-        "value": 0.7534048714498094,
-        "n": 283858
+        "value": 0.7519432586111473,
+        "n": 283673
       },
       "chain": {
         "value": null,
@@ -1505,8 +1505,8 @@
       "group": "stats",
       "label": "Kick return average",
       "format": "dec1",
-      "value": 25.555646379140747,
-      "n": 216537,
+      "value": 25.62121051246659,
+      "n": 216619,
       "status": "pass",
       "target": {
         "pass": [
@@ -1522,12 +1522,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 25.555646379140747,
-        "n": 216537
+        "value": 25.62121051246659,
+        "n": 216619
       },
       "loop": {
-        "value": 25.488511175535397,
-        "n": 213860
+        "value": 25.492902215596374,
+        "n": 213306
       },
       "chain": {
         "value": null,
@@ -1539,8 +1539,8 @@
       "group": "stats",
       "label": "Punt return average",
       "format": "dec1",
-      "value": 10.234451999707538,
-      "n": 68385,
+      "value": 10.239380433988456,
+      "n": 68435,
       "status": "pass",
       "target": {
         "pass": [
@@ -1556,12 +1556,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 10.234451999707538,
-        "n": 68385
+        "value": 10.239380433988456,
+        "n": 68435
       },
       "loop": {
-        "value": 10.173644485066486,
-        "n": 67834
+        "value": 10.208286097083377,
+        "n": 67921
       },
       "chain": {
         "value": null,
@@ -1573,7 +1573,7 @@
       "group": "leaders",
       "label": "Passing yards leader",
       "format": "int",
-      "value": 5151.91,
+      "value": 5117.59,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1594,11 +1594,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 5151.91,
+        "value": 5117.59,
         "n": 100
       },
       "loop": {
-        "value": 5110.94,
+        "value": 5065.5,
         "n": 100
       },
       "chain": {
@@ -1611,7 +1611,7 @@
       "group": "leaders",
       "label": "Rushing yards leader",
       "format": "int",
-      "value": 1779.56,
+      "value": 1788.48,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1628,11 +1628,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 1779.56,
+        "value": 1788.48,
         "n": 100
       },
       "loop": {
-        "value": 1705.55,
+        "value": 1703.38,
         "n": 100
       },
       "chain": {
@@ -1645,7 +1645,7 @@
       "group": "leaders",
       "label": "Receiving yards leader",
       "format": "int",
-      "value": 1817.32,
+      "value": 1786.73,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1662,11 +1662,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 1817.32,
+        "value": 1786.73,
         "n": 100
       },
       "loop": {
-        "value": 1706,
+        "value": 1659.52,
         "n": 100
       },
       "chain": {
@@ -1679,7 +1679,7 @@
       "group": "leaders",
       "label": "Receptions leader",
       "format": "int",
-      "value": 135.28,
+      "value": 134,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1696,11 +1696,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 135.28,
+        "value": 134,
         "n": 100
       },
       "loop": {
-        "value": 130.94,
+        "value": 127.34,
         "n": 100
       },
       "chain": {
@@ -1713,7 +1713,7 @@
       "group": "leaders",
       "label": "Sacks leader",
       "format": "dec1",
-      "value": 19.89,
+      "value": 19.16,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1730,11 +1730,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 19.89,
+        "value": 19.16,
         "n": 100
       },
       "loop": {
-        "value": 18.75,
+        "value": 18.9,
         "n": 100
       },
       "chain": {
@@ -1747,7 +1747,7 @@
       "group": "leaders",
       "label": "Interceptions leader",
       "format": "dec1",
-      "value": 8.9,
+      "value": 8.64,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1764,11 +1764,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 8.9,
+        "value": 8.64,
         "n": 100
       },
       "loop": {
-        "value": 8.58,
+        "value": 8.66,
         "n": 100
       },
       "chain": {
@@ -1781,7 +1781,7 @@
       "group": "leaders",
       "label": "4,000-yard passers",
       "format": "dec1",
-      "value": 7.76,
+      "value": 7.72,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1798,11 +1798,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 7.76,
+        "value": 7.72,
         "n": 100
       },
       "loop": {
-        "value": 7.08,
+        "value": 7.09,
         "n": 100
       },
       "chain": {
@@ -1815,7 +1815,7 @@
       "group": "leaders",
       "label": "1,000-yard rushers",
       "format": "dec1",
-      "value": 14.09,
+      "value": 14.4,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1832,11 +1832,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 14.09,
+        "value": 14.4,
         "n": 100
       },
       "loop": {
-        "value": 13.11,
+        "value": 12.85,
         "n": 100
       },
       "chain": {
@@ -1849,7 +1849,7 @@
       "group": "leaders",
       "label": "1,000-yard receivers",
       "format": "dec1",
-      "value": 26.64,
+      "value": 27.05,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1866,11 +1866,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 26.64,
+        "value": 27.05,
         "n": 100
       },
       "loop": {
-        "value": 21.96,
+        "value": 21.83,
         "n": 100
       },
       "chain": {
@@ -1883,7 +1883,7 @@
       "group": "leaders",
       "label": "Team's top target share",
       "format": "pct",
-      "value": 0.24447376070802387,
+      "value": 0.24377718509979243,
       "n": 3200,
       "status": "pass",
       "target": {
@@ -1900,11 +1900,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.24447376070802387,
+        "value": 0.24377718509979243,
         "n": 3200
       },
       "loop": {
-        "value": 0.23733379925992637,
+        "value": 0.23716083437262506,
         "n": 3200
       },
       "chain": {
@@ -1917,7 +1917,7 @@
       "group": "leaders",
       "label": "Highest target share in the league",
       "format": "pct",
-      "value": 0.33269069719033695,
+      "value": 0.33039533520206016,
       "n": 100,
       "status": "pass",
       "target": {
@@ -1934,11 +1934,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.33269069719033695,
+        "value": 0.33039533520206016,
         "n": 100
       },
       "loop": {
-        "value": 0.3227208916789629,
+        "value": 0.31893401753946093,
         "n": 100
       },
       "chain": {
@@ -1951,7 +1951,7 @@
       "group": "leaders",
       "label": "Lead back's share of running back carries",
       "format": "pct",
-      "value": 0.513057526284354,
+      "value": 0.5141887562965313,
       "n": 3200,
       "status": "pass",
       "target": {
@@ -1968,11 +1968,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.513057526284354,
+        "value": 0.5141887562965313,
         "n": 3200
       },
       "loop": {
-        "value": 0.4937730805982916,
+        "value": 0.49612538576700643,
         "n": 3200
       },
       "chain": {
@@ -1985,7 +1985,7 @@
       "group": "injuries",
       "label": "Injuries costing a game, per team season",
       "format": "dec1",
-      "value": 21.5421875,
+      "value": 21.61375,
       "n": 3200,
       "status": "pass",
       "target": {
@@ -2006,11 +2006,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 21.5421875,
+        "value": 21.61375,
         "n": 3200
       },
       "loop": {
-        "value": 22.62625,
+        "value": 22.539375,
         "n": 3200
       },
       "chain": {
@@ -2023,17 +2023,17 @@
       "group": "injuries",
       "label": "Games lost to injury, per team season",
       "format": "dec1",
-      "value": 66.5434375,
+      "value": 66.84625,
       "n": 3200,
       "status": "info",
       "target": null,
       "decidedBy": "replays",
       "replays": {
-        "value": 66.5434375,
+        "value": 66.84625,
         "n": 3200
       },
       "loop": {
-        "value": 69.9665625,
+        "value": 69.7546875,
         "n": 3200
       },
       "chain": {
@@ -2046,17 +2046,17 @@
       "group": "injuries",
       "label": "Season-ending injuries, per team season",
       "format": "dec1",
-      "value": 3.835,
+      "value": 3.8109375,
       "n": 3200,
       "status": "info",
       "target": null,
       "decidedBy": "replays",
       "replays": {
-        "value": 3.835,
+        "value": 3.8109375,
         "n": 3200
       },
       "loop": {
-        "value": 4.0940625,
+        "value": 4.0946875,
         "n": 3200
       },
       "chain": {
@@ -2069,17 +2069,17 @@
       "group": "injuries",
       "label": "All in-game injuries, per team season",
       "format": "dec1",
-      "value": 38.7196875,
+      "value": 38.88875,
       "n": 3200,
       "status": "info",
       "target": null,
       "decidedBy": "replays",
       "replays": {
-        "value": 38.7196875,
+        "value": 38.88875,
         "n": 3200
       },
       "loop": {
-        "value": 40.819375,
+        "value": 40.6665625,
         "n": 3200
       },
       "chain": {
@@ -2092,7 +2092,7 @@
       "group": "effects",
       "label": "Fit: best versus worst fit, same players",
       "format": "pct",
-      "value": 0.054103980067190964,
+      "value": 0.062046815779797794,
       "n": 10,
       "status": "pass",
       "target": {
@@ -2113,7 +2113,7 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 0.054103980067190964,
+        "value": 0.062046815779797794,
         "n": 10
       },
       "loop": {
@@ -2130,14 +2130,14 @@
       "group": "effects",
       "label": "Fit effect, yards per attempt",
       "format": "pct",
-      "value": 0.01820875219381518,
-      "n": 4637,
+      "value": 0.020517632864110808,
+      "n": 4615,
       "status": "info",
       "target": null,
       "decidedBy": "replays",
       "replays": {
-        "value": 0.01820875219381518,
-        "n": 4637
+        "value": 0.020517632864110808,
+        "n": 4615
       },
       "loop": {
         "value": null,
@@ -2153,14 +2153,14 @@
       "group": "effects",
       "label": "Fit effect, yards per carry",
       "format": "pct",
-      "value": 0.07448956010317977,
-      "n": 4339,
+      "value": 0.06317178516956713,
+      "n": 4198,
       "status": "info",
       "target": null,
       "decidedBy": "replays",
       "replays": {
-        "value": 0.07448956010317977,
-        "n": 4339
+        "value": 0.06317178516956713,
+        "n": 4198
       },
       "loop": {
         "value": null,
@@ -2176,14 +2176,14 @@
       "group": "effects",
       "label": "Fit effect, yards per target",
       "format": "pct",
-      "value": 0.07911791645854466,
-      "n": 18949,
+      "value": 0.0827658113655097,
+      "n": 18919,
       "status": "info",
       "target": null,
       "decidedBy": "replays",
       "replays": {
-        "value": 0.07911791645854466,
-        "n": 18949
+        "value": 0.0827658113655097,
+        "n": 18919
       },
       "loop": {
         "value": null,
@@ -2199,14 +2199,14 @@
       "group": "effects",
       "label": "Fit effect, pressures allowed",
       "format": "pct",
-      "value": 0.06888400797472798,
-      "n": 24102,
+      "value": 0.09341856633677209,
+      "n": 24091,
       "status": "info",
       "target": null,
       "decidedBy": "replays",
       "replays": {
-        "value": 0.06888400797472798,
-        "n": 24102
+        "value": 0.09341856633677209,
+        "n": 24091
       },
       "loop": {
         "value": null,
@@ -2222,14 +2222,14 @@
       "group": "effects",
       "label": "Fit effect, pressures",
       "format": "pct",
-      "value": 0.04731409665915787,
-      "n": 18907,
+      "value": 0.06321304567453619,
+      "n": 19153,
       "status": "info",
       "target": null,
       "decidedBy": "replays",
       "replays": {
-        "value": 0.04731409665915787,
-        "n": 18907
+        "value": 0.06321304567453619,
+        "n": 19153
       },
       "loop": {
         "value": null,
@@ -2245,14 +2245,14 @@
       "group": "effects",
       "label": "Fit effect, yards allowed per target",
       "format": "pct",
-      "value": 0.036609547013720344,
-      "n": 22940,
+      "value": 0.049194053268290905,
+      "n": 22618,
       "status": "info",
       "target": null,
       "decidedBy": "replays",
       "replays": {
-        "value": 0.036609547013720344,
-        "n": 22940
+        "value": 0.049194053268290905,
+        "n": 22618
       },
       "loop": {
         "value": null,
@@ -2268,7 +2268,7 @@
       "group": "effects",
       "label": "Wind 16+ mph versus calm, points per team",
       "format": "signed1",
-      "value": -2.3055085063140375,
+      "value": -2.253931208029403,
       "n": 1083,
       "status": "pass",
       "target": {
@@ -2285,11 +2285,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": -2.3055085063140375,
+        "value": -2.253931208029403,
         "n": 1083
       },
       "loop": {
-        "value": -2.4831396901709404,
+        "value": -2.619305173992675,
         "n": 1152
       },
       "chain": {
@@ -2302,7 +2302,7 @@
       "group": "effects",
       "label": "Indoors versus outdoors, points per team",
       "format": "signed1",
-      "value": 1.5022724197967463,
+      "value": 1.6000340325912816,
       "n": 6538,
       "status": "pass",
       "target": {
@@ -2319,11 +2319,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": 1.5022724197967463,
+        "value": 1.6000340325912816,
         "n": 6538
       },
       "loop": {
-        "value": 1.7947557351763983,
+        "value": 1.6261283554401054,
         "n": 6549
       },
       "chain": {
@@ -2336,7 +2336,7 @@
       "group": "effects",
       "label": "Freezing versus mild, points per team",
       "format": "signed1",
-      "value": -0.6717234027752177,
+      "value": -0.8778106845843361,
       "n": 1701,
       "status": "pass",
       "target": {
@@ -2353,11 +2353,11 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": -0.6717234027752177,
+        "value": -0.8778106845843361,
         "n": 1701
       },
       "loop": {
-        "value": -0.5534950794962121,
+        "value": -0.8208509762408838,
         "n": 1688
       },
       "chain": {
@@ -2370,17 +2370,17 @@
       "group": "effects",
       "label": "Rain versus dry, points per team",
       "format": "signed1",
-      "value": -1.9015215078938503,
+      "value": -1.9342120531093556,
       "n": 2514,
       "status": "info",
       "target": null,
       "decidedBy": "replays",
       "replays": {
-        "value": -1.9015215078938503,
+        "value": -1.9342120531093556,
         "n": 2514
       },
       "loop": {
-        "value": -1.8843904963821565,
+        "value": -1.8919659245717213,
         "n": 2477
       },
       "chain": {
@@ -2393,17 +2393,17 @@
       "group": "effects",
       "label": "Snow versus dry, points per team",
       "format": "signed1",
-      "value": -2.840506898316754,
+      "value": -2.002036211333234,
       "n": 151,
       "status": "info",
       "target": null,
       "decidedBy": "replays",
       "replays": {
-        "value": -2.840506898316754,
+        "value": -2.002036211333234,
         "n": 151
       },
       "loop": {
-        "value": -3.1119957321569167,
+        "value": -3.081558059537347,
         "n": 142
       },
       "chain": {
@@ -2416,8 +2416,8 @@
       "group": "effects",
       "label": "Wind 20+ mph versus under 10, completion rate",
       "format": "pctPoints",
-      "value": -0.04094012422430149,
-      "n": 17371,
+      "value": -0.046653119106265795,
+      "n": 17521,
       "status": "pass",
       "target": {
         "pass": [
@@ -2433,12 +2433,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": -0.04094012422430149,
-        "n": 17371
+        "value": -0.046653119106265795,
+        "n": 17521
       },
       "loop": {
-        "value": -0.051597467158499555,
-        "n": 20636
+        "value": -0.047380717798322536,
+        "n": 20545
       },
       "chain": {
         "value": null,
@@ -2450,8 +2450,8 @@
       "group": "effects",
       "label": "Wind 20+ mph versus under 10, field goal rate",
       "format": "pctPoints",
-      "value": -0.10193000038851763,
-      "n": 1058,
+      "value": -0.07115228881311875,
+      "n": 1094,
       "status": "pass",
       "target": {
         "pass": [
@@ -2467,12 +2467,12 @@
       },
       "decidedBy": "replays",
       "replays": {
-        "value": -0.10193000038851763,
-        "n": 1058
+        "value": -0.07115228881311875,
+        "n": 1094
       },
       "loop": {
-        "value": -0.0805066160885678,
-        "n": 1311
+        "value": -0.07239412813441015,
+        "n": 1297
       },
       "chain": {
         "value": null,
@@ -2553,14 +2553,29 @@
       "group": "effects",
       "label": "Locker room",
       "format": "signed1",
-      "value": null,
-      "n": 0,
-      "status": "pending",
-      "target": null,
+      "value": 1.8579490100555056,
+      "n": 2720,
+      "status": "pass",
+      "target": {
+        "pass": [
+          1,
+          3
+        ],
+        "warn": [
+          0.5,
+          4
+        ],
+        "ci": [
+          -1,
+          6
+        ],
+        "source": "Design target, spec 10.9 and 23.3: no public study isolates a locker room's worth in points, so its extremes stay about the size of home field (1.5 to 2 points in recent NFL seasons) and a typical gap between two teams a fraction of that.",
+        "note": "Points a game between the best locker room and the worst: the experiment replays give one team each at random, and half the home margin's swing between the draws is the effect (D-51)."
+      },
       "decidedBy": "replays",
       "replays": {
-        "value": null,
-        "n": 0
+        "value": 1.8579490100555056,
+        "n": 2720
       },
       "loop": {
         "value": null,
@@ -2576,7 +2591,7 @@
       "group": "aging",
       "label": "Average age, week 1 active rosters",
       "format": "dec2",
-      "value": 26.598947638603637,
+      "value": 26.22932502938037,
       "n": 101760,
       "status": "pass",
       "target": {
@@ -2601,7 +2616,7 @@
         "n": 0
       },
       "chain": {
-        "value": 26.598947638603637,
+        "value": 26.22932502938037,
         "n": 101760
       }
     },
@@ -2610,9 +2625,9 @@
       "group": "aging",
       "label": "Average accrued seasons, this one included, week 1 active rosters",
       "format": "dec2",
-      "value": 4.897376179245283,
+      "value": 4.607389937106918,
       "n": 101760,
-      "status": "warn",
+      "status": "pass",
       "target": {
         "pass": [
           4,
@@ -2635,7 +2650,7 @@
         "n": 0
       },
       "chain": {
-        "value": 4.897376179245283,
+        "value": 4.607389937106918,
         "n": 101760
       }
     },
@@ -2644,7 +2659,7 @@
       "group": "aging",
       "label": "Players with no accrued season, per week 1 roster",
       "format": "dec1",
-      "value": 8.558854166666666,
+      "value": 10.05,
       "n": 1920,
       "status": "pass",
       "target": {
@@ -2669,7 +2684,7 @@
         "n": 0
       },
       "chain": {
-        "value": 8.558854166666666,
+        "value": 10.05,
         "n": 1920
       }
     },
@@ -2678,7 +2693,7 @@
       "group": "aging",
       "label": "Players 30 or older, per week 1 roster",
       "format": "dec1",
-      "value": 8.650520833333333,
+      "value": 7.614583333333333,
       "n": 1920,
       "status": "pass",
       "target": {
@@ -2703,7 +2718,7 @@
         "n": 0
       },
       "chain": {
-        "value": 8.650520833333333,
+        "value": 7.614583333333333,
         "n": 1920
       }
     },
@@ -2712,7 +2727,7 @@
       "group": "aging",
       "label": "League average overall, change over the run",
       "format": "signed1",
-      "value": -0.20125786163522244,
+      "value": -0.48919025157232926,
       "n": 3,
       "status": "pass",
       "target": {
@@ -2737,7 +2752,7 @@
         "n": 0
       },
       "chain": {
-        "value": -0.20125786163522244,
+        "value": -0.48919025157232926,
         "n": 3
       }
     },
@@ -2746,7 +2761,7 @@
       "group": "aging",
       "label": "Largest position group overall change over the run",
       "format": "dec1",
-      "value": 1.206545462157256,
+      "value": 1.6226627766557442,
       "n": 3,
       "status": "pass",
       "target": {
@@ -2771,7 +2786,7 @@
         "n": 0
       },
       "chain": {
-        "value": 1.206545462157256,
+        "value": 1.6226627766557442,
         "n": 3
       }
     },
@@ -2780,8 +2795,8 @@
       "group": "aging",
       "label": "Peak age, QB",
       "format": "dec1",
-      "value": 29.500860559806448,
-      "n": 8908,
+      "value": 29.0094475408832,
+      "n": 9086,
       "status": "pass",
       "target": {
         "pass": [
@@ -2805,8 +2820,8 @@
         "n": 0
       },
       "chain": {
-        "value": 29.500860559806448,
-        "n": 8908
+        "value": 29.0094475408832,
+        "n": 9086
       }
     },
     {
@@ -2814,8 +2829,8 @@
       "group": "aging",
       "label": "Peak age, RB",
       "format": "dec1",
-      "value": 25.512589802435052,
-      "n": 9770,
+      "value": 25.41187095558208,
+      "n": 9685,
       "status": "pass",
       "target": {
         "pass": [
@@ -2839,8 +2854,8 @@
         "n": 0
       },
       "chain": {
-        "value": 25.512589802435052,
-        "n": 9770
+        "value": 25.41187095558208,
+        "n": 9685
       }
     },
     {
@@ -2848,8 +2863,8 @@
       "group": "aging",
       "label": "Peak age, WR",
       "format": "dec1",
-      "value": 26.57209253433659,
-      "n": 18250,
+      "value": 26.47463211280593,
+      "n": 18199,
       "status": "pass",
       "target": {
         "pass": [
@@ -2873,8 +2888,8 @@
         "n": 0
       },
       "chain": {
-        "value": 26.57209253433659,
-        "n": 18250
+        "value": 26.47463211280593,
+        "n": 18199
       }
     },
     {
@@ -2882,8 +2897,8 @@
       "group": "aging",
       "label": "Peak age, TE",
       "format": "dec1",
-      "value": 27.40158545587935,
-      "n": 7342,
+      "value": 27.360471536189113,
+      "n": 7733,
       "status": "pass",
       "target": {
         "pass": [
@@ -2907,8 +2922,8 @@
         "n": 0
       },
       "chain": {
-        "value": 27.40158545587935,
-        "n": 7342
+        "value": 27.360471536189113,
+        "n": 7733
       }
     },
     {
@@ -2916,8 +2931,8 @@
       "group": "aging",
       "label": "Peak age, OL",
       "format": "dec1",
-      "value": 28.402691614455698,
-      "n": 29528,
+      "value": 28.323756268566136,
+      "n": 29379,
       "status": "pass",
       "target": {
         "pass": [
@@ -2941,8 +2956,8 @@
         "n": 0
       },
       "chain": {
-        "value": 28.402691614455698,
-        "n": 29528
+        "value": 28.323756268566136,
+        "n": 29379
       }
     },
     {
@@ -2950,8 +2965,8 @@
       "group": "aging",
       "label": "Peak age, DL",
       "format": "dec1",
-      "value": 28.0575403553628,
-      "n": 25241,
+      "value": 28.06498956092141,
+      "n": 25053,
       "status": "pass",
       "target": {
         "pass": [
@@ -2975,8 +2990,8 @@
         "n": 0
       },
       "chain": {
-        "value": 28.0575403553628,
-        "n": 25241
+        "value": 28.06498956092141,
+        "n": 25053
       }
     },
     {
@@ -2984,8 +2999,8 @@
       "group": "aging",
       "label": "Peak age, LB",
       "format": "dec1",
-      "value": 27.544650704542676,
-      "n": 18850,
+      "value": 27.45126621044257,
+      "n": 18786,
       "status": "pass",
       "target": {
         "pass": [
@@ -3009,8 +3024,8 @@
         "n": 0
       },
       "chain": {
-        "value": 27.544650704542676,
-        "n": 18850
+        "value": 27.45126621044257,
+        "n": 18786
       }
     },
     {
@@ -3018,8 +3033,8 @@
       "group": "aging",
       "label": "Peak age, DB",
       "format": "dec1",
-      "value": 26.78037075254332,
-      "n": 27583,
+      "value": 26.713805028919886,
+      "n": 27680,
       "status": "pass",
       "target": {
         "pass": [
@@ -3043,8 +3058,8 @@
         "n": 0
       },
       "chain": {
-        "value": 26.78037075254332,
-        "n": 27583
+        "value": 26.713805028919886,
+        "n": 27680
       }
     },
     {
@@ -3052,8 +3067,8 @@
       "group": "aging",
       "label": "Average age at retirement",
       "format": "dec1",
-      "value": 30.732995521240905,
-      "n": 15736,
+      "value": 30.500723809841592,
+      "n": 17726,
       "status": "info",
       "target": null,
       "decidedBy": "chain",
@@ -3066,8 +3081,8 @@
         "n": 0
       },
       "chain": {
-        "value": 30.732995521240905,
-        "n": 15736
+        "value": 30.500723809841592,
+        "n": 17726
       }
     },
     {
@@ -3075,8 +3090,8 @@
       "group": "aging",
       "label": "Average credited seasons at retirement",
       "format": "dec1",
-      "value": 7.036794611082867,
-      "n": 15736,
+      "value": 6.248843506713302,
+      "n": 17726,
       "status": "info",
       "target": null,
       "decidedBy": "chain",
@@ -3089,8 +3104,8 @@
         "n": 0
       },
       "chain": {
-        "value": 7.036794611082867,
-        "n": 15736
+        "value": 6.248843506713302,
+        "n": 17726
       }
     },
     {
@@ -3098,8 +3113,8 @@
       "group": "draft",
       "label": "Round 1 picks who start 4 or more seasons",
       "format": "pct",
-      "value": 0.7280625543006082,
-      "n": 1151,
+      "value": 0.7293298520452568,
+      "n": 1149,
       "status": "pass",
       "target": {
         "pass": [
@@ -3123,8 +3138,8 @@
         "n": 0
       },
       "chain": {
-        "value": 0.7280625543006082,
-        "n": 1151
+        "value": 0.7293298520452568,
+        "n": 1149
       }
     },
     {
@@ -3132,8 +3147,8 @@
       "group": "draft",
       "label": "Round 2 picks who start 4 or more seasons",
       "format": "pct",
-      "value": 0.4581151832460733,
-      "n": 1146,
+      "value": 0.4606643356643357,
+      "n": 1144,
       "status": "pass",
       "target": {
         "pass": [
@@ -3157,8 +3172,8 @@
         "n": 0
       },
       "chain": {
-        "value": 0.4581151832460733,
-        "n": 1146
+        "value": 0.4606643356643357,
+        "n": 1144
       }
     },
     {
@@ -3166,8 +3181,8 @@
       "group": "draft",
       "label": "Round 3 picks who start 4 or more seasons",
       "format": "pct",
-      "value": 0.3373913043478261,
-      "n": 1150,
+      "value": 0.31893165750196384,
+      "n": 1273,
       "status": "pass",
       "target": {
         "pass": [
@@ -3191,8 +3206,8 @@
         "n": 0
       },
       "chain": {
-        "value": 0.3373913043478261,
-        "n": 1150
+        "value": 0.31893165750196384,
+        "n": 1273
       }
     },
     {
@@ -3200,8 +3215,8 @@
       "group": "draft",
       "label": "Round 4 picks who start 4 or more seasons",
       "format": "pct",
-      "value": 0.23076923076923078,
-      "n": 1144,
+      "value": 0.23942537909018355,
+      "n": 1253,
       "status": "pass",
       "target": {
         "pass": [
@@ -3225,8 +3240,8 @@
         "n": 0
       },
       "chain": {
-        "value": 0.23076923076923078,
-        "n": 1144
+        "value": 0.23942537909018355,
+        "n": 1253
       }
     },
     {
@@ -3234,8 +3249,8 @@
       "group": "draft",
       "label": "Round 5 picks who start 4 or more seasons",
       "format": "pct",
-      "value": 0.17554585152838428,
-      "n": 1145,
+      "value": 0.16094584286803967,
+      "n": 1311,
       "status": "pass",
       "target": {
         "pass": [
@@ -3259,8 +3274,8 @@
         "n": 0
       },
       "chain": {
-        "value": 0.17554585152838428,
-        "n": 1145
+        "value": 0.16094584286803967,
+        "n": 1311
       }
     },
     {
@@ -3268,8 +3283,8 @@
       "group": "draft",
       "label": "Round 6 picks who start 4 or more seasons",
       "format": "pct",
-      "value": 0.11393514460999124,
-      "n": 1141,
+      "value": 0.0980248719824433,
+      "n": 1367,
       "status": "pass",
       "target": {
         "pass": [
@@ -3293,8 +3308,8 @@
         "n": 0
       },
       "chain": {
-        "value": 0.11393514460999124,
-        "n": 1141
+        "value": 0.0980248719824433,
+        "n": 1367
       }
     },
     {
@@ -3302,8 +3317,8 @@
       "group": "draft",
       "label": "Round 7 picks who start 4 or more seasons",
       "format": "pct",
-      "value": 0.07624890446976336,
-      "n": 1141,
+      "value": 0.06872190109184328,
+      "n": 1557,
       "status": "pass",
       "target": {
         "pass": [
@@ -3327,8 +3342,8 @@
         "n": 0
       },
       "chain": {
-        "value": 0.07624890446976336,
-        "n": 1141
+        "value": 0.06872190109184328,
+        "n": 1557
       }
     },
     {
@@ -3336,9 +3351,9 @@
       "group": "draft",
       "label": "Quarterbacks taken in a first round",
       "format": "dec1",
-      "value": 2.3684210526315788,
+      "value": 3.087719298245614,
       "n": 57,
-      "status": "warn",
+      "status": "pass",
       "target": {
         "pass": [
           2.5,
@@ -3361,8 +3376,541 @@
         "n": 0
       },
       "chain": {
-        "value": 2.3684210526315788,
+        "value": 3.087719298245614,
         "n": 57
+      }
+    },
+    {
+      "id": "economy.capSpaceMedian",
+      "group": "economy",
+      "label": "Median cap space at week 1, share of the cap",
+      "format": "pct",
+      "value": 0.06123522629631571,
+      "n": 54,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.03,
+          0.09
+        ],
+        "warn": [
+          0.015,
+          0.12
+        ],
+        "source": "Over the Cap's team cap space as Pro Football Rumors listed it: on June 2, 2025, a median of $24.2M against the $279.2M cap (8.7%), quartiles of 6.0% and 11.4%, and New England's $67.3M (24.1%) the most; on October 27, 2024, a median of $8.6M against $255.4M (3.4%), quartiles of 1.8% and 7.5%, and San Francisco's $54.1M (21.2%) the most.",
+        "note": "Week 1 cap sheets: each team's space under the cap, carryover included as Over the Cap counts it, as a share of the cap; the mean of each season's median. Week 1 falls between June's space and October's, after camp's extensions and before the season's signings."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0.06123522629631571,
+        "n": 54
+      }
+    },
+    {
+      "id": "economy.capSpaceTop",
+      "group": "economy",
+      "label": "Most cap space at week 1, share of the cap",
+      "format": "pct",
+      "value": 0.1343134108646905,
+      "n": 54,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.12,
+          0.28
+        ],
+        "warn": [
+          0.08,
+          0.36
+        ],
+        "source": "Over the Cap's team cap space as Pro Football Rumors listed it: on June 2, 2025, a median of $24.2M against the $279.2M cap (8.7%), quartiles of 6.0% and 11.4%, and New England's $67.3M (24.1%) the most; on October 27, 2024, a median of $8.6M against $255.4M (3.4%), quartiles of 1.8% and 7.5%, and San Francisco's $54.1M (21.2%) the most.",
+        "note": "The mean of each season's largest week 1 space, as a share of the cap."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0.1343134108646905,
+        "n": 54
+      }
+    },
+    {
+      "id": "economy.overCap",
+      "group": "economy",
+      "label": "Teams over the cap at week 1, per season",
+      "format": "dec2",
+      "value": 0,
+      "n": 54,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0,
+          0
+        ],
+        "warn": [
+          0,
+          0.1
+        ],
+        "source": "The CBA's Article 13 (Over the Cap's copy): every club must be under the cap at all times during the league year.",
+        "note": "Teams over the cap on their week 1 cap sheets, per season."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0,
+        "n": 54
+      }
+    },
+    {
+      "id": "economy.deadShare",
+      "group": "economy",
+      "label": "Dead money at week 1, share of the caps",
+      "format": "pct",
+      "value": 0.15409787380841103,
+      "n": 54,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.08,
+          0.2
+        ],
+        "warn": [
+          0.05,
+          0.25
+        ],
+        "source": "Pro Football Rumors' dead money by team: $798M league-wide on July 14, 2023, 11.1% of 32 caps of $224.8M; $1,456M on November 27, 2024 (Over the Cap's figures), 17.8% of 32 caps of $255.4M.",
+        "note": "Dead money on the week 1 cap sheets (proration and money owed from deals that ended), as a share of the league's caps. Summer's figures run below the fall's, which add in-season releases."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0.15409787380841103,
+        "n": 54
+      }
+    },
+    {
+      "id": "economy.topQbShare",
+      "group": "economy",
+      "label": "Richest quarterback deal's yearly value, share of the cap",
+      "format": "pct",
+      "value": 0.2019042522185056,
+      "n": 54,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.19,
+          0.26
+        ],
+        "warn": [
+          0.16,
+          0.3
+        ],
+        "source": "The richest quarterback deals by yearly value as each season opened: Joe Burrow's $55M (September 2023), 24.5% of the $224.8M cap; Dak Prescott's $60M (September 2024), 23.5% of $255.4M, still the richest in 2025 at 21.5% of $279.2M. The market curve's top for quarterbacks (tuning market) is that record against the cap it was signed under, 23.5% (D-65), and the richest deal's share falls between new records as the cap grows.",
+        "note": "The largest yearly value of a quarterback's deal on week 1, as a share of the cap; the mean over seasons."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0.2019042522185056,
+        "n": 54
+      }
+    },
+    {
+      "id": "economy.topOtherShare",
+      "group": "economy",
+      "label": "Richest deal apart from quarterbacks', share of the cap",
+      "format": "pct",
+      "value": 0.11201027461717536,
+      "n": 54,
+      "status": "warn",
+      "target": {
+        "pass": [
+          0.12,
+          0.18
+        ],
+        "warn": [
+          0.1,
+          0.21
+        ],
+        "source": "The richest deals apart from quarterbacks: Nick Bosa's $34M (September 2023), 15.1% of the $224.8M cap; Justin Jefferson's $35M (June 2024), 13.7% of $255.4M; Micah Parsons's $47M (August 2025, NFL.com), 16.8% of $279.2M.",
+        "note": "The largest yearly value of any other player's deal on week 1, as a share of the cap; the mean over seasons."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0.11201027461717536,
+        "n": 54
+      }
+    },
+    {
+      "id": "economy.faMovers",
+      "group": "economy",
+      "label": "Unrestricted free agents who signed with a new team, per team",
+      "format": "dec1",
+      "value": 2.8072916666666665,
+      "n": 54,
+      "status": "info",
+      "target": null,
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 2.8072916666666665,
+        "n": 54
+      }
+    },
+    {
+      "id": "economy.faTopShare",
+      "group": "economy",
+      "label": "Richest of their deals' yearly value, share of the cap",
+      "format": "pct",
+      "value": 0.12038607602894699,
+      "n": 54,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.1,
+          0.2
+        ],
+        "warn": [
+          0.07,
+          0.24
+        ],
+        "source": "The richest deals unrestricted free agents signed with new teams: Kirk Cousins's $45M a year with Atlanta (March 2024), 17.6% of the $255.4M cap; Sam Darnold's $33.5M a year with Seattle (March 2025), 12.0% of $279.2M.",
+        "note": "Among the unrestricted free agents whose deals ran out as the league year opened and who signed with a new team, the largest yearly value by week 1, as a share of the cap; the mean over seasons."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0.12038607602894699,
+        "n": 54
+      }
+    },
+    {
+      "id": "economy.marketPay",
+      "group": "economy",
+      "label": "New veteran deals' yearly value over the market price, median",
+      "format": "dec2",
+      "value": 1.0274737810608419,
+      "n": 19884,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.9,
+          1.15
+        ],
+        "warn": [
+          0.8,
+          1.3
+        ],
+        "source": "The market curve (tuning market) prices each position, rating, and age from the 2026 market, its tops the richest deals at each position against the $301.2M cap; D-60 has the money new deals settle for center on it.",
+        "note": "Veteran deals that start the league year (re-signings, extensions, and free agents), for players rated 70 or more, read as the OTAs end: each one's yearly value over the market price for the player when he signed (his rating before camp's development, his age that day), the median over every judged season's deals. Rookie deals, tags, tenders, and the practice squad don't count."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 1.0274737810608419,
+        "n": 19884
+      }
+    },
+    {
+      "id": "economy.faMarketPay",
+      "group": "economy",
+      "label": "The same for free agents who changed teams",
+      "format": "dec2",
+      "value": 1.1527931611039035,
+      "n": 3844,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.9,
+          1.25
+        ],
+        "warn": [
+          0.8,
+          1.4
+        ],
+        "source": "The market curve (tuning market) and D-60, as for new deals: free agents who change teams sign at the market's price or over it, where teams with room compete for them (D-60's room premium).",
+        "note": "The median of the same ratio for the unrestricted free agents who signed with a new team."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 1.1527931611039035,
+        "n": 3844
+      }
+    },
+    {
+      "id": "economy.marketPaySpread",
+      "group": "economy",
+      "label": "Widest gap between position groups' medians",
+      "format": "dec2",
+      "value": 0.16764610766149035,
+      "n": 9,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0,
+          0.3
+        ],
+        "warn": [
+          0,
+          0.45
+        ],
+        "source": "The market curve (tuning market) prices every position against its own top, so each position group's new deals should center on it about alike.",
+        "note": "The widest gap between position groups' median ratios, counting groups with 20 deals or more."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0.16764610766149035,
+        "n": 9
+      }
+    },
+    {
+      "id": "economy.faOpeningPay",
+      "group": "economy",
+      "label": "Movers' first-week deals over their later ones, medians",
+      "format": "dec2",
+      "value": 1.0860348102025275,
+      "n": 3844,
+      "status": "pass",
+      "target": {
+        "pass": [
+          1.02,
+          1.4
+        ],
+        "warn": [
+          1,
+          1.6
+        ],
+        "source": "Spec 11.8: top players sign early and the market softens for those who wait; the user's M12 additions ask that free agency's prices run highest in its first days and fall as the market settles (D-65). A direction check, since no public count prices free agents' deals against their value by the week they signed.",
+        "note": "Free agents who changed teams: the median first-week deal's yearly value over the market price when he signed, over the same median for the later weeks' deals."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 1.0860348102025275,
+        "n": 3844
+      }
+    },
+    {
+      "id": "economy.compNetLoss",
+      "group": "economy",
+      "label": "Compensatory picks for net losses, per draft",
+      "format": "dec1",
+      "value": 24.62962962962963,
+      "n": 54,
+      "status": "warn",
+      "target": {
+        "pass": [
+          28,
+          32
+        ],
+        "warn": [
+          20,
+          32
+        ],
+        "source": "NFL.com, \"2025 NFL Draft: NFL awards 35 compensatory picks\": 32 awarded under the net loss formula, and 3 special picks for minority coaching and executive hires; Over the Cap's methodology: net value and supplemental picks fill the 32 only when the formula falls short.",
+        "note": "Compensatory picks for net losses of qualifying free agents, per draft, before net value and supplemental picks fill the 32 (D-58)."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 24.62962962962963,
+        "n": 54
+      }
+    },
+    {
+      "id": "economy.cashShare",
+      "group": "economy",
+      "label": "Cash paid in a league year, share of the cap",
+      "format": "pct",
+      "value": 1.0432616650374262,
+      "n": 45,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.95,
+          1.07
+        ],
+        "warn": [
+          0.89,
+          1.12
+        ],
+        "source": "Over the Cap, \"CBA Suggestion Number 4\" (April 2019): from 2015 to 2018 the league's average cash spending was about 101% of the cap; the CBA's league-wide minimum is 95% over each four-year period.",
+        "note": "Cash each team paid in a league year (salary for the weeks in force, bonuses when paid, money owed after releases), as a share of that year's cap, across the league, from each chain's second salary floor window: the generated league's deals carry bonuses paid before it began, which charge its first seasons' caps with no cash."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 1.0432616650374262,
+        "n": 45
+      }
+    },
+    {
+      "id": "economy.cashLow",
+      "group": "economy",
+      "label": "Lowest team's cash over a floor window, share of its caps",
+      "format": "pct",
+      "value": 0.9864754510744727,
+      "n": 9,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.91,
+          1
+        ],
+        "warn": [
+          0.89,
+          1.05
+        ],
+        "source": "Over the Cap, \"CBA Suggestion Number 4\" (April 2019): the lowest-spending team from 2015 to 2018, Houston, paid 92.8% of the cap; the club minimum is 89% (D-33).",
+        "note": "The lowest team's cash over each four-year salary floor window, as a share of the window's caps; windows from each chain's second, since the first holds the generated league's deals."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0.9864754510744727,
+        "n": 9
+      }
+    },
+    {
+      "id": "economy.floorShort",
+      "group": "economy",
+      "label": "Teams short of the salary floor, per window",
+      "format": "dec2",
+      "value": 0,
+      "n": 9,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0,
+          0
+        ],
+        "warn": [
+          0,
+          0.5
+        ],
+        "source": "Over the Cap, \"CBA Suggestion Number 4\" (April 2019): no team came close to the 89% club minimum from 2015 to 2018.",
+        "note": "Teams short of the salary floor per four-year window (D-33), windows from each chain's second."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0,
+        "n": 9
       }
     }
   ]
