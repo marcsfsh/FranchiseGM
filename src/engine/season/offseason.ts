@@ -13,7 +13,7 @@
 import type { ClimateTable } from '../../data/climate';
 import { TEAM_ABBRS, TEAM_COLORS, type TeamAbbr } from '../../data/team-colors';
 import { makeLegal } from '../ai/decisions/compliance';
-import { cutdown, freeAgencySignings, offseasonClaims } from '../ai/decisions/offseason';
+import { cutdown, offseasonClaims } from '../ai/decisions/offseason';
 import { resignDecisions } from '../ai/decisions/resign';
 import { fillPracticeSquad, waiverClaims } from '../ai/decisions/roster-moves';
 import type { DecisionLog } from '../ai/framework';
@@ -34,13 +34,22 @@ import { scoutsItself, scoutWeek } from '../draft/scouting';
 import { aiOffers, signUdfas } from '../draft/udfa';
 import { autoVisits, workOut } from '../draft/workouts';
 import type { NameData } from '../generate/player';
-import { draftOrder, rookieReserve } from '../generate/rookies';
+import { draftOrder } from '../generate/rookies';
 import type { Outcome } from '../contracts/moves';
+import { offerValue } from '../contracts/decision';
+import {
+  aiBids,
+  closeBidding,
+  decideWeek,
+  pendingFor,
+  signingWords,
+  weighing
+} from '../contracts/free-agency';
 import { windowDecisions } from '../contracts/resign';
 import { depthChanges, startersByTeam, type DepthChange } from '../league/depth-changes';
 import type { ContractRecord } from '../contracts/history';
 import { openLeagueYear } from '../league/league-year';
-import { activeRoster, freeAgents, newId, type TransactionKind } from '../league/transactions';
+import { activeRoster, newId, type TransactionKind } from '../league/transactions';
 import { advanceBlock } from '../roster/legality';
 import type { League } from '../league/types';
 import { calendarDay, leagueYear, PHASE_LABELS, type GameDate, type Phase } from '../model/calendar';
@@ -446,11 +455,25 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
       });
   }
   if (from.phase === 'freeAgency') {
-    // Teams take turns in draft order, each keeping room for its draft class.
-    const pool = freeAgents(league);
-    const turns = draftOrder(league);
-    for (const abbr of turns.filter(t => aiTeams(league).includes(t)))
-      decisions.push(...freeAgencySignings(league, abbr, pool, rookieReserve(league, abbr, turns), rng(`fa-${abbr}`)));
+    // The week ends (spec 11.8; D-53): each free agent with offers takes the one worth most to him once one is
+    // worth his demand, or waits; after the fourth week the offers left fall away.
+    const offered = pendingFor(league, user).players;
+    const signed = decideWeek(league, rng('freeAgency'));
+    if (from.week === 4) closeBidding(league);
+    const mine = signed.filter(s => s.team === user);
+    const elsewhere = signed.filter(s => s.team !== user && offered.includes(s.player.id));
+    const waiting = weighing(league, user);
+    if (offered.length || mine.length)
+      messages.push({
+        kind: 'contracts',
+        title: `Free agency, week ${from.week}: ${mine.length ? `${plural(mine.length, 'player')} signed with you` : 'nobody signed with you'}`,
+        body: [mine.length ? `${mine.map(signingWords).join('; ')}.` : null, elsewhere.length ? `Chose other teams: ${elsewhere.map(s => `${named(s.player)}, the ${nick(s.team)}`).join('; ')}.` : null, waiting.length ? `Still weighing your offers: ${waiting.map(named).join(', ')}.` : from.week === 4 && offered.length > mine.length + elsewhere.length ? 'The bidding is over: your offers nobody took have lapsed.' : null].filter(Boolean).join(' '),
+        players: mine.map(s => s.player.id)
+      });
+    for (const s of signed)
+      if (s.player.ovr >= TUNING.news.freeAgentFrom)
+        headline('transaction', `The ${nick(s.team)} sign ${named(s.player)}: ${plural(s.offer.years, 'year')}, ${dollars(offerValue(s.offer))} a year`, [s.team], [s.player.id], s.player.ovr);
+    if (signed.length) headline('transaction', `${plural(signed.length, 'free agent')} ${signed.length === 1 ? 'signs' : 'sign'} in week ${from.week} of free agency`, [], [], 0);
   } // prettier-ignore
 
   // The weeks between the two dates pass for every injury.
@@ -590,6 +613,8 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
       messages.push({ kind: 'roster', title: `Cut your roster to ${league.rules.roster.active}`, body: 'The regular season starts after the final cutdown.', players: [] }); // prettier-ignore
   } else if (to.phase === 'regularSeason') startSeason(league, to, data.names, rng('draftClass'));
   league.date = { ...to };
+  // A week of free agency opens: the AI teams make their offers (spec 11.8; D-53).
+  if (to.phase === 'freeAgency') aiBids(league, aiTeams(league), draftOrder(league));
   // The scouts work the class until its draft, and the media cover it (spec 10.4).
   scoutWeek(league);
   for (const d of draftMediaWeek(

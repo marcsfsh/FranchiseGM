@@ -15,8 +15,8 @@ import { ageOn, type Player } from '../model/player';
 import { POSITION_GROUP } from '../model/positions';
 import { minimumSalary, type RuleSet } from '../rules/ruleset';
 import { FIT_SLOTS } from '../schemes/slots';
-import { winPct } from '../season/standings';
-import { leagueStandings, PLAYOFF_PHASES } from '../season/state';
+import { buildStandings, winPct } from '../season/standings';
+import { PLAYOFF_PHASES } from '../season/state';
 import { TUNING } from '../tuning';
 import type { Offer } from './build';
 import { marketCeiling, marketValue } from './market';
@@ -71,6 +71,11 @@ const unitOf = (p: Player): string =>
  * players' average overall, each ranked across the league.
  */
 export function decisionContext(league: League): DecisionContext {
+  return { contenders: contendersOf(league), depth: depthOf(league), fits: new Map() };
+}
+
+/** Each team's active overalls by position group (specialists by position), best first. */
+function depthOf(league: League): Map<string, number[]> {
   const depth = new Map<string, number[]>();
   for (const p of Object.values(league.players))
     if (p.team && p.status === 'active') {
@@ -78,36 +83,46 @@ export function decisionContext(league: League): DecisionContext {
       depth.set(key, [...(depth.get(key) ?? []), p.ovr]);
     }
   for (const list of depth.values()) list.sort((a, b) => b - a);
-  const strength = new Map(
-    TEAM_ABBRS.map(t => {
-      const all = Object.values(league.players)
-        .filter(p => p.team === t && p.status === 'active')
-        .map(p => p.ovr)
-        .sort((a, b) => b - a)
-        .slice(0, 22);
-      return [t, all.length ? all.reduce((a, b) => a + b, 0) / all.length : 0];
-    })
-  );
-  const records = leagueStandings(league).table.records;
+  return depth;
+}
+
+/** Each team as a contender, from -1 to 1: its record and its best 22 players, each ranked. */
+function contendersOf(league: League): Map<TeamAbbr, number> {
+  const best = new Map<TeamAbbr, number[]>();
+  for (const p of Object.values(league.players))
+    if (p.team && p.status === 'active') best.set(p.team, [...(best.get(p.team) ?? []), p.ovr]);
+  const strength = (t: TeamAbbr) => {
+    const top = (best.get(t) ?? []).sort((a, b) => b - a).slice(0, 22);
+    return top.length ? top.reduce((a, b) => a + b, 0) / top.length : 0;
+  };
+  const scores = Object.values(league.season.results).filter(g => !g.playoff);
+  const records = buildStandings(scores).records;
   const rank = (value: (t: TeamAbbr) => number) => {
     const sorted = [...TEAM_ABBRS].sort((a, b) => value(a) - value(b) || (a < b ? -1 : 1));
     return new Map(TEAM_ABBRS.map(t => [t, sorted.indexOf(t) / (TEAM_ABBRS.length - 1)]));
   };
-  const results = rank(t => winPct(records[t].overall));
-  const rosters = rank(t => strength.get(t) ?? 0);
-  const contenders = new Map(TEAM_ABBRS.map(t => [t, (results.get(t) ?? 0.5) + (rosters.get(t) ?? 0.5) - 1]));
-  return { contenders, depth, fits: new Map() };
+  // Before any games, records say nothing.
+  const results = scores.length
+    ? rank(t => winPct(records[t].overall))
+    : new Map(TEAM_ABBRS.map(t => [t, 0.5]));
+  const rosters = rank(strength);
+  return new Map(TEAM_ABBRS.map(t => [t, (results.get(t) ?? 0.5) + (rosters.get(t) ?? 0.5) - 1]));
 }
 
-/** The model's view for a league as it stands, kept until its date or its transactions change. */
-const cached = new WeakMap<League, { key: string; ctx: DecisionContext }>();
+/**
+ * The model's view for a league as it stands. Contenders and fits hold for the date; the rosters' depth is
+ * read again whenever a transaction changes them.
+ */
+const cached = new WeakMap<League, { date: string; moves: number; ctx: DecisionContext }>();
 export function contextFor(league: League): DecisionContext {
   const { season, phase, week } = league.date;
-  const key = `${season}|${phase}|${week}|${league.season.transactions.length}`;
+  const date = `${season}|${phase}|${week}`;
+  const moves = league.season.transactions.length;
   const known = cached.get(league);
-  if (known?.key === key) return known.ctx;
-  const ctx = decisionContext(league);
-  cached.set(league, { key, ctx });
+  if (known?.date === date && known.moves === moves) return known.ctx;
+  const ctx: DecisionContext =
+    known?.date === date ? { ...known.ctx, depth: depthOf(league) } : decisionContext(league);
+  cached.set(league, { date, moves, ctx });
   return ctx;
 }
 

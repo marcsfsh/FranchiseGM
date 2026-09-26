@@ -312,7 +312,7 @@ export const TUNING = {
   news: {
     result: 3, tie: 6, upsetGap: 2, perUpsetPoint: 3, overtime: 3, blowout: 21, blowoutBonus: 1, close: 3,
     playoffStakes: 3, superBowlStakes: 6, performance: 6, milestone: 4, injury: 1, injuryWeeksCap: 6,
-    seasonEnding: 3, injuryFrom: 72, signingFrom: 68, transaction: 1, award: 4, prominentFrom: 70, perOverall: 0.3,
+    seasonEnding: 3, injuryFrom: 72, signingFrom: 68, freeAgentFrom: 78, transaction: 1, award: 4, prominentFrom: 70, perOverall: 0.3,
     perWeek: 12, templateWeeks: 4,
     bigGame: { passYds: 400, passTd: 5, rushYds: 175, recYds: 175, sacks: 3, defInt: 2 },
     milestones: {
@@ -638,11 +638,24 @@ export const TUNING = {
    * Offseason stand-ins for AI teams (D-27), until M11's draft and M12's free agency: free agents sign to
    * fill each position group, a generated rookie class goes in draft order, and teams cut down to the limit.
    */
+  /**
+   * Free agency's bidding (spec 11.8; D-53). As each week opens an AI team offers up to `offersPerWeek`
+   * free agents who'd fill a hole at their group (`needPoints` of want for each open spot of the standard
+   * roster) or start over its weakest player there by more than `upgradeBy`, keeping its draft class's room
+   * and `buffer` of the cap free. It adds up to `premium` over his asking price for the ones it wants most,
+   * in full at `premiumAt` points of want.
+   */
+  freeAgency: {
+    offersPerWeek: 12,
+    needPoints: 6,
+    upgradeBy: 2,
+    buffer: 0.02,
+    premium: 0.1,
+    premiumAt: 12
+  },
+
   offseason: {
-    /** Free agency: signings tried per team each week, and contract years by age (up to the age, years). */
-    signingTries: 12,
-    /** Most of the free cap (above the draft reserve) one signing may take, in open spots' shares. */
-    budgetShare: 3,
+    /** Free agents' contract years by age (up to the age, years; older players sign for 1). */
     termByAge: [
       [26, 3],
       [29, 2]

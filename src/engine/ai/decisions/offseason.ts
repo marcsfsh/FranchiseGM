@@ -1,122 +1,24 @@
 /**
- * Offseason roster building for AI teams, standing in until later milestones build the full systems (D-27):
- * each free agency week a team signs free agents at their asking price where a position group is short of
- * the standard roster (M12 brings bidding and negotiation), and the final cutdown releases the least
- * valuable players in the deepest groups down to the in-season limit (spec 12.1); the compliance module
- * gets teams under the cap. Every move goes through the checked transactions.
+ * Offseason roster moves for AI teams: waiver claims, and the final cutdown, which releases the least
+ * valuable players in the deepest groups down to the in-season limit (spec 12.1); free agency's bidding
+ * lives with the contracts (D-53), and the compliance module gets teams under the cap. Every move goes
+ * through the checked transactions.
  */
 import type { TeamAbbr } from '../../../data/team-colors';
-import { capSheet } from '../../cap/sheet';
-import { askingSalary } from '../../contracts/acceptance';
 import type { League } from '../../league/types';
 import { calendarDay } from '../../model/calendar';
-import { ageOn, fullName, type Player } from '../../model/player';
+import { ageOn, type Player } from '../../model/player';
 import type { Rng } from '../../rng';
-import { minimumSalary } from '../../rules/ruleset';
 import { makeMove } from '../../roster/moves';
 import { cannotPlay, designation } from '../../season/injuries';
 import { TUNING } from '../../tuning';
-import { need, quality, youth, type SigningOption } from '../considerations/roster';
-import { decide, type DecisionLog } from '../framework';
-import { competence, staffIn } from '../profile';
-import { groupWords, NEED_GROUP, TARGET } from './roster-moves';
+import { NEED_GROUP, TARGET } from './roster-moves';
 
 const O = TUNING.offseason;
 const S = TUNING.ai.signing;
 
 const teamPlayers = (league: League, abbr: TeamAbbr): Player[] =>
   Object.values(league.players).filter(p => p.team === abbr);
-
-/** Players each group is short of the standard roster's count, counting the active roster. */
-export function shortfall(players: readonly Player[]): Map<string, number> {
-  const count = new Map<string, number>();
-  for (const p of players)
-    if (p.status === 'active')
-      count.set(NEED_GROUP[p.position], (count.get(NEED_GROUP[p.position]) ?? 0) + 1);
-  return new Map([...TARGET].map(([group, n]) => [group, Math.max(0, n - (count.get(group) ?? 0))]));
-}
-
-/** Asking salaries by pool and team: the date and the players' ratings don't change during a step. */
-const asks = new WeakMap<Player[], Map<string, number>>();
-function ask(league: League, pool: Player[], p: Player, team: TeamAbbr): number {
-  let known = asks.get(pool);
-  if (!known) asks.set(pool, (known = new Map()));
-  let value = known.get(`${team}|${p.id}`);
-  if (value === undefined) known.set(`${team}|${p.id}`, (value = askingSalary(league, p, team)));
-  return value;
-}
-
-/** Contract years for a free agent: longer for younger players. */
-const termFor = (age: number): number => O.termByAge.find(([oldest]) => age <= oldest)?.[1] ?? 1;
-
-/**
- * A week of free agency for an AI team: it signs the best free agents it can where it's short, keeping
- * `reserve` of cap space for its draft class. `pool` is the week's free agents, shared by the teams in
- * turn; signed players leave it.
- */
-export function freeAgencySignings(
-  league: League,
-  abbr: TeamAbbr,
-  pool: Player[],
-  reserve: number,
-  rng: Rng
-): DecisionLog[] {
-  const logs: DecisionLog[] = [];
-  const skip = new Set<string>();
-  const today = calendarDay(league.date);
-  for (let tries = 0; tries < O.signingTries; tries++) {
-    const short = shortfall(teamPlayers(league, abbr));
-    if (![...short.values()].some(n => n > 0)) break;
-    // The budget: what's left above the reserve must still fill every other open spot at the minimum, and
-    // no one player takes more than a few spots' share of it.
-    const open = [...short.values()].reduce((a, b) => a + b, 0);
-    const minimum = minimumSalary(league.rules, 0);
-    const space = capSheet(league, abbr).space;
-    const available = space - reserve;
-    const ceiling = Math.min(available - (open - 1) * minimum, (O.budgetShare * available) / open);
-    const byGroup = new Map<string, Player[]>();
-    for (const p of pool) {
-      const group = NEED_GROUP[p.position];
-      if (skip.has(p.id) || !short.get(group) || ask(league, pool, p, abbr) > Math.max(minimum, ceiling)) continue;
-      byGroup.set(group, [...(byGroup.get(group) ?? []), p]);
-    }
-    const options: SigningOption[] = [...byGroup.values()].flatMap(players =>
-      players
-        .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1))
-        .slice(0, S.candidatesPerGroup)
-        .map(p => ({
-          id: p.id,
-          name: `${fullName(p)} (${p.position})`,
-          need: short.get(NEED_GROUP[p.position]) ?? 0,
-          ovr: p.ovr,
-          age: ageOn(p.birthDate, today),
-          own: false
-        }))
-    );
-    const decision = decide(
-      'Sign a free agent',
-      `${abbr} general manager`,
-      options,
-      [need(), quality(), youth()],
-      { need: S.needWeight, quality: 1, youth: S.youthWeight },
-      competence(staffIn(league, abbr, 'GM'), 'evaluation'),
-      rng,
-      o => o.name
-    );
-    const player = decision ? league.players[decision.chosen.id] : undefined;
-    if (!decision || !player) break;
-    skip.add(player.id);
-    const offer = { years: termFor(ageOn(player.birthDate, today)), salary: ask(league, pool, player, abbr), signingBonus: 0 };
-    const move = { kind: 'sign', team: abbr, playerId: player.id, offer, reason: `to fill a need at ${groupWords(player)}` } as const;
-    // The move checks the cap itself; the reserve for the draft class is this team's own rule.
-    if (space - offer.salary < reserve) continue;
-    if (makeMove(league, move, rng).ok) {
-      logs.push(decision.log);
-      pool.splice(pool.indexOf(player), 1);
-    }
-  } // prettier-ignore
-  return logs;
-}
 
 /**
  * AI waiver claims in the offseason: like the in-season claims, a team claims a player who beats its

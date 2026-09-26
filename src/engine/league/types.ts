@@ -4,6 +4,7 @@
  */
 import type { TeamAbbr } from '../../data/team-colors';
 import type { ScheduledGame } from '../../data/schedule';
+import type { FreeAgentOffer } from '../contracts/free-agency';
 import type { Contract } from '../contracts/types';
 import type { GameDate } from '../model/calendar';
 import type { Player } from '../model/player';
@@ -29,7 +30,7 @@ import type { DraftSettings } from '../draft/settings';
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 25;
+export const SAVE_SCHEMA_VERSION = 26;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -163,6 +164,8 @@ export interface League {
   udfaOffers: Record<string, UdfaOffer[]>;
   /** Players whose character the user has learned (spec 10.9): from a top-30 visit or time on his team. */
   personalityKnown: string[];
+  /** Teams' standing offers to free agents through free agency's four weeks (D-53), by player ID. */
+  faOffers: Record<string, FreeAgentOffer[]>;
   /** Messages for the user (spec 19.6), oldest first. */
   inbox: InboxItem[];
   /** Players on waivers until the league next advances (spec 12.1). */
