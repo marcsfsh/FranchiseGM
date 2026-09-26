@@ -3,6 +3,7 @@ import { capScreen } from './cap';
 import { contractsScreen } from './contracts';
 import { depthScreen } from './depth';
 import { devScreen } from './dev';
+import { draftScreen } from './draft';
 import { freeAgencyScreen } from './free-agency';
 import { gameScreen } from './game';
 import { gamePlanScreen } from './gameplan';
@@ -30,6 +31,7 @@ export const SCREENS: Record<RouteName, () => Screen> = {
   training: trainingScreen,
   staff: () => placeholderScreen('Staff', 'Your coaches, coordinators, scouts, and front office.'),
   scouting: scoutingScreen,
+  draft: draftScreen,
   freeagency: freeAgencyScreen,
   trades: () => placeholderScreen('Trades', 'Trade offers, the trade block, and proposals.'),
   finances: capScreen,

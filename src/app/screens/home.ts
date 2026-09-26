@@ -10,6 +10,7 @@ import type { League } from '../../engine/league/types';
 import { capFacts, capSheet } from '../../engine/cap/sheet';
 import { capHit } from '../../engine/contracts/cap';
 import { contractSummary } from '../../engine/contracts/view';
+import { onTheClock } from '../../engine/draft/draft';
 import { calendarDay, leagueYear, PHASE_LABELS, type Phase } from '../../engine/model/calendar';
 import { ageOn, type Player } from '../../engine/model/player';
 import { RATING_LABELS, type RatingKey } from '../../engine/model/ratings';
@@ -21,7 +22,7 @@ import type { WinLoss } from '../../engine/season/standings';
 import { h, type Child } from '../dom';
 import { toast } from '../feedback';
 import { focusKeyOf, refocus } from '../focus';
-import { gameDay, kickoff, money, record } from '../format';
+import { gameDay, kickoff, money, ordinal, record } from '../format';
 import { href } from '../router';
 import { dateLine } from '../shell';
 import type { AdvanceTarget, AppState } from '../state';
@@ -130,11 +131,11 @@ const STEP_NOTES: Record<Exclude<Phase, 'regularSeason' | 'wildCard' | 'division
   staff: 'Coaching and staff moves arrive in a later build.',
   awards: 'Season awards and the Hall of Fame arrive in a later build. Players decide whether to retire as this phase ends.',
   resign: 'Extend, tag, or tender your players whose deals run out, and decide fifth-year options, on the Contracts screen. The other teams decide as the window closes; deals nobody kept end when free agency opens.',
-  combine: 'The combine arrives with the draft in a later build.',
+  combine: "Prospects worked out at the combine; the results are on the Scouting screen. Top-30 visits are open until the draft.",
   annualMeeting: 'The new league year starts when free agency opens: contracts that run out end, and the cap grows.',
   freeAgency: 'Sign free agents from the Free agency screen. The other teams sign theirs as each week ends.',
-  proDays: 'The draft is next: your picks join your roster when it opens.',
-  draft: 'Your draft picks are on your roster. The draft room arrives in a later build.',
+  proDays: 'The draft is next. Make your picks in the Draft room when it opens, or let your staff make them.',
+  draft: 'The draft is over: your class is on your roster, and the media have graded every team in the Draft room.',
   udfa: 'The other teams have signed undrafted rookies; the rest are on the Free agency screen.',
   otas: "Next season's schedule is out. Set your offseason program on the Training screen before camp opens.",
   trainingCamp: "Camp brought the offseason's development, the position battles, and camp injuries. Three preseason games follow.",
@@ -146,6 +147,7 @@ const STEP_NOTES: Record<Exclude<Phase, 'regularSeason' | 'wildCard' | 'division
 function offseasonCard(app: AppState, league: League): HTMLElement {
   const user = league.meta.start.userTeam;
   const date = league.date;
+  const clock = onTheClock(league)?.owner === user ? onTheClock(league) : null;
   const next = nextStep(date);
   const season = next.phase === 'regularSeason' ? next.season : date.season + 1;
   const body: Child[] = [
@@ -156,7 +158,9 @@ function offseasonCard(app: AppState, league: League): HTMLElement {
       null,
       date.phase === 'resign' && league.settings.auto.contracts
         ? 'Your staff makes the contract decisions you leave open as the window closes; you can still decide any player on the Contracts screen first. Automation in Settings changes this.'
-        : (STEP_NOTES[date.phase as keyof typeof STEP_NOTES] ?? '')
+        : clock
+          ? `The draft is on, and you're on the clock with the ${ordinal(clock.number ?? 0)} pick. Make it in the Draft room, or let your staff make it.`
+          : (STEP_NOTES[date.phase as keyof typeof STEP_NOTES] ?? '')
     )
   ];
   if (league.season.champion)
@@ -182,6 +186,10 @@ function offseasonCard(app: AppState, league: League): HTMLElement {
     actions.append(h('a', { class: 'btn btn-outline', href: '#/roster' }, 'Roster'));
   if (date.phase === 'resign')
     actions.prepend(h('a', { class: 'btn btn-outline', href: href('contracts') }, 'Contracts'));
+  if (date.phase === 'proDays' || date.phase === 'draft')
+    actions.prepend(
+      h('a', { class: `btn ${clock ? 'btn-primary' : 'btn-outline'}`, href: href('draft') }, 'Draft room')
+    );
   if (run) {
     const stop = h('button', { class: 'btn btn-outline', type: 'button', 'data-focus': 'stop' }, 'Stop after this step');
     stop.addEventListener('click', () => {
@@ -196,9 +204,10 @@ function offseasonCard(app: AppState, league: League): HTMLElement {
     actions.append(stop);
   } else {
     const label = next.phase === 'regularSeason' ? `Start the ${next.season} season` : `Advance to ${stepLabel(next)}`;
-    const play = h('button', { class: 'btn btn-primary', type: 'button', 'data-focus': 'play' }, label);
+    const play = h('button', { class: `btn ${clock ? 'btn-outline' : 'btn-primary'}`, type: 'button', 'data-focus': 'play' }, label);
     play.addEventListener('click', () => startAdvance(app, 'week'));
-    actions.prepend(play);
+    if (clock) actions.append(play);
+    else actions.prepend(play);
     if (next.phase !== 'regularSeason') {
       const far = h('button', { class: 'btn btn-outline', type: 'button', 'data-focus': 'far' }, `Sim to the ${season} season`);
       far.addEventListener('click', () => startAdvance(app, 'nextSeason'));

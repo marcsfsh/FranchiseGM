@@ -7,40 +7,45 @@
  * opens a dialog with what the team has learned about him.
  */
 import { teamFullName, type TeamAbbr } from '../../data/team-colors';
-import { ability } from '../../engine/abilities/catalog';
 import type { DraftClass, Measurables, Prospect } from '../../engine/draft/class';
-import { mediaBoard, roundProjector } from '../../engine/draft/media';
 import {
   assignScout,
   classOutlook,
   errorScale,
   NATIONAL,
   REGIONS,
-  revealed,
   scoutProblem,
   scoutProspect,
   scoutsItself,
-  teamGrades,
-  weeklyPoints,
-  type Grade
+  weeklyPoints
 } from '../../engine/draft/scouting';
 import { visit, visitProblem } from '../../engine/draft/workouts';
 import { teamStaff } from '../../engine/league/fit';
 import type { League } from '../../engine/league/types';
-import { calendarDay } from '../../engine/model/calendar';
-import { ageOn, fullName, type Personality, type Player } from '../../engine/model/player';
+import { fullName } from '../../engine/model/player';
 import { POSITION_GROUP, POSITIONS, type PositionGroup } from '../../engine/model/positions';
 import { TUNING } from '../../engine/tuning';
 import { h, mount } from '../dom';
 import { actionDialogFrame, dialogFrame, openDialog, toast } from '../feedback';
-import { focusKeyOf } from '../focus';
+import { focusKeyOf, visibleMatch } from '../focus';
 import { ordinal } from '../format';
+import { href } from '../router';
 import type { AppState } from '../state';
 import { weekLabel } from '../ui/games';
-import { GROUP_LABELS, heightText, stat } from '../ui/players';
+import { GROUP_LABELS, stat } from '../ui/players';
+import {
+  boardRows,
+  DRILLS,
+  gradeText,
+  prospectDetails,
+  rangeOf,
+  roundText,
+  scoutedText,
+  unknownCell,
+  type BoardRow
+} from '../ui/prospects';
 import { sortableTable, type SortableTable, type TableColumn } from '../ui/sortable';
 import { tabs } from '../ui/tabs';
-import { traitList } from '../ui/traits';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
 
@@ -66,91 +71,6 @@ const GROUP_ONE: Record<PositionGroup, string> = {
   DL: 'defensive line', LB: 'linebacker', DB: 'defensive back', ST: 'specialist'
 }; // prettier-ignore
 
-const DRILLS: readonly {
-  key: keyof Measurables;
-  label: string;
-  title: string;
-  /** The result in a table cell, and in words. */
-  cell: (v: number) => string;
-  words: (v: number) => string;
-  /** Timed drills: the lowest time is the best. */
-  timed?: boolean;
-}[] = [
-  { key: 'forty', label: '40 (s)', title: '40-yard dash, seconds', cell: v => v.toFixed(2), words: v => `${v.toFixed(2)} seconds`, timed: true },
-  { key: 'bench', label: 'Bench (reps)', title: 'Bench press, reps at 225 pounds', cell: String, words: v => `${v} reps` },
-  { key: 'vertical', label: 'Vertical (in)', title: 'Vertical jump, inches', cell: v => v.toFixed(1), words: v => `${v.toFixed(1)} inches` },
-  { key: 'broad', label: 'Broad (ft, in)', title: 'Broad jump, feet and inches', cell: heightText, words: heightText },
-  { key: 'cone', label: '3-cone (s)', title: '3-cone drill, seconds', cell: v => v.toFixed(2), words: v => `${v.toFixed(2)} seconds`, timed: true },
-  { key: 'shuttle', label: 'Shuttle (s)', title: 'Short shuttle, seconds', cell: v => v.toFixed(2), words: v => `${v.toFixed(2)} seconds`, timed: true }
-]; // prettier-ignore
-
-const CHARACTER: readonly [keyof Personality, string][] = [
-  ['workEthic', 'Work ethic'],
-  ['competitiveness', 'Competitiveness'],
-  ['leadership', 'Leadership'],
-  ['ego', 'Ego'],
-  ['volatility', 'Volatility'],
-  ['loyalty', 'Loyalty'],
-  ['greed', 'Greed'],
-  ['mediaStyle', 'Outspoken with the media'],
-  ['socialActivity', 'Social life']
-];
-const level = (v: number): string =>
-  v >= 80 ? 'Very high' : v >= 60 ? 'High' : v > 40 ? 'Average' : v > 20 ? 'Low' : 'Very low';
-
-interface BoardRow {
-  prospect: Prospect;
-  player: Player;
-  /** His place on the user's board, by grade, from 1. */
-  rank: number;
-  grade: Grade;
-  /** His place on the media's big board, from 1, and the round it projects. */
-  media: number;
-  round: number | null;
-  age: number;
-  visited: boolean;
-}
-
-/** The class on the user's board: best grade first. */
-function boardRows(league: League, draft: DraftClass, abbr: TeamAbbr): BoardRow[] {
-  const grades = teamGrades(league, draft, abbr);
-  const media = new Map(mediaBoard(draft).map((p, i) => [p.player.id, i + 1]));
-  const project = roundProjector(league, draft.year);
-  const today = calendarDay(league.date);
-  const visits = new Set(draft.scouting[abbr].visits);
-  const graded = draft.prospects.map(prospect => ({ prospect, grade: grades.get(prospect.player.id) as Grade }));
-  graded.sort((a, b) => b.grade.value - a.grade.value || (a.prospect.player.id < b.prospect.player.id ? -1 : 1));
-  return graded.map(({ prospect, grade }, i) => {
-    const id = prospect.player.id;
-    const m = media.get(id) ?? draft.prospects.length;
-    return { prospect, player: prospect.player, rank: i + 1, grade, media: m, round: project(m), age: ageOn(prospect.player.birthDate, today), visited: visits.has(id) };
-  });
-} // prettier-ignore
-
-/** A grade as the range it could still move, on the ratings scale. */
-function rangeOf(g: Grade): [low: number, high: number] {
-  const clamp = (x: number) => Math.max(0, Math.min(99, Math.round(x)));
-  return [clamp(g.value - g.spread), clamp(g.value + g.spread)];
-}
-
-/** "66–78", read as "66 to 78". */
-function gradeText(g: Grade): HTMLElement {
-  const [low, high] = rangeOf(g);
-  return h(
-    'span',
-    null,
-    h('span', { 'aria-hidden': 'true' }, `${low}–${high}`),
-    h('span', { class: 'sr-only' }, `${low} to ${high}`)
-  );
-}
-
-const scoutedText = (g: Grade): string => `${Math.round(g.scouted * 100)}%`;
-const roundText = (round: number | null): string => (round ? `${ordinal(round)} round` : 'Undrafted');
-
-/** An unknown value in a table (style guide 9): a dash, with its reason for assistive technology. */
-const unknownCell = (why: string): HTMLElement =>
-  h('span', null, h('span', { 'aria-hidden': 'true' }, '—'), h('span', { class: 'sr-only' }, why));
-
 /** "A strong class, deep at quarterback and thin at tight end." */
 function outlookText(draft: DraftClass): string {
   const o = classOutlook(draft);
@@ -162,50 +82,6 @@ function outlookText(draft: DraftClass): string {
 const regionOf = (p: Prospect): string => p.region ?? INTERNATIONAL;
 const regionName = (region: string): string =>
   region === INTERNATIONAL ? 'International Player Pathway' : region;
-
-/** The visible control a focus key names: the table's on wider screens, the list's on phones. */
-const visibleMatch = (view: Element, key: string): HTMLElement | null =>
-  [...view.querySelectorAll<HTMLElement>(key)].find(el => el.getClientRects().length > 0) ?? null;
-
-/** What the team has learned about a prospect, for his details dialog. */
-function prospectDetails(league: League, row: BoardRow, abbr: TeamAbbr): HTMLElement[] {
-  const draft = league.draft as DraftClass;
-  const { player, prospect, grade } = row;
-  const known = revealed(draft, abbr, player.id);
-  const where = prospect.region ? `${player.college} (${prospect.region})` : player.college;
-  const bio = `${player.position} · ${where} · Age ${row.age} · ${heightText(player.height)}, ${player.weight} lb`;
-  const visitsOpen = draft.prospects.some(p => p.workout);
-
-  const workout = prospect.measurables
-    ? [
-        h('p', { class: 'hint' }, prospect.workout === 'combine' ? 'At the combine.' : 'At his pro day.'),
-        h('div', { class: 'stat-grid' }, ...DRILLS.map(d => stat(d.title.replace(/,.*$/, ''), d.words((prospect.measurables as Measurables)[d.key]))))
-      ]
-    : [h('p', { class: 'muted' }, ['K', 'P', 'LS'].includes(player.position) ? "— · Not measured. Specialists don't run the drills." : '— · Not yet measured. Prospects work out at the combine and at pro days in the offseason.')]; // prettier-ignore
-
-  const traits = traitList(player);
-  const abilities = player.abilities.flatMap(id => ability(id) ?? []);
-  const unscouted = (at: number) => `— · Not yet scouted. Your scouts learn this at ${Math.round((at / S.fullPoints) * 100)}% scouted.`; // prettier-ignore
-  return [
-    h('p', null, bio),
-    h('div', { class: 'stat-grid' }, stat('Your grade', h('span', { class: 'value' }, gradeText(grade))), stat('Scouted', scoutedText(grade)), stat('Your board', ordinal(row.rank)), stat('Media board', ordinal(row.media)), stat('Media projection', roundText(row.round))),
-    h('p', { class: 'hint' }, 'Grades use the ratings scale, blending how good he is now with how good he could become. The range is how far your grade could still move as your scouts work on him.'),
-    h('h3', null, 'Workout'),
-    ...workout,
-    h('h3', null, 'Traits'),
-    !known.traits ? h('p', { class: 'muted' }, unscouted(S.traitsAt))
-      : traits.length ? h('ul', { class: 'preview-list', 'aria-label': 'Traits' }, ...traits.map(t => h('li', null, t)))
-      : h('p', { class: 'muted' }, 'No notable traits.'),
-    h('h3', null, 'Abilities'),
-    !known.abilities ? h('p', { class: 'muted' }, unscouted(S.abilitiesAt))
-      : abilities.length ? h('ul', { class: 'preview-list', 'aria-label': 'Abilities' }, ...abilities.map(a => h('li', null, h('strong', null, a.name), h('span', { class: 'chip' }, `Tier ${a.tier}`))))
-      : h('p', { class: 'muted' }, 'No abilities.'),
-    h('h3', null, 'Character'),
-    known.personality
-      ? h('div', { class: 'stack' }, ...CHARACTER.map(([key, label]) => h('div', { class: 'kv' }, h('span', { class: 'label' }, label), h('span', null, `${level(player.personality[key])}, ${player.personality[key]}`))))
-      : h('p', { class: 'muted' }, visitsOpen ? '— · Not known. A top-30 visit shows you his character.' : '— · Not known. Top-30 visits, which show a prospect\'s character, open after the combine.')
-  ]; // prettier-ignore
-}
 
 export function scoutingScreen(): Screen {
   let off: (() => void) | null = null;
@@ -283,12 +159,18 @@ function summaryCard(
     h('div', { class: 'switch-row' }, h('span', { class: 'field-label', id: 'scoutingAuto-label' }, 'Auto scouting'), toggle),
     h('p', { class: 'muted', id: 'scoutingAuto-hint' }, on ? 'Your director of scouting places your scouts, spends their points on the prospects he grades highest, and makes your top-30 visits. Turn it off to do these yourself.' : 'You place your scouts, spend their points, and make your top-30 visits. Turn it on to hand them to your director of scouting.')
   ); // prettier-ignore
+  const room = h(
+    'div',
+    { class: 'btn-row' },
+    h('a', { class: 'btn btn-outline', href: href('draft') }, 'Draft room')
+  );
   if (!draft) {
     const season = league.date.season;
     return card(
       'Your scouting',
       h('p', { class: 'empty' }, `No class to scout right now. The ${season + 2} draft class comes into view when the ${season + 1} regular season starts.`),
-      switchRow
+      switchRow,
+      room
     ); // prettier-ignore
   }
   const scouting = draft.scouting[abbr];
@@ -303,8 +185,11 @@ function summaryCard(
     'Your scouting',
     h('p', null, `${draft.prospects.length} prospects in the ${draft.year} class. ${outlookText(draft)}`),
     h('div', { class: 'stat-grid' }, stat('Points on hand', String(onHand)), stat('Points a week', String(perWeek)), stat('Top-30 visits', `${visits} of ${S.visits}`)),
-    h('p', { class: 'hint' }, visitsOpen ? `Visits run from the combine to the draft. ${visits < S.visits ? `${S.visits - visits} left.` : 'All made.'}` : 'Top-30 visits open after the combine.'),
-    switchRow
+    draft.board
+      ? h('p', null, 'The draft is on, and your scouting is done. Make your picks in the Draft room.')
+      : h('p', { class: 'hint' }, visitsOpen ? `Visits run from the combine to the draft. ${visits < S.visits ? `${S.visits - visits} left.` : 'All made.'}` : 'Top-30 visits open after the combine.'),
+    switchRow,
+    room
   ); // prettier-ignore
 }
 

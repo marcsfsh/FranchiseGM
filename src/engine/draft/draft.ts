@@ -10,6 +10,7 @@
 import { TEAM_ABBRS, TEAM_COLORS, type TeamAbbr } from '../../data/team-colors';
 import { rookieContract } from '../contracts/build';
 import type { Outcome } from '../contracts/moves';
+import type { Contract } from '../contracts/types';
 import type { NameData } from '../generate/player';
 import { draftOrder, signRookie } from '../generate/rookies';
 import { newId, recordTransaction } from '../league/transactions';
@@ -56,6 +57,14 @@ export function openDraft(league: League, names: NameData, rng: Rng): DraftClass
   return draft;
 }
 
+/** The rookie scale deal a pick brings its player (spec 11.3); `id` names the contract. */
+export const rookieDeal = (
+  league: League,
+  pick: DraftPickRecord,
+  playerId: string,
+  id = 'preview'
+): Contract => rookieContract(league.rules, { id, playerId, team: pick.owner }, pick.year, pick.number ?? 0);
+
 /** Why `team` can't take `prospectId` with the pick on the clock, or null. */
 export function pickProblem(league: League, team: TeamAbbr, prospectId: string): string | null {
   const draft = draftUnderWay(league);
@@ -85,7 +94,7 @@ export function makePick(league: League, prospectId: string, rng: Rng): Outcome<
   const { player } = prospect;
   const { owner: team, round, year } = clock;
   const pick = clock.number as number;
-  const contract = rookieContract(league.rules, { id: newId(league, 'c'), playerId: player.id, team }, year, pick); // prettier-ignore
+  const contract = rookieDeal(league, clock, player.id, newId(league, 'c'));
   league.contracts[contract.id] = contract;
   player.draft = { year, round, pick, team };
   league.players[player.id] = player;

@@ -227,7 +227,8 @@ function pauseSettings(app: AppState): HTMLElement | null {
 /** The user's jobs that run on auto (spec 22.7), beyond the switches on their own screens. */
 const AUTO_JOBS: { job: keyof AutoJobs; label: string; hint: string }[] = [
   { job: 'roster', label: 'Roster moves', hint: 'Signings, cuts, injured reserve, the practice squad, waiver claims, and the final cutdown.' },
-  { job: 'contracts', label: 'Contracts', hint: 'Extensions, tags, tenders, and fifth-year options in the re-sign window.' }
+  { job: 'contracts', label: 'Contracts', hint: 'Extensions, tags, tenders, and fifth-year options in the re-sign window.' },
+  { job: 'draft', label: 'Draft picks', hint: "Each of your picks in the draft, by your staff's grades and your needs. With it off, the draft waits for your pick in the Draft room." }
 ]; // prettier-ignore
 
 function automationSettings(app: AppState): HTMLElement | null {

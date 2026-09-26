@@ -99,6 +99,16 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* At the narrowest widths and largest text sizes, a row's figure (a grade, a rating) moves under the name
+   so the name keeps its room. */
+@container roster (max-width: 20em) {
+  .list-row:has(> .stat) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .list-row > .stat {
+    grid-column: 2;
+  }
+}
 /* Row actions (roster moves, offers, claims) take their own line under the player, and their buttons
    wrap rather than widen the row at narrow widths and large text sizes. */
 .list-row > .btn-row {
@@ -139,6 +149,13 @@
 }
 .roster-table .scout-actions-col {
   width: 10.5rem;
+}
+/* The draft room's board (spec 10.4). */
+.roster-table .need-col {
+  width: 5rem;
+}
+.roster-table .draft-actions-col {
+  width: 6.5rem;
 }
 /* A prospect's name opens his details, in a button that reads like the player links beside it. */
 .prospect-name {

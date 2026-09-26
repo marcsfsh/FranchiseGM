@@ -47,3 +47,7 @@ export function refocusWhenReady(
     if (!within.contains(document.activeElement)) fallback();
   }, wait);
 }
+
+/** The visible control a focus key names: the table's on wider screens, the list's on phones. */
+export const visibleMatch = (view: Element, key: string): HTMLElement | null =>
+  [...view.querySelectorAll<HTMLElement>(key)].find(el => el.getClientRects().length > 0) ?? null;
