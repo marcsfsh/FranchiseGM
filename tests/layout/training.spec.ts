@@ -71,7 +71,8 @@ test('changes, sorts, and resets the development settings', async ({ page }, inf
   const phone = sizeOf(info) === 'phone';
   await importLeagueFixture(page, SEASON_FIXTURE, SEASON_FIXTURE_NAME);
   await goTo(page, '#/settings', 'Settings');
-  const card = page.locator('main section.card', { hasText: 'Development' });
+  // The card by its heading: the draft class card mentions development too.
+  const card = page.locator('main section.card').filter({ has: page.getByRole('heading', { name: 'Development', exact: true }) });
   const status = card.locator('[role="status"]');
   await card.getByLabel('Players retire').selectOption({ label: '2 years later' });
   await expect(status).toHaveText('Players retire 2 years later.');
