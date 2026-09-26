@@ -30,8 +30,9 @@ test('ranks the class by your grades and scouts prospects by hand', async ({ pag
   await expectRegionsMatchOverflow(page);
   await expectTouchTargets(page, 'main', phone ? 48 : 44);
 
-  // A prospect's details: his grade as a range, and what the team hasn't learned yet.
-  const first = prospects(page).first().locator('.prospect-name');
+  // A prospect's details: his grade as a range, and what the team hasn't learned yet. The director's points
+  // have finished the very top of the board, so the first prospect he hasn't.
+  const first = prospects(page).filter({ hasNotText: '100%' }).first().locator('.prospect-name');
   const name = (await first.textContent()) ?? '';
   await first.click();
   const dialog = page.getByRole('dialog', { name });
@@ -60,7 +61,7 @@ test('ranks the class by your grades and scouts prospects by hand', async ({ pag
   await expect(toast).toContainText(/^No points left (in the \w+ or )?from your director\. Your scouts earn more each week\./);
   await toast.getByRole('button', { name: /^Dismiss/ }).click();
   // The dialog's actions say why in the footer beside them, in view.
-  await prospects(page).first().locator('.prospect-name').click();
+  await first.click();
   const details = page.getByRole('dialog', { name });
   await details.getByRole('button', { name: `Scout ${name}` }).click();
   const note = details.locator('.dialog-actions [role="status"]');
