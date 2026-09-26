@@ -6,6 +6,7 @@ import {
   ageCurve,
   campDevelopment,
   developPlayer,
+  mentorsOf,
   weeklyDevelopment
 } from '../../src/engine/progression/develop';
 import {
@@ -134,6 +135,31 @@ describe('development drivers (spec 10.5)', () => {
     expect(spread(0)).toBe(0);
     league.settings.draft.development.WR = 2;
     expect(spread(0)).toBeGreaterThan(1.4 * perCamp);
+  }); // prettier-ignore
+
+  // Spec 10.9: mentors speed up the development of young players at their position group.
+  it('grows a young player faster with a veteran leader at his position group', () => {
+    const league = fresh();
+    const vet = Object.values(league.players).find(p => p.team === 'MIN' && p.position === 'WR' && p.experience >= TUNING.progression.mentorSeasons);
+    if (!vet) throw new Error('no veteran receiver');
+    for (const p of Object.values(league.players)) if (p.team === 'MIN' && p.position === 'WR') p.personality.leadership = 40;
+    expect(mentorsOf(league).get('MIN|WR')).toBeUndefined();
+    vet.personality.leadership = 95;
+    const mentors = mentorsOf(league);
+    expect(mentors.get('MIN|WR')).toBe(95);
+    const grown = (withMentors: boolean) => {
+      let total = 0;
+      for (let i = 0; i < 120; i++) {
+        const p = shaped(league, base(), 22, 10);
+        p.experience = 0;
+        const before = p.ovr;
+        developPlayer(league, p, { kind: 'camp', share: TUNING.progression.campShare, snaps: null, ...(withMentors ? { mentors } : {}) }, stream(i, 'camp'));
+        total += p.ovr - before;
+      }
+      return total / 120;
+    };
+    const alone = grown(false);
+    expect(grown(true)).toBeGreaterThan(alone * (1 + TUNING.progression.mentor * 0.5));
   }); // prettier-ignore
 
   it('records the change for camp with its largest drivers in overall points', () => {

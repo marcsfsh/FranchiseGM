@@ -532,6 +532,14 @@ export const TUNING = {
     injuryWeeks: 8,
     /** Free agents train on their own: growth x this. */
     unsignedGrowth: 0.5,
+    /**
+     * Mentors (spec 10.9): a player with `mentorYoung` credited seasons or fewer grows x (1 + mentor x
+     * (leadership - 50) / 50) from his team's best mentor at his position group, a teammate with
+     * `mentorSeasons` credited seasons and leadership over 50.
+     */
+    mentor: 0.15,
+    mentorYoung: 2,
+    mentorSeasons: 6,
     training: {
       /** A focus adds this share of growth to its ratings and costs the rest this share. */
       focusBonus: 1,

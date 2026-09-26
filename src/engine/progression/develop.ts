@@ -5,9 +5,10 @@
  * left to his potential, his development trait, playing time, training focus, his position coach and
  * coordinator (and their development abilities at camp), scheme fit (at camp), injuries, and work ethic;
  * decline by the development trait, work ethic, and the training program. The settings' tables and speeds
- * scale both. Mentors (spec 10.9) join in M12 and facilities in M16. Every change goes through
- * changeRatings with its largest drivers, in overall points. At a young player's first camps, his hidden
- * potential drifts (spec 10.3's development variance), so some rookies outgrow their grades and others stall.
+ * scale both. A young player also grows faster with a mentor at his position group (spec 10.9); facilities
+ * join in M16. Every change goes through changeRatings with its largest drivers, in overall points. At a
+ * young player's first camps, his hidden potential drifts (spec 10.3's development variance), so some
+ * rookies outgrow their grades and others stall.
  */
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { coachAbility } from '../abilities/coaches';
@@ -73,6 +74,24 @@ export interface StepContext {
   share: number;
   /** Share of a full game's snaps (weekly) or of a season's (camp); null for no playing time to judge. */
   snaps: number | null;
+  /** Each team's best mentor's leadership by position group (spec 10.9), from `mentorsOf`. */
+  mentors?: ReadonlyMap<string, number>;
+}
+
+const mentorKey = (team: TeamAbbr, group: string): string => `${team}|${group}`;
+
+/**
+ * Each team's best mentor by position group: the highest leadership over 50 among its veterans with
+ * `mentorSeasons` credited seasons, on the roster, the practice squad, or a reserve list.
+ */
+export function mentorsOf(league: League): Map<string, number> {
+  const best = new Map<string, number>();
+  for (const p of Object.values(league.players)) {
+    if (!p.team || !DEVELOPING.has(p.status) || p.experience < P.mentorSeasons) continue;
+    const key = mentorKey(p.team, POSITION_GROUP[p.position]);
+    if (p.personality.leadership > Math.max(50, best.get(key) ?? 0)) best.set(key, p.personality.leadership);
+  }
+  return best;
 }
 
 /**
@@ -121,6 +140,9 @@ export function developPlayer(
   const out = player.injury?.weeksOut ?? 0;
   if (out) grow.push(['injury', 1 - P.injury * Math.min(1, out / P.injuryWeeks)]);
   if (!team) grow.push(['unsigned', P.unsignedGrowth]);
+  const mentor =
+    team && player.experience <= P.mentorYoung ? step.mentors?.get(mentorKey(team, group)) : undefined;
+  if (mentor) grow.push(['mentor', 1 + (P.mentor * (mentor - 50)) / 50]);
   let bonus = 0;
   if (team) {
     const staff = coaches(league, team, player);
@@ -205,10 +227,11 @@ export function coachTraining(league: League): void {
  */
 export function weeklyDevelopment(league: League, snaps: Readonly<Record<string, number>>, rng: Rng): RatingChange[] {
   const share = (1 - P.campShare) / league.rules.season.weeks;
+  const mentors = mentorsOf(league);
   const changes: RatingChange[] = [];
   for (const p of Object.values(league.players).sort((a, b) => (a.id < b.id ? -1 : 1))) {
     if (!p.team || !DEVELOPING.has(p.status)) continue;
-    const change = developPlayer(league, p, { kind: 'weekly', share, snaps: (snaps[p.id] ?? 0) / P.fullGameSnaps }, rng);
+    const change = developPlayer(league, p, { kind: 'weekly', share, snaps: (snaps[p.id] ?? 0) / P.fullGameSnaps, mentors }, rng);
     if (change) changes.push(change);
   }
   return changes;
@@ -220,12 +243,13 @@ export function weeklyDevelopment(league: League, snaps: Readonly<Record<string,
  */
 export function campDevelopment(league: League, rng: Rng): RatingChange[] {
   const games = league.rules.season.games;
+  const mentors = mentorsOf(league);
   const changes: RatingChange[] = [];
   for (const p of Object.values(league.players).sort((a, b) => (a.id < b.id ? -1 : 1))) {
     if (!(p.team && DEVELOPING.has(p.status)) && p.status !== 'freeAgent') continue;
     // Rookies have no season to judge, so playing time doesn't count for them.
     const snaps = p.experience === 0 ? null : (league.season.snaps[p.id] ?? 0) / (P.fullGameSnaps * games);
-    const change = developPlayer(league, p, { kind: 'camp', share: P.campShare, snaps }, rng);
+    const change = developPlayer(league, p, { kind: 'camp', share: P.campShare, snaps, mentors }, rng);
     if (change) changes.push(change);
   }
   return changes;
