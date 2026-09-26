@@ -140,7 +140,9 @@ export function stepDemands(league: League, step: 'camp' | 'preseason' | 'game' 
     const d = p.demand;
     if (d?.kind === 'holdout') {
       if (step !== 'cutdown') d.fines += costOf(league, p, step);
-      const chance = H.report * (1.5 - p.personality.greed / 100) + (league.settings.drama.fines ? H.fined : 0);
+      const [calm, greedy] = H.reportGreed;
+      const greed = calm + ((greedy - calm) * p.personality.greed) / 100;
+      const chance = H.report * greed + (league.settings.drama.fines ? H.fined : 0);
       if (rng.float() < chance) {
         endDemand(p, 'reported');
         recordTransaction(league, team, 'reported', p.id, 'ending his holdout without a new deal');

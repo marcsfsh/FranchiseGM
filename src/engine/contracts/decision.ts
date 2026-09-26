@@ -193,7 +193,7 @@ export function offerWorth(league: League, ctx: DecisionContext, player: Player,
   const total = offerValue(offer) * offer.years;
   const guaranteed = offer.signingBonus + Math.min(offer.years, offer.guaranteedYears ?? 0) * offer.salary;
   const money = offerValue(offer) / market + D.perYear * (offer.years - 1) * security(age) + D.guarantee * (total ? Math.min(1, guaranteed / total) : 0);
-  const ring = 1 + Math.max(0, age - D.ringFrom) / 10;
+  const ring = 1 + Math.max(0, age - D.ringFrom) * D.ringPerYear;
   const contender = (ctx.contenders.get(team) ?? 0) * D.contender * weigh(traits.competitiveness) * ring;
   const role = projectedRole(ctx, player, team) * D.role * weigh(traits.ego);
   const state = homeState(player);

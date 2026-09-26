@@ -267,8 +267,8 @@ export const TUNING = {
      * value: its yearly value over his market value, plus `perYear` for each year past the first, weighted
      * by his need for security (none at `securityFrom` years old, all by `securityFull`), plus `guarantee`
      * times the share of the deal guaranteed at signing (the bonus and fully guaranteed salary). On top, as shares of his market value, up to:
-     * `contender` for the strongest team over the middle one (weighted by competitiveness, and by age past
-     * `ringFrom`), `role` for a starting job over a rotation spot (weighted by ego; a backup's loses as
+     * `contender` for the strongest team over the middle one (weighted by competitiveness, and `ringPerYear`
+     * more for each year of age past `ringFrom`), `role` for a starting job over a rotation spot (weighted by ego; a backup's loses as
      * much), `home` for a team in his home state, `loyalty` for his own team at loyalty 100, and `fit` for
      * his best role at the fit cap. He takes the offer worth most once it's worth his demand: `demand`
      * [greed 0, greed 100] of his market value, times the date's share, falling `softening` a week of free
@@ -282,6 +282,7 @@ export const TUNING = {
       guarantee: 0.1,
       contender: 0.12,
       ringFrom: 28,
+      ringPerYear: 0.1,
       role: 0.1,
       home: 0.05,
       loyalty: 0.1,
@@ -913,8 +914,8 @@ export const TUNING = {
    * of his deal rated `minOvr` or more, with `minSeasons` credited seasons and paid under `underpaid` of
    * his market value, holds out when a draw falls under `rate` x the frequency setting x his greed weight
    * x (1 - `loyaltyDamp` x loyalty / 100) x how far under the line he's paid. At each later step (a week of
-   * the preseason, the cutdown, a game week) he reports with chance `report` x (1.5 - greed / 100), plus
-   * `fined` while fines are on. A player whose morale is `tradeBelow` or less, with `tradeSeasons` credited
+   * the preseason, the cutdown, a game week) he reports with chance `report` x `reportGreed` (from its first
+   * number at greed 0 to its second at greed 100), plus `fined` while fines are on. A player whose morale is `tradeBelow` or less, with `tradeSeasons` credited
    * seasons and rated `tradeOvr` or more, asks for a trade at camp with chance `tradeRate` x the frequency
    * x his ego weight, and in a game week with `tradeWeekly` of that; the request lapses once his morale is
    * back to `tradeLapse`. A new deal ends a demand with `dealMorale` more morale; reporting without one
@@ -928,6 +929,7 @@ export const TUNING = {
     rate: 0.35,
     loyaltyDamp: 0.6,
     report: 0.3,
+    reportGreed: [1.5, 0.5] as readonly [number, number],
     fined: 0.1,
     tradeBelow: 60,
     tradeSeasons: 2,
