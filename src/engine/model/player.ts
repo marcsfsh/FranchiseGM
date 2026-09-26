@@ -67,6 +67,11 @@ export interface Player {
   dev: DevTrait;
   personality: Personality;
   team: TeamAbbr | null;
+  /**
+   * The league year he joined his current team (spec 10.9's chemistry and time together), or for a player
+   * without a team the year he last had one or entered the league.
+   */
+  joined: number;
   status: RosterStatus;
   /** Morale, 0 to 100. */
   morale: number;

@@ -374,6 +374,8 @@ export function generatePlayer(ctx: GenContext, req: PlayerRequest): Player {
     dev: drawDevTrait(rng, potential, age),
     personality: drawPersonality(rng, ovr, age, ratings.awr),
     team: req.team,
+    // A veteran joined his team in his draft year if it drafted him, else halfway through his career so far.
+    joined: 'team' in draft && draft.team === req.team ? draft.year : ctx.season - Math.floor(experience / 2),
     status: req.status,
     morale: Math.max(G.morale[2], Math.min(G.morale[3], Math.round(rng.normal(G.morale[0], G.morale[1])))),
     contractId: null,

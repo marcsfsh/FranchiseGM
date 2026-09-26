@@ -19,6 +19,7 @@ import type { RatingChange } from '../progression/change';
 import { coachTraining, weeklyDevelopment } from '../progression/develop';
 import type { Conference, TeamAbbr } from '../../data/teams';
 import { TEAM_ABBRS } from '../../data/team-colors';
+import { weeklyMorale } from '../locker/room';
 import type { League } from '../league/types';
 import type { Phase } from '../model/calendar';
 import type { Player } from '../model/player';
@@ -241,6 +242,12 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     coachTraining(league);
     ratings.push(...weeklyDevelopment(league, snaps, leagueStream(league.random, 'development', week)));
   }
+  // Morale moves with the week's results, roles, pay, and the locker room (spec 10.9).
+  const outcomes = new Map<TeamAbbr, 'W' | 'L' | 'T'>();
+  for (const r of results)
+    for (const team of [r.home, r.away])
+      outcomes.set(team, r.winner === null ? 'T' : r.winner === team ? 'W' : 'L');
+  weeklyMorale(league, outcomes, leagueStream(league.random, 'morale', week));
   // The Super Bowl comes two weeks after the conference championships: the off week heals too.
   if (week === league.rules.season.weeks + PLAYOFF_PHASES.length - 1) healWeek(league);
   // The scouts work the next draft's class every week (spec 10.4).

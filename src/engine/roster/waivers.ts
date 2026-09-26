@@ -199,6 +199,7 @@ export function processWaivers(
       if (taken.has(player.jersey))
         player.jersey = pickJersey(player.position, taken, t => rng.float() * t) ?? 0;
       player.team = winner;
+      player.joined = leagueYear(league.date);
       player.status = 'active';
       player.contractId = contract.id;
       recordTransaction(league, winner, 'claimed', player.id);

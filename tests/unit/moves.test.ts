@@ -70,7 +70,7 @@ describe('signing free agents (spec 19.4, simple acceptance)', () => {
     const before = capSheet(league, 'MIN').space;
     const done = makeMove(league, { kind: 'sign', team: 'MIN', playerId: player.id, offer }, rng);
     if (!done.ok) throw new Error(done.reason);
-    expect(player).toMatchObject({ team: 'MIN', status: 'active' });
+    expect(player).toMatchObject({ team: 'MIN', status: 'active', joined: 2026 });
     const contract = league.contracts[player.contractId ?? ''];
     expect(contract?.years.map(y => y.year)).toEqual([2026, 2027]);
     expect(capSheet(league, 'MIN').space).toBe(done.value.spaceAfter);

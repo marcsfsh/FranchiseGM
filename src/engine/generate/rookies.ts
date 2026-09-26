@@ -72,5 +72,5 @@ export function signRookie(
   rng: Rng
 ): void {
   player.jersey = jerseyFor(league, player, team, rng);
-  Object.assign(player, { team, status: 'active', contractId });
+  Object.assign(player, { team, joined: leagueYear(league.date), status: 'active', contractId });
 }

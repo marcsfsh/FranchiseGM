@@ -104,6 +104,40 @@ export const TUNING = {
   },
 
   /**
+   * Morale and the locker room (spec 10.9; D-51), in morale points a game week. Morale moves `drift` of the
+   * way to `baseline`, then a win or a loss moves it `result`; a player who'd start on ratings (`benchedBy`
+   * or more over his group's weakest starter) but doesn't loses `benched`, and a starter gains `starting`;
+   * a player past his rookie deal paid under `underpaid` of his market value loses `pay`. Competitiveness,
+   * ego, and greed scale those three from `traitScale[0]` (0) to `traitScale[1]` (100). Each leader
+   * (leadership `leaderAt` or more with `leaderSeasons` credited seasons) lifts his teammates `leader`, and
+   * each disruptive player (morale under `disruptiveBelow`, ego and volatility averaging `disruptiveAt` or
+   * more) costs them `disruptive`, counting `voices` of each at most. Releasing a leader who's been with the
+   * team `popularSeasons` costs his teammates `releaseLeader` at once. A new league year moves every morale
+   * `offseasonReset` of the way back to the baseline.
+   */
+  lockerRoom: {
+    baseline: 70,
+    drift: 0.1,
+    result: 1.5,
+    benched: 2,
+    benchedBy: 3,
+    starting: 0.3,
+    pay: 1,
+    underpaid: 0.75,
+    traitScale: [0.5, 1.5] as readonly [number, number],
+    leaderAt: 75,
+    leaderSeasons: 4,
+    leader: 0.3,
+    disruptiveBelow: 40,
+    disruptiveAt: 65,
+    disruptive: 0.4,
+    voices: 3,
+    popularSeasons: 3,
+    releaseLeader: 3,
+    offseasonReset: 0.5
+  },
+
+  /**
    * Development traits (spec 10.6). Odds weights relative to Normal (1): scale x sigmoid((potential -
    * center) / spread) x youth + base, where youth favors players still growing.
    */

@@ -43,6 +43,7 @@ import {
   type TransactionKind
 } from '../league/transactions';
 import type { League } from '../league/types';
+import { popular, releaseMorale } from '../locker/room';
 import { leagueYear } from '../model/calendar';
 import { pickJersey } from '../model/jerseys';
 import { fullName, type Player } from '../model/player';
@@ -138,6 +139,7 @@ function fitJersey(league: League, player: Player, team: TeamAbbr, rng: Rng): vo
 function join(league: League, player: Player, team: TeamAbbr, contract: Contract, status: Player['status'], rng: Rng) {
   league.contracts[contract.id] = contract;
   fitJersey(league, player, team, rng);
+  if (player.team !== team) player.joined = leagueYear(league.date);
   player.team = team;
   player.status = status;
   player.contractId = contract.id;
@@ -291,6 +293,7 @@ function plan(league: League, move: Move, enforce: boolean): Outcome<Plan> {
           : `${name} becomes a free agent.`
       ];
       if (injured) notes.push('He is hurt, so his injury guarantees are owed.');
+      if (popular(league, player)) notes.push(`${name} is a leader in your locker room: letting him go hurts his teammates' morale.`);
       if (terminationPay) notes.push("As a vested veteran on the week 1 roster, he's owed the rest of this season's salary.");
       // Under the CBA a June 1 release keeps its full charge until June 2, when the split takes effect.
       if (designated)
@@ -314,6 +317,7 @@ function plan(league: League, move: Move, enforce: boolean): Outcome<Plan> {
           );
           league.teams[team].resting = league.teams[team].resting.filter(id => id !== player.id);
           log(league, team, 'released', player, move.reason);
+          releaseMorale(league, team, player);
           if (waived) placeOnWaivers(league, player, team, contract.id);
           else Object.assign(player, { team: null, status: 'freeAgent', contractId: null });
         }

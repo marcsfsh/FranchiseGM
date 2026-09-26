@@ -12,6 +12,7 @@ import { contractRecord, type ContractRecord } from '../contracts/history';
 import { endContract } from '../contracts/moves';
 import { tenderAmount, TENDER_LABELS, type TenderLevel } from '../contracts/resign';
 import type { Contract } from '../contracts/types';
+import { resetMorale } from '../locker/room';
 import { leagueYear, type GameDate } from '../model/calendar';
 import type { Rng } from '../rng';
 import { minimumSalary, type RuleSet } from '../rules/ruleset';
@@ -108,6 +109,8 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
   league.caps[year] = league.rules.cap.amount;
   league.date = { ...date };
   for (const abbr of TEAM_ABBRS) league.teams[abbr].carryover = carryover[abbr];
+  // A new league year eases last season's highs and lows (spec 10.9).
+  resetMorale(league);
 
   const expired: { playerId: string; team: TeamAbbr }[] = [];
   for (const player of Object.values(league.players)) {

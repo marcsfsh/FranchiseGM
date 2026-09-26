@@ -6,13 +6,12 @@
  * whether he starts, for the draft's hit rates), and each offseason's retirements.
  */
 import { TEAM_ABBRS } from '../../data/team-colors';
-import { startersOf } from '../league/depth';
+import { BASE_SLOTS, startersOf } from '../league/depth';
 import { calendarDay } from '../model/calendar';
 import type { League } from '../league/types';
 import { ageOn } from '../model/player';
 import { POSITION_GROUP, type PositionGroup } from '../model/positions';
 import { DEFAULT_RULES } from '../rules/ruleset';
-import type { Slot } from '../schemes/slots';
 import { advanceWeek } from '../season/advance';
 import { advanceOffseason } from '../season/offseason';
 import { gameWeek } from '../season/state';
@@ -61,12 +60,6 @@ export interface ChainSample {
 const YEAR_MS = 365.25 * 86_400_000;
 const exactAge = (birthDate: string, day: string): number =>
   (Date.parse(day) - Date.parse(birthDate)) / YEAR_MS;
-
-/** The base starters on a depth chart, 11 a side; specialists and situational players don't count. */
-const BASE_SLOTS: readonly Slot[] = [
-  'QB', 'RB1', 'X', 'Z', 'SLOT', 'TE1', 'LT', 'LG', 'C', 'RG', 'RT',
-  'LEDGE', 'REDGE', 'DT1', 'DT2', 'FLEX', 'MIKE', 'WILL', 'CB1', 'CB2', 'FS', 'SS'
-]; // prettier-ignore
 
 /**
  * Every player not retired on the season's opening day. A team's starters are the first players at each base
