@@ -154,6 +154,8 @@ export function openMoveDialog(
   body.push(output, error);
   const dialog = actionDialogFrame(id, options.title, body, [confirm, cancel]);
   confirm.addEventListener('click', () => {
+    // A preview still waiting on a pause in typing would hide the answer to this move.
+    window.clearTimeout(timer);
     const move = selected === null ? null : (choices[selected]?.move() ?? null);
     if (!move) return;
     const result = applyMove(app, move);
