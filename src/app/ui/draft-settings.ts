@@ -1,9 +1,10 @@
 /**
  * The draft class settings card for Settings (spec 22.4, 10.3): the class size, scouting accuracy, the
- * class strength draw overall and by position group, bust and gem frequency by position group, and each
- * position's share of a class. Values are percentages of normal, except strength, which runs from -100%
- * (the weakest classes) to +100% (the strongest). Classes are made a season ahead, so changes apply to the
- * next class made; scouting accuracy applies at once.
+ * class strength draw overall and by position group, bust and gem frequency and development variance by
+ * position group, and each position's share of a class. Values are percentages of normal, except strength,
+ * which runs from -100% (the weakest classes) to +100% (the strongest). Classes are made a season ahead, so
+ * changes apply to the next class made; scouting accuracy applies at once, and development variance at the
+ * next training camp.
  */
 import { POSITIONS, type Position, type PositionGroup } from '../../engine/model/positions';
 import {
@@ -14,6 +15,7 @@ import {
   type DraftSettings
 } from '../../engine/draft/settings';
 import { POSITION_GROUPS } from '../../engine/progression/settings';
+import { TUNING } from '../../engine/tuning';
 import { h } from '../dom';
 import { dialogFrame, openDialog } from '../feedback';
 import type { AppState } from '../state';
@@ -33,7 +35,7 @@ const percentText = (n: number): string => (n < 0 ? `−${-n}%` : `${n}%`);
 function changed(s: DraftSettings): number {
   const d = defaultDraftSettings();
   const differs = (a: number, b: number) => Math.abs(a - b) > 1e-9;
-  const records = (['groupMean', 'groupSpread', 'bust', 'gem'] as const).flatMap(k => POSITION_GROUPS.map(g => differs(s[k][g], d[k][g]))); // prettier-ignore
+  const records = (['groupMean', 'groupSpread', 'bust', 'gem', 'development'] as const).flatMap(k => POSITION_GROUPS.map(g => differs(s[k][g], d[k][g]))); // prettier-ignore
   const mix = POSITIONS.map(p => differs(s.positionMix[p], d.positionMix[p]));
   const single = (['classSize', 'strengthMean', 'strengthSpread', 'scoutingAccuracy'] as const).map(k =>
     differs(s[k], d[k])
@@ -93,6 +95,7 @@ interface GroupRow {
   spread: number;
   bust: number;
   gem: number;
+  development: number;
 }
 
 interface MixRow {
@@ -190,16 +193,18 @@ export function draftSettingsCard(app: AppState, status: HTMLElement, onReset: (
     slider('draftStrengthSpread', 'Class strength variation', toPercent(s.strengthSpread), 0, MAX, plain, n => edit(d => (d.strengthSpread = n / 100), ['strengthSpread', n]))
   ); // prettier-ignore
 
-  // Position groups: strength draws, and how often prospects are busts or gems.
+  // Position groups: strength draws, how often prospects are busts or gems, and how far rookies' development
+  // strays from the expected.
   const groups: GroupRow[] = POSITION_GROUPS.map((g, i) => ({
     group: g,
     order: i,
     strength: toPercent(s.groupMean[g]),
     spread: toPercent(s.groupSpread[g]),
     bust: toPercent(s.bust[g]),
-    gem: toPercent(s.gem[g])
+    gem: toPercent(s.gem[g]),
+    development: toPercent(s.development[g])
   }));
-  const groupCell = (r: GroupRow, key: 'strength' | 'spread' | 'bust' | 'gem', label: string, min: number, max: number) =>
+  const groupCell = (r: GroupRow, key: 'strength' | 'spread' | 'bust' | 'gem' | 'development', label: string, min: number, max: number) =>
     percentCell({ id: `draft-${key}-${r.group}`, said: `${label}, ${GROUP_LABELS[r.group].toLowerCase()}`, value: r[key], min, max, write: n => {
       r[key] = n;
       edit(d => {
@@ -212,7 +217,8 @@ export function draftSettingsCard(app: AppState, status: HTMLElement, onReset: (
     { id: 'strength', label: 'Strength (%)', name: 'strength', type: 'number', numeric: true, value: r => r.strength, cell: r => groupCell(r, 'strength', 'Strength', -100, 100) },
     { id: 'spread', label: 'Variation (%)', name: 'variation', type: 'number', numeric: true, value: r => r.spread, cell: r => groupCell(r, 'spread', 'Variation', 0, MAX) },
     { id: 'bust', label: 'Busts (%)', name: 'busts', type: 'number', numeric: true, value: r => r.bust, cell: r => groupCell(r, 'bust', 'Busts', 0, MAX) },
-    { id: 'gem', label: 'Gems (%)', name: 'gems', type: 'number', numeric: true, value: r => r.gem, cell: r => groupCell(r, 'gem', 'Gems', 0, MAX) }
+    { id: 'gem', label: 'Gems (%)', name: 'gems', type: 'number', numeric: true, value: r => r.gem, cell: r => groupCell(r, 'gem', 'Gems', 0, MAX) },
+    { id: 'development', label: 'Development (%)', name: 'development', type: 'number', numeric: true, value: r => r.development, cell: r => groupCell(r, 'development', 'Development variation', 0, MAX) }
   ]; // prettier-ignore
 
   // Each position's share of a class.
@@ -243,7 +249,7 @@ export function draftSettingsCard(app: AppState, status: HTMLElement, onReset: (
   });
 
   return [
-    h('p', { class: 'muted' }, 'How draft classes are made. Values are percentages of normal, where 100% is the calibrated league; strength runs from −100% for the weakest classes to +100% for the strongest. Classes are made a season ahead, so changes apply to the next class. Scouting accuracy applies at once.'),
+    h('p', { class: 'muted' }, `How draft classes are made. Values are percentages of normal, where 100% is the calibrated league; strength runs from −100% for the weakest classes to +100% for the strongest. Busts and gems are prospects the scouts badly misjudge, and development sets how far players stray from their expected growth in their first ${TUNING.progression.potentialDrift.camps} seasons. Classes are made a season ahead, so changes apply to the next class. Scouting accuracy applies at once, and development at the next training camp.`),
     h('div', { class: 'field' }, h('label', { for: 'draftClassSize' }, 'Prospects in each class'), size, h('p', { class: 'hint', id: 'draftClassSize-hint' }, `${defaultDraftSettings().classSize} is normal. From ${sizes.min} to ${sizes.max}.`), sizeError),
     h('details', { class: 'slider-group', open: true }, h('summary', null, 'The whole class'), sliders),
     h('details', { class: 'slider-group' }, h('summary', null, 'By position group'), sortableTable({ key: 'draft.groups', name: 'Draft classes by position group', caption: 'Draft classes by position group', captionClass: 'sr-only', className: 'stat-table curve-table', columns: groupColumns, rows: groups, rowId: r => r.group, defaultOrder: 'by position group', scroll: true, status }).element),

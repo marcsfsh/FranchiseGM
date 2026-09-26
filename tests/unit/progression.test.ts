@@ -109,6 +109,33 @@ describe('development drivers (spec 10.5)', () => {
     expect(fasterOld).toBeLessThan(normalOld - 0.5);
   });
 
+  // Spec 10.3: development variance, by position group, makes busts and gems with the scouts' misjudgment.
+  it("drifts a young player's ceiling at his first camps, by his position group's setting", () => {
+    const league = fresh();
+    /** The spread of the ceiling's change at one camp, for receivers drafted `years` drafts before. */
+    const spread = (years: number): number => {
+      const moves = Array.from({ length: 200 }, (_, i) => {
+        const p = shaped(league, base(), 22, 10);
+        p.draft = { year: 2027 - years, round: 1, pick: 1, team: 'MIN' };
+        const before = p.potential;
+        developPlayer(league, p, { kind: 'camp', share: TUNING.progression.campShare, snaps: 0.9 }, stream(i, 'camp'));
+        return p.potential - before;
+      });
+      const mean = moves.reduce((a, b) => a + b, 0) / moves.length;
+      return Math.sqrt(moves.reduce((a, b) => a + (b - mean) ** 2, 0) / moves.length);
+    };
+    const { sd, camps } = TUNING.progression.potentialDrift;
+    const perCamp = sd / Math.sqrt(camps);
+    expect(spread(0)).toBeGreaterThan(0.7 * perCamp);
+    expect(spread(0)).toBeLessThan(1.3 * perCamp);
+    expect(spread(camps - 1)).toBeGreaterThan(0.7 * perCamp);
+    expect(spread(camps)).toBe(0);
+    league.settings.draft.development.WR = 0;
+    expect(spread(0)).toBe(0);
+    league.settings.draft.development.WR = 2;
+    expect(spread(0)).toBeGreaterThan(1.4 * perCamp);
+  }); // prettier-ignore
+
   it('records the change for camp with its largest drivers in overall points', () => {
     const league = fresh();
     const p = shaped(league, base(), 22, 10, 'Star');

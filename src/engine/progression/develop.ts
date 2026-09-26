@@ -6,7 +6,8 @@
  * coordinator (and their development abilities at camp), scheme fit (at camp), injuries, and work ethic;
  * decline by the development trait, work ethic, and the training program. The settings' tables and speeds
  * scale both. Mentors (spec 10.9) join in M12 and facilities in M16. Every change goes through
- * changeRatings with its largest drivers, in overall points.
+ * changeRatings with its largest drivers, in overall points. At a young player's first camps, his hidden
+ * potential drifts (spec 10.3's development variance), so some rookies outgrow their grades and others stall.
  */
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { coachAbility } from '../abilities/coaches';
@@ -93,6 +94,15 @@ export function developPlayer(
   const plan = team ? league.teams[team].training : null;
   const weights = HAND_SET_FORMULAS[player.position].coefficients;
   const weightSum = Object.values(weights).reduce((a, b) => a + (b ?? 0), 0) || 1;
+
+  // Development variance (spec 10.3): at his first camps after the draft, a young player's ceiling drifts,
+  // by his position group's setting. Camp comes before the season named for the year after the draft's.
+  const drift = P.potentialDrift;
+  const camp = league.date.season + 1 - player.draft.year;
+  if (step.kind === 'camp' && camp >= 0 && camp < drift.camps) {
+    const sd = (drift.sd * league.settings.draft.development[group]) / Math.sqrt(drift.camps);
+    player.potential = Math.max(player.ovr, Math.min(99, Math.round(player.potential + rng.normal(0, sd))));
+  }
 
   // Growth and decline factors, each a named driver.
   const grow: [string, number][] = [];

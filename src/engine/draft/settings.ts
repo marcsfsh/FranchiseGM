@@ -1,8 +1,8 @@
 /**
  * Draft class settings (spec 22.4, 10.3): the class size, each position's share, the class strength draws
- * overall and by position group, bust and gem frequency by position group, and scouting accuracy. Shares,
- * spreads, frequencies, and accuracy are multipliers where 1 is normal; the strength means shift classes
- * by up to `TUNING.draft.strengthMax` quality units at 1 or -1.
+ * overall and by position group, bust and gem frequency and development variance by position group, and
+ * scouting accuracy. Shares, spreads, frequencies, variance, and accuracy are multipliers where 1 is normal;
+ * the strength means shift classes by up to `TUNING.draft.strengthMax` quality units at 1 or -1.
  */
 import { TEAM_ABBRS } from '../../data/team-colors';
 import { POSITION_GROUP, type Position, type PositionGroup } from '../model/positions';
@@ -24,6 +24,8 @@ export interface DraftSettings {
   /** How often prospects at each position group are badly overrated (busts) or underrated (gems). */
   bust: Record<PositionGroup, number>;
   gem: Record<PositionGroup, number>;
+  /** How far each position group's young players stray from their expected development (spec 10.3). */
+  development: Record<PositionGroup, number>;
   /** How fast scouting narrows each team's error (M11 slice 3). */
   scoutingAccuracy: number;
 }
@@ -51,6 +53,7 @@ export function defaultDraftSettings(): DraftSettings {
     groupSpread: everyGroup(1),
     bust: everyGroup(1),
     gem: everyGroup(1),
+    development: everyGroup(1),
     scoutingAccuracy: 1
   };
 }

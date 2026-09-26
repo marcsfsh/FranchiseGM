@@ -178,6 +178,10 @@ test('changes and resets the draft class settings', async ({ page }, info) => {
   await deep.fill('-120');
   await deep.press('Tab');
   await expect(status).toHaveText('Strength, receivers: −100%, the least allowed.');
+  const development = card.getByRole('spinbutton', { name: 'Development variation, defensive line, percent' });
+  await development.fill('62');
+  await development.press('Tab');
+  await expect(status).toHaveText('Development variation, defensive line: 60%, to the nearest 5.');
   await card.locator('summary', { hasText: 'Position mix' }).click();
   const mix = card.getByRole('spinbutton', { name: 'Share, QB, percent' });
   await mix.fill('');
@@ -197,7 +201,7 @@ test('changes and resets the draft class settings', async ({ page }, info) => {
 
   await card.getByRole('button', { name: 'Reset draft classes to normal' }).click();
   const dialog = page.getByRole('dialog', { name: 'Reset draft classes' });
-  await dialog.getByRole('button', { name: 'Reset 5 settings' }).click();
+  await dialog.getByRole('button', { name: 'Reset 6 settings' }).click();
   await expect(status).toHaveText('Every draft class setting is back to normal.');
   await expect(card.getByRole('button', { name: 'Reset draft classes to normal' })).toBeFocused();
   await expect(card.getByLabel('Prospects in each class')).toHaveValue('450');

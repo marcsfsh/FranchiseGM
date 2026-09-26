@@ -473,6 +473,12 @@ export const TUNING = {
     /** Growth scales with the room left to potential: full at this many points, within these bounds. */
     potentialRoom: 12,
     potentialBounds: [0, 1.5],
+    /**
+     * Development variance (spec 10.3): a young player's potential drifts at each of his first `camps`
+     * training camps after his draft, by draws that add up to sd `sd` points over them. The draft class
+     * settings scale it by position group; with the scouts' misjudgment, it makes busts and gems.
+     */
+    potentialDrift: { sd: 3, camps: 4 },
     /** Development traits (spec 10.6) speed growth and slow decline. */
     devGrowth: { Normal: 1, Star: 1.25, Superstar: 1.5, 'X-Factor': 1.75 },
     devDecline: { Normal: 1, Star: 0.92, Superstar: 0.86, 'X-Factor': 0.8 },
