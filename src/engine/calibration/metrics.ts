@@ -200,6 +200,7 @@ def('economy.faTopShare', 'economy', "Richest of their deals' yearly value, shar
 def('economy.marketPay', 'economy', "New veteran deals' yearly value over the market price, median", 'dec2');
 def('economy.faMarketPay', 'economy', 'The same for free agents who changed teams', 'dec2');
 def('economy.marketPaySpread', 'economy', "Widest gap between position groups' medians", 'dec2');
+def('economy.faOpeningPay', 'economy', "Movers' first-week deals over their later ones, medians", 'dec2');
 def('economy.compNetLoss', 'economy', 'Compensatory picks for net losses, per draft', 'dec1');
 def('economy.cashShare', 'economy', 'Cash paid in a league year, share of the cap', 'pct');
 def('economy.cashLow', 'economy', "Lowest team's cash over a floor window, share of its caps", 'pct');
@@ -679,6 +680,10 @@ export function chainSeasonMetrics(chains: readonly (readonly ChainSeason[])[]):
     byGroup.set(d.group, list);
   }
   const groups = [...byGroup.values()].filter(g => g.length >= DEALS_PER_GROUP).map(median);
+  // Free agency's prices as the market opens, against the weeks after (D-65).
+  const opening = movers.filter(d => d.week === 1).map(d => d.toMarket);
+  const later = movers.filter(d => d.week > 1).map(d => d.toMarket);
+  out.set('economy.faOpeningPay', { value: opening.length && later.length ? median(opening) / median(later) : null, n: opening.length + later.length }); // prettier-ignore
   out.set('economy.marketPaySpread', { value: groups.length > 1 ? Math.max(...groups) - Math.min(...groups) : null, n: groups.length }); // prettier-ignore
   const comps = judged.flatMap(s => (s.comp ? [s.comp.netLoss] : []));
   out.set('economy.compNetLoss', { value: mean(comps), n: comps.length });

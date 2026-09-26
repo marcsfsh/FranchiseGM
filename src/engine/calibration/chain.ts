@@ -7,10 +7,11 @@
  * with them each season's records, its week 1 cap sheets and market, its draft's compensatory picks, and each
  * team's cash over the league year.
  */
-import { TEAM_ABBRS } from '../../data/team-colors';
+import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { teamCash } from '../cap/floor';
 import { capSheet } from '../cap/sheet';
 import { marketValue } from '../contracts/market';
+import type { Contract } from '../contracts/types';
 import { contractSummary } from '../contracts/view';
 import { compensatoryPicks, type CompensatoryPick } from '../draft/compensatory';
 import { latestDraftOrder } from '../draft/picks';
@@ -75,11 +76,12 @@ export interface MarketFacts {
   /** The largest yearly value among their new deals. */
   topMover: number;
   /**
-   * The veteran deals that start this league year, for players rated `MARKET_FROM` or more still with the
-   * team that signed them: each one's yearly value over the market's price for the player at week 1 (spec
-   * 23.3), his position group, and whether he's one of the free agents who changed teams.
+   * The veteran deals and extensions that start this league year, for players rated `MARKET_FROM` or more with
+   * the team that signed them as the OTAs end: each one's yearly value over the market's price for the player
+   * when he signed (spec 23.3), his position group, whether he's one of the free agents who changed teams, and
+   * the week of free agency he signed in (0 outside it). Empty for a chain's first season.
    */
-  deals: { group: PositionGroup; toMarket: number; mover: boolean }[];
+  deals: { group: PositionGroup; toMarket: number; mover: boolean; week: number }[];
 }
 
 /** Players whose market price is well over the minimum salary: about 4 times it at 70 for most positions. */
@@ -147,8 +149,35 @@ export function snapshot(league: League): ChainSnapshot {
   return { season: league.date.season, teams: Object.keys(league.teams).length, players };
 }
 
-/** The league's market at week 1 of a season (spec 23.3). */
-export function marketFacts(league: League): MarketFacts {
+/** Whether a deal is a new team's for a free agent who left `from` as this league year opened. */
+const movedOn = (league: League, team: TeamAbbr, c: Contract, from: TeamAbbr): boolean =>
+  team !== from && c.team === team && leagueYear(c.signed) === leagueYear(league.date);
+
+/** A veteran's new deals: a free agent's, and a re-signing or extension, which adds years to his deal. */
+const NEW_DEALS: ReadonlySet<Contract['type']> = new Set(['veteran', 'extension']);
+
+/**
+ * The veteran deals and extensions that start this league year so far, for `MarketFacts.deals`: read as the
+ * OTAs end, before camp's development changes ratings, each against the market's price at the player's rating
+ * then and his age the day he signed.
+ */
+export function newDeals(league: League): MarketFacts['deals'] {
+  const year = leagueYear(league.date);
+  const gone = league.departures?.year === year ? league.departures.players : {};
+  const deals: MarketFacts['deals'] = [];
+  for (const p of Object.values(league.players)) {
+    const c = p.team && p.contractId ? league.contracts[p.contractId] : undefined;
+    if (!c || !NEW_DEALS.has(c.type) || c.team !== p.team || c.years[0]?.year !== year || p.ovr < MARKET_FROM) continue; // prettier-ignore
+    const market = marketValue(league.rules, p.position, p.ovr, ageOn(p.birthDate, calendarDay(c.signed)), p.experience); // prettier-ignore
+    const from = gone[p.id];
+    const week = c.signed.phase === 'freeAgency' ? c.signed.week : 0;
+    deals.push({ group: POSITION_GROUP[p.position], toMarket: contractSummary(c, league.date).apy / market, mover: from !== undefined && movedOn(league, c.team, c, from), week }); // prettier-ignore
+  }
+  return deals;
+}
+
+/** The league's market at week 1 of a season (spec 23.3), with the new deals read before camp. */
+export function marketFacts(league: League, deals: MarketFacts['deals'] = []): MarketFacts {
   const year = leagueYear(league.date);
   const sheets = TEAM_ABBRS.map(abbr => capSheet(league, abbr, year));
   let topQb = 0;
@@ -164,22 +193,12 @@ export function marketFacts(league: League): MarketFacts {
   let movers = 0;
   let topMover = 0;
   const gone = league.departures;
-  const moved = new Set<string>();
   for (const [id, from] of Object.entries(gone?.year === year ? gone.players : {})) {
     const p = league.players[id];
     const c = p?.team && p.contractId ? league.contracts[p.contractId] : undefined;
-    if (!p?.team || p.team === from || !c || c.team !== p.team || leagueYear(c.signed) !== year) continue;
+    if (!p?.team || !c || !movedOn(league, p.team, c, from)) continue;
     movers++;
-    moved.add(id);
     topMover = Math.max(topMover, contractSummary(c, league.date).apy);
-  }
-  const day = calendarDay(league.date);
-  const deals: MarketFacts['deals'] = [];
-  for (const p of Object.values(league.players)) {
-    const c = p.team && p.contractId ? league.contracts[p.contractId] : undefined;
-    if (!c || c.type !== 'veteran' || c.team !== p.team || c.years[0]?.year !== year || p.ovr < MARKET_FROM) continue; // prettier-ignore
-    const market = marketValue(league.rules, p.position, p.ovr, ageOn(p.birthDate, day), p.experience);
-    deals.push({ group: POSITION_GROUP[p.position], toMarket: contractSummary(c, league.date).apy / market, mover: moved.has(p.id) }); // prettier-ignore
   }
   return {
     cap: league.rules.cap.amount,
@@ -206,9 +225,10 @@ export function runChain(
   const facts: ChainFacts = { snapshots: [], retirements: [], seasons: [] };
   const input = { actions: 0, entropy: 0 };
   let comp: ChainSeason['comp'] = null;
+  let deals: MarketFacts['deals'] = [];
   for (let s = 0; s < seasons; s++) {
     facts.snapshots.push(snapshot(league));
-    const market = marketFacts(league);
+    const market = marketFacts(league, deals);
     while (gameWeek(league) !== null) {
       const week = advanceWeek(league, data.climate, input);
       if (week.blocked)
@@ -230,6 +250,8 @@ export function runChain(
       const season = league.date.season;
       const played = facts.seasons.at(-1) as ChainSeason;
       while (league.date.phase !== 'regularSeason') {
+        // The league year's new deals as they were signed, before camp develops the players.
+        if (league.date.phase === 'otas') deals = newDeals(league);
         const step = advanceOffseason(league, { names: data.names, climate: data.climate }, input);
         if (step.blocked) throw new Error(`The chained league stopped in the offseason: ${step.blocked}`);
         // The annual meeting has just awarded the compensatory picks; the same reckoning sorts them by kind.

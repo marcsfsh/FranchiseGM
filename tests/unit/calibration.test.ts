@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { parseClimate } from '../../src/data/climate';
 import { parseSchedule } from '../../src/data/schedule';
 import { TEAM_ABBRS, type TeamAbbr } from '../../src/data/team-colors';
-import type { ChainSeason } from '../../src/engine/calibration/chain';
+import { newDeals, type ChainSeason } from '../../src/engine/calibration/chain';
 import { FIT_GROUP_IDS } from '../../src/engine/calibration/experiment';
 import {
   chainSeasonMetrics,
@@ -25,10 +25,17 @@ import { LoopSeason, loopLeague } from '../../src/engine/calibration/loop';
 import { formatValue, reportMarkdown, summaryLines } from '../../src/engine/calibration/report';
 import { defaultExperiments, finishRun, planJobs, sharedLeague } from '../../src/engine/calibration/run';
 import { checkTargets, evaluate, type TargetsFile } from '../../src/engine/calibration/targets';
+import { marketValue } from '../../src/engine/contracts/market';
+import { emptyYear, type Contract } from '../../src/engine/contracts/types';
+import { putContract } from '../../src/engine/league/contract-index';
+import { calendarDay, type GameDate } from '../../src/engine/model/calendar';
+import { ageOn, type Player } from '../../src/engine/model/player';
+import { POSITION_GROUP } from '../../src/engine/model/positions';
 import { stream } from '../../src/engine/rng';
 import { emptyTotals } from '../../src/engine/sim/stats';
 import type { GameWeather } from '../../src/engine/sim/types';
 import { nameData } from '../helpers/base-data';
+import { situationLeague } from '../helpers/situations';
 
 const data: CalibrationData = {
   names: nameData(),
@@ -263,10 +270,10 @@ describe('calibration targets and reports (spec 23.2)', { timeout: 30_000 }, () 
      * deals at 0.8 to 1.2 of the market for receivers, 1.1 for quarterbacks, and 1.3 for a lone kicker.
      */
     const deals: ChainSeason['market']['deals'] = [
-      ...[0.8, 0.9, 1, 1.1, 1.2].map((toMarket, i) => ({ group: 'WR' as const, toMarket, mover: i === 4 })),
-      { group: 'QB', toMarket: 1.1, mover: true },
-      { group: 'QB', toMarket: 1.1, mover: false },
-      { group: 'ST', toMarket: 1.3, mover: false }
+      ...[0.8, 0.9, 1, 1.1, 1.2].map((toMarket, i) => ({ group: 'WR' as const, toMarket, mover: i === 4, week: i === 4 ? 1 : 0 })),
+      { group: 'QB', toMarket: 1.1, mover: true, week: 2 },
+      { group: 'QB', toMarket: 1.1, mover: false, week: 0 },
+      { group: 'ST', toMarket: 1.3, mover: false, week: 0 }
     ];
     const season = (n: number, cash = 90): ChainSeason => ({
       season: 2025 + n,
@@ -292,10 +299,45 @@ describe('calibration targets and reports (spec 23.2)', { timeout: 30_000 }, () 
     expect(m.get('economy.marketPay')).toEqual({ value: 1.1, n: 80 });
     expect(m.get('economy.faMarketPay')).toMatchObject({ value: 1.15, n: 20 });
     expect(m.get('economy.marketPaySpread')?.value).toBeCloseTo(0.1);
+    // Movers' first-week deals at 1.2 of the market against their later ones at 1.1.
+    expect(m.get('economy.faOpeningPay')?.value).toBeCloseTo(1.2 / 1.1);
     expect(m.get('economy.cashShare')?.value).toBeCloseTo(0.9 - 0.1 / 32);
     // Floor windows of 4 years from the chain's second: seasons 5 to 8 and 9 to 12, a team at 80% in each.
     expect(m.get('economy.cashLow')).toEqual({ value: 0.8, n: 2 });
     expect(m.get('economy.floorShort')).toEqual({ value: 1, n: 2 });
+  }); // prettier-ignore
+
+  it('reads new deals before camp, each against the market when he signed', () => {
+    const league = structuredClone(situationLeague);
+    // The OTAs of the next league year: the generated deals started in this one.
+    const season = league.date.season;
+    const next = season + 1;
+    league.date = { season, phase: 'otas', week: 1 };
+    const [mover, stayer, old, low] = Object.values(league.players).filter(p => p.team === 'GB' && p.status === 'active' && p.ovr >= 72).sort((a, b) => (a.id < b.id ? -1 : 1)); // prettier-ignore
+    if (!mover || !stayer || !old || !low) throw new Error('too few players');
+    low.ovr = 69;
+    const sign = (p: Player, type: Contract['type'], signed: GameDate, from: number) => {
+      const c: Contract = {
+        id: `new-${p.id}`, playerId: p.id, team: 'GB', signed, type,
+        years: [{ ...emptyYear(from), base: 10_000_000 }, { ...emptyYear(from + 1), base: 10_000_000 }],
+        signingBonus: 0, signingBonusYears: null, vesting: [], noTrade: false, fifthYearOption: 'none', restructures: [], weeklyPay: 0, ended: null
+      }; // prettier-ignore
+      putContract(league, c);
+      p.contractId = c.id;
+    };
+    const week2: GameDate = { season, phase: 'freeAgency', week: 2 };
+    const window: GameDate = { season, phase: 'resign', week: 1 };
+    sign(mover, 'veteran', week2, next);
+    sign(stayer, 'extension', window, next);
+    sign(old, 'veteran', { season: season - 1, phase: 'freeAgency', week: 1 }, season);
+    sign(low, 'veteran', week2, next);
+    league.departures = { year: next, players: { [mover.id]: 'DAL' } };
+    const priced = (p: Player, signed: GameDate) => 10_000_000 / marketValue(league.rules, p.position, p.ovr, ageOn(p.birthDate, calendarDay(signed)), p.experience); // prettier-ignore
+    // Last year's deals, and a player under 70, don't count; a free agent's deal and an extension do.
+    const deals = newDeals(league);
+    expect(deals).toHaveLength(2);
+    expect(deals).toContainEqual({ group: POSITION_GROUP[mover.position], toMarket: priced(mover, week2), mover: true, week: 2 });
+    expect(deals).toContainEqual({ group: POSITION_GROUP[stayer.position], toMarket: priced(stayer, window), mover: false, week: 0 });
   }); // prettier-ignore
 
   it('plans replays across leagues and writes a readable report', () => {

@@ -577,7 +577,7 @@
       "pass": [0.9, 1.15],
       "warn": [0.8, 1.3],
       "source": "The market curve (tuning market) prices each position, rating, and age from the 2026 market, its tops the richest deals at each position against the $301.2M cap; D-60 has the money new deals settle for center on it.",
-      "note": "Veteran deals that start the league year (re-signings, extensions, and free agents), for players rated 70 or more: each one's yearly value over the market price for the player at week 1, the median over every judged season's deals. Rookie deals, tags, tenders, and the practice squad don't count."
+      "note": "Veteran deals that start the league year (re-signings, extensions, and free agents), for players rated 70 or more, read as the OTAs end: each one's yearly value over the market price for the player when he signed (his rating before camp's development, his age that day), the median over every judged season's deals. Rookie deals, tags, tenders, and the practice squad don't count."
     },
     "economy.faMarketPay": {
       "pass": [0.9, 1.25],
