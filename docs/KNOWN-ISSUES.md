@@ -19,11 +19,11 @@
 - The red zone touchdown band is wide until a sourced league average is found (calibration/targets.json).
 - Calibration replays use each head coach's auto depth chart and rotation and an AI game plan per game, and hurt players sit out while their backups dress, but nobody goes on injured reserve or gets signed, so every game stays independent (D-17, D-20). Season records are judged on weekly-loop seasons instead, which play through the weekly advance (D-24); each is the first season of a fresh league until M12 moves them to chained seasons 3 to 20 (D-40).
 - Game plans (spec 8.7) set the run and pass balance overall and by down and distance, with red zone and two-minute overrides, but formation shares aren't modeled (the sim knows personnel groupings, not formations). AI coordinators plan one balance for every situation until M14.
-- The free agent pool can run short at a position late in a season; each offseason's undrafted rookies refill it until M12's free agency.
+- The free agent pool can run short at a position late in a season; each offseason's undrafted rookies refill it.
 - The news feed v1 covers results, upsets, big games, season milestones, injuries, signings, and weekly awards; rumors, power rankings, the injury report roundup, records and streaks in headlines, and the news effects setting arrive with M18 (spec 18.1).
 - Weekly awards are the players of the week and the rookie of the week; players of the month and the season awards with their voting arrive with M17 (spec 18.4).
 - The practice squad's international pathway exemption isn't modeled (no player carries the designation), so squads hold 16. The PUP, NFI, and suspended lists have their rules, but nothing places players on them yet: players hurt at camp stay on the active roster, and suspensions arrive with M12.
-- Under the stand-in free agency (D-27) teams pay about three quarters of the cap in cash, so most fall short of the salary floor's first window and pay the shortfall (D-33) until M12's free agency spends like NFL teams. Extensions are signed at the player's asking price until M12's negotiations.
+- Free agency's bidding (D-53) leaves teams a median of about 17% of the cap after its four weeks in a league's first offseason; M12's close judges spending against the salary floor (D-33) and the economy's targets. Extensions are signed at the player's asking price until M12's negotiations.
 - AI teams keep expiring players only through age 30 (D-32) until M12's value-based re-sign choice (D-38).
 - The player decision model (D-52) leaves out relationships with coaches and climate preferences until M13's staff.
 - Non-exclusive franchise and transition tags average the current year's top cap hits until M12 prices them from five years of cap percentages (D-39).
@@ -35,7 +35,7 @@
 - Games lost to injury is measured without a target: no public all-player count was found. Football Outsiders' adjusted games lost (starters and key reserves, camp injuries included) was 68.9 to 80.9 per team in 2021-2023.
 - Pass volume barely falls as passing efficiency rises: team pass attempts against yards per attempt correlate about -0.05 in replays and -0.54 in the 2024 NFL, because good passing teams don't lead and run enough. The passing leader is held near the NFL mean by a league-wide pass rate shift (C-13); M7's opponent-tailored game plans and M14's coaching should carry more of it.
 - Leader metrics move about 3% between seeds because a 100-season run draws only 10 leagues. Perfect and winless teams are rare enough that even 100 weekly-loop seasons count only a few, so that metric can warn on one seed and pass on the next (C-20, D-40).
-- Staff (M13) and Trades (M15) show placeholders, and the offseason's free agency is a stand-in until M12 (D-27).
+- Staff (M13) and Trades (M15) show placeholders.
 - The playoff picture shows the seeds, the Wild Card matchups, and the clubs chasing them, without clinched or eliminated markers, which need every remaining result's scenarios.
 - A game from an earlier season opens from history without its venue, since past schedules aren't kept (spec 8.8 doesn't ask for them).
 - Dragging depth chart rows works with a mouse or trackpad; on touch screens players move with Up, Down, and the starter menu (style guide 7.4 makes dragging a supplement).
