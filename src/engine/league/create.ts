@@ -4,6 +4,8 @@
  * 2026 regular season with rosters set.
  */
 import { defaultRotation, NEUTRAL_PLAN } from '../sim/plan';
+import { generateClass } from '../draft/class';
+import { defaultDraftSettings } from '../draft/settings';
 import { defaultDevelopment } from '../progression/settings';
 import { defaultTraining } from '../progression/training';
 import { defaultPauses } from '../season/inbox';
@@ -12,7 +14,7 @@ import type { ScheduledGame } from '../../data/schedule';
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { generateFictionalLeague } from '../generate/league';
 import type { NameData } from '../generate/player';
-import { createLeagueRandom } from '../rng';
+import { createLeagueRandom, stream } from '../rng';
 import { DEFAULT_RULES, type RuleSet } from '../rules/ruleset';
 import type { StaffRole } from '../model/staff';
 import { coordinatorFit } from '../fit/cohesion';
@@ -20,6 +22,7 @@ import { DEFENSE_SCHEMES, OFFENSE_SCHEMES } from '../schemes/ids';
 import { named, type TeamSchemes } from '../schemes/resolve';
 import { defaultSliders } from '../sim/sliders';
 import { TUNING } from '../tuning';
+import { newId } from './transactions';
 import { SAVE_SCHEMA_VERSION, type League, type StartOptions, type TeamState } from './types';
 
 export interface NewLeagueInput {
@@ -106,7 +109,7 @@ export function createLeague(input: NewLeagueInput): League {
     };
   }
 
-  return {
+  const league: League = {
     schema: SAVE_SCHEMA_VERSION,
     meta: { id: input.id, name, start: { ...start }, edited: false, createdBy: input.gameVersion },
     date: { season: start.startSeason, phase: 'regularSeason', week: 1 },
@@ -119,7 +122,8 @@ export function createLeague(input: NewLeagueInput): League {
       sim: defaultSliders(),
       pause: defaultPauses(),
       auto: { roster: false, contracts: false },
-      development: defaultDevelopment()
+      development: defaultDevelopment(),
+      draft: defaultDraftSettings()
     },
     teams,
     players: byId(generated.players),
@@ -131,6 +135,7 @@ export function createLeague(input: NewLeagueInput): League {
     upcoming: null,
     preseason: null,
     season: emptySeason(start.startSeason),
+    draft: null,
     inbox: [],
     waivers: [],
     nextId: idCounters([
@@ -140,6 +145,16 @@ export function createLeague(input: NewLeagueInput): League {
       ...generated.owners.map(o => o.id)
     ])
   };
+  // The next spring's draft class, to scout all season (spec 10.3).
+  const year = start.startSeason + 1;
+  const rng = stream(start.seed, 'draftClass', year);
+  league.draft = generateClass(
+    league,
+    year,
+    { names: input.names, rng, newId: () => newId(league, 'p') },
+    rng
+  );
+  return league;
 }
 
 /** Defaults for the start-only choices (spec 3.2). */

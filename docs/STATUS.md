@@ -1,7 +1,7 @@
 # Status
 - Milestone: M11 (M10 done 2026-09-26)
-- Current slice: none
-- Next slice: the M11 plan in docs/milestones/m11.md, then slice 1, draft classes
+- Current slice: M11 slice 2, draft picks (plan in docs/milestones/m11.md)
+- Done this milestone: slice 1, draft classes made a season ahead (D-41)
 - Open items for M11: in docs/KNOWN-ISSUES.md, the waiver order before week 4 waits for M11's draft order
   (D-22), and the archetype check waits for the Madden CSV.
 - Carried into M12, before Checkpoint B: the value-based re-sign choice (D-38), tag pricing from five years

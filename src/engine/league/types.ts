@@ -19,12 +19,14 @@ import type { InboxItem, PauseEvent } from '../season/inbox';
 import type { SeasonState } from '../season/state';
 import type { GamePlan, Rotation } from '../sim/plan';
 import type { SimSliders } from '../sim/sliders';
+import type { DraftClass } from '../draft/class';
+import type { DraftSettings } from '../draft/settings';
 
 /**
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 16;
+export const SAVE_SCHEMA_VERSION = 17;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -103,6 +105,7 @@ export interface LeagueSettings {
   auto: AutoJobs;
   /** Development and draft (spec 22.4). */
   development: DevelopmentSettings;
+  draft: DraftSettings;
 }
 
 export interface League {
@@ -138,6 +141,11 @@ export interface League {
   preseason: { games: ScheduledGame[]; results: Record<string, { home: number; away: number }> } | null;
   /** The current season's results, seeds, and champion. */
   season: SeasonState;
+  /**
+   * The next draft's class (spec 10.3), from the start of the season before it until its draft, when its
+   * prospects join the league.
+   */
+  draft: DraftClass | null;
   /** Messages for the user (spec 19.6), oldest first. */
   inbox: InboxItem[];
   /** Players on waivers until the league next advances (spec 12.1). */

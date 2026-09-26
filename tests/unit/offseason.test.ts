@@ -331,10 +331,18 @@ describe('stand-in draft and rosters (D-27)', () => {
   it('plays a whole offseason into the next season with legal rosters and a new schedule', () => {
     const league = fresh(at(2026, 'staff'));
     league.settings.auto.roster = true;
+    // The 2027 class, made with the league, is drafted; the 2028 class arrives with the new season (D-41).
+    const drafted = new Set(league.draft?.prospects.map(p => p.player.id));
+    expect(league.draft?.year).toBe(2027);
     for (let i = 0; league.date.phase !== 'regularSeason'; i++) {
       const step = advanceOffseason(league, { names: nameData() }, { actions: 0, entropy: i });
       expect(step.blocked).toBeNull();
+      if (league.date.phase === 'draft') expect(league.draft).toBeNull();
     }
+    expect(league.draft?.year).toBe(2028);
+    expect(
+      league.season.transactions.filter(t => t.kind === 'drafted').every(t => drafted.has(t.playerId))
+    ).toBe(true);
     expect(league.date).toEqual(at(2027, 'regularSeason'));
     expect(league.season.season).toBe(2027);
     expect(league.schedule).toHaveLength(272);

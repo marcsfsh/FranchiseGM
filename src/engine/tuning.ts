@@ -558,27 +558,7 @@ export const TUNING = {
       [26, 3],
       [29, 2]
     ],
-    /** Prospects in a class (the spec 22.4 default), their ages, and their latent quality. */
-    classSize: 450,
-    classAge: [21, 23],
-    classQuality: [-1.2, 0.8],
-    /**
-     * Added to a prospect's latent quality by position group, so each group's league average holds over the
-     * seasons (spec 23.3) until M11's draft classes replace this stand-in.
-     */
-    classQualityByGroup: {
-      QB: -0.8,
-      RB: 0.6,
-      WR: 0,
-      TE: -0.3,
-      OL: 0.2,
-      DL: 0,
-      LB: 0,
-      DB: 0.2,
-      ST: 0
-    } as Record<PositionGroup, number>,
-    /** Draft value: potential and current overall blended, with scouting noise. */
-    draftPotentialWeight: 0.6,
+    /** The stand-in draft's scouting noise on each prospect's perceived value, until M11's scouting. */
     draftNoise: 2,
     /** Undrafted rookies each team signs, and their signing bonus range. */
     udfaPerTeam: 8,
@@ -594,6 +574,41 @@ export const TUNING = {
     /** An undrafted rookie the team signed, in the same seasons. */
     cutUndraftedBonus: 6,
     cutDraftSeasons: 2
+  },
+  /**
+   * Draft classes (spec 10.3, 22.4; D-41). `classSize` prospects (the spec's default) aged `classAge` at
+   * their first season, with latent quality `classQuality` [mean, sd], moved by position group so each
+   * group's league average holds over the seasons (spec 23.3, D-32). Each class draws a strength shift with
+   * sd `strengthSd`, and each position group one with sd `groupStrengthSd`; a strength mean setting of 1
+   * moves them `strengthMax`. Draft value blends `valuePotential` of a prospect's ceiling with his overall
+   * now; the consensus misjudges it with sd `perceptionSd` points, and a bust (`bustRate` of prospects) or a
+   * gem (`gemRate`) by a further `misjudgedBy` points. Generated names don't repeat within `nameWindow`
+   * years (spec 10.1).
+   */
+  draft: {
+    classSize: 450,
+    classAge: [21, 23],
+    classQuality: [-1.2, 0.8],
+    classQualityByGroup: {
+      QB: -0.8,
+      RB: 0.6,
+      WR: 0,
+      TE: -0.3,
+      OL: 0.2,
+      DL: 0,
+      LB: 0,
+      DB: 0.2,
+      ST: 0
+    } as Record<PositionGroup, number>,
+    strengthMax: 0.4,
+    strengthSd: 0.12,
+    groupStrengthSd: 0.2,
+    valuePotential: 0.6,
+    perceptionSd: 3,
+    bustRate: 0.12,
+    gemRate: 0.06,
+    misjudgedBy: [5, 12],
+    nameWindow: 20
   },
   /**
    * The AI in the re-sign window (spec 11.4, 11.5; D-29 stand-in until M12 and M14): players older than

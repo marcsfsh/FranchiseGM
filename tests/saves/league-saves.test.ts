@@ -37,7 +37,9 @@ describe('league creation (spec 3.2)', () => {
     expect(league.meta.start.userTeam).toBe('MIN');
     expect(league.teams.MIN.staff.HC).toHaveLength(1);
     expect(league.teams.MIN.staff.SCOUT).toHaveLength(4);
-    expect(league.nextId.p).toBe(32 * 69 + 301);
+    // Player IDs continue through the first draft class's prospects (D-41).
+    expect(league.draft?.prospects).toHaveLength(450);
+    expect(league.nextId.p).toBe(32 * 69 + 300 + 450 + 1);
   });
 
   it('is JSON-safe, so saves and exports round-trip exactly', () => {

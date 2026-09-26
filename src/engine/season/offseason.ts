@@ -16,6 +16,7 @@ import { capCompliance, cutdown, freeAgencySignings, offseasonClaims } from '../
 import { resignDecisions } from '../ai/decisions/resign';
 import { fillPracticeSquad, waiverClaims } from '../ai/decisions/roster-moves';
 import type { DecisionLog } from '../ai/framework';
+import { generateClass } from '../draft/class';
 import type { NameData } from '../generate/player';
 import { draftOrder, rookieReserve, signUndrafted, standInDraft } from '../generate/rookies';
 import { windowDecisions } from '../contracts/resign';
@@ -23,7 +24,7 @@ import { depthChanges, startersByTeam, type DepthChange } from '../league/depth-
 import type { ContractRecord } from '../contracts/history';
 import { openLeagueYear } from '../league/league-year';
 import { capSheet, seasonSpace } from '../cap/sheet';
-import { activeRoster, freeAgents, type TransactionKind } from '../league/transactions';
+import { activeRoster, freeAgents, newId, type TransactionKind } from '../league/transactions';
 import type { League } from '../league/types';
 import { calendarDay, leagueYear, PHASE_LABELS, type GameDate, type Phase } from '../model/calendar';
 import { fullName, type Player } from '../model/player';
@@ -31,7 +32,7 @@ import type { RatingChange } from '../progression/change';
 import { campDevelopment, coachTraining } from '../progression/develop';
 import { retirePlayers } from '../progression/retirement';
 import { programOf } from '../progression/training';
-import { advanceLeagueRandom, leagueStream, stream, type AdvanceInput } from '../rng';
+import { advanceLeagueRandom, leagueStream, stream, type AdvanceInput, type Rng } from '../rng';
 import { activeLimit } from '../roster/rules';
 import { processWaivers, waiverOrder, type WaiverResult } from '../roster/waivers';
 import type { GameResult } from '../sim/types';
@@ -170,8 +171,11 @@ export function nextSchedule(league: League, season: number): ReturnType<typeof 
   );
 }
 
-/** Starts the next season on its week 1: its schedule, a fresh season record, and the new league year's moves. */
-function startSeason(league: League, date: GameDate): void {
+/**
+ * Starts the next season on its week 1: its schedule, a fresh season record, the new league year's moves,
+ * and the next spring's draft class, to scout all season (spec 10.3).
+ */
+function startSeason(league: League, date: GameDate, names: NameData, rng: Rng): void {
   const moves = league.season.transactions.filter(t => leagueYear(t) === date.season);
   const schedule = league.upcoming ?? nextSchedule(league, date.season);
   league.season = { ...emptySeason(date.season), transactions: moves };
@@ -179,6 +183,7 @@ function startSeason(league: League, date: GameDate): void {
   league.upcoming = null;
   league.preseason = null;
   league.date = { ...date };
+  league.draft = generateClass(league, date.season + 1, { names, rng, newId: () => newId(league, 'p') }, rng);
 }
 
 /** Why the user can't leave this step yet, or null. */
@@ -458,7 +463,7 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     }
     if (!league.settings.auto.roster && activeRoster(league, user).length > league.rules.roster.active)
       messages.push({ kind: 'roster', title: `Cut your roster to ${league.rules.roster.active}`, body: 'The regular season starts after the final cutdown.', players: [] }); // prettier-ignore
-  } else if (to.phase === 'regularSeason') startSeason(league, to);
+  } else if (to.phase === 'regularSeason') startSeason(league, to, data.names, rng('draftClass'));
   league.date = { ...to };
 
   // Messages and news carry the step they arrive with; the next season's first ones, its week 1.

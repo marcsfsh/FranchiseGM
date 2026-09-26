@@ -1,26 +1,24 @@
 /**
- * A stand-in rookie class until M11's draft (D-27): each spring a class of prospects is generated with the
- * position mix of a standard roster. Teams take them for the rule set's rounds in reverse order of last
- * season's finish, each taking the best prospect left by a blend of potential and overall, on rookie scale
- * deals; the rest are undrafted free agents, and after the draft each AI team signs the best of them. M11
- * replaces this with class generation, scouting, the draft room, and the UDFA scramble.
+ * A stand-in draft until M11's (D-27): the class made a season ago (D-41) is drafted for the rule set's
+ * rounds in reverse order of last season's finish, each team taking the prospect it values most as the
+ * consensus sees him, on rookie scale deals; the rest are undrafted free agents, and after the draft each
+ * AI team signs the best of them. M11 replaces this with scouting, the draft room, and the UDFA scramble.
  */
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { capHit } from '../contracts/cap';
 import { rookieContract, udfaContract } from '../contracts/build';
+import { generateClass, perceivedValue, type Prospect } from '../draft/class';
 import { activeRoster, freeAgents, newId, recordTransaction } from '../league/transactions';
 import type { League } from '../league/types';
 import { leagueYear } from '../model/calendar';
 import { pickJersey } from '../model/jerseys';
-import { fullName, type Player } from '../model/player';
-import { POSITION_GROUP, type Position } from '../model/positions';
+import type { Player } from '../model/player';
 import type { Rng } from '../rng';
 import { minimumSalary } from '../rules/ruleset';
 import { PLAYOFF_PHASES, leagueStandings } from '../season/state';
 import { winPct } from '../season/standings';
 import { TUNING } from '../tuning';
-import { ACTIVE_ROSTER } from './league';
-import { generatePlayer, type NameData } from './player';
+import type { NameData } from './player';
 
 const O = TUNING.offseason;
 
@@ -75,28 +73,17 @@ function jerseyFor(league: League, player: Player, team: TeamAbbr, rng: Rng): nu
   return pickJersey(player.position, taken, t => rng.float() * t) ?? 0;
 }
 
-/** This year's class of prospects, added to the league as free agents who haven't been drafted. */
-function prospects(league: League, names: NameData, rng: Rng): Player[] {
+/**
+ * This year's class, its prospects added to the league as free agents who haven't been drafted: the class
+ * made a season ago (D-41), or one made now if the league has none for this year.
+ */
+function prospects(league: League, names: NameData, rng: Rng): Prospect[] {
   const year = leagueYear(league.date);
-  const positions = ACTIVE_ROSTER.map(([p]) => p);
-  const weights = ACTIVE_ROSTER.map(([, n]) => n);
-  const usedNames = new Set(Object.values(league.players).map(fullName));
-  const ctx = { rng, names, season: year, usedNames, newId: () => newId(league, 'p') };
-  const [mean, spread] = O.classQuality;
-  return Array.from({ length: O.classSize }, () => {
-    const position = rng.weighted(positions, weights) as Position;
-    const player = generatePlayer(ctx, {
-      position,
-      quality: rng.normal(mean + O.classQualityByGroup[POSITION_GROUP[position]], spread),
-      age: rng.int(O.classAge[0], O.classAge[1]),
-      team: null,
-      status: 'freeAgent'
-    });
-    Object.assign(player, { experience: 0, accrued: 0, draft: { year, undrafted: true }, jersey: 0 });
-    league.players[player.id] = player;
-    return player;
-  });
-}
+  const made = league.draft?.year === year ? league.draft : generateClass(league, year, { names, rng, newId: () => newId(league, 'p') }, rng);
+  league.draft = null;
+  for (const p of made.prospects) league.players[p.player.id] = p.player;
+  return made.prospects;
+} // prettier-ignore
 
 /** Signs a rookie to a team on his first contract. */
 function signRookie(league: League, player: Player, team: TeamAbbr, contractId: string, rng: Rng): void {
@@ -112,7 +99,7 @@ export function standInDraft(league: League, names: NameData, rng: Rng): DraftPi
   const year = leagueYear(league.date);
   const order = draftOrder(league);
   const board = prospects(league, names, rng)
-    .map(p => ({ p, value: O.draftPotentialWeight * p.potential + (1 - O.draftPotentialWeight) * p.ovr + rng.normal(0, O.draftNoise) }))
+    .map(p => ({ p: p.player, value: perceivedValue(p) + rng.normal(0, O.draftNoise) }))
     .sort((a, b) => b.value - a.value || (a.p.id < b.p.id ? -1 : 1))
     .map(e => e.p); // prettier-ignore
   const picks: DraftPick[] = [];
