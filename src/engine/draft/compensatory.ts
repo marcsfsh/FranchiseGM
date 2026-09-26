@@ -101,6 +101,8 @@ const worth = (list: readonly QualifyingFreeAgent[], last: number): number =>
  * supplemental picks to teams in the draft's `order`, to the league's limit.
  */
 export function compensatoryPicks(league: League, order: readonly TeamAbbr[] = []): CompensatoryPick[] {
+  // A league's first draft follows a free agency it didn't see, so it has none.
+  if (league.departures?.year !== leagueYear(league.date)) return [];
   const cfas = qualifyingFreeAgents(league);
   const rules = league.rules.season;
   const last = rules.compensatoryRounds[1];

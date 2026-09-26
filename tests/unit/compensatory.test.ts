@@ -128,6 +128,10 @@ describe('compensatory picks (spec 11.8)', () => {
     });
     expect(awardCompensatoryPicks(league, 2027)).toEqual([]);
     expect(league.picks.filter(p => p.compensatory)).toHaveLength(32);
+    // A league's first draft follows a free agency it didn't see: no picks at all.
+    const first = atCombine();
+    first.departures = null;
+    expect(awardCompensatoryPicks(first, 2027)).toEqual([]);
     // The supplemental picks close the seventh round, after its regular picks: the last is the draft's 256th.
     const seventh = picksIn(league, 2027).filter(p => p.round === 7);
     expect(seventh.slice(32).every(p => p.compensatory)).toBe(true);
