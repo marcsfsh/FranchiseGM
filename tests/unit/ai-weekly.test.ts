@@ -15,7 +15,8 @@ import { NEED_GROUP, rosterMoves, waiverClaims } from '../../src/engine/ai/decis
 import { score } from '../../src/engine/ai/framework';
 import { coachProfile, staffIn } from '../../src/engine/ai/profile';
 import { scoutingReport } from '../../src/engine/ai/scouting';
-import { dressable, manageWeek } from '../../src/engine/ai/weekly';
+import { manageWeek } from '../../src/engine/ai/weekly';
+import { dressable } from '../../src/engine/roster/rules';
 import type { TeamAbbr } from '../../src/data/team-colors';
 import { orderOf } from '../../src/engine/league/depth';
 import { activeRoster } from '../../src/engine/league/transactions';

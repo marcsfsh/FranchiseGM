@@ -26,6 +26,17 @@ export function unpaidBase(c: Contract, year: number, date: GameDate, rules: Rul
 }
 
 /**
+ * Base salary of the current league year a restructure can convert: what's still to be paid, above the
+ * minimum salary's share of the weeks left.
+ */
+export function convertible(c: Contract, date: GameDate, minimum: number, rules: RuleSet): number {
+  const year = leagueYear(date);
+  const from = Math.max(payWeek(date, year, rules), payWeek(c.signed, year, rules));
+  const floor = Math.round((minimum * Math.max(0, rules.season.weeks + 1 - from)) / rules.season.weeks);
+  return unpaidBase(c, year, date, rules) - floor;
+}
+
+/**
  * Converts base salary of the current league year into a bonus prorated over this year and the deal's
  * remaining years, at most `prorationYearsMax` of them, adding void years to spread it further (spec
  * 11.2). The year's base can't fall below `minimum`, the player's minimum salary, and only unpaid base
@@ -53,9 +64,7 @@ export function restructure(
     );
   if (!Number.isInteger(amount) || amount <= 0) return refuse('Convert a whole-dollar amount above zero.');
   // The weeks still to be paid keep at least the minimum salary's share of them.
-  const from = Math.max(payWeek(date, year, rules), payWeek(c.signed, year, rules));
-  const floor = Math.round((minimum * Math.max(0, rules.season.weeks + 1 - from)) / rules.season.weeks);
-  const room = unpaidBase(c, year, date, rules) - floor;
+  const room = convertible(c, date, minimum, rules);
   if (amount > room)
     return refuse(
       room > 0

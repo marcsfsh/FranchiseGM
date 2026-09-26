@@ -76,14 +76,15 @@ describe('signing free agents (spec 19.4, simple acceptance)', () => {
     expect(capSheet(league, 'MIN').space).toBe(done.value.spaceAfter);
     expect(done.value.spaceBefore).toBe(before);
     expect(rosterProblems(league, 'MIN')).toEqual([]);
-    // Over the cap: refused with the numbers.
+    // Short of room, or over the cap already: refused with the numbers (D-46).
     const other = players(league, null, 'freeAgent')[0];
     if (!other) throw new Error('no free agent');
     makeRoom(league);
-    league.teams.MIN.carryover = -capSheet(league, 'MIN').cap;
-    expect(
-      reason(league, { kind: 'sign', team: 'MIN', playerId: other.id, offer: { years: 1, salary: askingSalary(league, other), signingBonus: 0 } })
-    ).toMatch(/^His 2026 cap hit of \$[\d,]+ is more than your \$0 of cap space\.$/);
+    const signing: Move = { kind: 'sign', team: 'MIN', playerId: other.id, offer: { years: 1, salary: askingSalary(league, other), signingBonus: 0 } };
+    league.teams.MIN.carryover -= capSheet(league, 'MIN').space - 100_000;
+    expect(reason(league, signing)).toMatch(/^His 2026 cap hit of \$[\d,]+ is more than your \$100,000 of cap space\.$/);
+    league.teams.MIN.carryover -= 1_100_000;
+    expect(reason(league, signing)).toBe("You're $1,000,000 over the 2026 cap. Get under it with a release or a restructure before you add to it.");
   }); // prettier-ignore
 
   it('fills the practice squad within its size and veteran limits', () => {

@@ -124,7 +124,8 @@ export function createLeague(input: NewLeagueInput): League {
       pause: defaultPauses(),
       auto: { roster: false, contracts: false, scouting: true },
       development: defaultDevelopment(),
-      draft: defaultDraftSettings()
+      draft: defaultDraftSettings(),
+      commissioner: { enforceRules: true }
     },
     teams,
     players: byId(generated.players),

@@ -9,6 +9,8 @@ import { parseClimate } from '../src/data/climate';
 import { parseSchedule } from '../src/data/schedule';
 import { createLeague, defaultStartOptions } from '../src/engine/league/create';
 import type { League } from '../src/engine/league/types';
+import { makeLegal } from '../src/engine/ai/decisions/compliance';
+import { stream } from '../src/engine/rng';
 import { advanceWeek, gameWeek } from '../src/engine/season/advance';
 import type { PlayerHistory } from '../src/engine/stats/aggregate';
 import { TABLE_IDS } from '../src/engine/stats/categories';
@@ -40,7 +42,15 @@ export async function makeSeasonFixture(weeks: number, name = 'Season fixture'):
     records: emptyRecords()
   };
   for (let played = 0; played < weeks && gameWeek(league) !== null; played++) {
-    const week = advanceWeek(league, climate, { actions: 0, entropy: 0 });
+    let week = advanceWeek(league, climate, { actions: 0, entropy: 0 });
+    // The user's roster is on manual, as in a new league: when it can't play the week, the staff fixes it,
+    // as the hub's "Let your staff fix it" does (D-46).
+    if (week.blocked) {
+      const user = league.meta.start.userTeam;
+      makeLegal(league, user, stream(league.random.baseSeed, 'staffFix', league.season.season, league.season.transactions.length)); // prettier-ignore
+      week = advanceWeek(league, climate, { actions: 0, entropy: 0 });
+      if (week.blocked) throw new Error(`The fixture's week ${league.date.week} is blocked: ${week.blocked}`);
+    }
     league = week.league;
     const patch = recordGames(state, week.games);
     for (const p of patch.players) players.set(p.id, p);

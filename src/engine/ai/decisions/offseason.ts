@@ -1,19 +1,19 @@
 /**
  * Offseason roster building for AI teams, standing in until later milestones build the full systems (D-27):
  * each free agency week a team signs free agents at their asking price where a position group is short of
- * the standard roster (M12 brings bidding and negotiation), a team over the cap when the league year opens
- * releases players until it's under, and the final cutdown releases the least valuable players in the
- * deepest groups down to the in-season limit (spec 12.1). Every move goes through the checked transactions.
+ * the standard roster (M12 brings bidding and negotiation), and the final cutdown releases the least
+ * valuable players in the deepest groups down to the in-season limit (spec 12.1); the compliance module
+ * gets teams under the cap. Every move goes through the checked transactions.
  */
 import type { TeamAbbr } from '../../../data/team-colors';
-import { capSheet, seasonSpace } from '../../cap/sheet';
+import { capSheet } from '../../cap/sheet';
 import { askingSalary } from '../../contracts/acceptance';
 import type { League } from '../../league/types';
 import { calendarDay } from '../../model/calendar';
 import { ageOn, fullName, type Player } from '../../model/player';
 import type { Rng } from '../../rng';
 import { minimumSalary } from '../../rules/ruleset';
-import { makeMove, previewMove } from '../../roster/moves';
+import { makeMove } from '../../roster/moves';
 import { cannotPlay, designation } from '../../season/injuries';
 import { TUNING } from '../../tuning';
 import { need, quality, youth, type SigningOption } from '../considerations/roster';
@@ -143,7 +143,7 @@ export function offseasonClaims(league: League, player: Player, from: TeamAbbr, 
  * What a player is worth keeping: his overall, for a young player part of the way to his potential, and for
  * a recent draft pick the team's investment in him.
  */
-function keepValue(league: League, p: Player): number {
+export function keepValue(league: League, p: Player): number {
   const age = ageOn(p.birthDate, calendarDay(league.date));
   const recent = p.experience < O.cutDraftSeasons;
   const pick = !recent
@@ -172,32 +172,13 @@ function nextCut(league: League, abbr: TeamAbbr, skip: ReadonlySet<string>): Pla
   return [...pool].sort((a, b) => keepValue(league, a) - keepValue(league, b) || (a.id < b.id ? -1 : 1))[0] ?? null;
 } // prettier-ignore
 
-/**
- * Releases players until the team is under the cap, the least valuable first (a release that frees no room
- * is skipped). With `season`, every roster charge counts, as it will once the regular season starts.
- */
-export function capCompliance(league: League, abbr: TeamAbbr, rng: Rng, season = false): void {
-  const skip = new Set<string>();
-  const space = () => (season ? seasonSpace(capSheet(league, abbr)) : capSheet(league, abbr).space);
-  while (space() < 0) {
-    const cut = nextCut(league, abbr, skip);
-    if (!cut) break;
-    skip.add(cut.id);
-    const move = {
-      kind: 'release',
-      team: abbr,
-      playerId: cut.id,
-      reason: 'to get under the salary cap'
-    } as const;
-    // A release that adds dead money beyond what it saves doesn't help.
-    const preview = previewMove(league, move);
-    if (preview.ok && preview.value.spaceAfter > preview.value.spaceBefore) makeMove(league, move, rng);
-  }
-}
-
-/** The final cutdown (spec 12.1): releases down to the in-season limit. */
-export function cutdown(league: League, abbr: TeamAbbr, rng: Rng): Player[] {
-  const limit = league.rules.roster.active;
+/** The final cutdown (spec 12.1): releases down to the in-season limit, or to `limit`. */
+export function cutdown(
+  league: League,
+  abbr: TeamAbbr,
+  rng: Rng,
+  limit = league.rules.roster.active
+): Player[] {
   const released: Player[] = [];
   const skip = new Set<string>();
   const count = () => teamPlayers(league, abbr).filter(p => p.status === 'active').length;

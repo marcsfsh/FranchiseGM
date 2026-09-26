@@ -12,7 +12,8 @@
  */
 import type { ClimateTable } from '../../data/climate';
 import { TEAM_ABBRS, TEAM_COLORS, type TeamAbbr } from '../../data/team-colors';
-import { capCompliance, cutdown, freeAgencySignings, offseasonClaims } from '../ai/decisions/offseason';
+import { makeLegal } from '../ai/decisions/compliance';
+import { cutdown, freeAgencySignings, offseasonClaims } from '../ai/decisions/offseason';
 import { resignDecisions } from '../ai/decisions/resign';
 import { fillPracticeSquad, waiverClaims } from '../ai/decisions/roster-moves';
 import type { DecisionLog } from '../ai/framework';
@@ -27,8 +28,8 @@ import { windowDecisions } from '../contracts/resign';
 import { depthChanges, startersByTeam, type DepthChange } from '../league/depth-changes';
 import type { ContractRecord } from '../contracts/history';
 import { openLeagueYear } from '../league/league-year';
-import { capSheet, seasonSpace } from '../cap/sheet';
 import { activeRoster, freeAgents, newId, type TransactionKind } from '../league/transactions';
+import { advanceBlock } from '../roster/legality';
 import type { League } from '../league/types';
 import { calendarDay, leagueYear, PHASE_LABELS, type GameDate, type Phase } from '../model/calendar';
 import { fullName, type Player } from '../model/player';
@@ -201,19 +202,6 @@ function startSeason(league: League, date: GameDate, names: NameData, rng: Rng):
   league.draft = generateClass(league, date.season + 1, { names, rng, newId: () => newId(league, 'p') }, rng);
 }
 
-/** Why the user can't leave this step yet, or null. */
-export function offseasonBlock(league: League): string | null {
-  if (league.date.phase !== 'cutdown' || league.settings.auto.roster) return null;
-  const user = league.meta.start.userTeam;
-  const over = activeRoster(league, user).length - league.rules.roster.active;
-  if (over > 0)
-    return `Cut your active roster to ${league.rules.roster.active} before the season starts: release ${plural(over, 'more player')}, or put roster moves on auto in Settings.`;
-  const space = seasonSpace(capSheet(league, user));
-  return space < 0
-    ? `Get under the salary cap before the season starts: you're ${dollars(-space)} over. Release or restructure a contract, or put roster moves on auto in Settings.`
-    : null;
-}
-
 /**
  * Takes the league one offseason step on (spec 4.1). The step's randomness comes from the league's advance
  * seed, so a fixed-seed league replays it exactly.
@@ -222,11 +210,14 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
   const from = { ...league.date };
   const step = offseasonStep(from);
   if (step === 0) throw new Error(`The ${from.phase} phase isn't part of the offseason.`);
-  const blocked = offseasonBlock(league);
-  if (blocked) return { league, decisions: [], news: [], inbox: [], pauses: [], ratings: [], games: [], depth: [], contracts: [], blocked }; // prettier-ignore
-  const to = nextStep(from);
   const user = league.meta.start.userTeam;
   const rng = (key: string) => leagueStream(league.random, 'offseason', step, key);
+  // Every team the AI runs gets legal first (the user's with roster management on auto), and the user's
+  // team must be legal to move on (D-46).
+  for (const abbr of aiTeams(league)) makeLegal(league, abbr, rng(`legal-${abbr}`));
+  const blocked = advanceBlock(league);
+  if (blocked) return { league, decisions: [], news: [], inbox: [], pauses: [], ratings: [], games: [], depth: [], contracts: [], blocked }; // prettier-ignore
+  const to = nextStep(from);
   const news: NewsItem[] = [];
   const messages: (Omit<InboxItem, 'id' | 'season' | 'week' | 'read' | 'event'> & { event?: PauseEvent })[] =
     [];
@@ -350,7 +341,8 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
   if (to.phase === 'freeAgency' && to.week === 1) {
     const change = openLeagueYear(league, to, rng('leagueYear'));
     contracts.push(...change.records);
-    for (const abbr of aiTeams(league)) capCompliance(league, abbr, rng(`cap-${abbr}`));
+    // Teams over the cap as the league year opens get under it before anything else (D-46).
+    for (const abbr of aiTeams(league)) makeLegal(league, abbr, rng(`cap-${abbr}`));
     const mine = change.expired.filter(e => e.team === user).map(e => league.players[e.playerId]).filter((p): p is Player => !!p); // prettier-ignore
     messages.push({
       kind: 'contracts',
@@ -483,7 +475,7 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     league.date = { ...to };
     for (const abbr of aiTeams(league)) {
       const cut = cutdown(league, abbr, rng(`cut-${abbr}`));
-      capCompliance(league, abbr, rng(`cap-${abbr}`), true);
+      makeLegal(league, abbr, rng(`cap-${abbr}`));
       if (abbr === user && cut.length)
         messages.push({ kind: 'roster', title: `You cut ${plural(cut.length, 'player')} to reach ${league.rules.roster.active}`, body: cut.map(named).join(', '), players: cut.map(p => p.id) }); // prettier-ignore
     }

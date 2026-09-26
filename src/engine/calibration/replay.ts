@@ -9,7 +9,7 @@ import type { ClimateTable } from '../../data/climate';
 import { decideDepthChart } from '../ai/decisions/depth-chart';
 import { decideGamePlan } from '../ai/decisions/game-plan';
 import { decideRotation } from '../ai/decisions/rotation';
-import { dressable } from '../ai/weekly';
+import { dressable } from '../roster/rules';
 import type { ScheduledGame } from '../../data/schedule';
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import type { NameData } from '../generate/player';

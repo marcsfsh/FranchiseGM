@@ -52,7 +52,7 @@ function summaryCard(sheet: CapSheet): HTMLElement {
       row('Used', money(sheet.used))
     ),
     sheet.offseason
-      ? h('p', { class: 'hint' }, 'From the league year opening until the regular season, only the 51 largest cap hits on the roster count.')
+      ? h('p', { class: 'hint' }, 'From the league year opening until the final cutdown, only the 51 largest cap hits on the roster count; from the cutdown on, every contract counts.')
       : null
   );
 } // prettier-ignore

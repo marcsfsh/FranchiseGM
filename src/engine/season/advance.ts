@@ -11,11 +11,14 @@ import { scoutWeek } from '../draft/scouting';
 import { draftOrder } from '../generate/rookies';
 import { processWaivers, waiverOrder } from '../roster/waivers';
 import { waiverClaims } from '../ai/decisions/roster-moves';
+import { makeLegal } from '../ai/decisions/compliance';
 import { manageWeek } from '../ai/weekly';
+import { advanceBlock, legalityProblems } from '../roster/legality';
 import { depthChanges, startersByTeam, type DepthChange } from '../league/depth-changes';
 import type { RatingChange } from '../progression/change';
 import { coachTraining, weeklyDevelopment } from '../progression/develop';
 import type { Conference, TeamAbbr } from '../../data/teams';
+import { TEAM_ABBRS } from '../../data/team-colors';
 import type { League } from '../league/types';
 import type { Phase } from '../model/calendar';
 import type { Player } from '../model/player';
@@ -56,6 +59,10 @@ export interface WeekOutcome {
    */
   depth: DepthChange[];
   ratings: RatingChange[];
+  /** Why the week wasn't played: the user's team isn't legal to play it (D-46); the league is unchanged. */
+  blocked: string | null;
+  /** Teams that took the field illegally, with what was wrong, from their rosters at kickoff (D-46). */
+  illegal: { team: TeamAbbr; problems: string[] }[];
 }
 
 const touchdowns = (t: TeamTotals): number =>
@@ -153,11 +160,15 @@ function moveOn(league: League): void {
 /**
  * Plays the league's current week in place (spec 4.2) and moves it on: weekly management first, then the
  * games. Each game draws from the league's advance seed, so a fixed-seed league replays the same week
- * exactly.
+ * exactly. A user's team that isn't legal to play the week stops it before anything changes (D-46).
  */
 export function advanceWeek(league: League, climate: ClimateTable | null, input: AdvanceInput): WeekOutcome {
   const week = gameWeek(league);
   if (week === null) throw new Error(`There are no games to play in the ${league.date.phase} phase.`);
+  // The user's staff fixes what it can with roster management on auto.
+  if (league.settings.auto.roster) makeLegal(league, league.meta.start.userTeam, leagueStream(league.random, 'legal', week)); // prettier-ignore
+  const blocked = advanceBlock(league);
+  if (blocked) return { league, games: [], decisions: [], news: [], awards: [], inbox: [], pauses: [], depth: [], ratings: [], blocked, illegal: [] }; // prettier-ignore
   const season = league.season.season;
   const playoff = week > league.rules.season.weeks;
   // Last week's waiver wire clears first (spec 12.1), then teams set their rosters, lineups, and game plans
@@ -177,6 +188,11 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     stream(league.random.baseSeed, 'ai', season)
   );
   const depth = depthChanges(league, starters);
+  // Every team's rosters as the games kick off, the user's included (D-46).
+  const illegal = TEAM_ABBRS.flatMap(team => {
+    const problems = legalityProblems(league, team);
+    return problems.length ? [{ team, problems: problems.map(p => p.fact) }] : [];
+  });
   const played = weekGames(league).map(g => playLeagueGame(league, g.id, climate));
   const results = played.map(p => p.result);
   for (const r of results) league.season.results[r.id] = outcome(r, week, playoff);
@@ -270,6 +286,8 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     inbox,
     pauses: pausing(inbox, league.settings.pause),
     depth,
-    ratings
+    ratings,
+    blocked: null,
+    illegal
   };
 }

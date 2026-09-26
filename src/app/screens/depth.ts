@@ -8,7 +8,7 @@ import { teamFullName } from '../../data/team-colors';
 import { coachProfile, staffIn } from '../../engine/ai/profile';
 import { recipeFor } from '../../engine/fit/role-rating';
 import { decideDepthChart } from '../../engine/ai/decisions/depth-chart';
-import { dressable } from '../../engine/ai/weekly';
+import { dressable } from '../../engine/roster/rules';
 import { depthAdvice, depthRows, moveInDepth, type DepthRow } from '../../engine/league/depth-view';
 import { leagueFitContext } from '../../engine/league/fit';
 import type { League } from '../../engine/league/types';

@@ -27,7 +27,7 @@ import type { DraftSettings } from '../draft/settings';
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 19;
+export const SAVE_SCHEMA_VERSION = 20;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -109,6 +109,8 @@ export interface LeagueSettings {
   /** Development and draft (spec 22.4). */
   development: DevelopmentSettings;
   draft: DraftSettings;
+  /** Whether the league's rules bind the user's moves and advances (post-M23 2.10.1; D-46). */
+  commissioner: { enforceRules: boolean };
 }
 
 export interface League {

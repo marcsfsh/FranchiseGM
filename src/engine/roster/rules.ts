@@ -9,6 +9,7 @@ import { capSheet } from '../cap/sheet';
 import type { League } from '../league/types';
 import type { GameDate, Phase } from '../model/calendar';
 import type { Player } from '../model/player';
+import { cannotPlay, designation } from '../season/injuries';
 import { gameWeek } from '../season/state';
 import { dollars, plural } from '../text';
 
@@ -46,6 +47,18 @@ export const isElevated = (league: League, player: Player): boolean =>
   player.status === 'practice' &&
   player.team !== null &&
   elevatedThisWeek(league, player.team).includes(player.id);
+
+/**
+ * Players who can dress this week before any rest decision: active or elevated from the practice squad,
+ * and not held out by an injury.
+ */
+export const dressable = (league: League, abbr: TeamAbbr): Player[] =>
+  Object.values(league.players).filter(
+    p =>
+      p.team === abbr &&
+      (p.status === 'active' || isElevated(league, p)) &&
+      !cannotPlay(designation(p.injury))
+  );
 
 export interface RosterCounts {
   active: number;

@@ -15,7 +15,7 @@ import { ageOn, type Player } from '../../engine/model/player';
 import { RATING_LABELS, type RatingKey } from '../../engine/model/ratings';
 import { HAND_SET_FORMULAS } from '../../engine/ratings/overall';
 import { designation } from '../../engine/season/injuries';
-import { nextStep, offseasonBlock, offseasonStep, stepLabel } from '../../engine/season/offseason';
+import { nextStep, offseasonStep, stepLabel } from '../../engine/season/offseason';
 import { gameWeek, leagueStandings } from '../../engine/season/state';
 import type { WinLoss } from '../../engine/season/standings';
 import { h, type Child } from '../dom';
@@ -168,12 +168,10 @@ function offseasonCard(app: AppState, league: League): HTMLElement {
   const preseason = (league.preseason?.games ?? []).filter(g => g.home === user || g.away === user);
   if (preseason.length)
     body.push(h('ul', { class: 'game-list', 'aria-label': 'Your preseason games' }, ...preseason.map(g => gameCard(league, g, { label: `Preseason, week ${g.week}`, score: league.preseason?.results[g.id] ?? null })))); // prettier-ignore
-  const blocked = offseasonBlock(league);
   if (date.phase === 'cutdown') {
     const active = Object.values(league.players).filter(p => p.team === user && p.status === 'active').length;
     body.push(h('p', null, `You have ${active} active players; the limit is ${league.rules.roster.active}.`));
   }
-  if (blocked) body.push(h('p', { class: 'delta-bad' }, blocked));
   const actions = h('div', { class: 'btn-row' });
   actions.append(
     h('a', { class: 'btn btn-outline', href: href('freeagency') }, 'Free agency'),

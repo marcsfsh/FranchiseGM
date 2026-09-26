@@ -125,23 +125,27 @@ export function claimedContract(
 
 /**
  * Why a team can't claim a player now, or null if it can: room on the active roster (unless it will cut
- * someone to make room) and cap space.
+ * someone to make room) and cap space, which a claim must leave it under (D-46). With `enforce` off (the
+ * user's claims when the league's rule enforcement is off) only the release rule applies.
  */
 export function claimProblem(
   league: League,
   abbr: TeamAbbr,
   entry: WaiverEntry,
-  makesRoom = false
+  makesRoom = false,
+  enforce = true
 ): string | null {
   if (abbr === entry.from) return "A team can't claim a player it released.";
-  const active = Object.values(league.players).filter(p => p.team === abbr && p.status === 'active').length;
-  if (active >= activeLimit(league) && !makesRoom) return 'The active roster is full.';
   const old = league.contracts[entry.contractId];
   if (!old) return 'The contract is missing.';
+  if (!enforce) return null;
+  const active = Object.values(league.players).filter(p => p.team === abbr && p.status === 'active').length;
+  if (active >= activeLimit(league) && !makesRoom) return 'The active roster is full.';
   const contract = claimedContract(old, abbr, 'preview', league.date, league.rules);
-  const sheet = (change = {}) => capSheet(league, abbr, leagueYear(league.date), change);
-  const after = sheet({ add: [{ contract, status: 'active' }] }).space;
-  if (after < 0 && after < sheet().space) return "There isn't enough cap space for his salary.";
+  const after = capSheet(league, abbr, leagueYear(league.date), {
+    add: [{ contract, status: 'active' }]
+  }).space;
+  if (after < 0) return "There isn't enough cap space for his salary.";
   return null;
 }
 
@@ -174,9 +178,13 @@ export function processWaivers(
     // AI claimants cut someone before their next game if the claim fills their roster.
     const ai = new Set(aiClaims(entry, player));
     const claimants = new Set([...entry.claims, ...ai]);
+    // The user's claims follow the league's rule enforcement; the AI's always follow the rules.
+    const enforced = (abbr: TeamAbbr) => ai.has(abbr) || abbr !== league.meta.start.userTeam || league.settings.commissioner.enforceRules; // prettier-ignore
     const winner =
-      order.find(abbr => claimants.has(abbr) && claimProblem(league, abbr, entry, ai.has(abbr)) === null) ??
-      null;
+      order.find(
+        abbr =>
+          claimants.has(abbr) && claimProblem(league, abbr, entry, ai.has(abbr), enforced(abbr)) === null
+      ) ?? null;
     if (winner) {
       if (old.ended) league.contracts[old.id] = { ...old, ended: { ...old.ended, how: 'claimed' } };
       // A deal he'd signed to follow this one doesn't go with him.

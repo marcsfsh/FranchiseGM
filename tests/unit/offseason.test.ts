@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { TEAM_ABBRS } from '../../src/data/team-colors';
 import { cutdown } from '../../src/engine/ai/decisions/offseason';
 import { closeFloorYear, teamCash } from '../../src/engine/cap/floor';
-import { capSheet, seasonSpace } from '../../src/engine/cap/sheet';
-import { capCharge, capHit } from '../../src/engine/contracts/cap';
+import { capSheet } from '../../src/engine/cap/sheet';
+import { capCharge, capHit, prorationYears } from '../../src/engine/contracts/cap';
 import { endContract } from '../../src/engine/contracts/moves';
 import { emptyYear, type Contract, type ContractYear } from '../../src/engine/contracts/types';
 import { draftOrder, signUndrafted, standInDraft } from '../../src/engine/generate/rookies';
@@ -20,10 +20,10 @@ import {
   advanceOffseason,
   closeSeason,
   nextStep,
-  offseasonBlock,
   offseasonStep,
   stepLabel
 } from '../../src/engine/season/offseason';
+import { advanceBlock } from '../../src/engine/roster/legality';
 import { nameData } from '../helpers/base-data';
 import { situationLeague } from '../helpers/situations';
 
@@ -105,9 +105,13 @@ describe('offseason calendar (spec 4.1)', () => {
 
 describe('the re-sign window (spec 4.1, 11.4, 11.5)', () => {
   /** A league at the awards with every deal running out when the 2027 league year opens. */
+  // Every deal runs out after 2026, its signing bonus still prorated as signed, so 2026's cap is as it was.
   const expiringLeague = (): League => {
     const league = fresh(at(2026, 'awards'));
-    for (const c of Object.values(league.contracts)) c.years = c.years.filter(y => y.year <= 2026);
+    for (const c of Object.values(league.contracts)) {
+      c.signingBonusYears = prorationYears(c, league.rules);
+      c.years = c.years.filter(y => y.year <= 2026);
+    }
     return league;
   };
   const kept = (league: League, abbr: string) =>
@@ -306,12 +310,14 @@ describe('stand-in draft and rosters (D-27)', () => {
       .filter(p => p.status === 'freeAgent')
       .slice(0, 20);
     for (const [i, p] of extra.entries()) Object.assign(p, { team: i < 10 ? user : 'KC', status: 'active' });
-    expect(offseasonBlock(league)).toMatch(/^Cut your active roster to 53/);
+    expect(advanceBlock(league)).toMatch(/^You have 63 players on the active roster; the limit is 53\./);
     const cut = cutdown(league, 'KC', stream(4, 'cut'));
     expect(cut).toHaveLength(10);
     expect(activeRoster(league, 'KC')).toHaveLength(53);
+    // On auto, the user's staff makes the cuts as the step begins, and the season can start.
     league.settings.auto.roster = true;
-    expect(offseasonBlock(league)).toBeNull();
+    expect(advanceOffseason(league, { names: nameData() }, { actions: 0, entropy: 1 }).blocked).toBeNull();
+    expect(activeRoster(league, user)).toHaveLength(53);
   });
 
   it("keeps a recent draft pick over a veteran who's a little better now", () => {
@@ -350,7 +356,7 @@ describe('stand-in draft and rosters (D-27)', () => {
     expect(league.upcoming).toBeNull();
     for (const abbr of TEAM_ABBRS) {
       expect(activeRoster(league, abbr), abbr).toHaveLength(53);
-      expect(seasonSpace(capSheet(league, abbr)), abbr).toBeGreaterThanOrEqual(0);
+      expect(capSheet(league, abbr).space, abbr).toBeGreaterThanOrEqual(0);
     }
     expect(Object.values(league.players).some(p => p.draft.year === 2027 && p.team)).toBe(true);
     expect(league.inbox.some(m => m.kind === 'contracts')).toBe(true);

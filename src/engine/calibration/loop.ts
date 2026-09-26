@@ -62,6 +62,8 @@ export class LoopSeason {
       if (p.team && playing.has(p.team as TeamAbbr) && cannotPlay(designation(p.injury)))
         this.collected.team(p.team as TeamAbbr).injuries.absences++;
     const week = advanceWeek(this.league, this.climate, { actions: 0, entropy: 0 });
+    if (week.blocked)
+      throw new Error(`The loop season stopped in week ${this.league.date.week}: ${week.blocked}`);
     for (const { result } of week.games) {
       const game = games.get(result.id);
       if (game) this.collected.add(game, result);

@@ -91,7 +91,7 @@ test('signs, releases, and reads the cap without ever reaching an illegal roster
     }
   }
 
-  // Over the cap, an offer shows the cap hit against the space left, and Send offer stays off.
+  // Over the cap, an offer says so (D-46), and Send offer stays off.
   type Gm = { __gm: { app: { league: { teams: Record<string, { carryover: number }> } } } };
   const setCarryover = (amount: number) =>
     page.evaluate(n => ((globalThis as unknown as Gm).__gm.app.league.teams.SF!.carryover = n), amount);
@@ -101,7 +101,7 @@ test('signs, releases, and reads the cap without ever reaching an illegal roster
   const overName = (await agents.first().locator('a').textContent()) ?? '';
   await page.getByRole('button', { name: `Make an offer to ${overName}` }).click();
   await expect(offer.locator('output')).toContainText(
-    /cap hit of \$[\d,]+ is more than your \$0 of cap space/
+    /^You're \$[\d,]+ over the 2026 cap\. Get under it with a release or a restructure before you add to it\.$/
   );
   await expect(offer.getByRole('button', { name: 'Send offer' })).toBeDisabled();
   await offer.getByRole('button', { name: 'Cancel' }).click();

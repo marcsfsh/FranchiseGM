@@ -38,8 +38,13 @@ const [league, createMs] = timed(() =>
 const games = league.schedule.slice(100, 121).map(g => timed(() => simLeagueGame(league, g.id, climate))[1]);
 const perGame = [...games].sort((a, b) => a - b)[Math.floor(games.length / 2)] ?? 0;
 
+// Every team managed, the user's too, as the calibration's loop seasons are.
+league.settings.auto.roster = true;
 const [, seasonMs] = timed(() => {
-  while (league.date.phase === 'regularSeason') advanceWeek(league, climate, { actions: 0, entropy: 0 });
+  while (league.date.phase === 'regularSeason') {
+    const week = advanceWeek(league, climate, { actions: 0, entropy: 0 });
+    if (week.blocked) throw new Error(week.blocked);
+  }
 });
 const save = JSON.stringify(league);
 

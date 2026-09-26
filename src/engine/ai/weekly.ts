@@ -8,29 +8,17 @@
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { orderOf } from '../league/depth';
 import type { League } from '../league/types';
-import type { Player } from '../model/player';
 import type { Rng } from '../rng';
-import { isElevated } from '../roster/rules';
-import { cannotPlay, designation } from '../season/injuries';
+import { dressable } from '../roster/rules';
+import { designation } from '../season/injuries';
 import { gameWeek, weekGames } from '../season/state';
+import { makeLegal } from './decisions/compliance';
 import { decideDepthChart } from './decisions/depth-chart';
 import { decideGamePlan } from './decisions/game-plan';
 import { decideRest } from './decisions/rest';
 import { decideRotation } from './decisions/rotation';
 import { rosterMoves } from './decisions/roster-moves';
 import type { DecisionLog } from './framework';
-
-/**
- * Players who can dress this week before any rest decision: active or elevated from the practice squad,
- * and not held out by an injury.
- */
-export const dressable = (league: League, abbr: TeamAbbr): Player[] =>
-  Object.values(league.players).filter(
-    p =>
-      p.team === abbr &&
-      (p.status === 'active' || isElevated(league, p)) &&
-      !cannotPlay(designation(p.injury))
-  );
 
 /**
  * `rng` is this week's stream; `seasonRng` is the same every week of a season, for depth charts (see
@@ -55,8 +43,11 @@ export function manageWeek(league: League, rng: Rng, seasonRng: Rng): DecisionLo
   for (const abbr of TEAM_ABBRS) {
     const team = league.teams[abbr];
     const teamRng = streams.get(abbr) as Rng;
-    if (abbr !== user || league.settings.auto.roster)
+    if (abbr !== user || league.settings.auto.roster) {
       logs.push(...rosterMoves(league, abbr, teamRng.fork('roster')));
+      // Whatever the week's moves left short, a legal team takes the field (D-46).
+      makeLegal(league, abbr, teamRng.fork('legal'));
+    }
     const auto = abbr !== user || team.depth.auto;
     if (!opponents.has(abbr)) continue;
     const roster = dressable(league, abbr);

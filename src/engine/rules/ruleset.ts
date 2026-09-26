@@ -26,10 +26,17 @@ export interface RosterRules {
   /** Active roster limit in season and in the offseason (spec 12.1, default, review). */
   active: number;
   offseason: number;
+  /**
+   * The fewest players on the active roster from the final cutdown through the Super Bowl, checked before
+   * every advance; the offseason has none (D-46).
+   */
+  activeMin: number;
   /** Game-day actives: 48 with at least 8 offensive linemen, otherwise 47. */
   gameDayActives: number;
   gameDayActivesShortOl: number;
   gameDayMinOl: number;
+  /** Offensive linemen a game-day roster needs to line up (D-46). */
+  gameDayLine: number;
   emergencyThirdQb: boolean;
   practiceSquad: number;
   /** Extra practice squad spot for an international pathway player. */
@@ -325,9 +332,11 @@ export const DEFAULT_RULES: RuleSet = {
   roster: {
     active: 53,
     offseason: 90,
+    activeMin: 53,
     gameDayActives: 48,
     gameDayActivesShortOl: 47,
     gameDayMinOl: 8,
+    gameDayLine: 5,
     emergencyThirdQb: true,
     practiceSquad: 16,
     practiceSquadInternational: 1,

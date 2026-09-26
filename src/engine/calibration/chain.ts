@@ -87,7 +87,11 @@ export function runChain(
   const input = { actions: 0, entropy: 0 };
   for (let s = 0; s < seasons; s++) {
     facts.snapshots.push(snapshot(league));
-    while (gameWeek(league) !== null) advanceWeek(league, data.climate, input);
+    while (gameWeek(league) !== null) {
+      const week = advanceWeek(league, data.climate, input);
+      if (week.blocked)
+        throw new Error(`The chained league stopped in week ${league.date.week}: ${week.blocked}`);
+    }
     if (s < seasons - 1) {
       const season = league.date.season;
       while (league.date.phase !== 'regularSeason') {

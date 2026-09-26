@@ -13,6 +13,8 @@ import { advanceWeek, gameWeek, weekGames } from '../../src/engine/season/advanc
 import { leagueStandings } from '../../src/engine/season/state';
 import { NEUTRAL_PLAN } from '../../src/engine/sim/plan';
 import { makeMove, type Move } from '../../src/engine/roster/moves';
+import { fillFixes, gameDayFixes } from '../../src/engine/roster/fixes';
+import { legalityProblems } from '../../src/engine/roster/legality';
 import { rosterCounts, rosterProblems } from '../../src/engine/roster/rules';
 import { askingSalary } from '../../src/engine/contracts/acceptance';
 import { stream, type Rng } from '../../src/engine/rng';
@@ -34,8 +36,9 @@ const league = (): League =>
 const input = { actions: 0, entropy: 0 };
 
 /**
- * A legal league after a week (spec 12.1): every roster at or under the active limit (AI teams fill theirs),
- * every active player under contract with his team, and every team that played fielded its core lineup.
+ * A legal league after a week (spec 12.1, D-46): every roster at the in-season count and under the cap,
+ * every active player under contract with his team, and every team that played, the user's included,
+ * fielded its core lineup.
  */
 const CORE = ['QB', 'RB1', 'X', 'Z', 'LT', 'LG', 'C', 'RG', 'RT', 'LEDGE', 'REDGE', 'DT1', 'MIKE', 'CB1', 'CB2', 'FS', 'SS'] as const; // prettier-ignore
 
@@ -45,12 +48,9 @@ function expectLegal(l: League, played: ReadonlySet<string>): void {
     // Every roster rule and the cap (spec 12.1, 11.1), for AI teams and the user's alike.
     expect(rosterProblems(l, abbr), abbr).toEqual([]);
     const active = Object.values(l.players).filter(p => p.team === abbr && p.status === 'active');
-    if (abbr === l.meta.start.userTeam) expect(active.length).toBeLessThanOrEqual(limit);
-    else expect(active.length, abbr).toBe(limit);
+    expect(active.length, abbr).toBe(limit);
     for (const p of active) expect(l.contracts[p.contractId ?? '']?.team, p.id).toBe(abbr);
-    // The user's roster moves are the user's (spec 22.7's auto toggle arrives in M20), so only AI teams
-    // are sure to keep a full lineup through injuries.
-    if (!played.has(abbr) || abbr === l.meta.start.userTeam) continue;
+    if (!played.has(abbr)) continue;
     // A thin group (a lone fullback, say) can be empty for a week; the core of the lineup never is.
     const starters = startersOf(l.teams[abbr].depth.order);
     for (const slot of CORE) expect(starters[slot], `${abbr} ${slot}`).toBeDefined();
@@ -102,9 +102,14 @@ describe('the season loop (spec 4.2, 5.3)', { timeout: 120_000 }, () => {
       { condition: '1 passing yard', amount: 100_000, likely: true, stat: { key: 'passYds', atLeast: 1 }, earned: null },
       { condition: '9,000 passing yards', amount: 100_000, likely: false, stat: { key: 'passYds', atLeast: 9000 }, earned: null }
     ]; // prettier-ignore
+    // The user's roster on auto: the staff keeps it legal, and it's checked like every AI team's.
+    l.settings.auto.roster = true;
     const week = () => {
       const played = new Set(weekGames(l).flatMap(g => [g.home, g.away]));
-      advanceWeek(l, climate, input);
+      const out = advanceWeek(l, climate, input);
+      expect(out.blocked).toBeNull();
+      // Every team could dress a legal game-day roster at kickoff, under the cap and at 53 (D-46).
+      expect(out.illegal).toEqual([]);
       expectLegal(l, played);
     };
     while (l.date.phase === 'regularSeason') week();
@@ -179,8 +184,8 @@ describe('the season loop (spec 4.2, 5.3)', { timeout: 120_000 }, () => {
 
 /**
  * The user's week of roster moves, through the same checked transactions as the screens (spec 19.4): long
- * injuries to injured reserve, and open spots filled with free agents at their asking price. Returns the
- * moves made.
+ * injuries to injured reserve, open spots filled with free agents at their asking price, and then the
+ * one-tap fixes the hub offers until the team can take the field (D-46). Returns the moves made.
  */
 function userRosterMoves(l: League, rng: Rng): number {
   const user = l.meta.start.userTeam;
@@ -200,6 +205,10 @@ function userRosterMoves(l: League, rng: Rng): number {
     if (rosterCounts(l, user).active >= l.rules.roster.active) break;
     move({ kind: 'sign', team: user, playerId: p.id, offer: { years: 1, salary: askingSalary(l, p), signingBonus: 0 } });
   }
+  for (let n = 0; n < 10 && legalityProblems(l, user).length; n++) {
+    const fix = [...gameDayFixes(l, user, 1), ...fillFixes(l, user, 1)][0];
+    if (!fix || !move(fix.move)) break;
+  }
   return made;
 } // prettier-ignore
 
@@ -207,8 +216,12 @@ describe('a season with the user managing (spec 12.2, 8.7, 19.4)', { timeout: 18
   it("keeps the user's starters and plan every week while the AI manages everyone else", () => {
     const l = league();
     const user = l.meta.start.userTeam;
+    let moves = 0;
     // Three weeks on auto, then the user takes over: the backup quarterback starts and the plan passes.
-    for (let w = 0; w < 3; w++) advanceWeek(l, climate, input);
+    for (let w = 0; w < 3; w++) {
+      moves += userRosterMoves(l, stream(1, 'user', l.date.week));
+      expect(advanceWeek(l, climate, input).blocked).toBeNull();
+    }
     const qbs = depthRows(l, user).QB.filter(r => r.available);
     const backup = qbs[1]?.id as string;
     expect(backup).toBeDefined();
@@ -218,7 +231,6 @@ describe('a season with the user managing (spec 12.2, 8.7, 19.4)', { timeout: 18
     let started = 0;
     let ready = 0;
     let games = 0;
-    let moves = 0;
     while (l.date.phase !== 'staff') {
       // The user's roster moves before each week, and a release at midseason (never the quarterback).
       if (l.date.phase === 'regularSeason' && l.date.week === 8) {
@@ -230,6 +242,8 @@ describe('a season with the user managing (spec 12.2, 8.7, 19.4)', { timeout: 18
       moves += userRosterMoves(l, stream(1, 'user', l.date.week));
       const healthy = available(l, l.players[backup] as Player);
       const week = advanceWeek(l, climate, input);
+      expect(week.blocked).toBeNull();
+      expect(week.illegal).toEqual([]);
       for (const { result } of week.games) {
         const side = result.home === user ? 'home' : result.away === user ? 'away' : null;
         if (!side) continue;

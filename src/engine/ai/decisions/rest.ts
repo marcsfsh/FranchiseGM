@@ -1,7 +1,8 @@
 /**
  * Questionable players (spec 10.8 playing hurt): the head coach plays each one hurt or rests him for the
  * week, weighing how much the lineup needs him against the chance of making it worse and the game's
- * stakes. His risk tolerance sets how much the risk weighs.
+ * stakes. His risk tolerance sets how much the risk weighs, and nobody rests when his group would be left
+ * short of a lineup's worth.
  */
 import type { TeamAbbr } from '../../../data/team-colors';
 import { chosenLineup, type LineupPlayer } from '../../fit/cohesion';
@@ -16,6 +17,7 @@ import { TUNING } from '../../tuning';
 import { needed, reinjury, stakes, type RestOption } from '../considerations/lineup';
 import { decide, type DecisionLog } from '../framework';
 import { competence, staffIn } from '../profile';
+import { NEED_GROUP } from './roster-moves';
 
 const R = TUNING.ai.rest;
 
@@ -77,7 +79,12 @@ export function decideRest(
       o => (o.play ? 'Play him' : 'Rest him')
     );
     if (!decision) continue;
-    if (!decision.chosen.play) resting.push(player.id);
+    // Resting him can't leave his group short of a lineup's worth: with both quarterbacks questionable,
+    // one of them plays (D-46).
+    const group = NEED_GROUP[player.position];
+    const others = roster.filter(p => p.id !== player.id && !resting.includes(p.id) && NEED_GROUP[p.position] === group).length; // prettier-ignore
+    if (!decision.chosen.play && others >= (TUNING.ai.signing.minHealthy[group] ?? 0))
+      resting.push(player.id);
     logs.push(decision.log);
   }
   return { resting, logs };

@@ -1,9 +1,10 @@
 /**
  * The team cap sheet (spec 11.1, 11.2): every contract's charge to the team's cap in a league year, what
  * deals that ended still charge, the pay of practice squad players elevated for games, and the space left
- * under the cap plus rollover. From the start of the league year until the regular season only the largest
+ * under the cap plus rollover. From the start of the league year until the final cutdown only the largest
  * roster charges count (the rule of 51), and a release with a June 1 designation keeps its full charge
- * until June 2. A sheet can also be computed after a proposed move, so previews follow the same rules.
+ * until June 2. It's the one cap calculation (D-46): the screens, every move's check, and every advance's
+ * check read it, and a sheet computed after a proposed move previews that move by the same rules.
  */
 import type { TeamAbbr } from '../../data/team-colors';
 import { afterJune1, capCharge, payWeek, type CapCharge, type CapFacts } from '../contracts/cap';
@@ -73,11 +74,15 @@ export function teamContracts(league: League, abbr: TeamAbbr): Contract[] {
   return Object.values(league.contracts).filter(c => c.team === abbr);
 }
 
-/** Whether the rule of 51 applies to a league year on the league's date. */
+/**
+ * Whether the rule of 51 applies to a league year on the league's date: from its opening until the final
+ * cutdown, when rosters come down to the in-season limit and every charge counts, as it will in the season.
+ */
 export function offseasonCount(league: League, year: number): boolean {
   const current = leagueYear(league.date);
   if (year !== current) return year > current;
-  return league.date.phase !== 'regularSeason' && payWeek(league.date, year, league.rules) === 1;
+  const { phase } = league.date;
+  return phase !== 'regularSeason' && phase !== 'cutdown' && payWeek(league.date, year, league.rules) === 1;
 }
 
 /** An elevated player's extra pay for a game: the active minimum's week less his practice squad week. */
@@ -87,15 +92,6 @@ export function elevationCost(league: League, playerId: string): number {
   const weekly = Math.round(minimumSalary(league.rules, p.experience) / league.rules.season.weeks);
   const squad = p.contractId ? (league.contracts[p.contractId]?.weeklyPay ?? 0) : 0;
   return Math.max(0, weekly - squad);
-}
-
-/**
- * A sheet's space with every roster charge counting, as it will once the regular season starts: the rule of
- * 51 only lasts until then (spec 11.2).
- */
-export function seasonSpace(sheet: CapSheet): number {
-  const all = sheet.lines.reduce((total, l) => total + (l.status !== null ? l.charge.total : 0), 0);
-  return sheet.space - (all - sheet.roster);
 }
 
 /** A team's cap sheet for a league year (the current one by default), optionally after a proposed move. */

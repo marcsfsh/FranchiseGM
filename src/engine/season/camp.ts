@@ -9,7 +9,7 @@ import { homeStadium } from '../../data/teams';
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { decideDepthChart } from '../ai/decisions/depth-chart';
 import type { DecisionLog } from '../ai/framework';
-import { dressable } from '../ai/weekly';
+import { dressable } from '../roster/rules';
 import { recipeFor, roleRating } from '../fit/role-rating';
 import { orderOf } from '../league/depth';
 import { leagueFitContext } from '../league/fit';

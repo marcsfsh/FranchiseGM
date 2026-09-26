@@ -41,11 +41,14 @@ test('sims to the playoffs and through the Super Bowl without pausing', async ({
   test.setTimeout(300_000);
   await openGame(page);
   await createLeague(page, { name: 'Full season', team: 'MIN', seed: '31' });
-  // Injuries to starters would stop the sim; turn that pause off first (spec 19.6).
+  // Injuries to starters would stop the sim; turn that pause off first (spec 19.6). A roster that can't take
+  // the field would too (D-46), so the staff makes the roster moves.
   await page.evaluate(() => (location.hash = '#/settings'));
   const pause = page.getByLabel('Injuries to your starters');
   await expect(pause).toBeChecked();
   await pause.uncheck();
+  await page.getByRole('switch', { name: 'Roster moves' }).click();
+  await expect(page.getByRole('switch', { name: 'Roster moves' })).toHaveAttribute('aria-checked', 'true');
   await page.evaluate(() => (location.hash = '#/'));
   const status = page.locator('main p.sr-only[role="status"]');
   await page.getByRole('button', { name: 'Sim to the playoffs' }).click();

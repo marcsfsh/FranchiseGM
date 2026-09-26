@@ -94,6 +94,14 @@ interface Plan {
   apply: (rng: Rng) => void;
 }
 
+export interface MoveOptions {
+  /**
+   * Whether the cap and the roster sizes bind the move: always for the AI, and for the user unless the
+   * league's rule enforcement is off (post-M23 2.10.1; D-46).
+   */
+  enforce?: boolean;
+}
+
 const ok = <T>(value: T): Outcome<T> => ({ ok: true, value });
 const refuse = <T>(reason: string): Outcome<T> => ({ ok: false, reason });
 
@@ -158,9 +166,9 @@ function owedTerminationPay(league: League, player: Player, contract: Contract):
   );
 } // prettier-ignore
 
-function plan(league: League, move: Move): Outcome<Plan> {
+function plan(league: League, move: Move, enforce: boolean): Outcome<Plan> {
   if (move.kind === 'extend' || move.kind === 'tag' || move.kind === 'tender' || move.kind === 'option')
-    return resignPlan(league, move);
+    return resignPlan(league, move, enforce);
   const player = league.players[move.playerId];
   if (!player) return refuse('That player is no longer in the league.');
   const { rules } = league;
@@ -184,17 +192,22 @@ function plan(league: League, move: Move): Outcome<Plan> {
   });
   const ownPlayer = player.team === team;
   const roomOnRoster = () =>
-    counts.active < counts.limit
+    counts.active < counts.limit || !enforce
       ? null
       : `Your active roster is full (${counts.limit}): release or move a player first.`;
   // Cap space after a move, by the same sheet as the team's (the rule of 51 included).
   const spaceWith = (change: SheetChange) => capSheet(league, team, year, change).space;
-  // A move that uses cap space can't leave the team over the cap; one that frees space always can.
-  const overCap = (after: number) => after < 0 && after < before;
+  // A move that adds to the cap (a signing, promotion, elevation, or claim) must leave the team under it,
+  // whatever its space before: under the rule of 51 a cheap signing can leave the sheet unchanged. A move
+  // that frees space is always allowed, and one that moves money without adding to the cap is allowed
+  // unless it leaves an over-the-cap team with less room (D-46).
+  const overCap = (after: number, adds = false) => enforce && after < 0 && (adds || after < before);
   const capRoom = (charge: number, after: number) =>
-    overCap(after)
-      ? `His ${year} cap hit of ${dollars(charge)} is more than your ${dollars(Math.max(0, before))} of cap space.`
-      : null;
+    !overCap(after, true)
+      ? null
+      : before < 0
+        ? `You're ${dollars(-before)} over the ${year} cap. Get under it with a release or a restructure before you add to it.`
+        : `His ${year} cap hit of ${dollars(charge)} is more than your ${dollars(before)} of cap space.`;
 
   switch (move.kind) {
     case 'sign': {
@@ -224,8 +237,8 @@ function plan(league: League, move: Move): Outcome<Plan> {
       if (player.status !== 'freeAgent' || player.team) return refuse(`${name} isn't a free agent.`);
       if (!PRACTICE_SQUAD_PHASES.has(league.date.phase)) return refuse('Practice squads form after the final cutdown.');
       const r = rules.roster;
-      if (counts.practice >= r.practiceSquad) return refuse(`Your practice squad is full (${r.practiceSquad}).`);
-      if (practiceSquadVeteran(league, player) && counts.practiceVeterans >= r.practiceSquadVeterans)
+      if (counts.practice >= r.practiceSquad && enforce) return refuse(`Your practice squad is full (${r.practiceSquad}).`);
+      if (practiceSquadVeteran(league, player) && counts.practiceVeterans >= r.practiceSquadVeterans && enforce)
         return refuse(
           `Your practice squad already has ${r.practiceSquadVeterans} players with more than ${plural(r.practiceSquadVeteranSeasons, 'accrued season')}.`
         );
@@ -383,7 +396,7 @@ function plan(league: League, move: Move): Outcome<Plan> {
       // An elevated player earns the active minimum's week for the game (spec 12.1).
       const cost = elevationCost(league, player.id);
       const after = spaceWith({ elevate: player.id });
-      if (overCap(after)) return refuse(`His ${dollars(cost)} for the game is more than your ${dollars(Math.max(0, before))} of cap space.`);
+      if (overCap(after, true)) return refuse(before < 0 ? `You're ${dollars(-before)} over the ${year} cap. Get under it with a release or a restructure before you add to it.` : `His ${dollars(cost)} for the game is more than your ${dollars(before)} of cap space.`);
       return ok({
         preview: preview({
           spaceAfter: after,
@@ -403,7 +416,7 @@ function plan(league: League, move: Move): Outcome<Plan> {
       const entry = league.waivers.find(w => w.playerId === player.id);
       if (!entry) return refuse(`${name} isn't on waivers.`);
       if (entry.claims.includes(team)) return refuse(`You've already claimed ${name}.`);
-      const problem = claimProblem(league, team, entry);
+      const problem = claimProblem(league, team, entry, false, enforce);
       if (problem) return refuse(problem);
       const old = league.contracts[entry.contractId];
       const claimed = old ? claimedContract(old, team, 'preview', league.date, rules) : null;
@@ -447,7 +460,8 @@ function plan(league: League, move: Move): Outcome<Plan> {
 /** Re-sign window moves (spec 11.4, 11.5): a deal that follows his current one, or his fifth-year option. */
 function resignPlan(
   league: League,
-  move: Extract<Move, { kind: 'extend' | 'tag' | 'tender' | 'option' }>
+  move: Extract<Move, { kind: 'extend' | 'tag' | 'tender' | 'option' }>,
+  enforce: boolean
 ): Outcome<Plan> {
   const player = league.players[move.playerId];
   if (!player) return refuse('That player is no longer in the league.');
@@ -462,7 +476,8 @@ function resignPlan(
   const next = (contract: Contract, notes: string[], kind: TransactionKind, extra?: (id: string) => void): Outcome<Plan> => {
     const before = capSheet(league, team, year + 1).space;
     const after = capSheet(league, team, year + 1, { add: [{ contract, status: 'active' }] }).space;
-    if (after < 0 && after < before)
+    // A deal for next league year adds to its cap, so it must leave the team under it (D-46).
+    if (after < 0 && enforce)
       return refuse(`His ${year + 1} salary of ${dollars(capHit(contract, year + 1, rules))} is more than your ${dollars(Math.max(0, before))} of ${year + 1} cap space.`);
     return ok({
       preview: { year: year + 1, spaceBefore: before, spaceAfter: after, deadNow: 0, deadNext: 0, active: counts.active, limit: counts.limit, practice: counts.practice, notes },
@@ -534,14 +549,19 @@ function resignPlan(
 }
 
 /** What a move would do, or why it can't be made. */
-export function previewMove(league: League, move: Move): Outcome<MovePreview> {
-  const p = plan(league, move);
+export function previewMove(league: League, move: Move, options: MoveOptions = {}): Outcome<MovePreview> {
+  const p = plan(league, move, options.enforce ?? true);
   return p.ok ? ok(p.value.preview) : p;
 }
 
 /** Makes a move after checking it, returning its preview, or why it can't be made. */
-export function makeMove(league: League, move: Move, rng: Rng): Outcome<MovePreview> {
-  const p = plan(league, move);
+export function makeMove(
+  league: League,
+  move: Move,
+  rng: Rng,
+  options: MoveOptions = {}
+): Outcome<MovePreview> {
+  const p = plan(league, move, options.enforce ?? true);
   if (!p.ok) return p;
   p.value.apply(rng);
   return ok(p.value.preview);
