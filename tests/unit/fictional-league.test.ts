@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { balanceShift, generateFictionalLeague, typicalStarter } from '../../src/engine/generate/league';
+import {
+  balanceShift,
+  generateFictionalLeague,
+  strengthTiers,
+  typicalStarter
+} from '../../src/engine/generate/league';
+import { stream } from '../../src/engine/rng';
 import type { Position } from '../../src/engine/model/positions';
 import { TUNING } from '../../src/engine/tuning';
 import { capHit } from '../../src/engine/contracts/cap';
@@ -196,5 +202,21 @@ describe('roster balance in generated leagues (D-19)', () => {
       { position: 'K' as const, depth: 0, starters: 1, quality: 5 }
     ];
     expect(balanceShift([...lineup(0.5), ...extras])).toBe(balanceShift(lineup(0.5)));
+  });
+
+  it("varies each league's tiers: 8 to 12 contenders and rebuilding teams, the middle taking the rest (D-40)", () => {
+    const shapes = new Set<string>();
+    for (let seed = 1; seed <= 40; seed++) {
+      const offsets = [...strengthTiers(stream(seed, 'tiers')).values()];
+      const contenders = offsets.filter(o => o > L.tierGap / 2).length;
+      const rebuilding = offsets.filter(o => o < -L.tierGap / 2).length;
+      expect(offsets).toHaveLength(32);
+      for (const n of [contenders, rebuilding]) {
+        expect(n).toBeGreaterThanOrEqual(8);
+        expect(n).toBeLessThanOrEqual(12);
+      }
+      shapes.add(`${contenders}-${rebuilding}`);
+    }
+    expect(shapes.size).toBeGreaterThan(8);
   });
 });

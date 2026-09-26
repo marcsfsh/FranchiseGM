@@ -4,6 +4,7 @@
 - Spec 2.3 lists the last opened league as a localStorage preference; it lives in IndexedDB instead (D-3).
 - Spec 17.3's division familiarity bonus doesn't say which team gets it; the sim gives it to the visitors (D-12).
 - Spec 11.1 calls the salary floor's window rolling; it checks the CBA's consecutive four-year periods from the league's first league year (D-33).
+- Spec 23.2 allows a handful of perfect or winless teams per 100 seasons at most; the band follows the NFL's rate, about 6.8 per 100 (D-40).
 ## Deferred
 - Crowd noise isn't scaled by team hype until fans arrive (M16, D-12).
 - Muffed punts, blocked field goals, roughing the kicker, and the 10-second runoff aren't simulated (D-13).
@@ -12,9 +13,9 @@
 - Madden CSV headers in src/data/madden-mapping.ts are provisional until the real file arrives (docs/MAPPING.md).
 - Franchise totals and franchise records (spec 9.3, 18.5) arrive with M17's franchise history (D-15).
 - Records lists keep a total that drops but stays positive (a negative play) even if a player outside the top 10 now has more; rebuild on read if this ever shows.
-- Calibration metrics that need several seasons (repeat rates, droughts, dynasties, title spread) wait for the offseason (M10); cohesion and coaching (M13), facilities (M16), and locker room (M12) effects show as not measured yet.
+- Calibration metrics that need several seasons (repeat rates, droughts, dynasties, title spread) wait for M12, when chained leagues with real free agency can judge them (D-40); cohesion and coaching (M13), facilities (M16), and locker room (M12) effects show as not measured yet.
 - The red zone touchdown band is wide until a sourced league average is found (calibration/targets.json).
-- Calibration replays use each head coach's auto depth chart and rotation and an AI game plan per game, and hurt players sit out while their backups dress, but nobody goes on injured reserve or gets signed, so every game stays independent (D-17, D-20). Season records are judged on weekly-loop seasons instead, which play through the weekly advance (D-24); each is one season in a fresh league until M10's offseason lets them chain.
+- Calibration replays use each head coach's auto depth chart and rotation and an AI game plan per game, and hurt players sit out while their backups dress, but nobody goes on injured reserve or gets signed, so every game stays independent (D-17, D-20). Season records are judged on weekly-loop seasons instead, which play through the weekly advance (D-24); each is the first season of a fresh league until M12 moves them to chained seasons 3 to 20 (D-40).
 - Game plans (spec 8.7) set the run and pass balance overall and by down and distance, with red zone and two-minute overrides, but formation shares aren't modeled (the sim knows personnel groupings, not formations). AI coordinators plan one balance for every situation until M14.
 - The free agent pool can run short at a position late in a season; each offseason's undrafted rookies refill it until M12's free agency.
 - The news feed v1 covers results, upsets, big games, season milestones, injuries, signings, and weekly awards; rumors, power rankings, the injury report roundup, records and streaks in headlines, and the news effects setting arrive with M18 (spec 18.1).
@@ -29,7 +30,7 @@
 - The dev menu has only the calibration runner; the AI decision log (M14), sim inspector, performance overlay, and fixed-seed toggle arrive later (spec 23.5).
 - Games lost to injury is measured without a target: no public all-player count was found. Football Outsiders' adjusted games lost (starters and key reserves, camp injuries included) was 68.9 to 80.9 per team in 2021-2023.
 - Pass volume barely falls as passing efficiency rises: team pass attempts against yards per attempt correlate about -0.05 in replays and -0.54 in the 2024 NFL, because good passing teams don't lead and run enough. The passing leader is held near the NFL mean by a league-wide pass rate shift (C-13); M7's opponent-tailored game plans and M14's coaching should carry more of it.
-- Leader metrics move about 3% between seeds because a 100-season run draws only 10 leagues. Perfect and winless teams are rare enough that even 100 weekly-loop seasons count only a few, so that metric can warn on one seed and pass on the next (C-20).
+- Leader metrics move about 3% between seeds because a 100-season run draws only 10 leagues. Perfect and winless teams are rare enough that even 100 weekly-loop seasons count only a few, so that metric can warn on one seed and pass on the next (C-20, D-40).
 - Staff (M13), Scouting and draft (M11), and Trades (M15) show placeholders, and the offseason's draft and free agency are stand-ins until M11 and M12 (D-27).
 - The playoff picture shows the seeds, the Wild Card matchups, and the clubs chasing them, without clinched or eliminated markers, which need every remaining result's scenarios.
 - A game from an earlier season opens from history without its venue, since past schedules aren't kept (spec 8.8 doesn't ask for them).

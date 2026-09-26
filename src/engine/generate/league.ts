@@ -280,19 +280,22 @@ function fitUnderCap(
 }
 
 /**
- * Team strength offsets (C-20): the league's contenders, middle teams, and rebuilding teams, in an order
- * drawn from `rng`. Each tier centers on its offset (`tierGap` above average, average, `tierGap` below)
- * with its teams evenly spaced across `tierWidth`, so every league has the same shape and no league's best
- * or worst team runs far past another's.
+ * Team strength offsets (C-20, D-40): the league's contenders, middle teams, and rebuilding teams, in an
+ * order drawn from `rng`, with as many contenders and rebuilding teams as `tierSizes` draws for this league
+ * and the middle tier taking the rest. Each tier centers on its offset (`tierGap` above average, average,
+ * `tierGap` below) with its teams evenly spaced across `tierWidth`, so no league's best or worst team runs
+ * far past another's.
  */
 export function strengthTiers(rng: Rng): Map<TeamAbbr, number> {
   const order = [...TEAM_ABBRS]
     .map(abbr => ({ abbr, key: rng.float() }))
     .sort((a, b) => a.key - b.key)
     .map(t => t.abbr);
+  const [contenders, rebuilding] = L.tierSizes.map(([low, high]) => rng.int(low, high)) as [number, number];
+  const tiers = [contenders, TEAM_ABBRS.length - contenders - rebuilding, rebuilding];
   const offsets: number[] = [];
-  L.tiers.forEach((count, tier) => {
-    const center = L.tierGap * ((L.tiers.length - 1) / 2 - tier);
+  tiers.forEach((count, tier) => {
+    const center = L.tierGap * ((tiers.length - 1) / 2 - tier);
     for (let i = 0; i < count; i++) offsets.push(center + L.tierWidth * (0.5 - (i + 0.5) / count));
   });
   return new Map(order.map((abbr, i) => [abbr, offsets[i] ?? 0] as const));

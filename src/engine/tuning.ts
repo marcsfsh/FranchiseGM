@@ -653,21 +653,25 @@ export const TUNING = {
     /** Starting quarterbacks are the most concentrated talent in the league. */
     qbStarterBonus: 0.4,
     /**
-     * Cap parity (D-19): a roster's starters more than balanceFrom above or below typical (average latent
+     * Cap parity (D-19, D-40): a roster's starters more than balanceFrom above or below typical (average latent
      * quality, the quarterback counting balanceQbWeight times) keep only balanceKeep of the excess.
      */
     balanceFrom: 0.1,
-    balanceKeep: 0.2,
+    balanceKeep: 0.4,
     balanceQbWeight: 4,
     starBonus: [0.8, 1.7],
     /**
-     * Team strength tiers (C-20): every league has this many contenders, middle teams, and rebuilding
-     * teams. Contenders center `tierGap` above average and rebuilding teams as far below it; within a tier,
-     * teams are evenly spaced across `tierWidth`. More teams sit near the tiers' centers and fewer at the
-     * extremes than a single spread with the same sd would put there.
+     * Team strength tiers (C-20, D-40): each league draws its number of contenders and of rebuilding teams
+     * evenly from these ranges, and the middle tier takes the rest. Contenders center `tierGap` above
+     * average and rebuilding teams as far below it; within a tier, teams are evenly spaced across
+     * `tierWidth`. More teams sit near the tiers' centers and fewer at the extremes than a single spread
+     * with the same sd would put there.
      */
-    tiers: [10, 12, 10],
-    tierGap: 0.33,
+    tierSizes: [
+      [8, 12],
+      [8, 12]
+    ] as [number, number][],
+    tierGap: 0.31,
     tierWidth: 0.2,
     /** Quality [mean, sd] for the first, second, and deeper backups at a position. */
     depthQuality: [

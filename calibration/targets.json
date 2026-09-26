@@ -132,10 +132,10 @@
       "note": "Teams with 2 or fewer wins, per 10 weekly-loop seasons (C-20)."
     },
     "seasons.perfectOrWinlessPer100": {
-      "pass": [0.0, 5.0],
-      "warn": [0.0, 8.0],
-      "source": "Spec 23.2: perfect and winless seasons must be extremely rare, a handful per 100 simulated seasons at most. The NFL had four in 1976-2025 (1976 TB, 2007 NE, 2008 DET, 2017 CLE).",
-      "note": "Perfect means no losses or ties; winless means no wins, ties or not. Per 100 weekly-loop seasons (C-20): a rare event, so a full run plays 100 of them."
+      "pass": [3.0, 11.0],
+      "warn": [1.0, 14.0],
+      "source": "NFL standings (Pro Football Reference season pages): 3 perfect or winless teams in the 44 full seasons from 1981 to 2025 (2007 NE 16-0, 2008 DET 0-16, 2017 CLE 0-16), about 6.8 per 100 seasons; the 1982 Colts' 0-8-1 came in a strike-shortened season.",
+      "note": "Perfect means no losses or ties; winless means no wins, ties or not. Per 100 weekly-loop seasons (C-20). A rare event, so a full run plays 100 of them, and at the NFL's rate 100 seasons land from 3 to 11 about 9 times in 10 (D-40)."
     },
     "stats.passAtt": {
       "pass": [32.0, 35.0],
