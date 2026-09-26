@@ -83,8 +83,11 @@ export interface ChainSeason {
   market: MarketFacts;
   /** The compensatory picks in the draft before it, by kind; null for a chain's first season. */
   comp: Record<CompensatoryPick['kind'], number> | null;
-  /** Each team's cash paid over the league year, and the year's cap. */
-  cash: number[];
+  /**
+   * Each team's cash paid over the league year, counted at the annual meeting as the year's last step,
+   * after the re-sign window's bonuses; null for a chain's last season, whose league year doesn't close.
+   */
+  cash: number[] | null;
   cashCap: number;
 }
 
@@ -198,19 +201,22 @@ export function runChain(
       records: TEAM_ABBRS.map(abbr => records[abbr].overall),
       market,
       comp,
-      cash: TEAM_ABBRS.map(abbr => teamCash(league, abbr, year)),
+      cash: null,
       cashCap: league.caps[year] ?? league.rules.cap.amount
     });
     comp = null;
     if (s < seasons - 1) {
       const season = league.date.season;
+      const played = facts.seasons.at(-1) as ChainSeason;
       while (league.date.phase !== 'regularSeason') {
         const step = advanceOffseason(league, { names: data.names, climate: data.climate }, input);
         if (step.blocked) throw new Error(`The chained league stopped in the offseason: ${step.blocked}`);
         // The annual meeting has just awarded the compensatory picks; the same reckoning sorts them by kind.
+        // It's the league year's last step, so its cash is all paid.
         if (league.date.phase === 'annualMeeting' && !comp) {
           comp = { netLoss: 0, netValue: 0, supplemental: 0 };
           for (const pick of compensatoryPicks(league, latestDraftOrder(league) ?? [])) comp[pick.kind]++;
+          played.cash = TEAM_ABBRS.map(abbr => teamCash(league, abbr, year));
         }
       }
       const awards = calendarDay({ season, phase: 'awards', week: 1 });

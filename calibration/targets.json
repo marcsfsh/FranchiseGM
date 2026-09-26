@@ -583,7 +583,7 @@
       "pass": [0.95, 1.07],
       "warn": [0.89, 1.12],
       "source": "Over the Cap, \"CBA Suggestion Number 4\" (April 2019): from 2015 to 2018 the league's average cash spending was about 101% of the cap; the CBA's league-wide minimum is 95% over each four-year period.",
-      "note": "Cash each team paid in a league year (salary for the weeks in force, bonuses when paid, money owed after releases), as a share of that year's cap, across the league."
+      "note": "Cash each team paid in a league year (salary for the weeks in force, bonuses when paid, money owed after releases), as a share of that year's cap, across the league, from each chain's second salary floor window: the generated league's deals carry bonuses paid before it began, which charge its first seasons' caps with no cash."
     },
     "economy.cashLow": {
       "pass": [0.91, 1.0],

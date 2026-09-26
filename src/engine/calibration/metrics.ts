@@ -659,16 +659,19 @@ export function chainSeasonMetrics(chains: readonly (readonly ChainSeason[])[]):
   );
   const comps = judged.flatMap(s => (s.comp ? [s.comp.netLoss] : []));
   out.set('economy.compNetLoss', { value: mean(comps), n: comps.length });
-  out.set('economy.cashShare', { value: ratio(sum(judged, s => sum(s.cash, c => c)), sum(judged, s => s.cashCap * s.cash.length)), n }); // prettier-ignore
-  // Floor windows run from each chain's first season; the first holds the generated league's deals.
+  // Cash counts from each chain's second salary floor window: the generated league's deals carry bonuses
+  // paid before it began, which charge the first seasons' caps with no cash.
   const { salaryFloorYears: years, salaryFloorShare: floor } = DEFAULT_RULES.cap;
+  const paid = chains.flatMap(c => c.slice(years)).filter(s => s.cash);
+  out.set('economy.cashShare', { value: ratio(sum(paid, s => sum(s.cash ?? [], c => c)), sum(paid, s => s.cashCap * (s.cash?.length ?? 0))), n: paid.length }); // prettier-ignore
   const lows: number[] = [];
   let short = 0;
   for (const chain of chains)
     for (let start = years; start + years <= chain.length; start += years) {
       const window = chain.slice(start, start + years);
+      if (window.some(s => !s.cash)) continue;
       const caps = sum(window, s => s.cashCap);
-      const shares = TEAM_ABBRS.map((_, t) => sum(window, s => s.cash[t] ?? 0) / caps);
+      const shares = TEAM_ABBRS.map((_, t) => sum(window, s => s.cash?.[t] ?? 0) / caps);
       lows.push(Math.min(...shares));
       short += shares.filter(x => x < floor).length;
     }
