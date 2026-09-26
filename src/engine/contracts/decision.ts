@@ -21,6 +21,7 @@ import { buildStandings, winPct } from '../season/standings';
 import { PLAYOFF_PHASES } from '../season/state';
 import { TUNING } from '../tuning';
 import type { Offer } from './build';
+import { incentiveOdds } from './incentives';
 import { marketCeiling, marketValue } from './market';
 
 const A = TUNING.contracts.acceptance;
@@ -68,15 +69,6 @@ export function demandShare(date: GameDate, rules: RuleSet): number {
   }
   return (PLAYOFF_PHASES as readonly string[]).includes(date.phase) ? A.lateSeasonDemand : A.offseasonDemand;
 }
-
-/**
- * An offer's yearly value: the salary, the signing bonus spread over the years, and the share of the
- * per-game bonus a player expects to earn.
- */
-export const offerValue = (offer: Offer): number =>
-  offer.salary +
-  Math.round(offer.signingBonus / Math.max(1, offer.years)) +
-  Math.round((offer.perGameBonus ?? 0) * D.perGameEarned);
 
 /** A trait's weight: 0.5 at 0, 1.5 at 100. */
 const weigh = (trait: number): number => 0.5 + trait / 100;
@@ -175,9 +167,57 @@ function fitWith(league: League, ctx: DecisionContext, player: Player, team: Tea
   return fit;
 }
 
-/** A player's need for security, 0 to 1, by age: older players value years. */
+/** A player's need for security, 0 to 1, by age: older players value guarantees. */
 const security = (age: number): number =>
   Math.max(0, Math.min(1, (age - D.securityFrom) / (D.securityFull - D.securityFrom)));
+
+/** His injury risk as he weighs a deal (spec 11.7), 0 durable to 1 fragile: his injury rating, more while hurt. */
+export function proneness(player: Player): number {
+  const { durable, fragile, hurtNow } = D.injury;
+  const rated = Math.max(0, Math.min(1, (durable - player.ratings.inj) / (durable - fragile)));
+  return Math.min(1, rated + ((player.injury?.weeksOut ?? 0) > 0 ? hurtNow : 0));
+}
+
+/**
+ * The deal length he wants (spec 11.7): a short one to bet on himself while he's young and still rising,
+ * every year he can get once he's older or fragile, and a long one in his prime.
+ */
+export function preferredYears(age: number, player: Player): number {
+  const L = D.length;
+  if (age >= L.securityFrom || proneness(player) >= L.fragileAt) return A.maxYears;
+  if (age <= L.risingThrough && player.potential - player.ovr >= L.risingBy) return L.rising;
+  return L.prime;
+}
+
+/** The share of a per-game roster bonus he counts on earning (spec 11.7): by his role, less for injury risk. */
+export function activeShare(role: number, prone: number): number {
+  const base = role > 0 ? D.active.starter : role < 0 ? D.active.backup : D.active.rotation;
+  return base * (1 - D.active.injury * prone);
+}
+
+/** What a guaranteed dollar is worth to him over a dollar that isn't (spec 11.7): more when older or fragile. */
+const guaranteePremium = (age: number, prone: number): number =>
+  D.guarantee * (1 + D.guaranteeAge * security(age) + D.guaranteeInjury * prone);
+
+/** What a signing bonus dollar is worth to him over a salary dollar, by his taste for money up front. */
+const upFrontPremium = (player: Player): number => (D.upFront * player.dealStyle.upFront) / 100;
+
+/**
+ * An offer's money to him, in shares of his market value (spec 11.7; D-64): its yearly value (the salary,
+ * the bonus spread over the years, the per-game bonus he expects to earn at `role`, and an incentive at the
+ * odds he gives himself), guaranteed and bonus dollars at their premiums, less what its length misses by.
+ */
+function moneyWorth(league: League, player: Player, offer: Offer, age: number, market: number, role: number): number {
+  const prone = proneness(player);
+  const years = Math.max(1, offer.years);
+  const bonus = offer.signingBonus / years;
+  const perGame = (offer.perGameBonus ?? 0) * activeShare(role, prone);
+  const incentive = offer.incentive ? offer.incentive.amount * incentiveOdds(league, player, offer.incentive) : 0;
+  const guaranteed = bonus + (Math.min(years, offer.guaranteedYears ?? 0) * offer.salary) / years;
+  const premiums = guaranteed * guaranteePremium(age, prone) + bonus * upFrontPremium(player);
+  const length = -D.length.miss * Math.abs(offer.years - preferredYears(age, player));
+  return (offer.salary + bonus + perGame + incentive + premiums) / market + length;
+} // prettier-ignore
 
 /** His state or province, from his hometown ("Austin, TX"); null abroad. */
 function homeState(p: Player): string | null {
@@ -190,12 +230,11 @@ export function offerWorth(league: League, ctx: DecisionContext, player: Player,
   const age = ageOn(player.birthDate, calendarDay(league.date));
   const market = marketValue(league.rules, player.position, player.ovr, age, player.experience);
   const traits = player.personality;
-  const total = offerValue(offer) * offer.years;
-  const guaranteed = offer.signingBonus + Math.min(offer.years, offer.guaranteedYears ?? 0) * offer.salary;
-  const money = offerValue(offer) / market + D.perYear * (offer.years - 1) * security(age) + D.guarantee * (total ? Math.min(1, guaranteed / total) : 0);
+  const projected = projectedRole(ctx, player, team);
+  const money = moneyWorth(league, player, offer, age, market, projected);
   const ring = 1 + Math.max(0, age - D.ringFrom) * D.ringPerYear;
   const contender = (ctx.contenders.get(team) ?? 0) * D.contender * weigh(traits.competitiveness) * ring;
-  const role = projectedRole(ctx, player, team) * D.role * weigh(traits.ego);
+  const role = projected * D.role * weigh(traits.ego);
   const state = homeState(player);
   const home = state !== null && state === homeStadium(team).region ? D.home : 0;
   const loyalty = team === (player.team ?? player.lastTeam) ? (D.loyalty * traits.loyalty) / 100 : 0;
@@ -226,9 +265,11 @@ export function reachable(league: League, ctx: DecisionContext, player: Player, 
   return Math.min(need, offerWorth(league, ctx, player, team, record).total);
 } // prettier-ignore
 
-/** The offer he takes among those he has: the one worth most, once it's worth his demand; null to wait. */
-export function chooseOffer<T extends { team: TeamAbbr; offer: Offer }>(league: League, ctx: DecisionContext, player: Player, offers: readonly T[]): T | null {
-  const need = demand(league, player);
+/**
+ * The offer he takes among those he has: the one worth most, once it's worth `need` (his demand unless
+ * given); null to wait.
+ */
+export function chooseOffer<T extends { team: TeamAbbr; offer: Offer }>(league: League, ctx: DecisionContext, player: Player, offers: readonly T[], need = demand(league, player)): T | null {
   let best: { offer: T; worth: number } | null = null;
   for (const o of offers) {
     const worth = offerWorth(league, ctx, player, o.team, o.offer).total;
@@ -279,19 +320,24 @@ export function salaryFor(league: League, ctx: DecisionContext, player: Player, 
 } // prettier-ignore
 
 /** The terms a counter can name as mattering most to a player (spec 11.6). */
-export type Term = 'guarantees' | 'years' | 'money';
+export type Term = 'guarantees' | 'bonus' | 'longer' | 'shorter' | 'money';
 
 /**
- * What matters most to him in an offer's terms (spec 11.6), most first: guaranteed money or a longer deal
- * when more of it could add enough to the offer's worth (older players value years), else money each year.
+ * What matters most to him in an offer's terms (spec 11.6), most first: the terms that could add enough to
+ * the offer's worth to him (guaranteeing the rest of the money, taking more of it up front as a bonus, or the
+ * length he wants), else money each year.
  */
 export function mattersMost(league: League, player: Player, offer: Offer): Term[] {
   const age = ageOn(player.birthDate, calendarDay(league.date));
-  const total = offerValue(offer) * offer.years;
-  const guaranteed = offer.signingBonus + Math.min(offer.years, offer.guaranteedYears ?? 0) * offer.salary;
+  const market = marketValue(league.rules, player.position, player.ovr, age, player.experience);
+  const years = Math.max(1, offer.years);
+  const guaranteed = offer.signingBonus + Math.min(years, offer.guaranteedYears ?? 0) * offer.salary;
+  const salaries = offer.salary * years;
+  const preferred = preferredYears(age, player);
   const room: [Term, number][] = [
-    ['guarantees', D.guarantee * (1 - (total ? Math.min(1, guaranteed / total) : 0))],
-    ['years', D.perYear * security(age) * (A.maxYears - offer.years)]
+    ['guarantees', (guaranteePremium(age, proneness(player)) * (salaries + offer.signingBonus - guaranteed)) / (market * years)],
+    ['bonus', (upFrontPremium(player) * salaries) / (market * years)],
+    [preferred > years ? 'longer' : 'shorter', D.length.miss * Math.abs(years - preferred)]
   ];
   const terms = room.filter(([, worth]) => worth >= N.matters).sort((a, b) => b[1] - a[1]);
   return terms.length ? terms.map(([term]) => term) : ['money'];

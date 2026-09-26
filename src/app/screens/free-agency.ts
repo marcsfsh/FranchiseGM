@@ -9,8 +9,9 @@ import { TEAM_COLORS, teamFullName } from '../../data/team-colors';
 import { capSheet } from '../../engine/cap/sheet';
 import { scrambleOpen, undraftedRookies } from '../../engine/draft/udfa';
 import { biddingOpen, offersFor, pendingFor } from '../../engine/contracts/free-agency';
+import { offerAav } from '../../engine/contracts/build';
 import { capHit } from '../../engine/contracts/cap';
-import { askOf, counterWords, settledSalary, talks, termFor } from '../../engine/contracts/negotiation';
+import { askOf, counterWords, settledOffer, talks, termFor } from '../../engine/contracts/negotiation';
 import { freeAgents } from '../../engine/league/transactions';
 import type { League } from '../../engine/league/types';
 import { calendarDay, leagueYear } from '../../engine/model/calendar';
@@ -30,7 +31,7 @@ import { openMoveDialog, placeOf, refocus, WAIT_FOR_GAMES } from '../ui/moves';
 import { GROUP_LABELS, playerLink, tierPlate } from '../ui/players';
 import { sortableTable, type TableColumn } from '../ui/sortable';
 import { offerWords, openBid } from '../ui/bidding';
-import { estimateAdvice, offerTerms } from '../ui/offer-terms';
+import { estimateAdvice, incentiveOptions, offerTerms } from '../ui/offer-terms';
 import { udfaCard } from '../ui/udfa';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
@@ -61,7 +62,8 @@ function openOffer(app: AppState, league: League, player: Player, trigger: HTMLE
     prorationMax: league.rules.pay.prorationYearsMax,
     finalHint: 'He answers yes or no, with no counter, and a no ends your talks until you advance.',
     start: talks(league, user, player.id).counter ?? { years: 1, salary: ask, signingBonus: 0 },
-    advice: estimateAdvice(league, user, player)
+    advice: estimateAdvice(league, user, player),
+    ...incentiveOptions(league, player)
   });
   const state = h('p', null);
   const showTalks = () => {
@@ -74,7 +76,7 @@ function openOffer(app: AppState, league: League, player: Player, trigger: HTMLE
   };
   showTalks();
   const years = termFor(ageOn(player.birthDate, calendarDay(league.date)));
-  const settled = settledSalary(league, player, user, years);
+  const settled = settledOffer(league, player, user, years);
   openMoveDialog(
     app,
     {
@@ -98,9 +100,9 @@ function openOffer(app: AppState, league: League, player: Player, trigger: HTMLE
           }
         },
         {
-          label: `Have your GM negotiate: ${money(settled, true)} a year for ${plural(years, 'year')}`,
+          label: `Have your GM negotiate: ${money(offerAav(settled), true)} a year for ${plural(years, 'year')}`,
           confirm: `Sign ${name}`,
-          move: () => ({ kind: 'sign', team: user, playerId: player.id, offer: { years, salary: settled, signingBonus: 0 } })
+          move: () => ({ kind: 'sign', team: user, playerId: player.id, offer: settled })
         }
       ]
     },

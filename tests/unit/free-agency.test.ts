@@ -2,17 +2,28 @@ import { describe, expect, it } from 'vitest';
 import type { TeamAbbr } from '../../src/data/team-colors';
 import { capSheet } from '../../src/engine/cap/sheet';
 import { offerAav } from '../../src/engine/contracts/build';
-import { askingFrom, contextFor } from '../../src/engine/contracts/decision';
 import {
+  askingFrom,
+  chooseOffer,
+  contextFor,
+  demand,
+  offerWorth,
+  reachable
+} from '../../src/engine/contracts/decision';
+import {
+  agentCounter,
   closeBidding,
   decideWeek,
   firstYearCharge,
+  hopeOf,
   makeOffer,
   offerProblem,
   offersFor,
   pendingFor,
+  raiseBids,
   standing,
   teamBids,
+  weighingWords,
   withdrawOffer
 } from '../../src/engine/contracts/free-agency';
 import { floorEstimate } from '../../src/engine/contracts/negotiation';
@@ -87,12 +98,12 @@ describe('the AI bidding (spec 11.8)', () => {
     const offered = teamBids(league, 'GB', draftOrder(league));
     expect(offered.length).toBeGreaterThan(0);
     const ctx = contextFor(league);
-    // Each is built as NFL deals are (D-60): its yearly value, bonus spread in, meets his ask.
+    // Each is built as NFL deals are (D-60), and is worth at least the least he'd take to him (D-65).
     for (const p of offered) {
       const mine = offersFor(league, p.id).find(o => o.team === 'GB');
       if (!mine) throw new Error('no offer');
-      const ask = askingFrom(league, ctx, p, 'GB', mine.offer.years);
-      expect(offerAav(mine.offer)).toBeGreaterThanOrEqual(ask - TUNING.market.quoteStep);
+      const need = reachable(league, ctx, p, 'GB', mine.offer.years, demand(league, p));
+      expect(offerWorth(league, ctx, p, 'GB', mine.offer).total).toBeGreaterThanOrEqual(need);
       if (offerAav(mine.offer) >= 5_000_000) expect(mine.offer.signingBonus).toBeGreaterThan(0);
     }
     expect(pendingFor(league, 'GB').charge).toBeLessThanOrEqual(before);
@@ -124,6 +135,52 @@ describe("a week's decisions (spec 11.8)", () => {
     expect(offersFor(league, second.id)).toHaveLength(1);
     closeBidding(league);
     expect(league.faOffers).toEqual({});
+  }); // prettier-ignore
+
+  it('holds out for more than his demand as the market opens, less each week, until the last (D-65)', () => {
+    const league = inFreeAgency();
+    room(league, 'GB', 4);
+    const [p] = best(league);
+    if (!p) throw new Error('no free agent');
+    p.personality.greed = 100;
+    expect(hopeOf(league, p)).toBeCloseTo(TUNING.freeAgency.hope * 1.5, 6);
+    const atDemand = {
+      years: 1,
+      salary: askingFrom(league, contextFor(league), p, 'GB', 1),
+      signingBonus: 0
+    };
+    expect(makeOffer(league, 'GB', p.id, atDemand)).toBeNull();
+    decideWeek(league, stream(1));
+    expect(p.status).toBe('freeAgent');
+    league.date = { ...league.date, week: 4 };
+    expect(hopeOf(league, p)).toBe(0);
+    decideWeek(league, stream(2));
+    expect(p.team).toBe('GB');
+  });
+
+  it("raises a team's offer he passed on while he's worth it, and tells a team who else is bidding without their terms", () => {
+    const league = inFreeAgency();
+    room(league, 'GB', 4);
+    const [p] = best(league);
+    if (!p) throw new Error('no free agent');
+    const low = { years: 1, salary: Math.round((askingFrom(league, contextFor(league), p, 'GB', 1) * 0.6) / 5000) * 5000, signingBonus: 0 };
+    expect(makeOffer(league, 'GB', p.id, low)).toBeNull();
+    expect(makeOffer(league, 'KC', p.id, { ...low, salary: low.salary + 1_000_000 })).toBeNull();
+    decideWeek(league, stream(1));
+    expect(p.status).toBe('freeAgent');
+    league.date = { ...league.date, week: 2 };
+    expect(raiseBids(league, 'GB', draftOrder(league))).toBe(1);
+    const raised = offersFor(league, p.id).find(o => o.team === 'GB')?.offer;
+    if (!raised) throw new Error('no offer');
+    expect(offerAav(raised)).toBe(Math.round((low.salary * (1 + TUNING.freeAgency.raise)) / 5000) * 5000);
+    const words = weighingWords(league, 'GB', p);
+    expect(words).toMatch(/^weighing 1 other offer too; his agent wants \$[\d,]+ a year on your terms$/);
+    expect(words).not.toContain(dollars(low.salary + 1_000_000));
+    // The counter keeps the offer's terms at a salary worth his agent's ask: more than the least he'd take.
+    const counter = agentCounter(league, 'GB', p, raised);
+    expect({ ...counter, salary: 0 }).toEqual({ ...raised, salary: 0, final: false });
+    expect(chooseOffer(league, contextFor(league), p, [{ team: 'GB', offer: counter }])?.offer).toEqual(counter);
+    expect(counter.salary).toBeGreaterThan(raised.salary);
   }); // prettier-ignore
 
   it('opens with AI offers and signs players as the weeks of free agency pass', () => {

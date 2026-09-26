@@ -202,10 +202,11 @@ export const TUNING = {
     },
     /**
      * Overall where a player earns half the top of the market, and how quickly pay rises around it. Set so
-     * that chained leagues' teams spend near the cap, as NFL teams do (D-60).
+     * that chained leagues' teams spend near the cap, as NFL teams do, paying players about their market
+     * value (D-60, D-65).
      */
-    midOverall: 80,
-    midOverallQb: 77,
+    midOverall: 79.5,
+    midOverallQb: 76.5,
     width: 4.5,
     /** Pay falls by this share for each year past the position's prime. */
     ageDiscountPerYear: 0.08,
@@ -272,23 +273,48 @@ export const TUNING = {
      */
     acceptance: { offseasonDemand: 1, inSeasonDemand: 0.6, lateSeasonDemand: 0.3, maxYears: 5 },
     /**
-     * The player decision model (spec 11.7; D-52). An offer's worth to a player is counted in his market
-     * value: its yearly value over his market value, plus `perYear` for each year past the first, weighted
-     * by his need for security (none at `securityFrom` years old, all by `securityFull`), plus `guarantee`
-     * times the share of the deal guaranteed at signing (the bonus and fully guaranteed salary). On top, as shares of his market value, up to:
-     * `contender` for the strongest team over the middle one (weighted by competitiveness, and `ringPerYear`
-     * more for each year of age past `ringFrom`), `role` for a starting job over a rotation spot (weighted by ego; a backup's loses as
-     * much), `home` for a team in his home state, `loyalty` for his own team at loyalty 100, and `fit` for
-     * his best role at the fit cap. He takes the offer worth most once it's worth his demand: `demand`
-     * [greed 0, greed 100] of his market value, times the date's share, falling `softening` a week of free
-     * agency. The demand counts what a typical offer adds on top of its money (about a fifth of his market
-     * value), so the money a deal settles for centers on his market value (D-60).
+     * The player decision model (spec 11.7; D-52, D-64). An offer's worth to a player is counted in his
+     * market value. Its money is its yearly value (salary, the signing bonus spread over the years, the
+     * per-game roster bonus he expects to earn, and a performance incentive at the odds he gives himself)
+     * over his market value, with premiums on top: a guaranteed dollar (the bonus and fully guaranteed salary)
+     * is worth `guarantee` more, up to `guaranteeAge` times that more by his need for security (none at
+     * `securityFrom` years old, all by `securityFull`) and `guaranteeInjury` times more by his injury risk;
+     * a bonus dollar `upFront` more at his taste for money up front. His injury risk runs from 0 at an
+     * injury rating of `injury.durable` to 1 at `injury.fragile`, `injury.hurtNow` more while he's hurt. He
+     * wants a deal of `length.rising` years while rising (through `length.risingThrough` years old, with
+     * `length.risingBy` points of potential still to reach), every year he can get from `length.securityFrom`
+     * years old or at an injury risk of `length.fragileAt`, and `length.prime` otherwise, and loses
+     * `length.miss` for each year off it. He counts on `active` [backup, rotation, starter] of a per-game
+     * bonus by his role, less `active.injury` times his injury risk; an incentive's odds follow his pace
+     * against its mark on a logistic `incentive.spread` wide, or `incentive.unknown` before any games. On
+     * top, as shares of his market value, up to: `contender` for the strongest team over the middle one
+     * (weighted by competitiveness, and `ringPerYear` more for each year of age past `ringFrom`), `role` for a
+     * starting job over a rotation spot (weighted by ego; a backup's loses as much), `home` for a team in
+     * his home state, `loyalty` for his own team at loyalty 100, and `fit` for his best role at the fit cap.
+     * He takes the offer worth most once it's worth his demand: `demand` [greed 0, greed 100] of his market
+     * value, times the date's share, falling `softening` a week of free agency. The demand counts what a
+     * typical deal's structure, role, and loyalty add on top of its money, so the money a deal settles for
+     * centers on his market value (D-60, D-65).
      */
     decision: {
-      perYear: 0.03,
       securityFrom: 26,
       securityFull: 32,
       guarantee: 0.1,
+      guaranteeAge: 1,
+      guaranteeInjury: 1,
+      upFront: 0.15,
+      injury: { durable: 85, fragile: 65, hurtNow: 0.3 },
+      length: {
+        rising: 2,
+        risingThrough: 26,
+        risingBy: 4,
+        prime: 4,
+        securityFrom: 30,
+        fragileAt: 0.6,
+        miss: 0.015
+      },
+      active: { backup: 0.55, rotation: 0.8, starter: 0.92, injury: 0.3 },
+      incentive: { spread: 0.15, unknown: 0.25 },
       contender: 0.12,
       ringFrom: 28,
       ringPerYear: 0.1,
@@ -296,10 +322,8 @@ export const TUNING = {
       home: 0.05,
       loyalty: 0.1,
       fit: 0.05,
-      demand: [1.1, 1.3] as readonly [number, number],
+      demand: [1.2, 1.4] as readonly [number, number],
       softening: 0.05,
-      /** The share of a per-game roster bonus a player counts on earning. */
-      perGameEarned: 0.8,
       /** Starters by position group, for his projected role; specialists count within their position. */
       starters: { QB: 1, RB: 1, WR: 3, TE: 1, OL: 5, DL: 4, LB: 3, DB: 4, ST: 1 } as Record<
         PositionGroup,
@@ -697,11 +721,14 @@ export const TUNING = {
     surprise: 0.003
   },
   /**
-   * Free agency's bidding (spec 11.8; D-53). As each week opens an AI team offers up to `offersPerWeek`
-   * free agents who'd fill a hole at their group (`needPoints` of want for each open spot of the standard
-   * roster) or start over its weakest player there by more than `upgradeBy`, keeping its draft class's room
-   * and `buffer` of the cap free. It adds up to `premium` over his asking price for the ones it wants most,
-   * in full at `premiumAt` points of want.
+   * Free agency's bidding (spec 11.8; D-53, D-65). As each week opens an AI team offers up to
+   * `offersPerWeek` free agents who'd fill a hole at their group (`needPoints` of want for each open spot of
+   * the standard roster) or start over its weakest player there by more than `upgradeBy`, keeping its draft
+   * class's room and `buffer` of the cap free. It adds up to `premium` over his asking price for the ones it
+   * wants most, in full at `premiumAt` points of want, and raises a standing offer he passed on by `raise`
+   * while it's still worth it to the team. As a week ends a player holds out for better offers than his
+   * demand by up to `hope` of it (weighted 0.5 to 1.5 by greed), all of it in the first week and none by the
+   * last, so prices run highest as the market opens.
    */
   freeAgency: {
     offersPerWeek: 12,
@@ -709,7 +736,9 @@ export const TUNING = {
     upgradeBy: 2,
     buffer: 0.02,
     premium: 0.1,
-    premiumAt: 12
+    premiumAt: 12,
+    raise: 0.05,
+    hope: 0.08
   },
 
   /** The AI's offseason roster work (D-27): contract lengths, room for undrafted rookies, and the cutdown. */

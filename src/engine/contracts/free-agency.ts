@@ -22,9 +22,10 @@ import { cannotPlay, designation } from '../season/injuries';
 import { dollars, plural } from '../text';
 import { TUNING } from '../tuning';
 import { offerAav, termsProblem, typicalOffer, type Offer } from './build';
-import { askingFrom, chooseOffer, contextFor, demand, offerWorth, reachable } from './decision';
+import { likelyToEarn } from './incentives';
+import { chooseOffer, contextFor, demand, offerWorth, reachable, salaryFor } from './decision';
 import { marketValue } from './market';
-import { floorEstimate, lowballed, termFor } from './negotiation';
+import { askedWorth, floorEstimate, lowballed, termFor, typicalFor } from './negotiation';
 import { dealValue, roomPremium } from './value';
 
 const F = TUNING.freeAgency;
@@ -44,17 +45,22 @@ export interface FreeAgentSigning {
   offer: Offer;
 }
 
+/** Free agency's weeks of bidding (spec 11.8). */
+export const FREE_AGENCY_WEEKS = 4;
+
 /** Whether teams bid on free agents now: through free agency's four weeks. */
 export const biddingOpen = (league: League): boolean => league.date.phase === 'freeAgency';
 
 /**
  * An offer's charge on the cap in its first league year: its salary, the bonus's first share (void years
- * spread it further), and the per-game bonus as though he's active for every game.
+ * spread it further), the per-game bonus as though he's active for every game, and an incentive he's
+ * already reached the mark of, as likely to be earned.
  */
-export const firstYearCharge = (league: League, offer: Offer): number =>
+export const firstYearCharge = (league: League, offer: Offer, player?: Player): number =>
   offer.salary +
   Math.round(offer.signingBonus / Math.min(offer.years + (offer.voidYears ?? 0), league.rules.pay.prorationYearsMax)) +
-  (offer.perGameBonus ?? 0); // prettier-ignore
+  (offer.perGameBonus ?? 0) +
+  (player && offer.incentive && likelyToEarn(league, player, offer.incentive) ? offer.incentive.amount : 0); // prettier-ignore
 
 /** The offers a team has standing, and what they'd put on its cap and roster if every one were taken. */
 export function pendingFor(league: League, team: TeamAbbr): { players: string[]; charge: number } {
@@ -64,7 +70,7 @@ export function pendingFor(league: League, team: TeamAbbr): { players: string[];
     for (const o of offers)
       if (o.team === team) {
         players.push(id);
-        charge += firstYearCharge(league, o.offer);
+        charge += firstYearCharge(league, o.offer, league.players[id]);
       }
   return { players, charge };
 }
@@ -85,7 +91,7 @@ export function offerProblem(league: League, team: TeamAbbr, playerId: string, o
   if (terms) return terms;
   const pending = pendingFor(league, team);
   const other = offersFor(league, playerId).find(o => o.team === team);
-  const charge = pending.charge - (other ? firstYearCharge(league, other.offer) : 0) + firstYearCharge(league, offer);
+  const charge = pending.charge - (other ? firstYearCharge(league, other.offer, player) : 0) + firstYearCharge(league, offer, player);
   const space = capSheet(league, team).space;
   if (charge > space) return `Your standing offers would add ${dollars(charge)} to your cap if all were taken, more than your ${dollars(Math.max(0, space))} of space.`;
   const rostered = Object.values(league.players).filter(p => p.team === team && p.status === 'active').length;
@@ -120,6 +126,7 @@ export function withdrawOffer(league: League, team: TeamAbbr, playerId: string):
 export function teamBids(league: League, team: TeamAbbr, order: readonly TeamAbbr[]): Player[] {
   const ctx = contextFor(league);
   const today = calendarDay(league.date);
+  raiseBids(league, team, order);
   const mine = Object.values(league.players).filter(p => p.team === team && p.status === 'active');
   const count = new Map<string, number>();
   const weakest = new Map<string, number>();
@@ -129,8 +136,8 @@ export function teamBids(league: League, team: TeamAbbr, order: readonly TeamAbb
     if (!cannotPlay(designation(p.injury))) weakest.set(group, Math.min(weakest.get(group) ?? Infinity, p.ovr));
   }
   const budget = capSheet(league, team).space - rookieReserve(league, team, order) - F.buffer * league.rules.cap.amount - pendingFor(league, team).charge;
-  // A team with room overpays and signs depth (D-60): its value of each deal, what it offers over his ask,
-  // and how far under its weakest starter it still wants a player rise with it.
+  // A team with room pays more and signs depth (D-60, D-65): its value of each deal, the most it raises an
+  // offer to, and how far under its weakest starter it still wants a player rise with it.
   const rich = roomPremium(league, budget);
   const depth = (rich - 1) * TUNING.market.roomPremium.depthPoints;
   const wants = freeAgents(league)
@@ -148,14 +155,16 @@ export function teamBids(league: League, team: TeamAbbr, order: readonly TeamAbb
   for (const { p, want } of wants) {
     if (offered.length >= F.offersPerWeek || left <= 0) break;
     const years = termFor(ageOn(p.birthDate, today));
-    const ask = askingFrom(league, ctx, p, team, years);
+    // The least he'd take on the team's usual deal, and more for the ones it wants most (D-65).
+    const minimum = minimumSalary(league.rules, p.experience);
+    const ask = offerAav(typicalFor(league, ctx, p, team, years, reachable(league, ctx, p, team, years, demand(league, p)), minimum));
     const premium = Math.min(F.premium, Math.max(0, want) / F.premiumAt * F.premium);
     const step = TUNING.market.quoteStep;
     const worth = Math.floor((dealValue(league, p, years) * rich) / years / step) * step;
-    const salary = Math.min(worth, Math.round((ask * (1 + premium) * rich) / step) * step);
+    const salary = Math.min(worth, Math.round((ask * (1 + premium)) / step) * step);
     // He asks more than he's worth to the team over the deal.
     if (salary < ask) continue;
-    const offer = typicalOffer(league.rules, years, salary, minimumSalary(league.rules, p.experience));
+    const offer = typicalOffer(league.rules, years, salary, minimum);
     if (firstYearCharge(league, offer) > left) continue;
     if (makeOffer(league, team, p.id, offer) === null) {
       left -= firstYearCharge(league, offer);
@@ -165,6 +174,34 @@ export function teamBids(league: League, team: TeamAbbr, order: readonly TeamAbb
   return offered;
 } // prettier-ignore
 
+/**
+ * A team's standing offers raised as a week of free agency opens (spec 11.8; D-65): each free agent who
+ * passed on its offer gets `raise` more a year, built as the AI builds its deals, while he's still worth
+ * that to the team over the deal (D-38) and its offers fit the room it keeps.
+ */
+export function raiseBids(league: League, team: TeamAbbr, order: readonly TeamAbbr[]): number {
+  const step = TUNING.market.quoteStep;
+  let left = capSheet(league, team).space - rookieReserve(league, team, order) - F.buffer * league.rules.cap.amount - pendingFor(league, team).charge; // prettier-ignore
+  const rich = roomPremium(league, left);
+  let raised = 0;
+  for (const [id, offers] of Object.entries(league.faOffers)) {
+    const player = league.players[id];
+    const mine = offers.find(o => o.team === team);
+    if (!player || !mine || player.status !== 'freeAgent') continue;
+    const years = mine.offer.years;
+    const worth = Math.floor((dealValue(league, player, years) * rich) / years / step) * step;
+    const aav = offerAav(mine.offer);
+    const next = Math.min(worth, Math.round((aav * (1 + F.raise)) / step) * step);
+    if (next <= aav) continue;
+    const offer = typicalOffer(league.rules, years, next, minimumSalary(league.rules, player.experience));
+    const more = firstYearCharge(league, offer, player) - firstYearCharge(league, mine.offer, player);
+    if (more > left || makeOffer(league, team, id, offer) !== null) continue;
+    left -= more;
+    raised++;
+  }
+  return raised;
+}
+
 /** Every AI team's offers as a week of free agency opens, in draft order. */
 export function aiBids(league: League, teams: readonly TeamAbbr[], order: readonly TeamAbbr[]): number {
   let total = 0;
@@ -173,9 +210,19 @@ export function aiBids(league: League, teams: readonly TeamAbbr[], order: readon
 }
 
 /**
+ * How far over his demand a free agent holds out as a week of free agency ends (spec 11.8; D-65): up to
+ * `hope` of it by his greed as the market opens, falling to none by its last week.
+ */
+export function hopeOf(league: League, player: Player): number {
+  const left = Math.max(0, FREE_AGENCY_WEEKS - league.date.week) / (FREE_AGENCY_WEEKS - 1);
+  return F.hope * (0.5 + player.personality.greed / 100) * left;
+}
+
+/**
  * The week's decisions as it ends (spec 11.8): each free agent with offers, the most valuable first, takes
- * the one worth most to him once one is worth his demand, if the team can still sign him; the rest wait.
- * One who waits lets a take-it-or-leave-it offer fall away, and holds a lowball against its team (spec 11.6).
+ * the one worth most to him once one is worth his demand and what he still hopes for over it, if the team can
+ * still sign him; the rest wait for better offers or for any. One who waits lets a take-it-or-leave-it offer
+ * fall away, and holds a lowball against its team (spec 11.6).
  */
 export function decideWeek(league: League, rng: Rng): FreeAgentSigning[] {
   const today = calendarDay(league.date);
@@ -187,9 +234,10 @@ export function decideWeek(league: League, rng: Rng): FreeAgentSigning[] {
   const signings: FreeAgentSigning[] = [];
   for (const player of players) {
     let offers = [...offersFor(league, player.id)];
+    const need = demand(league, player) * (1 + hopeOf(league, player));
     while (offers.length) {
       const ctx = contextFor(league);
-      const choice = chooseOffer(league, ctx, player, offers);
+      const choice = chooseOffer(league, ctx, player, offers, need);
       if (!choice) break;
       const done = makeMove(league, { kind: 'sign', team: choice.team, playerId: player.id, offer: choice.offer, reason: 'in free agency' }, rng);
       if (done.ok) {
@@ -242,6 +290,31 @@ export function standing(league: League, team: TeamAbbr, player: Player, offer: 
     ? `He's weighing offers from ${plural(others, 'other team')} too; you can't see their terms.`
     : 'No other team has made him an offer yet.';
   return `${read}: it expects him to sign for ${dollars(low)} to ${dollars(high)} a year on these terms. ${rivals}`;
+}
+
+/**
+ * His agent's counter to a team's standing offer he passed on (spec 11.6, 11.8): the offer's other terms at
+ * the salary a year his agent asks on them, which the team can match by changing its offer.
+ */
+export function agentCounter(league: League, team: TeamAbbr, player: Player, offer: Offer): Offer {
+  const ctx = contextFor(league);
+  const need = reachable(league, ctx, player, team, offer.years, askedWorth(league, player, team));
+  const salary = salaryFor(league, ctx, player, team, { ...offer, final: false }, need, minimumSalary(league.rules, player.experience)); // prettier-ignore
+  return { ...offer, salary, final: false };
+}
+
+/**
+ * Where a free agent still weighing a team's offer stands, in words for its inbox (spec 11.8): how many other
+ * teams have offered, never their terms, and what his agent wants on the team's terms.
+ */
+export function weighingWords(league: League, team: TeamAbbr, player: Player): string {
+  const offers = offersFor(league, player.id);
+  const mine = offers.find(o => o.team === team);
+  const others = offers.length - (mine ? 1 : 0);
+  const rivals = others ? `weighing ${plural(others, 'other offer')} too` : 'no other offers yet';
+  return mine
+    ? `${rivals}; his agent wants ${dollars(agentCounter(league, team, player, mine.offer).salary)} a year on your terms`
+    : rivals;
 }
 
 /** A signing's words for news and the inbox: "Name (POS), 3 years, $12,000,000 a year". */

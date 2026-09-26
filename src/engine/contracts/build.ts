@@ -8,6 +8,7 @@ import { leagueYear, PHASES, type GameDate, type Phase } from '../model/calendar
 import { minimumSalary, type RuleSet } from '../rules/ruleset';
 import { dollars, plural } from '../text';
 import { TUNING } from '../tuning';
+import { incentiveCondition, type OfferIncentive } from './incentives';
 import { rookieSigningBonus } from './market';
 import { emptyYear, type Contract, type ContractType, type ContractYear } from './types';
 
@@ -167,6 +168,8 @@ export interface Offer {
   signingBonus: number;
   guaranteedYears?: number;
   perGameBonus?: number;
+  /** A performance incentive each year: a season mark in a stat his position piles up (spec 11.2). */
+  incentive?: OfferIncentive;
   voidYears?: number;
   final?: boolean;
 }
@@ -207,6 +210,9 @@ export function termsProblem(rules: RuleSet, offer: Offer, minimum: number): str
   if (!Number.isInteger(guaranteed) || guaranteed < 0 || guaranteed > offer.years) return `Guarantee his salary for 0 to ${plural(offer.years, 'year')}.`;
   const perGame = offer.perGameBonus ?? 0;
   if (!Number.isInteger(perGame) || perGame < 0) return 'The per-game roster bonus must be a whole-dollar amount, zero or more.';
+  const incentive = offer.incentive;
+  if (incentive && (!Number.isInteger(incentive.amount) || incentive.amount < 0)) return 'The incentive must be a whole-dollar amount, zero or more.';
+  if (incentive && (!Number.isInteger(incentive.atLeast) || incentive.atLeast < 1)) return "Set the incentive's mark at 1 or more.";
   const voids = offer.voidYears ?? 0;
   const room = Math.max(0, rules.pay.prorationYearsMax - offer.years);
   if (!Number.isInteger(voids) || voids < 0 || voids > room)
@@ -215,11 +221,16 @@ export function termsProblem(rules: RuleSet, offer: Offer, minimum: number): str
   return null;
 } // prettier-ignore
 
-/** An offer's years, with its guarantees, incentives, and void years (spec 11.6). */
-function offerYears(rules: RuleSet, offer: Offer, start: number, credited: number): ContractYear[] {
-  const real = Array.from({ length: offer.years }, (_, i) => {
-    const base = Math.max(offer.salary, minimumSalary(rules, credited + i));
-    return { ...emptyYear(start + i), base, perGameBonus: offer.perGameBonus ?? 0, guaranteedBase: i < (offer.guaranteedYears ?? 0) ? base : 0 };
+/**
+ * An offer's years, with its guarantees, incentives, and void years (spec 11.6). A performance incentive
+ * counts on the cap as likely to be earned when `likely` (he's reached its mark, the CBA's Article 13).
+ */
+function offerYears(rules: RuleSet, offer: Offer, start: number, credited: number, likely: boolean): ContractYear[] {
+  const i = offer.incentive;
+  const incentives = () => (i && i.amount > 0 ? [{ condition: incentiveCondition(i), amount: i.amount, likely, stat: { key: i.key, atLeast: i.atLeast }, earned: null }] : []);
+  const real = Array.from({ length: offer.years }, (_, n) => {
+    const base = Math.max(offer.salary, minimumSalary(rules, credited + n));
+    return { ...emptyYear(start + n), base, perGameBonus: offer.perGameBonus ?? 0, incentives: incentives(), guaranteedBase: n < (offer.guaranteedYears ?? 0) ? base : 0 };
   });
   const voids = Array.from({ length: offer.voidYears ?? 0 }, (_, i) => ({ ...emptyYear(start + offer.years + i), isVoid: true }));
   return [...real, ...voids];
@@ -227,20 +238,24 @@ function offerYears(rules: RuleSet, offer: Offer, start: number, credited: numbe
 
 /**
  * The contract an offer makes, signed on `date` and running from its league year. Each year's base is the
- * offered salary or the minimum for the player's credited seasons that year, whichever is more.
+ * offered salary or the minimum for the player's credited seasons that year, whichever is more; its
+ * performance incentive counts as likely to be earned when `likely`.
  */
 export function offerContract(
   rules: RuleSet,
   base: Base,
   date: GameDate,
   offer: Offer,
-  credited: number
+  credited: number,
+  likely = false
 ): Contract {
   const start = leagueYear(date);
   const type =
-    offer.signingBonus === 0 && offer.salary <= minimumSalary(rules, credited) ? 'minimum' : 'veteran';
+    offer.signingBonus === 0 && offer.salary <= minimumSalary(rules, credited) && !offer.incentive
+      ? 'minimum'
+      : 'veteran';
   const c = contract(base, type, { ...date }, offer.signingBonus);
-  c.years = offerYears(rules, offer, start, credited);
+  c.years = offerYears(rules, offer, start, credited, likely);
   return c;
 }
 
@@ -267,11 +282,12 @@ export function extensionContract(
   base: Base,
   date: GameDate,
   offer: Offer,
-  credited: number
+  credited: number,
+  likely = false
 ): Contract {
   const start = leagueYear(date) + 1;
   const c = contract(base, 'extension', { ...date }, offer.signingBonus);
-  c.years = offerYears(rules, offer, start, credited);
+  c.years = offerYears(rules, offer, start, credited, likely);
   return c;
 }
 

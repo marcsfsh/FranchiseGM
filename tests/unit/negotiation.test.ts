@@ -1,17 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import { staffIn } from '../../src/engine/ai/profile';
 import { capHit } from '../../src/engine/contracts/cap';
-import { offerContract, termsProblem, type Offer } from '../../src/engine/contracts/build';
+import {
+  offerAav,
+  offerContract,
+  termsProblem,
+  typicalOffer,
+  type Offer
+} from '../../src/engine/contracts/build';
 import { askingFrom, contextFor, demand, mattersMost, offerWorth } from '../../src/engine/contracts/decision';
-import { decideWeek, makeOffer, offersFor } from '../../src/engine/contracts/free-agency';
+import { decideWeek, firstYearCharge, makeOffer, offersFor } from '../../src/engine/contracts/free-agency';
+import { likelyToEarn } from '../../src/engine/contracts/incentives';
 import {
   askedWorth,
   askOf,
   floorEstimate,
   hear,
+  mattersWords,
   openingOf,
   patience,
+  settledOffer,
   settledSalary,
+  settledWorth,
   talks,
   type FloorEstimate
 } from '../../src/engine/contracts/negotiation';
@@ -73,6 +83,35 @@ describe('the terms of an offer (spec 11.6)', () => {
   }); // prettier-ignore
 });
 
+describe('performance incentives in offers (spec 11.2, 11.6)', () => {
+  it("builds one into each year, counted on the cap as likely once he's reached the mark (Article 13)", () => {
+    const rules = situationLeague.rules;
+    const incentive = { key: 'recYds' as const, atLeast: 1_000, amount: 500_000 };
+    const offer = { years: 2, salary: 2_000_000, signingBonus: 0, incentive };
+    expect(termsProblem(rules, { ...offer, incentive: { ...incentive, atLeast: 0 } }, 1_000_000)).toBe("Set the incentive's mark at 1 or more.");
+    expect(termsProblem(rules, { ...offer, incentive: { ...incentive, amount: -1 } }, 1_000_000)).toMatch(/^The incentive must be a whole-dollar amount/);
+    const base = { id: 'c', playerId: 'p', team: 'MIN' as const };
+    const date = { season: 2025, phase: 'otas' as const, week: 1 };
+    const unlikely = offerContract(rules, base, date, offer, 5);
+    expect(unlikely.years.map(y => y.incentives.map(i => [i.condition, i.amount, i.likely]))).toEqual([
+      [['1,000 receiving yards', 500_000, false]],
+      [['1,000 receiving yards', 500_000, false]]
+    ]);
+    expect(capHit(unlikely, 2026, rules)).toBe(2_000_000);
+    const likely = offerContract(rules, base, date, offer, 5, true);
+    expect(capHit(likely, 2026, rules)).toBe(2_500_000);
+    // Reaching the mark last season makes it likely, for the cap and for his standing offers.
+    const league = structuredClone(situationLeague);
+    league.date = { season: 2026, phase: 'freeAgency', week: 1 };
+    const [p] = freeAgents(league);
+    if (!p) throw new Error('no free agent');
+    league.season.totals = { [p.id]: { recYds: 1_050 } };
+    expect(likelyToEarn(league, p, incentive)).toBe(true);
+    expect(likelyToEarn(league, p, { ...incentive, atLeast: 1_100 })).toBe(false);
+    expect(firstYearCharge(league, offer, p) - firstYearCharge(league, offer)).toBe(500_000);
+  }); // prettier-ignore
+});
+
 describe('talks (spec 11.6)', () => {
   it("opens above his demand, further for a hard bargainer, and a team's GM settles as far under it as his rating reaches", () => {
     const league = inTalks();
@@ -99,6 +138,26 @@ describe('talks (spec 11.6)', () => {
     // Through the bidding weeks his agent holds at his opening, over the least he'd take.
     league.date = { season: 2026, phase: 'freeAgency', week: 1 };
     expect(askOf(league, p, 'MIN')).toBeGreaterThan(askingFrom(league, contextFor(league), p, 'MIN'));
+  }); // prettier-ignore
+
+  it("settles a deal built as the AI builds them, at the least that's worth what the GM settles for (D-66)", () => {
+    const league = inTalks();
+    const p = star(league);
+    const gm = staffIn(league, 'MIN', 'GM');
+    if (!gm) throw new Error('no GM');
+    const ctx = contextFor(league);
+    const deal = (skill: number) => {
+      gm.ratings.negotiation = skill;
+      return settledOffer(league, p, 'MIN', 3);
+    };
+    const rough = deal(0);
+    const sharp = deal(99);
+    expect(sharp.signingBonus).toBeGreaterThan(0);
+    expect(offerAav(sharp)).toBeLessThan(offerAav(rough));
+    // Worth what the GM settles for, and a quote step less isn't.
+    expect(offerWorth(league, ctx, p, 'MIN', sharp).total).toBeGreaterThanOrEqual(settledWorth(league, p, 'MIN'));
+    const less = typicalOffer(league.rules, 3, offerAav(sharp) - 5_000, league.rules.pay.minimumSalary[p.experience] ?? 0);
+    expect(offerWorth(league, ctx, p, 'MIN', less).total).toBeLessThan(settledWorth(league, p, 'MIN'));
   }); // prettier-ignore
 
   it("gives the front office a range around the least he'd take, narrower with a better GM", () => {
@@ -206,14 +265,30 @@ describe('talks (spec 11.6)', () => {
     expect(p).toMatchObject({ team: 'MIN', status: 'active' });
   }); // prettier-ignore
 
-  it('says what matters most: a longer deal for an older player, guaranteed money for most', () => {
+  it('says what matters most: the length he wants, guaranteed money, or cash up front, else money', () => {
     const league = inTalks();
     const p = star(league);
-    p.birthDate = `${2026 - 34}${p.birthDate.slice(4)}`;
-    expect(mattersMost(league, p, plain(1, 5_000_000))[0]).toBe('years');
-    p.birthDate = `${2026 - 24}${p.birthDate.slice(4)}`;
-    expect(mattersMost(league, p, plain(3, 5_000_000))).toEqual(['guarantees']);
-    expect(mattersMost(league, p, { ...plain(5, 5_000_000), guaranteedYears: 5 })).toEqual(['money']);
+    const aged = (age: number) => (p.birthDate = `${2026 - age}${p.birthDate.slice(4)}`);
+    Object.assign(p, { potential: p.ovr, injury: null }, { ratings: { ...p.ratings, inj: 95 } });
+    p.dealStyle.upFront = 0;
+    const guaranteed = (years: number) => ({ ...plain(years, 20_000_000), guaranteedYears: years });
+    // An older player on a one-year deal wants more years; a young one still rising, fewer.
+    aged(34);
+    expect(mattersMost(league, p, guaranteed(1))).toEqual(['longer']);
+    aged(23);
+    p.potential = p.ovr + 6;
+    expect(mattersMost(league, p, guaranteed(5))).toEqual(['shorter']);
+    // In his prime, on a deal the length he wants: guarantees when little is guaranteed, a bonus if he
+    // likes cash up front, and otherwise money.
+    aged(27);
+    p.potential = p.ovr;
+    expect(mattersMost(league, p, plain(4, 20_000_000))[0]).toBe('guarantees');
+    expect(mattersMost(league, p, guaranteed(4))).toEqual(['money']);
+    p.dealStyle.upFront = 100;
+    expect(mattersMost(league, p, guaranteed(4))).toEqual(['bonus']);
+    expect(mattersWords(['bonus', 'guarantees'])).toBe(
+      'More of it up front as a signing bonus matters most to him, then guaranteed money.'
+    );
   });
 });
 

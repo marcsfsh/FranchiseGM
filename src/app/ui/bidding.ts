@@ -22,7 +22,7 @@ import { h } from '../dom';
 import { actionDialogFrame, openDialog, toast } from '../feedback';
 import { money } from '../format';
 import type { AppState } from '../state';
-import { offerTerms } from './offer-terms';
+import { incentiveOptions, offerTerms } from './offer-terms';
 
 /** The user's standing offer to a free agent, in words: "$4,500,000 a year for 2 years". */
 export function offerWords(league: League, playerId: string): string | null {
@@ -44,7 +44,8 @@ export function openBid(app: AppState, league: League, player: Player, trigger: 
     salaryHint: `His minimum is ${money(minimum, true)}.`,
     prorationMax: league.rules.pay.prorationYearsMax,
     finalHint: "If he doesn't take it as the week ends, it falls away instead of standing.",
-    start: mine?.offer ?? { years: 1, salary: ask, signingBonus: 0 }
+    start: mine?.offer ?? { years: 1, salary: ask, signingBonus: 0 },
+    ...incentiveOptions(league, player)
   });
   const outlook = h('p', { class: 'hint', role: 'status' });
   /** The offer as entered, with his answer as the offers stand; null while a detail is wrong. */

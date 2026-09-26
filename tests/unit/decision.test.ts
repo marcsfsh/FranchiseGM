@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { TEAM_ABBRS, type TeamAbbr } from '../../src/data/team-colors';
 import { homeStadium } from '../../src/data/teams';
+import type { Offer } from '../../src/engine/contracts/build';
 import {
+  activeShare,
   askingFrom,
   chooseOffer,
   decisionContext,
   demand,
   offerWorth,
+  preferredYears,
   projectedRole,
+  proneness,
   type DecisionContext
 } from '../../src/engine/contracts/decision';
 import { marketValue } from '../../src/engine/contracts/market';
@@ -42,23 +46,69 @@ const neutral = (league: League): DecisionContext => ({
 const bornAt = (league: League, age: number) => `${league.date.season - age}-01-01`;
 
 describe('what an offer is worth (spec 11.7)', () => {
-  it('counts money against his market value, years by his need for security, and guarantees', () => {
+  it('counts money against his market value, and a deal the length he wants: short while rising, long when older or fragile', () => {
     const league = fresh();
     const p = agent(league);
     const ctx = neutral(league);
-    const value = market(league, p);
-    const worth = (years: number, bonus = 0) => offerWorth(league, ctx, p, 'MIN', { years, salary: value - Math.round(bonus / years), signingBonus: bonus }).money; // prettier-ignore
-    p.birthDate = bornAt(league, 24);
-    expect(worth(1)).toBeCloseTo(1, 1);
-    expect(worth(4)).toBeCloseTo(worth(1), 5);
+    Object.assign(p, { potential: p.ovr, injury: null }, { ratings: { ...p.ratings, inj: 95 } });
+    const money = (years: number) => offerWorth(league, ctx, p, 'MIN', { years, salary: market(league, p), signingBonus: 0 }).money; // prettier-ignore
+    p.birthDate = bornAt(league, 27);
+    expect(preferredYears(27, p)).toBe(D.length.prime);
+    expect(money(D.length.prime)).toBeCloseTo(1, 5);
+    expect(money(D.length.prime) - money(1)).toBeCloseTo(D.length.miss * (D.length.prime - 1), 5);
+    // Young and still rising, he bets on himself with a short deal.
+    p.birthDate = bornAt(league, 23);
+    p.potential = p.ovr + D.length.risingBy;
+    expect(preferredYears(23, p)).toBe(D.length.rising);
+    expect(money(D.length.rising)).toBeGreaterThan(money(5));
+    // Older, or fragile, he wants every year he can get.
+    p.potential = p.ovr;
     p.birthDate = bornAt(league, 33);
-    const older = market(league, p);
-    const years = (n: number) =>
-      offerWorth(league, ctx, p, 'MIN', { years: n, salary: older, signingBonus: 0 }).money;
-    expect(years(4) - years(1)).toBeCloseTo(D.perYear * 3, 5);
+    expect(money(5) - money(1)).toBeCloseTo(D.length.miss * 4, 5);
+    p.birthDate = bornAt(league, 27);
+    p.ratings.inj = D.injury.fragile;
+    expect(proneness(p)).toBe(1);
+    expect(preferredYears(27, p)).toBe(5);
+  }); // prettier-ignore
+
+  it('values guaranteed money more when older or fragile, a signing bonus by his taste for cash up front, and incentives at their odds', () => {
+    const league = fresh();
+    const p = agent(league);
+    const ctx = neutral(league);
+    // Each offer pays his market value now, whatever his age.
+    const worth = (offer: Partial<Offer>) => offerWorth(league, ctx, p, 'MIN', { years: 3, salary: market(league, p), signingBonus: 0, ...offer }).money; // prettier-ignore
+    Object.assign(p, { potential: p.ovr, injury: null }, { ratings: { ...p.ratings, inj: 95 } });
+    p.dealStyle.upFront = 0;
     p.birthDate = bornAt(league, 24);
-    expect(worth(2, value)).toBeGreaterThan(worth(2));
-  });
+    const young = worth({ guaranteedYears: 3 }) - worth({});
+    expect(young).toBeCloseTo(D.guarantee, 5);
+    p.birthDate = bornAt(league, 33);
+    const older = worth({ guaranteedYears: 3 }) - worth({});
+    expect(older).toBeCloseTo(D.guarantee * (1 + D.guaranteeAge), 5);
+    p.ratings.inj = D.injury.fragile;
+    expect(worth({ guaranteedYears: 3 }) - worth({})).toBeCloseTo(D.guarantee * (1 + D.guaranteeAge + D.guaranteeInjury), 5);
+    // The same money as a signing bonus: guaranteed, and more to him the more he likes cash up front.
+    p.birthDate = bornAt(league, 24);
+    Object.assign(p.ratings, { inj: 95 });
+    const value = market(league, p);
+    const asBonus = { salary: value - Math.round(value / 3), signingBonus: value };
+    const plain = worth(asBonus);
+    p.dealStyle.upFront = 100;
+    expect(worth(asBonus) - plain).toBeCloseTo(D.upFront / 3, 3);
+    // A per-game bonus counts at his odds of being active; an incentive at his odds of reaching its mark.
+    expect(projectedRole(ctx, p, 'MIN')).toBe(1);
+    expect(worth({ perGameBonus: 1_000_000 }) - worth({})).toBeCloseTo((1_000_000 * activeShare(1, 0)) / value, 5);
+    expect(activeShare(-1, 0)).toBeLessThan(activeShare(1, 0));
+    expect(activeShare(1, 1)).toBeLessThan(activeShare(1, 0));
+    // Through the offseason, his last season is what he goes by.
+    league.date = { ...league.date, phase: 'freeAgency', week: 1 };
+    league.season.results = { g: {} as League['season']['results'][string] };
+    league.season.totals = { [p.id]: { recYds: 1_200 } };
+    const reach = (atLeast: number) => worth({ incentive: { key: 'recYds', atLeast, amount: 1_000_000 } }) - worth({});
+    expect(reach(600)).toBeGreaterThan(reach(1_200));
+    expect(reach(1_200)).toBeCloseTo(0.5 * (1_000_000 / value), 5);
+    expect(reach(2_400)).toBeLessThan(0.05 * (1_000_000 / value));
+  }); // prettier-ignore
 
   it('weighs a contender by competitiveness and age, a starting job by ego, home, loyalty, and fit', () => {
     const league = fresh();

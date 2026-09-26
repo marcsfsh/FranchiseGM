@@ -6,8 +6,9 @@
  * its cap effect in a dialog before the user confirms it.
  */
 import { teamFullName, type TeamAbbr } from '../../data/team-colors';
+import { offerAav } from '../../engine/contracts/build';
 import { capHit } from '../../engine/contracts/cap';
-import { askOf, counterWords, settledSalary, talks, termFor } from '../../engine/contracts/negotiation';
+import { askOf, counterWords, settledOffer, talks, termFor } from '../../engine/contracts/negotiation';
 import {
   creditedNextYear,
   currentDeal,
@@ -35,7 +36,7 @@ import { money } from '../format';
 import { href } from '../router';
 import type { AppState } from '../state';
 import { openMoveDialog, placeOf, refocus, type MoveChoice } from '../ui/moves';
-import { estimateAdvice, offerTerms } from '../ui/offer-terms';
+import { estimateAdvice, incentiveOptions, offerTerms } from '../ui/offer-terms';
 import { demandTag, playerLink, tierPlate } from '../ui/players';
 import { sortableTable, type TableColumn } from '../ui/sortable';
 import { card, pageHead } from './common';
@@ -113,7 +114,8 @@ function extensionChoices(app: AppState, league: League, player: Player): MoveCh
     prorationMax: league.rules.pay.prorationYearsMax,
     finalHint: 'He answers yes or no, with no counter, and a no ends your talks until you advance.',
     start: talks(league, team, player.id).counter ?? { years: start, salary: ask, signingBonus: 0 },
-    advice: estimateAdvice(league, team, player, true)
+    advice: estimateAdvice(league, team, player, true),
+    ...incentiveOptions(league, player)
   });
   const state = h('p', null);
   const showTalks = () => {
@@ -126,7 +128,7 @@ function extensionChoices(app: AppState, league: League, player: Player): MoveCh
   };
   showTalks();
   const years = termFor(ageOn(player.birthDate, calendarDay(league.date)));
-  const settled = settledSalary(league, player, team, years, true);
+  const settled = settledOffer(league, player, team, years, true);
   return [
     {
       label: 'Offer an extension',
@@ -144,9 +146,9 @@ function extensionChoices(app: AppState, league: League, player: Player): MoveCh
       }
     },
     {
-      label: `Have your GM negotiate: ${money(settled, true)} a year for ${plural(years, 'year')}`,
+      label: `Have your GM negotiate: ${money(offerAav(settled), true)} a year for ${plural(years, 'year')}`,
       confirm: `Extend ${name}`,
-      move: () => ({ kind: 'extend', team, playerId: player.id, offer: { years, salary: settled, signingBonus: 0 } })
+      move: () => ({ kind: 'extend', team, playerId: player.id, offer: settled })
     }
   ];
 } // prettier-ignore

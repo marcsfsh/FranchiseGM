@@ -6,7 +6,7 @@
 - Spec 11.1 calls the salary floor's window rolling; it checks the CBA's consecutive four-year periods from the league's first league year (D-33).
 - Spec 23.2 allows a handful of perfect or winless teams per 100 seasons at most; the band follows the NFL's rate, about 6.8 per 100 (D-40).
 - Spec 11.8 awards up to 32 compensatory picks; the league fills its 32 with net value and supplemental picks, as the NFL does (D-58).
-- Spec 11.6 lists incentives among an offer's terms; an offer's incentive is a per-game roster bonus, which the player counts on at 80%, and stat incentives appear only on generated deals (D-54).
+- Spec 11.6 lists incentives among an offer's terms; an offer carries a per-game roster bonus and one performance incentive a season, each counted at the odds the player gives himself of earning it (D-54, D-64).
 ## Deferred
 - Crowd noise isn't scaled by team hype until fans arrive (M16, D-12).
 - Muffed punts, blocked field goals, roughing the kicker, and the 10-second runoff aren't simulated (D-13).

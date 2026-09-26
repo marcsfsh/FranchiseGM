@@ -136,15 +136,24 @@ test('puts contracts on auto from Settings, and offers only extensions during th
   await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
   await dialog.getByRole('radio', { name: 'Offer an extension' }).check();
   await expect(dialog.getByLabel('Extension length')).toBeVisible();
-  // More terms wait in a disclosure: guarantees, incentives, and void years, and take it or leave it.
-  await dialog.getByText('Guarantees, incentives, and void years').click();
+  // Guarantees are part of every offer; incentives and void years wait in a disclosure.
   await dialog.getByLabel('Fully guaranteed salary').selectOption('2');
+  await dialog.getByText('Incentives and void years').click();
+  await expect(dialog.getByLabel('Per-game roster bonus, dollars a season')).toBeVisible();
   await dialog.getByLabel('Void years').selectOption('1');
   await expect(dialog.locator('#extend-voids-error')).toHaveText('Void years only spread a signing bonus: add one, or choose none.');
   await expect(dialog.getByRole('button', { name: `Extend ${name}` })).toBeDisabled();
   await dialog.getByLabel('Signing bonus, dollars').fill('1000000');
   await expect(dialog.locator('#extend-voids-error')).toBeHidden();
   await expect(dialog.getByText(/^Total: \$[\d,]+ over 3 years\. AAV: \$[\d,]+\. Guaranteed: \$[1-9][\d,]+\.$/)).toBeVisible();
+  // A performance incentive, where his position piles up a stat: a season mark and what it pays.
+  const performance = dialog.getByLabel('Performance incentive');
+  if (await performance.count()) {
+    await performance.selectOption({ index: 1 });
+    await dialog.getByLabel('Incentive, dollars a season').fill('250000');
+    await expect(dialog.getByText(/ Incentive: \$250,000 a season at [\d,]+ [a-z ]+\.$/)).toBeVisible();
+    await performance.selectOption('');
+  }
   await expect(dialog.getByRole('checkbox', { name: 'Take it or leave it' })).not.toBeChecked();
   await expectTouchTargets(page, '#resignDialog', phone ? 48 : 44);
   await expectNoHorizontalOverflow(page);

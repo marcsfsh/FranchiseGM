@@ -10,8 +10,8 @@
 import type { TeamAbbr } from '../../../data/team-colors';
 import { capFacts, capSheet } from '../../cap/sheet';
 import { releaseImpact } from '../../contracts/cap';
-import { typicalOffer } from '../../contracts/build';
-import { settledSalary, termFor } from '../../contracts/negotiation';
+import { offerAav } from '../../contracts/build';
+import { settledOffer, settledSalary, termFor } from '../../contracts/negotiation';
 import { dealValue, roomPremium, worthIt } from '../../contracts/value';
 import {
   freeAgentKind,
@@ -28,7 +28,6 @@ import { calendarDay, leagueYear } from '../../model/calendar';
 import { ageOn, type Player } from '../../model/player';
 import type { Rng } from '../../rng';
 import { makeMove, type Move } from '../../roster/moves';
-import { minimumSalary } from '../../rules/ruleset';
 import { TUNING } from '../../tuning';
 import { groupWords, NEED_GROUP, TARGET } from './roster-moves';
 
@@ -96,9 +95,10 @@ export function resignDecisions(league: League, abbr: TeamAbbr, rng: Rng): void 
       move({ kind: 'tag', playerId: p.id, tag: 'nonExclusive', reason });
       continue;
     }
-    const offer = typicalOffer(league.rules, years, ask, minimumSalary(league.rules, p.experience));
+    // The same negotiation as every deal (D-66): the structure the GM builds, priced by what it's worth to him.
+    const offer = settledOffer(league, p, abbr, years, true);
     const left = room();
-    if (ask > left || !worthIt(league, p, offer, roomPremium(league, left))) continue;
+    if (offerAav(offer) > left || !worthIt(league, p, offer, roomPremium(league, left))) continue;
     move({ kind: 'extend', playerId: p.id, offer, reason });
   }
 }

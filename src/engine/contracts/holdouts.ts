@@ -15,12 +15,11 @@ import { calendarDay, leagueYear } from '../model/calendar';
 import { ageOn, fullName, type Player } from '../model/player';
 import type { PauseEvent } from '../season/inbox';
 import type { Rng } from '../rng';
-import { minimumSalary } from '../rules/ruleset';
 import { dollars } from '../text';
 import { TUNING } from '../tuning';
-import { typicalOffer } from './build';
+import { offerAav, type Offer } from './build';
 import { marketValue } from './market';
-import { settledSalary, termFor } from './negotiation';
+import { settledOffer, termFor } from './negotiation';
 import { expiring } from './resign';
 import { worthIt } from './value';
 import { contractSummary } from './view';
@@ -165,16 +164,15 @@ export function stepDemands(league: League, step: 'camp' | 'preseason' | 'game' 
  * The AI's answer to its holdouts and trade requests (D-57): an extension at its GM's price when he's worth
  * it (D-38) and next year's cap has room; otherwise it waits him out. `extend` makes the move.
  */
-export function answerDemands(league: League, teams: readonly TeamAbbr[], extend: (team: TeamAbbr, player: Player, offer: { years: number; salary: number; signingBonus: number }) => boolean): DemandEvent[] {
+export function answerDemands(league: League, teams: readonly TeamAbbr[], extend: (team: TeamAbbr, player: Player, offer: Offer) => boolean): DemandEvent[] {
   const year = leagueYear(league.date);
   const done: DemandEvent[] = [];
   for (const p of Object.values(league.players).sort((a, b) => (a.id < b.id ? -1 : 1))) {
     const team = p.team;
     if (!team || !p.demand || !teams.includes(team) || !expiring(league, p)) continue;
     const years = termFor(ageOn(p.birthDate, calendarDay(league.date)));
-    const aav = settledSalary(league, p, team, years, true);
-    const offer = typicalOffer(league.rules, years, aav, minimumSalary(league.rules, p.experience));
-    if (aav > capSheet(league, team, year + 1).space || !worthIt(league, p, offer)) continue;
+    const offer = settledOffer(league, p, team, years, true);
+    if (offerAav(offer) > capSheet(league, team, year + 1).space || !worthIt(league, p, offer)) continue;
     const kind = p.demand.kind;
     if (extend(team, p, offer)) done.push({ player: p, team, kind: 'extended', ended: kind });
   }

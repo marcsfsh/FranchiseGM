@@ -17,7 +17,7 @@ import type { Player } from '../model/player';
 import { minimumSalary } from '../rules/ruleset';
 import { dollars, plural } from '../text';
 import { TUNING } from '../tuning';
-import type { Offer } from './build';
+import { typicalOffer, type Offer } from './build';
 import { marketCeiling } from './market';
 import {
   askingFrom,
@@ -28,6 +28,7 @@ import {
   reachable,
   salaryFor,
   talksKey,
+  type DecisionContext,
   type Term
 } from './decision';
 import { creditedNextYear } from './resign';
@@ -103,6 +104,43 @@ export function settledWorth(league: League, player: Player, team: TeamAbbr, ext
   const skill = competence(staffIn(league, team, 'GM'), 'negotiation') / 100;
   return demand(league, player, extension) * (1 + openingOf(player) * (1 - skill));
 }
+
+/**
+ * A team's deal for `years` years as the AI builds its offers (D-60's bonus, guarantees, and void years by its
+ * size), at the least yearly value that's worth `need` to the player by the same model as every offer (spec
+ * 11.7): in quote steps, at least `minimum`, and never over his position's ceiling.
+ */
+export function typicalFor(league: League, ctx: DecisionContext, player: Player, team: TeamAbbr, years: number, need: number, minimum: number): Offer {
+  const step = TUNING.market.quoteStep;
+  const top = Math.ceil(marketCeiling(league.rules, player.position) / step);
+  const at = (steps: number) => typicalOffer(league.rules, years, Math.max(minimum, steps * step), minimum);
+  const enough = (steps: number) => offerWorth(league, ctx, player, team, at(steps)).total >= need;
+  // As for a counter's salary: `low` steps are never enough, `high` steps are, or are the ceiling.
+  let low = Math.floor(minimum / step);
+  if (enough(low)) return at(low);
+  let high = Math.min(top, low + 1);
+  while (high < top && !enough(high)) {
+    low = high;
+    high = Math.min(top, high * 2);
+  }
+  while (high - low > 1) {
+    const mid = Math.floor((low + high) / 2);
+    if (enough(mid)) high = mid;
+    else low = mid;
+  }
+  return at(high);
+} // prettier-ignore
+
+/**
+ * The deal a team's GM settles for `years` years (spec 11.6; D-66): the AI's usual deal at the least yearly
+ * value that's worth what the GM settles for to the player. The AI's re-signings, extensions, and answers to
+ * demands, and the user's auto negotiation, all settle this way.
+ */
+export function settledOffer(league: League, player: Player, team: TeamAbbr, years: number, extension = false): Offer {
+  const ctx = contextFor(league);
+  const need = reachable(league, ctx, player, team, years, settledWorth(league, player, team, extension));
+  return typicalFor(league, ctx, player, team, years, need, talksMinimum(league, player, extension));
+} // prettier-ignore
 
 /**
  * What his agent asks a year of a team now for `years` years with no bonus (spec 11.6, 11.8): over the
@@ -206,7 +244,9 @@ export function hear(league: League, team: TeamAbbr, player: Player, offer: Offe
 
 const TERM_WORDS: Record<Term, string> = {
   guarantees: 'guaranteed money',
-  years: 'a longer deal',
+  bonus: 'more of it up front as a signing bonus',
+  longer: 'a longer deal',
+  shorter: 'a shorter deal',
   money: 'money each year'
 };
 

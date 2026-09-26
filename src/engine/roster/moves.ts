@@ -20,6 +20,7 @@ import {
 import { afterJune1, capHit, payWeek, releaseImpact } from '../contracts/cap';
 import { endContract, restructure, type Outcome } from '../contracts/moves';
 import { endDemand } from '../contracts/holdouts';
+import { likelyToEarn } from '../contracts/incentives';
 import { hear, replyWords, talks } from '../contracts/negotiation';
 import {
   creditedNextYear,
@@ -256,7 +257,8 @@ function plan(league: League, move: Move, enforce: boolean, known?: TeamNow): Ou
       if (declined) return refuse(declined);
       const full = roomOnRoster();
       if (full) return refuse(full);
-      const deal = offerContract(rules, { id: 'preview', playerId: player.id, team }, league.date, move.offer, player.experience);
+      const likely = !!move.offer.incentive && likelyToEarn(league, player, move.offer.incentive);
+      const deal = offerContract(rules, { id: 'preview', playerId: player.id, team }, league.date, move.offer, player.experience, likely);
       const after = spaceWith({ add: [{ contract: deal, status: 'active' }] });
       const over = capRoom(capHit(deal, year, rules), after);
       if (over) return refuse(over);
@@ -545,7 +547,8 @@ function resignPlan(
       if (move.talks && talks(league, team, player.id).closed) return refuse(replyWords({ kind: 'closed' }));
       const declined = move.talks ? termsProblem(rules, move.offer, minimumSalary(rules, creditedNextYear(league, player))) : extensionProblem(league, player, move.offer);
       if (declined) return refuse(declined);
-      const deal = extensionContract(rules, base, league.date, move.offer, creditedNextYear(league, player));
+      const likely = !!move.offer.incentive && likelyToEarn(league, player, move.offer.incentive);
+      const deal = extensionContract(rules, base, league.date, move.offer, creditedNextYear(league, player), likely);
       const extension = `a ${move.offer.years}-year extension from ${year + 1}`;
       // A new deal ends a holdout or a trade request (spec 11.9).
       const planned = next(deal, [move.talks ? `He answers when you send the offer. If he takes it, he signs ${extension}.` : `${name} signs ${extension}.`], 'extended', () => endDemand(player, 'deal'));

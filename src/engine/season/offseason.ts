@@ -41,6 +41,8 @@ import { offerAav } from '../contracts/build';
 import {
   aiBids,
   closeBidding,
+  FREE_AGENCY_WEEKS,
+  weighingWords,
   decideWeek,
   offersFor,
   pendingFor,
@@ -91,7 +93,7 @@ export const OFFSEASON_PHASES: readonly (readonly [Phase, number])[] = [
   ['resign', 1],
   ['combine', 1],
   ['annualMeeting', 1],
-  ['freeAgency', 4],
+  ['freeAgency', FREE_AGENCY_WEEKS],
   ['proDays', 1],
   ['draft', 1],
   ['udfa', 1],
@@ -505,12 +507,13 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
       });
   }
   if (from.phase === 'freeAgency') {
-    // The week ends (spec 11.8; D-53): each free agent with offers takes the one worth most to him once one is
-    // worth his demand, or waits; after the fourth week the offers left fall away.
+    // The week ends (spec 11.8; D-53, D-65): each free agent with offers takes the one worth most to him once
+    // one is worth his demand and what he still hopes for, or waits; after the fourth week the offers left
+    // fall away.
     const offered = pendingFor(league, user).players;
     const finals = offered.filter(id => offersFor(league, id).some(o => o.team === user && o.offer.final));
     const signed = decideWeek(league, rng('freeAgency'));
-    if (from.week === 4) closeBidding(league);
+    if (from.week === FREE_AGENCY_WEEKS) closeBidding(league);
     const mine = signed.filter(s => s.team === user);
     const elsewhere = signed.filter(s => s.team !== user && offered.includes(s.player.id));
     const refused = finals.map(id => league.players[id]).filter((p): p is Player => p?.status === 'freeAgent');
@@ -519,7 +522,7 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
       messages.push({
         kind: 'contracts',
         title: `Free agency, week ${from.week}: ${mine.length ? `${plural(mine.length, 'player')} signed with you` : 'nobody signed with you'}`,
-        body: [mine.length ? `${mine.map(signingWords).join('; ')}.` : null, elsewhere.length ? `Chose other teams: ${elsewhere.map(s => `${named(s.player)}, the ${nick(s.team)}`).join('; ')}.` : null, refused.length ? `Turned down your take-it-or-leave-it offers: ${refused.map(named).join(', ')}.` : null, waiting.length ? `Still weighing your offers: ${waiting.map(named).join(', ')}.` : from.week === 4 && offered.length > mine.length + elsewhere.length + refused.length ? 'The bidding is over: your offers nobody took have lapsed.' : null].filter(Boolean).join(' '),
+        body: [mine.length ? `${mine.map(signingWords).join('; ')}.` : null, elsewhere.length ? `Chose other teams: ${elsewhere.map(s => `${named(s.player)}, the ${nick(s.team)}`).join('; ')}.` : null, refused.length ? `Turned down your take-it-or-leave-it offers: ${refused.map(named).join(', ')}.` : null, waiting.length ? `Still weighing your offers: ${waiting.map(p => `${named(p)} (${weighingWords(league, user, p)})`).join('; ')}.` : from.week === FREE_AGENCY_WEEKS && offered.length > mine.length + elsewhere.length + refused.length ? 'The bidding is over: your offers nobody took have lapsed.' : null].filter(Boolean).join(' '),
         players: mine.map(s => s.player.id)
       });
     for (const s of signed)

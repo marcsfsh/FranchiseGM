@@ -126,12 +126,16 @@ test('signs, releases, and reads the cap without ever reaching an illegal roster
   await page.selectOption('#offer-years', '2');
   await expect(offer.locator('.hint', { hasText: 'Total:' })).toContainText('over 2 years');
   // The front office's range on these terms stands in for the least he'd take, which is never shown.
-  await expect(offer.locator('.hint', { hasText: 'your front office' })).toHaveText(/^On these terms, your front office expects him to sign for \$[\d,]+ to \$[\d,]+ a year\.$/);
+  await expect(offer.locator('.hint', { hasText: 'your front office' })).toHaveText(
+    /^On these terms, your front office expects him to sign for \$[\d,]+ to \$[\d,]+ a year\.$/
+  );
   await expect(offer.locator('output')).toContainText(
     'He answers when you send the offer. If he takes it, he signs for 2 years.'
   );
+  // A fifth under his agent's ask, which opens at most 15% over the least he'd take: he counters.
   const ask = Number(await page.locator('#offer-salary').inputValue());
-  await page.fill('#offer-salary', String(ask - 100_000));
+  const under = Math.round((ask * 0.8) / 5000) * 5000;
+  await page.fill('#offer-salary', String(under));
   // Under his minimum the salary field says so; above it, he answers when the offer is sent.
   const salaryError = page.locator('#offer-salary-error');
   if (await salaryError.isVisible()) {
@@ -147,7 +151,7 @@ test('signs, releases, and reads the cap without ever reaching an illegal roster
     await expect(offer).toContainText(
       /He's turned down 1 offer from you\. His last counter: \$[\d,]+ a year for 2 years, on the rest of your terms\./
     );
-    await expect(page.locator('#offer-salary')).not.toHaveValue(String(ask - 100_000));
+    await expect(page.locator('#offer-salary')).not.toHaveValue(String(under));
     await expectNoHorizontalOverflow(page);
   }
   await offer.getByRole('button', { name: 'Send offer' }).click();
