@@ -5,6 +5,7 @@
  */
 import { defaultRotation, NEUTRAL_PLAN } from '../sim/plan';
 import { generateClass } from '../draft/class';
+import { issuePicks } from '../draft/picks';
 import { defaultDraftSettings } from '../draft/settings';
 import { defaultDevelopment } from '../progression/settings';
 import { defaultTraining } from '../progression/training';
@@ -136,6 +137,7 @@ export function createLeague(input: NewLeagueInput): League {
     preseason: null,
     season: emptySeason(start.startSeason),
     draft: null,
+    picks: [1, 2, 3].flatMap(ahead => issuePicks(rules.season.draftRounds, start.startSeason + ahead)),
     inbox: [],
     waivers: [],
     nextId: idCounters([

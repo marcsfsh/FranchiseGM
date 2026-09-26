@@ -24,7 +24,7 @@
 - Under the stand-in free agency (D-27) teams pay about three quarters of the cap in cash, so most fall short of the salary floor's first window and pay the shortfall (D-33) until M12's free agency spends like NFL teams. Extensions are signed at the player's asking price until M12's negotiations.
 - AI teams keep expiring players only through age 30 (D-32) until M12's value-based re-sign choice (D-38).
 - Non-exclusive franchise and transition tags average the current year's top cap hits until M12 prices them from five years of cap percentages (D-39).
-- Waiver priority before week 4 of a season follows a seeded order until M11's draft order exists (D-22). Guaranteed money a released player earns from a new team doesn't offset what his old team owes.
+- Waiver priority before week 4 of a league's first season follows a seeded order, since no draft has been ordered yet (D-22, D-42). Guaranteed money a released player earns from a new team doesn't offset what his old team owes.
 - Pause rules list only the event types this build raises (injuries to starters); the others appear with the milestones that create them (spec 19.6).
 - The user's team makes only the roster moves the user makes unless Settings > Automation hands roster moves or contracts to the staff (D-34); the rest of spec 22.7's toggles arrive with M20.
 - The dev menu has only the calibration runner; the AI decision log (M14), sim inspector, performance overlay, and fixed-seed toggle arrive later (spec 23.5).

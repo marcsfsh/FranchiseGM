@@ -17,6 +17,7 @@ import { resignDecisions } from '../ai/decisions/resign';
 import { fillPracticeSquad, waiverClaims } from '../ai/decisions/roster-moves';
 import type { DecisionLog } from '../ai/framework';
 import { generateClass } from '../draft/class';
+import { closeDraftYear } from '../draft/picks';
 import type { NameData } from '../generate/player';
 import { draftOrder, rookieReserve, signUndrafted, standInDraft } from '../generate/rookies';
 import { windowDecisions } from '../contracts/resign';
@@ -143,8 +144,9 @@ function preseasonWords(result: GameResult, user: TeamAbbr): string {
 
 /**
  * The end of the season (spec 4.1, 12.1), when the Super Bowl week ends: undrafted rookies nobody ever
- * signed leave the game (one signed and cut stays, with his history), and players earn their seasons by
- * regular-season games on full pay status: 3 for a credited season, 6 for an accrued one (D-37).
+ * signed leave the game (one signed and cut stays, with his history), players earn their seasons by
+ * regular-season games on full pay status (3 for a credited season, 6 for an accrued one, D-37), and the
+ * next draft is numbered by the finish.
  */
 export function closeSeason(league: League): void {
   const signed = new Set(Object.values(league.contracts).map(c => c.playerId));
@@ -157,6 +159,8 @@ export function closeSeason(league: League): void {
     if (games >= creditedSeasonGames) p.experience++;
     if (games >= accruedSeasonGames) p.accrued++;
   }
+  // The next draft's order is set by the finish (D-42).
+  closeDraftYear(league, league.season.season + 1, draftOrder(league));
 }
 
 /** The next season's schedule (spec 5.2), from the season just played: its standings, records, and champion. */

@@ -21,6 +21,7 @@ import type { RuleSet } from '../rules/ruleset';
 import { leagueStandings, PLAYOFF_PHASES } from '../season/state';
 import { winPct } from '../season/standings';
 import { activeLimit } from './rules';
+import { latestDraftOrder } from '../draft/picks';
 
 export interface WaiverEntry {
   playerId: string;
@@ -48,15 +49,16 @@ export function subjectToWaivers(league: League, player: Player): boolean {
 
 /**
  * Waiver priority, first claim first: the standings from the early weeks' end on (worst winning
- * percentage, then the weaker schedule, as the draft order breaks ties), and before that the draft order.
- * Until the draft order exists (M11), a seeded order stands in, drawn from `seeded`, a stream fixed for the
- * league and season; it also breaks any tie left in the standings.
+ * percentage, then the weaker schedule, as the draft order breaks ties), and before that the latest
+ * draft's order (D-42). In a league's first season, before any draft has been ordered, a seeded order
+ * stands in, drawn from `seeded`, a stream fixed for the league and season (D-22).
  */
 export function waiverOrder(league: League, seeded: Rng): TeamAbbr[] {
-  const draftOrder = [...TEAM_ABBRS]
+  const seededOrder = [...TEAM_ABBRS]
     .map(abbr => ({ abbr, key: seeded.float() }))
     .sort((a, b) => a.key - b.key)
     .map(t => t.abbr);
+  const draftOrder = latestDraftOrder(league) ?? seededOrder;
   const byStandings =
     (league.date.phase === 'regularSeason' && league.date.week > league.rules.roster.waiverDraftOrderWeeks) ||
     inPlayoffs(league.date);

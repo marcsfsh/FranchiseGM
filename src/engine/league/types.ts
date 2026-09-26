@@ -20,13 +20,14 @@ import type { SeasonState } from '../season/state';
 import type { GamePlan, Rotation } from '../sim/plan';
 import type { SimSliders } from '../sim/sliders';
 import type { DraftClass } from '../draft/class';
+import type { DraftPickRecord } from '../draft/picks';
 import type { DraftSettings } from '../draft/settings';
 
 /**
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 17;
+export const SAVE_SCHEMA_VERSION = 18;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -146,6 +147,8 @@ export interface League {
    * prospects join the league.
    */
   draft: DraftClass | null;
+  /** Every team's picks in this draft and the next two, and the last draft's until its season ends (D-42). */
+  picks: DraftPickRecord[];
   /** Messages for the user (spec 19.6), oldest first. */
   inbox: InboxItem[];
   /** Players on waivers until the league next advances (spec 12.1). */
