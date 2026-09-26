@@ -8,12 +8,12 @@
   "experiments": 10,
   "loopSeasons": 100,
   "chains": 3,
-  "chainSeasons": 10,
+  "chainSeasons": 20,
   "created": "2026-09-26",
-  "seconds": 1158.717072122,
+  "seconds": 2152.285946819,
   "counts": {
-    "pass": 76,
-    "warn": 0,
+    "pass": 82,
+    "warn": 2,
     "fail": 0,
     "info": 14,
     "pending": 4
@@ -49,7 +49,7 @@
         "n": 26300
       },
       "loop": {
-        "value": 0.5467300380228137,
+        "value": 0.544809885931559,
         "n": 26300
       },
       "chain": {
@@ -87,7 +87,7 @@
         "n": 26300
       },
       "loop": {
-        "value": 1.602509505703422,
+        "value": 1.5876425855513308,
         "n": 26300
       },
       "chain": {
@@ -125,7 +125,7 @@
         "n": 27200
       },
       "loop": {
-        "value": 22.272738970588236,
+        "value": 22.300220588235295,
         "n": 27200
       },
       "chain": {
@@ -163,7 +163,7 @@
         "n": 27200
       },
       "loop": {
-        "value": 0.5077941176470588,
+        "value": 0.5077573529411765,
         "n": 27200
       },
       "chain": {
@@ -197,7 +197,7 @@
         "n": 27200
       },
       "loop": {
-        "value": 0.22003676470588235,
+        "value": 0.21591911764705882,
         "n": 27200
       },
       "chain": {
@@ -235,7 +235,7 @@
         "n": 27200
       },
       "loop": {
-        "value": 0.24191176470588235,
+        "value": 0.243125,
         "n": 27200
       },
       "chain": {
@@ -273,7 +273,7 @@
         "n": 27200
       },
       "loop": {
-        "value": 0.062316176470588236,
+        "value": 0.06518382352941177,
         "n": 27200
       },
       "chain": {
@@ -307,7 +307,7 @@
         "n": 27200
       },
       "loop": {
-        "value": 0.00463235294117647,
+        "value": 0.0048529411764705885,
         "n": 27200
       },
       "chain": {
@@ -345,7 +345,7 @@
         "n": 27200
       },
       "loop": {
-        "value": 0.2455514705882353,
+        "value": 0.24525735294117648,
         "n": 27200
       },
       "chain": {
@@ -383,7 +383,7 @@
         "n": 27200
       },
       "loop": {
-        "value": 0.6918382352941177,
+        "value": 0.6876470588235294,
         "n": 27200
       },
       "chain": {
@@ -417,8 +417,8 @@
         "n": 8690
       },
       "loop": {
-        "value": 0.5484306663236429,
-        "n": 7774
+        "value": 0.5455602946878635,
+        "n": 7737
       },
       "chain": {
         "value": null,
@@ -451,8 +451,8 @@
         "n": 9520
       },
       "loop": {
-        "value": 0.6624376982328953,
-        "n": 8828
+        "value": 0.6528150134048257,
+        "n": 8952
       },
       "chain": {
         "value": null,
@@ -485,8 +485,8 @@
         "n": 4620
       },
       "loop": {
-        "value": 0.7599185073986704,
-        "n": 4663
+        "value": 0.7654716175842936,
+        "n": 4686
       },
       "chain": {
         "value": null,
@@ -519,8 +519,8 @@
         "n": 4370
       },
       "loop": {
-        "value": 0.8699241786015164,
-        "n": 5935
+        "value": 0.8672961373390558,
+        "n": 5825
       },
       "chain": {
         "value": null,
@@ -557,7 +557,7 @@
         "n": 27200
       },
       "loop": {
-        "value": 11.953481151003635,
+        "value": 12.034056600084718,
         "n": 27200
       },
       "chain": {
@@ -580,7 +580,7 @@
         "n": 320
       },
       "loop": {
-        "value": 5.539084137067664,
+        "value": 5.5445460393270345,
         "n": 3200
       },
       "chain": {
@@ -593,7 +593,7 @@
       "group": "seasons",
       "label": "Team wins, sd",
       "format": "dec2",
-      "value": 3.017475144885207,
+      "value": 2.990375185490944,
       "n": 3200,
       "status": "pass",
       "target": {
@@ -618,7 +618,7 @@
         "n": 3200
       },
       "loop": {
-        "value": 3.017475144885207,
+        "value": 2.990375185490944,
         "n": 3200
       },
       "chain": {
@@ -665,7 +665,7 @@
       "group": "seasons",
       "label": "Fewest wins in a season (mean)",
       "format": "dec1",
-      "value": 2.555,
+      "value": 2.67,
       "n": 100,
       "status": "pass",
       "target": {
@@ -686,7 +686,7 @@
         "n": 100
       },
       "loop": {
-        "value": 2.555,
+        "value": 2.67,
         "n": 100
       },
       "chain": {
@@ -699,7 +699,7 @@
       "group": "seasons",
       "label": "15-win teams per decade",
       "format": "dec1",
-      "value": 6,
+      "value": 6.2,
       "n": 100,
       "status": "pass",
       "target": {
@@ -720,7 +720,7 @@
         "n": 100
       },
       "loop": {
-        "value": 6,
+        "value": 6.2,
         "n": 100
       },
       "chain": {
@@ -733,7 +733,7 @@
       "group": "seasons",
       "label": "2-or-fewer-win teams per decade",
       "format": "dec1",
-      "value": 5.4,
+      "value": 5,
       "n": 100,
       "status": "pass",
       "target": {
@@ -754,7 +754,7 @@
         "n": 100
       },
       "loop": {
-        "value": 5.4,
+        "value": 5,
         "n": 100
       },
       "chain": {
@@ -767,7 +767,7 @@
       "group": "seasons",
       "label": "Perfect or winless teams per 100 seasons",
       "format": "dec1",
-      "value": 4,
+      "value": 6,
       "n": 100,
       "status": "pass",
       "target": {
@@ -788,7 +788,7 @@
         "n": 100
       },
       "loop": {
-        "value": 4,
+        "value": 6,
         "n": 100
       },
       "chain": {
@@ -826,7 +826,7 @@
         "n": 54400
       },
       "loop": {
-        "value": 32.454466911764705,
+        "value": 32.355275735294114,
         "n": 54400
       },
       "chain": {
@@ -864,8 +864,8 @@
         "n": 1778873
       },
       "loop": {
-        "value": 0.6478046448559436,
-        "n": 1765523
+        "value": 0.647795869275342,
+        "n": 1760127
       },
       "chain": {
         "value": null,
@@ -902,8 +902,8 @@
         "n": 1778873
       },
       "loop": {
-        "value": 7.0483256236254075,
-        "n": 1765523
+        "value": 7.049437909878094,
+        "n": 1760127
       },
       "chain": {
         "value": null,
@@ -936,8 +936,8 @@
         "n": 1778873
       },
       "loop": {
-        "value": 0.043167378731401404,
-        "n": 1765523
+        "value": 0.043198019233839376,
+        "n": 1760127
       },
       "chain": {
         "value": null,
@@ -970,8 +970,8 @@
         "n": 1778873
       },
       "loop": {
-        "value": 0.021757858719484255,
-        "n": 1765523
+        "value": 0.021955802052920043,
+        "n": 1760127
       },
       "chain": {
         "value": null,
@@ -1004,8 +1004,8 @@
         "n": 1901919
       },
       "loop": {
-        "value": 0.06350474341531206,
-        "n": 1885245
+        "value": 0.06313134270205362,
+        "n": 1878734
       },
       "chain": {
         "value": null,
@@ -1042,7 +1042,7 @@
         "n": 54400
       },
       "loop": {
-        "value": 27.04049632352941,
+        "value": 27.141507352941176,
         "n": 54400
       },
       "chain": {
@@ -1080,8 +1080,8 @@
         "n": 1468461
       },
       "loop": {
-        "value": 4.248175564563771,
-        "n": 1471003
+        "value": 4.262505604477622,
+        "n": 1476498
       },
       "chain": {
         "value": null,
@@ -1114,8 +1114,8 @@
         "n": 649952
       },
       "loop": {
-        "value": 0.403347740474852,
-        "n": 651066
+        "value": 0.4034278363206618,
+        "n": 649856
       },
       "chain": {
         "value": null,
@@ -1148,7 +1148,7 @@
         "n": 54400
       },
       "loop": {
-        "value": 1.4045588235294117,
+        "value": 1.4105147058823528,
         "n": 54400
       },
       "chain": {
@@ -1182,8 +1182,8 @@
         "n": 76329
       },
       "loop": {
-        "value": 0.5191210344466548,
-        "n": 76408
+        "value": 0.5200307563988948,
+        "n": 76732
       },
       "chain": {
         "value": null,
@@ -1216,8 +1216,8 @@
         "n": 193897
       },
       "loop": {
-        "value": 0.5532236391490074,
-        "n": 191259
+        "value": 0.5522257676413663,
+        "n": 191170
       },
       "chain": {
         "value": null,
@@ -1250,7 +1250,7 @@
         "n": 54400
       },
       "loop": {
-        "value": 1.2315992647058824,
+        "value": 1.2375919117647058,
         "n": 54400
       },
       "chain": {
@@ -1288,7 +1288,7 @@
         "n": 54400
       },
       "loop": {
-        "value": 6.232977941176471,
+        "value": 6.214117647058823,
         "n": 54400
       },
       "chain": {
@@ -1322,7 +1322,7 @@
         "n": 54400
       },
       "loop": {
-        "value": 46.983492647058824,
+        "value": 46.78568014705883,
         "n": 54400
       },
       "chain": {
@@ -1356,8 +1356,8 @@
         "n": 58336
       },
       "loop": {
-        "value": 0.9574002241186105,
-        "n": 58005
+        "value": 0.9578667581239818,
+        "n": 58315
       },
       "chain": {
         "value": null,
@@ -1390,8 +1390,8 @@
         "n": 25152
       },
       "loop": {
-        "value": 0.7770072124910835,
-        "n": 25234
+        "value": 0.7796698037964588,
+        "n": 25076
       },
       "chain": {
         "value": null,
@@ -1424,8 +1424,8 @@
         "n": 26870
       },
       "loop": {
-        "value": 0.6917820936536819,
-        "n": 26929
+        "value": 0.6914150559887653,
+        "n": 27059
       },
       "chain": {
         "value": null,
@@ -1458,8 +1458,8 @@
         "n": 198335
       },
       "loop": {
-        "value": 46.90259932470738,
-        "n": 199321
+        "value": 46.905022263956624,
+        "n": 198078
       },
       "chain": {
         "value": null,
@@ -1492,8 +1492,8 @@
         "n": 286707
       },
       "loop": {
-        "value": 0.7520337536071345,
-        "n": 283466
+        "value": 0.7534048714498094,
+        "n": 283858
       },
       "chain": {
         "value": null,
@@ -1526,8 +1526,8 @@
         "n": 216537
       },
       "loop": {
-        "value": 25.43748358164146,
-        "n": 213176
+        "value": 25.488511175535397,
+        "n": 213860
       },
       "chain": {
         "value": null,
@@ -1560,8 +1560,8 @@
         "n": 68385
       },
       "loop": {
-        "value": 10.192817213067023,
-        "n": 68692
+        "value": 10.173644485066486,
+        "n": 67834
       },
       "chain": {
         "value": null,
@@ -1598,7 +1598,7 @@
         "n": 100
       },
       "loop": {
-        "value": 5059.15,
+        "value": 5110.94,
         "n": 100
       },
       "chain": {
@@ -1632,7 +1632,7 @@
         "n": 100
       },
       "loop": {
-        "value": 1663.04,
+        "value": 1705.55,
         "n": 100
       },
       "chain": {
@@ -1666,7 +1666,7 @@
         "n": 100
       },
       "loop": {
-        "value": 1674.12,
+        "value": 1706,
         "n": 100
       },
       "chain": {
@@ -1700,7 +1700,7 @@
         "n": 100
       },
       "loop": {
-        "value": 128.56,
+        "value": 130.94,
         "n": 100
       },
       "chain": {
@@ -1734,7 +1734,7 @@
         "n": 100
       },
       "loop": {
-        "value": 18.86,
+        "value": 18.75,
         "n": 100
       },
       "chain": {
@@ -1768,7 +1768,7 @@
         "n": 100
       },
       "loop": {
-        "value": 8.82,
+        "value": 8.58,
         "n": 100
       },
       "chain": {
@@ -1802,7 +1802,7 @@
         "n": 100
       },
       "loop": {
-        "value": 7.03,
+        "value": 7.08,
         "n": 100
       },
       "chain": {
@@ -1836,7 +1836,7 @@
         "n": 100
       },
       "loop": {
-        "value": 12.82,
+        "value": 13.11,
         "n": 100
       },
       "chain": {
@@ -1870,7 +1870,7 @@
         "n": 100
       },
       "loop": {
-        "value": 22.03,
+        "value": 21.96,
         "n": 100
       },
       "chain": {
@@ -1904,7 +1904,7 @@
         "n": 3200
       },
       "loop": {
-        "value": 0.2381188496364734,
+        "value": 0.23733379925992637,
         "n": 3200
       },
       "chain": {
@@ -1938,7 +1938,7 @@
         "n": 100
       },
       "loop": {
-        "value": 0.3192952609862814,
+        "value": 0.3227208916789629,
         "n": 100
       },
       "chain": {
@@ -1972,7 +1972,7 @@
         "n": 3200
       },
       "loop": {
-        "value": 0.49495942024806583,
+        "value": 0.4937730805982916,
         "n": 3200
       },
       "chain": {
@@ -2010,7 +2010,7 @@
         "n": 3200
       },
       "loop": {
-        "value": 22.576875,
+        "value": 22.62625,
         "n": 3200
       },
       "chain": {
@@ -2033,7 +2033,7 @@
         "n": 3200
       },
       "loop": {
-        "value": 69.725,
+        "value": 69.9665625,
         "n": 3200
       },
       "chain": {
@@ -2056,7 +2056,7 @@
         "n": 3200
       },
       "loop": {
-        "value": 4.07875,
+        "value": 4.0940625,
         "n": 3200
       },
       "chain": {
@@ -2079,7 +2079,7 @@
         "n": 3200
       },
       "loop": {
-        "value": 40.74125,
+        "value": 40.819375,
         "n": 3200
       },
       "chain": {
@@ -2289,7 +2289,7 @@
         "n": 1083
       },
       "loop": {
-        "value": -2.5577495421245438,
+        "value": -2.4831396901709404,
         "n": 1152
       },
       "chain": {
@@ -2323,7 +2323,7 @@
         "n": 6538
       },
       "loop": {
-        "value": 1.5673862463335446,
+        "value": 1.7947557351763983,
         "n": 6549
       },
       "chain": {
@@ -2357,7 +2357,7 @@
         "n": 1701
       },
       "loop": {
-        "value": -0.7645938619404831,
+        "value": -0.5534950794962121,
         "n": 1688
       },
       "chain": {
@@ -2380,7 +2380,7 @@
         "n": 2514
       },
       "loop": {
-        "value": -1.6589458533145596,
+        "value": -1.8843904963821565,
         "n": 2477
       },
       "chain": {
@@ -2403,7 +2403,7 @@
         "n": 151
       },
       "loop": {
-        "value": -2.027293809440497,
+        "value": -3.1119957321569167,
         "n": 142
       },
       "chain": {
@@ -2437,8 +2437,8 @@
         "n": 17371
       },
       "loop": {
-        "value": -0.043364418077334044,
-        "n": 20497
+        "value": -0.051597467158499555,
+        "n": 20636
       },
       "chain": {
         "value": null,
@@ -2471,8 +2471,8 @@
         "n": 1058
       },
       "loop": {
-        "value": -0.05770718606398839,
-        "n": 1244
+        "value": -0.0805066160885678,
+        "n": 1311
       },
       "chain": {
         "value": null,
@@ -2576,8 +2576,8 @@
       "group": "aging",
       "label": "Average age, week 1 active rosters",
       "format": "dec2",
-      "value": 26.364022875690292,
-      "n": 50880,
+      "value": 26.598947638603637,
+      "n": 101760,
       "status": "pass",
       "target": {
         "pass": [
@@ -2601,8 +2601,8 @@
         "n": 0
       },
       "chain": {
-        "value": 26.364022875690292,
-        "n": 50880
+        "value": 26.598947638603637,
+        "n": 101760
       }
     },
     {
@@ -2610,9 +2610,9 @@
       "group": "aging",
       "label": "Average accrued seasons, this one included, week 1 active rosters",
       "format": "dec2",
-      "value": 4.75750786163522,
-      "n": 50880,
-      "status": "pass",
+      "value": 4.897376179245283,
+      "n": 101760,
+      "status": "warn",
       "target": {
         "pass": [
           4,
@@ -2635,8 +2635,8 @@
         "n": 0
       },
       "chain": {
-        "value": 4.75750786163522,
-        "n": 50880
+        "value": 4.897376179245283,
+        "n": 101760
       }
     },
     {
@@ -2644,8 +2644,8 @@
       "group": "aging",
       "label": "Players with no accrued season, per week 1 roster",
       "format": "dec1",
-      "value": 9.021875,
-      "n": 960,
+      "value": 8.558854166666666,
+      "n": 1920,
       "status": "pass",
       "target": {
         "pass": [
@@ -2669,8 +2669,8 @@
         "n": 0
       },
       "chain": {
-        "value": 9.021875,
-        "n": 960
+        "value": 8.558854166666666,
+        "n": 1920
       }
     },
     {
@@ -2678,8 +2678,8 @@
       "group": "aging",
       "label": "Players 30 or older, per week 1 roster",
       "format": "dec1",
-      "value": 8.047916666666667,
-      "n": 960,
+      "value": 8.650520833333333,
+      "n": 1920,
       "status": "pass",
       "target": {
         "pass": [
@@ -2703,8 +2703,8 @@
         "n": 0
       },
       "chain": {
-        "value": 8.047916666666667,
-        "n": 960
+        "value": 8.650520833333333,
+        "n": 1920
       }
     },
     {
@@ -2712,7 +2712,7 @@
       "group": "aging",
       "label": "League average overall, change over the run",
       "format": "signed1",
-      "value": -0.1234276729559743,
+      "value": -0.20125786163522244,
       "n": 3,
       "status": "pass",
       "target": {
@@ -2737,7 +2737,7 @@
         "n": 0
       },
       "chain": {
-        "value": -0.1234276729559743,
+        "value": -0.20125786163522244,
         "n": 3
       }
     },
@@ -2746,7 +2746,7 @@
       "group": "aging",
       "label": "Largest position group overall change over the run",
       "format": "dec1",
-      "value": 1.1866361303114559,
+      "value": 1.206545462157256,
       "n": 3,
       "status": "pass",
       "target": {
@@ -2771,7 +2771,7 @@
         "n": 0
       },
       "chain": {
-        "value": 1.1866361303114559,
+        "value": 1.206545462157256,
         "n": 3
       }
     },
@@ -2780,8 +2780,8 @@
       "group": "aging",
       "label": "Peak age, QB",
       "format": "dec1",
-      "value": 29.945918367346938,
-      "n": 3825,
+      "value": 29.500860559806448,
+      "n": 8908,
       "status": "pass",
       "target": {
         "pass": [
@@ -2805,8 +2805,8 @@
         "n": 0
       },
       "chain": {
-        "value": 29.945918367346938,
-        "n": 3825
+        "value": 29.500860559806448,
+        "n": 8908
       }
     },
     {
@@ -2814,8 +2814,8 @@
       "group": "aging",
       "label": "Peak age, RB",
       "format": "dec1",
-      "value": 25.345067637663444,
-      "n": 4711,
+      "value": 25.512589802435052,
+      "n": 9770,
       "status": "pass",
       "target": {
         "pass": [
@@ -2839,8 +2839,8 @@
         "n": 0
       },
       "chain": {
-        "value": 25.345067637663444,
-        "n": 4711
+        "value": 25.512589802435052,
+        "n": 9770
       }
     },
     {
@@ -2848,8 +2848,8 @@
       "group": "aging",
       "label": "Peak age, WR",
       "format": "dec1",
-      "value": 26.474516838956653,
-      "n": 8840,
+      "value": 26.57209253433659,
+      "n": 18250,
       "status": "pass",
       "target": {
         "pass": [
@@ -2873,8 +2873,8 @@
         "n": 0
       },
       "chain": {
-        "value": 26.474516838956653,
-        "n": 8840
+        "value": 26.57209253433659,
+        "n": 18250
       }
     },
     {
@@ -2882,8 +2882,8 @@
       "group": "aging",
       "label": "Peak age, TE",
       "format": "dec1",
-      "value": 27.426832990770883,
-      "n": 4550,
+      "value": 27.40158545587935,
+      "n": 7342,
       "status": "pass",
       "target": {
         "pass": [
@@ -2907,8 +2907,8 @@
         "n": 0
       },
       "chain": {
-        "value": 27.426832990770883,
-        "n": 4550
+        "value": 27.40158545587935,
+        "n": 7342
       }
     },
     {
@@ -2916,8 +2916,8 @@
       "group": "aging",
       "label": "Peak age, OL",
       "format": "dec1",
-      "value": 28.33428308615433,
-      "n": 14208,
+      "value": 28.402691614455698,
+      "n": 29528,
       "status": "pass",
       "target": {
         "pass": [
@@ -2941,8 +2941,8 @@
         "n": 0
       },
       "chain": {
-        "value": 28.33428308615433,
-        "n": 14208
+        "value": 28.402691614455698,
+        "n": 29528
       }
     },
     {
@@ -2950,8 +2950,8 @@
       "group": "aging",
       "label": "Peak age, DL",
       "format": "dec1",
-      "value": 28.122782757343145,
-      "n": 12261,
+      "value": 28.0575403553628,
+      "n": 25241,
       "status": "pass",
       "target": {
         "pass": [
@@ -2975,8 +2975,8 @@
         "n": 0
       },
       "chain": {
-        "value": 28.122782757343145,
-        "n": 12261
+        "value": 28.0575403553628,
+        "n": 25241
       }
     },
     {
@@ -2984,8 +2984,8 @@
       "group": "aging",
       "label": "Peak age, LB",
       "format": "dec1",
-      "value": 27.503050015662524,
-      "n": 9396,
+      "value": 27.544650704542676,
+      "n": 18850,
       "status": "pass",
       "target": {
         "pass": [
@@ -3009,8 +3009,8 @@
         "n": 0
       },
       "chain": {
-        "value": 27.503050015662524,
-        "n": 9396
+        "value": 27.544650704542676,
+        "n": 18850
       }
     },
     {
@@ -3018,8 +3018,8 @@
       "group": "aging",
       "label": "Peak age, DB",
       "format": "dec1",
-      "value": 26.675773713731594,
-      "n": 14534,
+      "value": 26.78037075254332,
+      "n": 27583,
       "status": "pass",
       "target": {
         "pass": [
@@ -3043,8 +3043,8 @@
         "n": 0
       },
       "chain": {
-        "value": 26.675773713731594,
-        "n": 14534
+        "value": 26.78037075254332,
+        "n": 27583
       }
     },
     {
@@ -3052,8 +3052,8 @@
       "group": "aging",
       "label": "Average age at retirement",
       "format": "dec1",
-      "value": 30.600252751304232,
-      "n": 7517,
+      "value": 30.732995521240905,
+      "n": 15736,
       "status": "info",
       "target": null,
       "decidedBy": "chain",
@@ -3066,8 +3066,8 @@
         "n": 0
       },
       "chain": {
-        "value": 30.600252751304232,
-        "n": 7517
+        "value": 30.732995521240905,
+        "n": 15736
       }
     },
     {
@@ -3075,8 +3075,8 @@
       "group": "aging",
       "label": "Average credited seasons at retirement",
       "format": "dec1",
-      "value": 6.928295862711188,
-      "n": 7517,
+      "value": 7.036794611082867,
+      "n": 15736,
       "status": "info",
       "target": null,
       "decidedBy": "chain",
@@ -3089,8 +3089,280 @@
         "n": 0
       },
       "chain": {
-        "value": 6.928295862711188,
-        "n": 7517
+        "value": 7.036794611082867,
+        "n": 15736
+      }
+    },
+    {
+      "id": "draft.starterRate.R1",
+      "group": "draft",
+      "label": "Round 1 picks who start 4 or more seasons",
+      "format": "pct",
+      "value": 0.7280625543006082,
+      "n": 1151,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.62,
+          0.79
+        ],
+        "warn": [
+          0.55,
+          0.85
+        ],
+        "source": "The Hog Sty, \"Updated: The odds of success for a draft pick, part 4\" (April 21, 2025), every pick of the 2000 to 2019 drafts: the share who were full-time starters for 4 or more seasons was 70.55% in round 1, 49.04% in round 2, 28.80% in round 3, 20.06% in round 4, 14.91% in round 5, 8.70% in round 6, and 5.93% in round 7.",
+        "note": "Picks in the chained leagues' own drafts with 8 seasons left to play, counted as hits when they were base starters (11 a side, specialists apart) on week 1's depth chart in 4 or more of their first 8 seasons. The bands allow for the week 1 depth chart standing in for games started."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0.7280625543006082,
+        "n": 1151
+      }
+    },
+    {
+      "id": "draft.starterRate.R2",
+      "group": "draft",
+      "label": "Round 2 picks who start 4 or more seasons",
+      "format": "pct",
+      "value": 0.4581151832460733,
+      "n": 1146,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.41,
+          0.57
+        ],
+        "warn": [
+          0.35,
+          0.63
+        ],
+        "source": "The Hog Sty, \"Updated: The odds of success for a draft pick, part 4\" (April 21, 2025), every pick of the 2000 to 2019 drafts: the share who were full-time starters for 4 or more seasons was 70.55% in round 1, 49.04% in round 2, 28.80% in round 3, 20.06% in round 4, 14.91% in round 5, 8.70% in round 6, and 5.93% in round 7.",
+        "note": "Picks in the chained leagues' own drafts with 8 seasons left to play, counted as hits when they were base starters (11 a side, specialists apart) on week 1's depth chart in 4 or more of their first 8 seasons. The bands allow for the week 1 depth chart standing in for games started."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0.4581151832460733,
+        "n": 1146
+      }
+    },
+    {
+      "id": "draft.starterRate.R3",
+      "group": "draft",
+      "label": "Round 3 picks who start 4 or more seasons",
+      "format": "pct",
+      "value": 0.3373913043478261,
+      "n": 1150,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.22,
+          0.36
+        ],
+        "warn": [
+          0.17,
+          0.42
+        ],
+        "source": "The Hog Sty, \"Updated: The odds of success for a draft pick, part 4\" (April 21, 2025), every pick of the 2000 to 2019 drafts: the share who were full-time starters for 4 or more seasons was 70.55% in round 1, 49.04% in round 2, 28.80% in round 3, 20.06% in round 4, 14.91% in round 5, 8.70% in round 6, and 5.93% in round 7.",
+        "note": "Picks in the chained leagues' own drafts with 8 seasons left to play, counted as hits when they were base starters (11 a side, specialists apart) on week 1's depth chart in 4 or more of their first 8 seasons. The bands allow for the week 1 depth chart standing in for games started."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0.3373913043478261,
+        "n": 1150
+      }
+    },
+    {
+      "id": "draft.starterRate.R4",
+      "group": "draft",
+      "label": "Round 4 picks who start 4 or more seasons",
+      "format": "pct",
+      "value": 0.23076923076923078,
+      "n": 1144,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.14,
+          0.26
+        ],
+        "warn": [
+          0.1,
+          0.31
+        ],
+        "source": "The Hog Sty, \"Updated: The odds of success for a draft pick, part 4\" (April 21, 2025), every pick of the 2000 to 2019 drafts: the share who were full-time starters for 4 or more seasons was 70.55% in round 1, 49.04% in round 2, 28.80% in round 3, 20.06% in round 4, 14.91% in round 5, 8.70% in round 6, and 5.93% in round 7.",
+        "note": "Picks in the chained leagues' own drafts with 8 seasons left to play, counted as hits when they were base starters (11 a side, specialists apart) on week 1's depth chart in 4 or more of their first 8 seasons. The bands allow for the week 1 depth chart standing in for games started."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0.23076923076923078,
+        "n": 1144
+      }
+    },
+    {
+      "id": "draft.starterRate.R5",
+      "group": "draft",
+      "label": "Round 5 picks who start 4 or more seasons",
+      "format": "pct",
+      "value": 0.17554585152838428,
+      "n": 1145,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.1,
+          0.2
+        ],
+        "warn": [
+          0.07,
+          0.24
+        ],
+        "source": "The Hog Sty, \"Updated: The odds of success for a draft pick, part 4\" (April 21, 2025), every pick of the 2000 to 2019 drafts: the share who were full-time starters for 4 or more seasons was 70.55% in round 1, 49.04% in round 2, 28.80% in round 3, 20.06% in round 4, 14.91% in round 5, 8.70% in round 6, and 5.93% in round 7.",
+        "note": "Picks in the chained leagues' own drafts with 8 seasons left to play, counted as hits when they were base starters (11 a side, specialists apart) on week 1's depth chart in 4 or more of their first 8 seasons. The bands allow for the week 1 depth chart standing in for games started."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0.17554585152838428,
+        "n": 1145
+      }
+    },
+    {
+      "id": "draft.starterRate.R6",
+      "group": "draft",
+      "label": "Round 6 picks who start 4 or more seasons",
+      "format": "pct",
+      "value": 0.11393514460999124,
+      "n": 1141,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.05,
+          0.13
+        ],
+        "warn": [
+          0.03,
+          0.16
+        ],
+        "source": "The Hog Sty, \"Updated: The odds of success for a draft pick, part 4\" (April 21, 2025), every pick of the 2000 to 2019 drafts: the share who were full-time starters for 4 or more seasons was 70.55% in round 1, 49.04% in round 2, 28.80% in round 3, 20.06% in round 4, 14.91% in round 5, 8.70% in round 6, and 5.93% in round 7.",
+        "note": "Picks in the chained leagues' own drafts with 8 seasons left to play, counted as hits when they were base starters (11 a side, specialists apart) on week 1's depth chart in 4 or more of their first 8 seasons. The bands allow for the week 1 depth chart standing in for games started."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0.11393514460999124,
+        "n": 1141
+      }
+    },
+    {
+      "id": "draft.starterRate.R7",
+      "group": "draft",
+      "label": "Round 7 picks who start 4 or more seasons",
+      "format": "pct",
+      "value": 0.07624890446976336,
+      "n": 1141,
+      "status": "pass",
+      "target": {
+        "pass": [
+          0.03,
+          0.1
+        ],
+        "warn": [
+          0.01,
+          0.13
+        ],
+        "source": "The Hog Sty, \"Updated: The odds of success for a draft pick, part 4\" (April 21, 2025), every pick of the 2000 to 2019 drafts: the share who were full-time starters for 4 or more seasons was 70.55% in round 1, 49.04% in round 2, 28.80% in round 3, 20.06% in round 4, 14.91% in round 5, 8.70% in round 6, and 5.93% in round 7.",
+        "note": "Picks in the chained leagues' own drafts with 8 seasons left to play, counted as hits when they were base starters (11 a side, specialists apart) on week 1's depth chart in 4 or more of their first 8 seasons. The bands allow for the week 1 depth chart standing in for games started."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 0.07624890446976336,
+        "n": 1141
+      }
+    },
+    {
+      "id": "draft.qbsFirstRound",
+      "group": "draft",
+      "label": "Quarterbacks taken in a first round",
+      "format": "dec1",
+      "value": 2.3684210526315788,
+      "n": 57,
+      "status": "warn",
+      "target": {
+        "pass": [
+          2.5,
+          4.5
+        ],
+        "warn": [
+          2,
+          5
+        ],
+        "source": "Pro Football Reference's draft pages, 2015 to 2024: 35 quarterbacks in 10 first rounds, from 1 in 2022 to 6 in 2024 (2, 3, 3, 5, 3, 4, 5, 1, 3, and 6).",
+        "note": "Every draft the chained leagues held; round 1 without its compensatory picks' later placement, as the NFL counts it."
+      },
+      "decidedBy": "chain",
+      "replays": {
+        "value": null,
+        "n": 0
+      },
+      "loop": {
+        "value": null,
+        "n": 0
+      },
+      "chain": {
+        "value": 2.3684210526315788,
+        "n": 57
       }
     }
   ]

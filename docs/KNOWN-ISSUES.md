@@ -11,6 +11,7 @@
 - M1 check "overall formulas reproduce Madden's OVR within a small error": waits for data-raw/madden-roster.csv (formulas are hand-set; the fitter runs on the fixture only).
 - M11 check "generated players match the fitted archetypes": waits for the CSV; src/data/archetypes.json is hand-written and provisional.
 - Draft calibration (spec 23.3) measures multi-year starters by round, which carry first-round busts and day-3 gems, and the quarterbacks each first round takes (D-50). The Pro Bowl rate waits for M17's honors, quarterback trade-ups for M15's trades, and reaches for M14's AI brain.
+- First rounds take 2.4 quarterbacks against the NFL's 3.5 (a calibration warning, C-24): AI teams draft by grade and need alone until M14's AI brain, and nobody trades up for one until M15. Average experience runs 4.90 seasons in 20-season chains against a band ending at 4.8, until M12's free agency and re-signing by value.
 - Madden CSV headers in src/data/madden-mapping.ts are provisional until the real file arrives (docs/MAPPING.md).
 - Franchise totals and franchise records (spec 9.3, 18.5) arrive with M17's franchise history (D-15).
 - Records lists keep a total that drops but stays positive (a negative play) even if a player outside the top 10 now has more; rebuild on read if this ever shows.
