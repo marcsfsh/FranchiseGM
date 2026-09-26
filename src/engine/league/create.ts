@@ -140,6 +140,7 @@ export function createLeague(input: NewLeagueInput): League {
     draft: null,
     picks: [1, 2, 3].flatMap(ahead => issuePicks(rules.season.draftRounds, start.startSeason + ahead)),
     draftGrades: null,
+    udfaOffers: {},
     inbox: [],
     waivers: [],
     nextId: idCounters([

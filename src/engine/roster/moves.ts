@@ -34,6 +34,7 @@ import {
   type TenderLevel
 } from '../contracts/resign';
 import { emptyYear, type Contract } from '../contracts/types';
+import { scrambleOpen, undraftedRookies } from '../draft/udfa';
 import {
   gamesOnReserve,
   irReturnsUsed,
@@ -212,6 +213,8 @@ function plan(league: League, move: Move, enforce: boolean): Outcome<Plan> {
   switch (move.kind) {
     case 'sign': {
       if (player.status !== 'freeAgent' || player.team) return refuse(`${name} isn't a free agent.`);
+      if (scrambleOpen(league) && undraftedRookies(league).includes(player))
+        return refuse(`${name} is weighing offers from teams until the undrafted free agents step ends. Offer him a signing bonus in Undrafted rookies instead.`); // prettier-ignore
       const declined = offerProblem(league, player, move.offer);
       if (declined) return refuse(declined);
       const full = roomOnRoster();

@@ -1,12 +1,11 @@
 /**
  * Rookies around the draft: the draft order (spec 10.4), the cap space teams keep for their draft classes,
- * and, until the UDFA scramble, the stand-in for undrafted rookies (D-27): after the draft each AI team
- * signs the best of them.
+ * and signing a rookie to his first contract.
  */
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { capHit } from '../contracts/cap';
-import { rookieContract, udfaContract } from '../contracts/build';
-import { activeRoster, freeAgents, newId, recordTransaction } from '../league/transactions';
+import { rookieContract } from '../contracts/build';
+import { activeRoster } from '../league/transactions';
 import type { League } from '../league/types';
 import { leagueYear } from '../model/calendar';
 import { pickJersey } from '../model/jerseys';
@@ -74,31 +73,4 @@ export function signRookie(
 ): void {
   player.jersey = jerseyFor(league, player, team, rng);
   Object.assign(player, { team, status: 'active', contractId });
-}
-
-/**
- * After the draft, each AI team (and the user's, when its roster management is on auto) signs the best
- * undrafted rookies left, a round at a time in draft order, while it has room under the offseason limit.
- */
-export function signUndrafted(league: League, rng: Rng): Player[] {
-  const year = leagueYear(league.date);
-  const user = league.settings.auto.roster ? null : league.meta.start.userTeam;
-  const order = draftOrder(league).filter(t => t !== user);
-  const board = freeAgents(league)
-    .filter(p => p.experience === 0 && 'undrafted' in p.draft && p.draft.year === year)
-    .sort((a, b) => b.potential - a.potential || b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
-  const signed: Player[] = [];
-  for (let round = 0; round < O.udfaPerTeam; round++)
-    for (const team of order) {
-      if (activeRoster(league, team).length >= league.rules.roster.offseason) continue;
-      const player = board.shift();
-      if (!player) return signed;
-      const bonus = Math.round(rng.int(O.udfaBonus[0], O.udfaBonus[1]) / 1000) * 1000;
-      const contract = udfaContract(league.rules, { id: newId(league, 'c'), playerId: player.id, team }, year, bonus);
-      league.contracts[contract.id] = contract;
-      signRookie(league, player, team, contract.id, rng);
-      recordTransaction(league, team, 'signed', player.id, 'an undrafted rookie');
-      signed.push(player);
-    } // prettier-ignore
-  return signed;
 }

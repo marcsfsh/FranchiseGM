@@ -7,7 +7,8 @@ import { capCharge, capHit, prorationYears } from '../../src/engine/contracts/ca
 import { endContract } from '../../src/engine/contracts/moves';
 import { emptyYear, type Contract, type ContractYear } from '../../src/engine/contracts/types';
 import { finishDraft, openDraft, runDraft } from '../../src/engine/draft/draft';
-import { draftOrder, signUndrafted } from '../../src/engine/generate/rookies';
+import { draftOrder } from '../../src/engine/generate/rookies';
+import { aiOffers, signUdfas } from '../../src/engine/draft/udfa';
 import { nextCap, openLeagueYear, withCap } from '../../src/engine/league/league-year';
 import { activeRoster } from '../../src/engine/league/transactions';
 import type { League } from '../../src/engine/league/types';
@@ -279,7 +280,7 @@ describe('retirement (spec 10.7)', () => {
   });
 });
 
-describe('the draft and rosters (D-27, D-48)', () => {
+describe('the draft and rosters (D-27, D-48, D-49)', () => {
   it('drafts in reverse order of finish, seven rounds on rookie deals, then signs undrafted rookies', () => {
     const league = fresh(at(2026, 'draft'));
     league.season.champion = 'ARI';
@@ -299,12 +300,14 @@ describe('the draft and rosters (D-27, D-48)', () => {
     expect(first).toMatchObject({ experience: 0, status: 'active', draft: { year: 2027, round: 1, pick: 1 } });
     expect(contract).toMatchObject({ type: 'rookie', fifthYearOption: 'eligible' });
     expect(contract.years.map(y => y.year)).toEqual([2027, 2028, 2029, 2030]);
+    // The rookies nobody drafted go to the teams the AI runs that offer, not to the user's (D-49).
     league.date = at(2026, 'udfa');
     const user = league.meta.start.userTeam;
     const userBefore = activeRoster(league, user).length;
-    const signed = signUndrafted(league, stream(3, 'udfa'));
+    aiOffers(league, TEAM_ABBRS.filter(t => t !== user), stream(3, 'udfaOffers'));
+    const signed = signUdfas(league, stream(3, 'udfa'));
     expect(signed.length).toBeGreaterThan(0);
-    expect(signed.every(p => p.team !== user && p.draft.year === 2027 && 'undrafted' in p.draft)).toBe(true);
+    expect(signed.every(s => s.team !== user && s.player.draft.year === 2027 && 'undrafted' in s.player.draft)).toBe(true);
     expect(activeRoster(league, user)).toHaveLength(userBefore);
   }); // prettier-ignore
 

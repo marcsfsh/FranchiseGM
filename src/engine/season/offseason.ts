@@ -31,9 +31,10 @@ import {
 import { closeDraftYear, picksIn, type DraftPickRecord } from '../draft/picks';
 import { draftMediaWeek } from '../draft/media';
 import { scoutsItself, scoutWeek } from '../draft/scouting';
+import { aiOffers, signUdfas } from '../draft/udfa';
 import { autoVisits, workOut } from '../draft/workouts';
 import type { NameData } from '../generate/player';
-import { draftOrder, rookieReserve, signUndrafted } from '../generate/rookies';
+import { draftOrder, rookieReserve } from '../generate/rookies';
 import type { Outcome } from '../contracts/moves';
 import { windowDecisions } from '../contracts/resign';
 import { depthChanges, startersByTeam, type DepthChange } from '../league/depth-changes';
@@ -376,6 +377,20 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     for (const n of stories.news) headline(n.kind, n.headline, n.teams, n.players, n.score);
     messages.push(...stories.messages);
   }
+  if (from.phase === 'udfa') {
+    // The scramble ends: each rookie signs with his best offer from a team with room (D-49).
+    const offered = Object.keys(league.udfaOffers).filter(id => league.udfaOffers[id]?.some(o => o.team === user)); // prettier-ignore
+    const signed = signUdfas(league, rng('udfa'));
+    const mine = signed.filter(s => s.team === user);
+    const elsewhere = signed.filter(s => s.team !== user && offered.includes(s.player.id));
+    if (offered.length || mine.length)
+      messages.push({
+        kind: 'draft',
+        title: `Undrafted rookies: ${mine.length ? `${plural(mine.length, 'rookie')} signed with you` : 'none signed with you'}`,
+        body: [mine.length ? `${mine.map(s => `${named(s.player)}, ${dollars(s.bonus)} bonus`).join('; ')}.` : null, elsewhere.length ? `Chose other teams: ${elsewhere.map(s => `${named(s.player)}, the ${nick(s.team)}`).join('; ')}.` : null].filter(Boolean).join(' '),
+        players: mine.map(s => s.player.id)
+      }); // prettier-ignore
+  }
   if (from.phase === 'awards') {
     const retired = retirePlayers(league, rng('retirement'));
     for (const { player, team } of retired) {
@@ -501,11 +516,11 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     for (const n of stories.news) headline(n.kind, n.headline, n.teams, n.players, n.score);
     messages.push(...stories.messages);
   } else if (to.phase === 'udfa') {
+    // The UDFA scramble (spec 10.4; D-49): the AI's offers go out, and the rookies choose as the step ends.
     league.date = { ...to };
-    const signed = signUndrafted(league, rng('udfa'));
-    const mine = signed.filter(p => p.team === user);
-    if (mine.length)
-      messages.push({ kind: 'draft', title: `You signed ${plural(mine.length, 'undrafted rookie')}`, body: mine.map(named).join(', '), players: mine.map(p => p.id) }); // prettier-ignore
+    aiOffers(league, aiTeams(league), rng('udfaOffers'));
+    if (!league.settings.auto.roster)
+      messages.push({ kind: 'draft', title: 'The scramble for undrafted rookies is on', body: 'Offer undrafted rookies a signing bonus on the Free agency screen. They choose as this step ends, weighing their chance to make your roster more than the money.', players: [] }); // prettier-ignore
   } else if (to.phase === 'trainingCamp') {
     // Training camp (spec 4.1, 10.5): the offseason's development under each team's program, then the
     // position battles and camp injuries, the depth charts that follow, and the preseason schedule.

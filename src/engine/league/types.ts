@@ -21,6 +21,7 @@ import type { GamePlan, Rotation } from '../sim/plan';
 import type { SimSliders } from '../sim/sliders';
 import type { DraftClass } from '../draft/class';
 import type { DraftGrades } from '../draft/draft';
+import type { UdfaOffer } from '../draft/udfa';
 import type { DraftPickRecord } from '../draft/picks';
 import type { DraftSettings } from '../draft/settings';
 
@@ -28,7 +29,7 @@ import type { DraftSettings } from '../draft/settings';
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 21;
+export const SAVE_SCHEMA_VERSION = 22;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -158,6 +159,8 @@ export interface League {
   picks: DraftPickRecord[];
   /** The media's grades of the last draft (spec 10.4), until the next draft finishes; null before the first. */
   draftGrades: DraftGrades | null;
+  /** Teams' offers to undrafted rookies in the UDFA scramble (D-49), by player ID; empty outside it. */
+  udfaOffers: Record<string, UdfaOffer[]>;
   /** Messages for the user (spec 19.6), oldest first. */
   inbox: InboxItem[];
   /** Players on waivers until the league next advances (spec 12.1). */

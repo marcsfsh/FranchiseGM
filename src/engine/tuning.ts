@@ -558,9 +558,8 @@ export const TUNING = {
       [26, 3],
       [29, 2]
     ],
-    /** Undrafted rookies each team signs, and their signing bonus range. */
+    /** Undrafted rookies each team keeps cap room for through free agency. */
     udfaPerTeam: 8,
-    udfaBonus: [5_000, 25_000],
     /** In the cutdown, young players are kept for this share of the gap to their potential. */
     cutPotentialWeight: 0.5,
     cutYoungAge: 25,
@@ -674,6 +673,24 @@ export const TUNING = {
       valueBy: 5,
       reachShare: 1.5,
       reachBy: 10
+    },
+    /**
+     * The UDFA scramble (spec 10.4, 11.7; D-49): each team has a `pool` of signing bonus money for undrafted
+     * rookies, up to `maxBonus` each in steps of `step`. A rookie weighs a bonus against `maxBonus` by
+     * `moneyWeight` [greed 0, greed 100] and his chance to make the roster by `opportunityWeight`. The AI
+     * offers to up to `offersPerTeam` rookies, the first `topShare` of its pool and each next one `shrink` of
+     * the one before, choosing them with noise of sd `noise` points of draft value.
+     */
+    udfa: {
+      pool: 200_000,
+      maxBonus: 100_000,
+      step: 5_000,
+      moneyWeight: [0.2, 0.6] as readonly [number, number],
+      opportunityWeight: 1,
+      offersPerTeam: 12,
+      topShare: 0.25,
+      shrink: 0.8,
+      noise: 2
     },
     /**
      * Media (spec 10.4; D-45): from week `hypeFrom` of the season, `hypePerWeek` of the media's top
