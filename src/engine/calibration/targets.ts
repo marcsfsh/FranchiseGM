@@ -2,8 +2,9 @@
  * Calibration targets (spec 23.2): each metric's pass and warn bands, a wide band for the short CI run, a
  * source, and a note, kept in `calibration/targets.json`. Evaluation marks each metric pass, warn, fail,
  * info (measured, no target yet), or pending (not measured in this run, or not until a later milestone).
- * Season-level metrics are judged on the weekly-loop seasons (C-20), aging on leagues chained through the
- * offseason, and everything else on the replays.
+ * Aging, the draft, and the economy are judged on leagues chained through the offseason; season records on
+ * the chained leagues' seasons from their third (D-40), or on the weekly-loop seasons when a run has no
+ * chains, as a CI run doesn't (C-20); and everything else on the replays.
  */
 import { METRICS, type MetricDef, type MetricGroup, type MetricValue } from './metrics';
 
@@ -31,16 +32,26 @@ export type Mode = 'full' | 'ci';
 export type Source = 'replays' | 'loop' | 'chain';
 
 /**
- * Metric groups the weekly loop decides: season records depend on in-season roster management (injured
- * reserve, signings, waivers, and elevations), which replays leave out (C-20).
+ * Metric groups the weekly loop decides when a run has no chained leagues: season records depend on
+ * in-season roster management (injured reserve, signings, waivers, and elevations), which replays leave out
+ * (C-20).
  */
 export const LOOP_GROUPS: readonly MetricGroup[] = ['seasons'];
 
-/** Metric groups the chained leagues decide: aging and the draft need seasons played through the offseason. */
-export const CHAIN_GROUPS: readonly MetricGroup[] = ['aging', 'draft'];
+/**
+ * Metric groups the chained leagues decide: aging, the draft, and the economy need seasons played through the
+ * offseason, and season records follow the league's own free agency and drafts once creation settings fade
+ * (D-40).
+ */
+export const CHAIN_GROUPS: readonly MetricGroup[] = ['aging', 'draft', 'economy', 'seasons'];
 
-export const decidedBy = (def: Pick<MetricDef, 'group'>): Source =>
-  CHAIN_GROUPS.includes(def.group) ? 'chain' : LOOP_GROUPS.includes(def.group) ? 'loop' : 'replays';
+/** The mode that decides a metric: season records fall back to the weekly loop in a run without chains. */
+export const decidedBy = (def: Pick<MetricDef, 'group'>, chained = true): Source =>
+  LOOP_GROUPS.includes(def.group) && !chained
+    ? 'loop'
+    : CHAIN_GROUPS.includes(def.group)
+      ? 'chain'
+      : 'replays';
 
 /** A metric's result: the deciding mode's value and sample, with both modes' values side by side. */
 export interface MetricResult extends MetricDef, MetricValue {
@@ -87,7 +98,7 @@ export function evaluate(
   for (const def of METRICS) {
     const target = file.targets[def.id] ?? null;
     if (mode === 'ci' && !target?.ci) continue;
-    const by = decidedBy(def);
+    const by = decidedBy(def, metrics.chain.has(def.id));
     const replays = metrics.replays.get(def.id) ?? NONE;
     const loop = metrics.loop.get(def.id) ?? NONE;
     const chain = metrics.chain.get(def.id) ?? NONE;

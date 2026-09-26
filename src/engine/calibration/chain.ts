@@ -1,19 +1,27 @@
 /**
- * Seasons chained through the offseason, for the aging metrics (spec 23.3): a generated league played week
- * by week through the Super Bowl and then a step at a time through the offseason into the next season, as
- * the game does it, with the user's club on auto. Each season's week 1 players are recorded (the active
- * rosters for the roster metrics, everyone not retired for the aging curves, and each pick's round and
- * whether he starts, for the draft's hit rates), and each offseason's retirements.
+ * Seasons chained through the offseason, for the aging, draft, season, and economy metrics (spec 23.3): a
+ * generated league played week by week through the Super Bowl and then a step at a time through the
+ * offseason into the next season, as the game does it, with the user's club on auto. Each season's week 1
+ * players are recorded (the active rosters for the roster metrics, everyone not retired for the aging curves,
+ * and each pick's round and whether he starts, for the draft's hit rates), and each offseason's retirements;
+ * with them each season's records, its week 1 cap sheets and market, its draft's compensatory picks, and each
+ * team's cash over the league year.
  */
 import { TEAM_ABBRS } from '../../data/team-colors';
+import { teamCash } from '../cap/floor';
+import { capSheet } from '../cap/sheet';
+import { contractSummary } from '../contracts/view';
+import { compensatoryPicks, type CompensatoryPick } from '../draft/compensatory';
+import { latestDraftOrder } from '../draft/picks';
 import { BASE_SLOTS, startersOf } from '../league/depth';
-import { calendarDay } from '../model/calendar';
+import { calendarDay, leagueYear } from '../model/calendar';
 import type { League } from '../league/types';
 import { ageOn } from '../model/player';
 import { POSITION_GROUP, type PositionGroup } from '../model/positions';
 import { DEFAULT_RULES } from '../rules/ruleset';
 import { advanceWeek } from '../season/advance';
 import { advanceOffseason } from '../season/offseason';
+import { buildStandings, type WinLoss } from '../season/standings';
 import { gameWeek } from '../season/state';
 import type { MetricValue } from './metrics';
 import type { CalibrationData } from './replay';
@@ -51,10 +59,44 @@ export interface AgingFacts {
   retirements: Retirement[];
 }
 
+/** A chained season's market at week 1 (spec 23.3), in dollars. */
+export interface MarketFacts {
+  /** The league year's cap, and each team's space under it (carryover included). */
+  cap: number;
+  space: number[];
+  /** Dead money on the league's cap sheets. */
+  dead: number;
+  /** The largest yearly values of a quarterback's deal and of anyone else's. */
+  topQb: number;
+  topOther: number;
+  /** Unrestricted free agents whose deals ran out as the league year opened and who signed with a new team. */
+  movers: number;
+  /** The largest yearly value among their new deals. */
+  topMover: number;
+}
+
+/** A chained season's records and economy. */
+export interface ChainSeason {
+  season: number;
+  /** Each team's regular-season record. */
+  records: WinLoss[];
+  market: MarketFacts;
+  /** The compensatory picks in the draft before it, by kind; null for a chain's first season. */
+  comp: Record<CompensatoryPick['kind'], number> | null;
+  /** Each team's cash paid over the league year, and the year's cap. */
+  cash: number[];
+  cashCap: number;
+}
+
+/** A chained league's facts: the aging facts, and each season's records and economy. */
+export interface ChainFacts extends AgingFacts {
+  seasons: ChainSeason[];
+}
+
 /** A chained league's facts, apart from the season samples. */
 export interface ChainSample {
   league: number;
-  aging: AgingFacts;
+  chain: ChainFacts;
 }
 
 const YEAR_MS = 365.25 * 86_400_000;
@@ -92,6 +134,41 @@ export function snapshot(league: League): ChainSnapshot {
   return { season: league.date.season, teams: Object.keys(league.teams).length, players };
 }
 
+/** The league's market at week 1 of a season (spec 23.3). */
+export function marketFacts(league: League): MarketFacts {
+  const year = leagueYear(league.date);
+  const sheets = TEAM_ABBRS.map(abbr => capSheet(league, abbr, year));
+  let topQb = 0;
+  let topOther = 0;
+  for (const p of Object.values(league.players)) {
+    const c = p.team && p.contractId ? league.contracts[p.contractId] : undefined;
+    if (!c || c.type === 'practiceSquad') continue;
+    const apy = contractSummary(c, league.date).apy;
+    if (p.position === 'QB') topQb = Math.max(topQb, apy);
+    else topOther = Math.max(topOther, apy);
+  }
+  // The league year's unrestricted free agents who signed elsewhere, still on the team they signed with.
+  let movers = 0;
+  let topMover = 0;
+  const gone = league.departures;
+  for (const [id, from] of Object.entries(gone?.year === year ? gone.players : {})) {
+    const p = league.players[id];
+    const c = p?.team && p.contractId ? league.contracts[p.contractId] : undefined;
+    if (!p?.team || p.team === from || !c || c.team !== p.team || leagueYear(c.signed) !== year) continue;
+    movers++;
+    topMover = Math.max(topMover, contractSummary(c, league.date).apy);
+  }
+  return {
+    cap: league.rules.cap.amount,
+    space: sheets.map(s => s.space),
+    dead: sheets.reduce((total, s) => total + s.dead, 0),
+    topQb,
+    topOther,
+    movers,
+    topMover
+  };
+}
+
 /**
  * Plays `seasons` seasons of a league from its first week 1, through each offseason, calling `onSeason`
  * after each; the last season ends with its Super Bowl.
@@ -101,21 +178,40 @@ export function runChain(
   data: CalibrationData,
   seasons: number,
   onSeason?: (done: number) => void
-): AgingFacts {
-  const facts: AgingFacts = { snapshots: [], retirements: [] };
+): ChainFacts {
+  const facts: ChainFacts = { snapshots: [], retirements: [], seasons: [] };
   const input = { actions: 0, entropy: 0 };
+  let comp: ChainSeason['comp'] = null;
   for (let s = 0; s < seasons; s++) {
     facts.snapshots.push(snapshot(league));
+    const market = marketFacts(league);
     while (gameWeek(league) !== null) {
       const week = advanceWeek(league, data.climate, input);
       if (week.blocked)
         throw new Error(`The chained league stopped in week ${league.date.week}: ${week.blocked}`);
     }
+    const year = leagueYear(league.date);
+    const scores = Object.values(league.season.results).filter(g => !g.playoff);
+    const records = buildStandings(scores).records;
+    facts.seasons.push({
+      season: league.date.season,
+      records: TEAM_ABBRS.map(abbr => records[abbr].overall),
+      market,
+      comp,
+      cash: TEAM_ABBRS.map(abbr => teamCash(league, abbr, year)),
+      cashCap: league.caps[year] ?? league.rules.cap.amount
+    });
+    comp = null;
     if (s < seasons - 1) {
       const season = league.date.season;
       while (league.date.phase !== 'regularSeason') {
         const step = advanceOffseason(league, { names: data.names, climate: data.climate }, input);
         if (step.blocked) throw new Error(`The chained league stopped in the offseason: ${step.blocked}`);
+        // The annual meeting has just awarded the compensatory picks; the same reckoning sorts them by kind.
+        if (league.date.phase === 'annualMeeting' && !comp) {
+          comp = { netLoss: 0, netValue: 0, supplemental: 0 };
+          for (const pick of compensatoryPicks(league, latestDraftOrder(league) ?? [])) comp[pick.kind]++;
+        }
       }
       const awards = calendarDay({ season, phase: 'awards', week: 1 });
       for (const p of Object.values(league.players))

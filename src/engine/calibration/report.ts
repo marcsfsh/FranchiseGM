@@ -167,8 +167,9 @@ export function reportMarkdown(report: CalibrationReport): string {
       'each, with AI roster moves, injured reserve, waivers, and practice squad elevations.',
     `- Chained leagues: ${count(report.chains, 'generated league')} played for ${count(report.chainSeasons, 'season')} ` +
       'each, through every offseason, as the game does it.',
-    `- Decided by the weekly loop: ${LOOP_GROUPS.map(g => GROUP_TITLES[g].toLowerCase()).join(', ')}. ` +
-      `Decided by the chained leagues: ${CHAIN_GROUPS.map(g => GROUP_TITLES[g].toLowerCase()).join(', ')}. ` +
+    `- Decided by the chained leagues: ${CHAIN_GROUPS.map(g => GROUP_TITLES[g].toLowerCase()).join(', ')}, ` +
+      "season records from each league's third season (D-40). Without chains, the weekly loop decides " +
+      `${LOOP_GROUPS.map(g => GROUP_TITLES[g].toLowerCase()).join(', ')}. ` +
       "Everything else is decided by the replays. Each sample is the deciding mode's.",
     `- Result: ${c.pass} pass, ${c.warn} warn, ${c.fail} fail, ${c.info} info, ${c.pending} not measured yet.`
   ];

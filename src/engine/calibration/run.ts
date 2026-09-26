@@ -11,7 +11,7 @@ import type { League } from '../league/types';
 import { stream } from '../rng';
 import { computeAging, runChain, type ChainSample } from './chain';
 import { LoopSeason, loopLeague } from './loop';
-import { computeMetrics, type RunSample } from './metrics';
+import { chainSeasonMetrics, computeMetrics, type RunSample } from './metrics';
 import { calibrationLeague, replaySeason, type CalibrationData } from './replay';
 import { buildReport, type CalibrationReport, type RunSettings } from './report';
 import { evaluate, type Mode, type TargetsFile } from './targets';
@@ -41,7 +41,7 @@ export interface RunJob {
 
 /** What a job reports: a season's facts, or a chained league's aging facts. */
 export type JobSample = RunSample | ChainSample;
-export const isChain = (sample: JobSample): sample is ChainSample => 'aging' in sample;
+export const isChain = (sample: JobSample): sample is ChainSample => 'chain' in sample;
 
 /** Experiment replays by default: a tenth of the run, and at least two. */
 export const defaultExperiments = (seasons: number): number => Math.max(2, Math.round(seasons / 10));
@@ -98,7 +98,7 @@ export function runJob(
   league: League,
   chainSeasons = 0
 ): JobSample {
-  if (job.kind === 'chain') return { league: job.league, aging: runChain(league, data, chainSeasons) };
+  if (job.kind === 'chain') return { league: job.league, chain: runChain(league, data, chainSeasons) };
   if (job.kind === 'loop') {
     const season = new LoopSeason(league, data.climate);
     while (!season.done) season.playWeek();
@@ -139,6 +139,9 @@ export function finishRun(
   };
   const replays = computeMetrics(ordered.filter(s => !s.loop));
   const loop = computeMetrics(ordered.filter(s => s.loop));
-  const chain = computeAging(chains.map(c => c.aging));
+  const chain = new Map([
+    ...computeAging(chains.map(c => c.chain)),
+    ...chainSeasonMetrics(chains.map(c => c.chain.seasons))
+  ]);
   return buildReport(settings, evaluate({ replays, loop, chain }, targets, mode), created, seconds);
 }

@@ -4,12 +4,15 @@
  * definitions the sourced targets use (margins, spread buckets, weather buckets, milestone yards), not
  * simulation tuning.
  */
-import type { TeamAbbr } from '../../data/team-colors';
+import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
+import { DEFAULT_RULES } from '../rules/ruleset';
+import type { WinLoss } from '../season/standings';
+import type { ChainSeason } from './chain';
 import { FIT_GROUP_IDS, FIT_GROUPS, type FitArm, type FitGroup } from './experiment';
 import type { GameFact, ReplayFacts, TeamFact } from './replay';
 
 export type MetricGroup =
-  'games' | 'seasons' | 'stats' | 'leaders' | 'injuries' | 'effects' | 'aging' | 'draft';
+  'games' | 'seasons' | 'stats' | 'leaders' | 'injuries' | 'effects' | 'aging' | 'draft' | 'economy';
 
 export const GROUP_TITLES: Record<MetricGroup, string> = {
   games: 'Games',
@@ -19,7 +22,8 @@ export const GROUP_TITLES: Record<MetricGroup, string> = {
   injuries: 'Injuries',
   effects: 'Effect sizes',
   aging: 'Aging and development',
-  draft: 'The draft'
+  draft: 'The draft',
+  economy: 'Economy'
 };
 
 /** How a value prints: a share as a percentage, a change in percentage points, or a number. */
@@ -183,6 +187,21 @@ for (let round = 1; round <= 7; round++)
   def(`draft.starterRate.R${round}`, 'draft', `Round ${round} picks who start 4 or more seasons`, 'pct');
 def('draft.qbsFirstRound', 'draft', 'Quarterbacks taken in a first round', 'dec1');
 
+// The economy (spec 23.3), from the chained leagues' seasons: cap sheets and the market at week 1, the
+// drafts' compensatory picks, and cash over each league year and salary floor window.
+def('economy.capSpaceMedian', 'economy', 'Median cap space at week 1, share of the cap', 'pct');
+def('economy.capSpaceTop', 'economy', 'Most cap space at week 1, share of the cap', 'pct');
+def('economy.overCap', 'economy', 'Teams over the cap at week 1, per season', 'dec2');
+def('economy.deadShare', 'economy', 'Dead money at week 1, share of the caps', 'pct');
+def('economy.topQbShare', 'economy', "Richest quarterback deal's yearly value, share of the cap", 'pct');
+def('economy.topOtherShare', 'economy', "Richest deal apart from quarterbacks', share of the cap", 'pct');
+def('economy.faMovers', 'economy', 'Unrestricted free agents who signed with a new team, per team', 'dec1');
+def('economy.faTopShare', 'economy', "Richest of their deals' yearly value, share of the cap", 'pct');
+def('economy.compNetLoss', 'economy', 'Compensatory picks for net losses, per draft', 'dec1');
+def('economy.cashShare', 'economy', 'Cash paid in a league year, share of the cap', 'pct');
+def('economy.cashLow', 'economy', "Lowest team's cash over a floor window, share of its caps", 'pct');
+def('economy.floorShort', 'economy', 'Teams short of the salary floor, per window', 'dec2');
+
 function fitLabel(group: FitGroup): string {
   const labels: Record<FitGroup, string> = {
     passing: 'yards per attempt',
@@ -232,7 +251,7 @@ export function fitRatings(games: readonly GameFact[]): { ratings: Map<TeamAbbr,
   return { ratings, home };
 }
 
-const wins = (t: TeamFact): number => t.wins + t.ties / 2;
+const wins = (t: WinLoss): number => t.wins + t.ties / 2;
 
 function gameMetrics(samples: readonly RunSample[], out: Map<string, MetricValue>): void {
   const games = samples.flatMap(s => s.facts.games);
@@ -324,7 +343,8 @@ function gameMetrics(samples: readonly RunSample[], out: Map<string, MetricValue
   });
 }
 
-function seasonMetrics(samples: readonly RunSample[], out: Map<string, MetricValue>): void {
+/** The season records metrics, from each season's teams' records. */
+function recordMetrics(samples: readonly (readonly WinLoss[])[], out: Map<string, MetricValue>): void {
   const seasons = samples.length;
   const deviations: number[] = [];
   let many = 0;
@@ -332,13 +352,13 @@ function seasonMetrics(samples: readonly RunSample[], out: Map<string, MetricVal
   let extreme = 0;
   const best: number[] = [];
   const worst: number[] = [];
-  for (const s of samples) {
-    const w = s.facts.teams.map(wins);
+  for (const teams of samples) {
+    const w = teams.map(wins);
     const avg = mean(w) ?? 0;
     deviations.push(...w.map(x => (x - avg) ** 2));
     best.push(Math.max(...w));
     worst.push(Math.min(...w));
-    for (const t of s.facts.teams) {
+    for (const t of teams) {
       if (t.wins >= MANY_WINS) many++;
       if (t.wins <= FEW_WINS) few++;
       // Perfect means no losses or ties; winless means no wins, ties or not.
@@ -355,6 +375,13 @@ function seasonMetrics(samples: readonly RunSample[], out: Map<string, MetricVal
   out.set('seasons.manyWinsPerDecade', { value: ratio(many * SEASONS_PER_DECADE, seasons), n: seasons });
   out.set('seasons.fewWinsPerDecade', { value: ratio(few * SEASONS_PER_DECADE, seasons), n: seasons });
   out.set('seasons.perfectOrWinlessPer100', { value: ratio(extreme * 100, seasons), n: seasons });
+}
+
+function seasonMetrics(samples: readonly RunSample[], out: Map<string, MetricValue>): void {
+  recordMetrics(
+    samples.map(s => s.facts.teams),
+    out
+  );
 }
 
 function statMetrics(samples: readonly RunSample[], out: Map<string, MetricValue>): void {
@@ -575,5 +602,77 @@ export function computeMetrics(samples: readonly RunSample[]): Map<string, Metri
     injuryMetrics(regular, out);
   }
   effectMetrics(regular, experiments, out);
+  return out;
+}
+
+/** A chain's first season that its records and economy count from: creation settings shape the first two (D-40). */
+export const CHAIN_JUDGED_FROM = 3;
+
+const median = (values: readonly number[]): number => {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 ? (sorted[mid] ?? 0) : ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2;
+};
+
+/**
+ * The season records and the economy (spec 23.3; D-40), from each chained league's seasons from its third,
+ * and the salary floor from each window after the first.
+ */
+export function chainSeasonMetrics(chains: readonly (readonly ChainSeason[])[]): Map<string, MetricValue> {
+  const out = new Map<string, MetricValue>();
+  const judged = chains.flatMap(c => c.slice(CHAIN_JUDGED_FROM - 1));
+  if (!judged.length) return out;
+  recordMetrics(
+    judged.map(s => s.records),
+    out
+  );
+  const n = judged.length;
+  const perSeason = (f: (s: ChainSeason) => number): MetricValue => ({ value: mean(judged.map(f)), n });
+  out.set(
+    'economy.capSpaceMedian',
+    perSeason(s => median(s.market.space) / s.market.cap)
+  );
+  out.set(
+    'economy.capSpaceTop',
+    perSeason(s => Math.max(...s.market.space) / s.market.cap)
+  );
+  out.set(
+    'economy.overCap',
+    perSeason(s => s.market.space.filter(x => x < 0).length)
+  );
+  out.set('economy.deadShare', { value: ratio(sum(judged, s => s.market.dead), sum(judged, s => s.market.cap * s.market.space.length)), n }); // prettier-ignore
+  out.set(
+    'economy.topQbShare',
+    perSeason(s => s.market.topQb / s.market.cap)
+  );
+  out.set(
+    'economy.topOtherShare',
+    perSeason(s => s.market.topOther / s.market.cap)
+  );
+  out.set(
+    'economy.faMovers',
+    perSeason(s => s.market.movers / s.market.space.length)
+  );
+  out.set(
+    'economy.faTopShare',
+    perSeason(s => s.market.topMover / s.market.cap)
+  );
+  const comps = judged.flatMap(s => (s.comp ? [s.comp.netLoss] : []));
+  out.set('economy.compNetLoss', { value: mean(comps), n: comps.length });
+  out.set('economy.cashShare', { value: ratio(sum(judged, s => sum(s.cash, c => c)), sum(judged, s => s.cashCap * s.cash.length)), n }); // prettier-ignore
+  // Floor windows run from each chain's first season; the first holds the generated league's deals.
+  const { salaryFloorYears: years, salaryFloorShare: floor } = DEFAULT_RULES.cap;
+  const lows: number[] = [];
+  let short = 0;
+  for (const chain of chains)
+    for (let start = years; start + years <= chain.length; start += years) {
+      const window = chain.slice(start, start + years);
+      const caps = sum(window, s => s.cashCap);
+      const shares = TEAM_ABBRS.map((_, t) => sum(window, s => s.cash[t] ?? 0) / caps);
+      lows.push(Math.min(...shares));
+      short += shares.filter(x => x < floor).length;
+    }
+  out.set('economy.cashLow', { value: mean(lows), n: lows.length });
+  out.set('economy.floorShort', { value: ratio(short, lows.length), n: lows.length });
   return out;
 }

@@ -8,10 +8,11 @@
  *                        [--chains N] [--chain-seasons 20] [--seed 1] [--workers N] [--ci]
  *                        [--out calibration/reports]
  *
- * --ci runs the CI subset against its wide bands (spec 23.1: 20 seasons in CI). Weekly-loop seasons default
- * to 100 in a full run, since perfect and winless seasons are rare, and 8 in CI; each takes about as long as
- * one and a half replays. Chained leagues, for the aging metrics and the draft's hit rates, default to 3 of
- * 20 seasons in a full run and none in CI; a chained season takes about as long as three replays.
+ * --ci runs the CI subset against its wide bands (spec 23.1: 20 seasons in CI). Chained leagues, for the
+ * aging, draft, economy, and season records metrics, default to 5 of 20 seasons in a full run, since perfect
+ * and winless seasons are rare, and none in CI; a chained season takes about as long as four replays.
+ * Weekly-loop seasons, which decide the season records in a run without chains (D-40), default to 20 in a
+ * full run, for comparison, and 8 in CI; each takes about as long as one and a half replays.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
@@ -65,9 +66,9 @@ const plan: RunPlan = {
     values['loop-seasons'] === undefined
       ? mode === 'ci'
         ? 8
-        : 100
+        : 20
       : whole('loop-seasons', values['loop-seasons'], 0),
-  chains: values.chains === undefined ? (mode === 'ci' ? 0 : 3) : whole('chains', values.chains, 0),
+  chains: values.chains === undefined ? (mode === 'ci' ? 0 : 5) : whole('chains', values.chains, 0),
   chainSeasons: whole('chain-seasons', values['chain-seasons'], 1)
 };
 const workers = Math.min(

@@ -2,9 +2,16 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseClimate } from '../../src/data/climate';
 import { parseSchedule } from '../../src/data/schedule';
-import type { TeamAbbr } from '../../src/data/team-colors';
+import { TEAM_ABBRS, type TeamAbbr } from '../../src/data/team-colors';
+import type { ChainSeason } from '../../src/engine/calibration/chain';
 import { FIT_GROUP_IDS } from '../../src/engine/calibration/experiment';
-import { computeMetrics, fitRatings, METRICS, type RunSample } from '../../src/engine/calibration/metrics';
+import {
+  chainSeasonMetrics,
+  computeMetrics,
+  fitRatings,
+  METRICS,
+  type RunSample
+} from '../../src/engine/calibration/metrics';
 import {
   calibrationLeague,
   replaySeason,
@@ -217,7 +224,7 @@ describe('calibration targets and reports (spec 23.2)', { timeout: 30_000 }, () 
     expect(ci.map(r => [r.id, r.status])).toEqual([['games.homeWinRate', 'pass']]);
   });
 
-  it('judges season records on the weekly loop and everything else on the replays', () => {
+  it('judges season records on the chained leagues or the weekly loop, and everything else on the replays', () => {
     const file: TargetsFile = {
       version: 1,
       targets: {
@@ -243,7 +250,40 @@ describe('calibration targets and reports (spec 23.2)', { timeout: 30_000 }, () 
     // Without weekly-loop seasons, season records go unmeasured.
     const alone = evaluate({ replays, loop: new Map(), chain: new Map() }, file, 'full');
     expect(alone.find(r => r.id === 'seasons.winSd')?.status).toBe('pending');
+    // Chained leagues decide them when a run has them (D-40).
+    const chain = new Map([['seasons.winSd', { value: 3.2, n: 1728 }]]);
+    const chained = evaluate({ replays, loop, chain }, file, 'full').find(r => r.id === 'seasons.winSd');
+    expect(chained).toMatchObject({ status: 'pass', value: 3.2, decidedBy: 'chain' });
   });
+
+  it('judges chained seasons from the third, with the economy from week 1 sheets and each league year', () => {
+    const cap = 100;
+    /** A chained season: every team 8-8-1 but one 17-0 team, spaces of 1 to 32, and cash of 0.9 caps. */
+    const season = (n: number, cash = 90): ChainSeason => ({
+      season: 2025 + n,
+      records: TEAM_ABBRS.map((_, i) => (i === 0 ? { wins: 17, losses: 0, ties: 0 } : { wins: 8, losses: 8, ties: 1 })),
+      market: { cap, space: TEAM_ABBRS.map((_, i) => i + 1 - (i === 0 ? 3 : 0)), dead: 320, topQb: 22, topOther: 15, movers: 64, topMover: 12 },
+      comp: n === 1 ? null : { netLoss: 30, netValue: 1, supplemental: 1 },
+      cash: TEAM_ABBRS.map((_, i) => (i === 1 ? cash - 10 : cash)),
+      cashCap: cap
+    });
+    const chain = Array.from({ length: 12 }, (_, i) => season(i + 1));
+    // The first two seasons don't count: a 17-0 team in each of the other 10 is 100 per 100 seasons.
+    const m = chainSeasonMetrics([chain]);
+    expect(m.get('seasons.perfectOrWinlessPer100')).toEqual({ value: 100, n: 10 });
+    expect(m.get('seasons.bestRecord')?.value).toBe(17);
+    expect(m.get('economy.capSpaceMedian')?.value).toBeCloseTo(0.165);
+    expect(m.get('economy.capSpaceTop')?.value).toBeCloseTo(0.32);
+    expect(m.get('economy.overCap')?.value).toBe(1);
+    expect(m.get('economy.deadShare')?.value).toBeCloseTo(0.1);
+    expect(m.get('economy.topQbShare')?.value).toBeCloseTo(0.22);
+    expect(m.get('economy.faMovers')?.value).toBe(2);
+    expect(m.get('economy.compNetLoss')).toEqual({ value: 30, n: 10 });
+    expect(m.get('economy.cashShare')?.value).toBeCloseTo(0.9 - 0.1 / 32);
+    // Floor windows of 4 years from the chain's second: seasons 5 to 8 and 9 to 12, a team at 80% in each.
+    expect(m.get('economy.cashLow')).toEqual({ value: 0.8, n: 2 });
+    expect(m.get('economy.floorShort')).toEqual({ value: 1, n: 2 });
+  }); // prettier-ignore
 
   it('plans replays across leagues and writes a readable report', () => {
     const plan = { seed: 1, seasons: 25, perLeague: 10, experiments: defaultExperiments(25), loopSeasons: 4, chains: 0, chainSeasons: 0 }; // prettier-ignore

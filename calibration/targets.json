@@ -105,37 +105,37 @@
       "warn": [2.5, 3.8],
       "ci": [2.3, 4.1],
       "source": "Harvard Sports Analysis Collective, \"This NFL season did not have as much parity as you think\": the sd of team wins was 3.20 in 2017 and mostly 2.6 to 3.4 in 16-game seasons, about 2.8 to 3.6 over 17 games.",
-      "note": "Judged on weekly-loop seasons (C-20). Pure chance alone gives about 2.06 over 17 games."
+      "note": "Judged on chained seasons from each league's third (D-40), or on weekly-loop seasons in a run without chains (C-20). Pure chance alone gives about 2.06 over 17 games."
     },
     "seasons.bestRecord": {
       "pass": [12.8, 15.2],
       "warn": [12.0, 16.0],
       "source": "NFL standings 2021-2024 (Wikipedia season pages): the best records had 13, 14, 13, and 15 wins.",
-      "note": "The mean of each weekly-loop season's most wins, ties counting half (C-20)."
+      "note": "The mean of each season's most wins, ties counting half: chained seasons from each league's third (D-40), or weekly-loop seasons without chains (C-20)."
     },
     "seasons.worstRecord": {
       "pass": [2.0, 4.0],
       "warn": [1.3, 4.7],
       "source": "NFL standings 2021-2024 (Wikipedia season pages): the worst records had 3, 3, 2, and 3 wins.",
-      "note": "Judged on weekly-loop seasons (C-20). Ties count half."
+      "note": "Judged on chained seasons from each league's third (D-40), or on weekly-loop seasons without chains (C-20). Ties count half."
     },
     "seasons.manyWinsPerDecade": {
       "pass": [2.0, 8.0],
       "warn": [1.0, 10.0],
       "source": "NFL standings (Wikipedia season pages): 12 teams won 14 or more of 16 games in 2004-2020 (2004 PIT and NE, 2005 IND, 2006 SD, 2007 NE, 2009 IND, 2010 NE, 2011 GB, 2015 CAR, 2016 NE, 2019 BAL, 2020 KC), about 7 a decade; two won 15 of 17 in 2021-2024.",
-      "note": "Per 10 weekly-loop seasons (C-20). 14 of 16 is the 16-game equivalent of 15 of 17 (the same 88% of games)."
+      "note": "Per 10 chained seasons from each league's third (D-40), or weekly-loop seasons without chains (C-20). 14 of 16 is the 16-game equivalent of 15 of 17 (the same 88% of games)."
     },
     "seasons.fewWinsPerDecade": {
       "pass": [3.0, 10.0],
       "warn": [1.5, 13.0],
       "source": "NFL standings 2004-2024 (Wikipedia season pages): 18 teams won 2 or fewer, about 8.6 a decade, though only one in the four 17-game seasons.",
-      "note": "Teams with 2 or fewer wins, per 10 weekly-loop seasons (C-20)."
+      "note": "Teams with 2 or fewer wins, per 10 chained seasons from each league's third (D-40), or weekly-loop seasons without chains (C-20)."
     },
     "seasons.perfectOrWinlessPer100": {
       "pass": [3.0, 11.0],
       "warn": [1.0, 14.0],
       "source": "NFL standings (Pro Football Reference season pages): 3 perfect or winless teams in the 44 full seasons from 1981 to 2025 (2007 NE 16-0, 2008 DET 0-16, 2017 CLE 0-16), about 6.8 per 100 seasons; the 1982 Colts' 0-8-1 came in a strike-shortened season.",
-      "note": "Perfect means no losses or ties; winless means no wins, ties or not. Per 100 weekly-loop seasons (C-20). A rare event, so a full run plays 100 of them, and at the NFL's rate 100 seasons land from 3 to 11 about 9 times in 10 (D-40)."
+      "note": "Perfect means no losses or ties; winless means no wins, ties or not. Per 100 chained seasons from each league's third (D-40), or weekly-loop seasons without chains (C-20). A rare event: a full run's 5 chains give 90 seasons, and at the NFL's rate 90 seasons land from 3 to 11 per 100 about 9 times in 10."
     },
     "stats.passAtt": {
       "pass": [32.0, 35.0],
@@ -530,6 +530,72 @@
       "warn": [2.0, 5.0],
       "source": "Pro Football Reference's draft pages, 2015 to 2024: 35 quarterbacks in 10 first rounds, from 1 in 2022 to 6 in 2024 (2, 3, 3, 5, 3, 4, 5, 1, 3, and 6).",
       "note": "Every draft the chained leagues held; round 1 without its compensatory picks' later placement, as the NFL counts it."
+    },
+    "economy.capSpaceMedian": {
+      "pass": [0.03, 0.09],
+      "warn": [0.015, 0.12],
+      "source": "Over the Cap's team cap space as Pro Football Rumors listed it: on June 2, 2025, a median of $24.2M against the $279.2M cap (8.7%), quartiles of 6.0% and 11.4%, and New England's $67.3M (24.1%) the most; on October 27, 2024, a median of $8.6M against $255.4M (3.4%), quartiles of 1.8% and 7.5%, and San Francisco's $54.1M (21.2%) the most.",
+      "note": "Week 1 cap sheets: each team's space under the cap, carryover included as Over the Cap counts it, as a share of the cap; the mean of each season's median. Week 1 falls between June's space and October's, after camp's extensions and before the season's signings."
+    },
+    "economy.capSpaceTop": {
+      "pass": [0.12, 0.28],
+      "warn": [0.08, 0.36],
+      "source": "Over the Cap's team cap space as Pro Football Rumors listed it: on June 2, 2025, a median of $24.2M against the $279.2M cap (8.7%), quartiles of 6.0% and 11.4%, and New England's $67.3M (24.1%) the most; on October 27, 2024, a median of $8.6M against $255.4M (3.4%), quartiles of 1.8% and 7.5%, and San Francisco's $54.1M (21.2%) the most.",
+      "note": "The mean of each season's largest week 1 space, as a share of the cap."
+    },
+    "economy.overCap": {
+      "pass": [0, 0],
+      "warn": [0, 0.1],
+      "source": "The CBA's Article 13 (Over the Cap's copy): every club must be under the cap at all times during the league year.",
+      "note": "Teams over the cap on their week 1 cap sheets, per season."
+    },
+    "economy.deadShare": {
+      "pass": [0.08, 0.2],
+      "warn": [0.05, 0.25],
+      "source": "Pro Football Rumors' dead money by team: $798M league-wide on July 14, 2023, 11.1% of 32 caps of $224.8M; $1,456M on November 27, 2024 (Over the Cap's figures), 17.8% of 32 caps of $255.4M.",
+      "note": "Dead money on the week 1 cap sheets (proration and money owed from deals that ended), as a share of the league's caps. Summer's figures run below the fall's, which add in-season releases."
+    },
+    "economy.topQbShare": {
+      "pass": [0.2, 0.26],
+      "warn": [0.16, 0.3],
+      "source": "The richest quarterback deals by yearly value as each season opened: Joe Burrow's $55M (September 2023), 24.5% of the $224.8M cap; Dak Prescott's $60M (September 2024), 23.5% of $255.4M, still the richest in 2025 at 21.5% of $279.2M.",
+      "note": "The largest yearly value of a quarterback's deal on week 1, as a share of the cap; the mean over seasons."
+    },
+    "economy.topOtherShare": {
+      "pass": [0.12, 0.18],
+      "warn": [0.1, 0.21],
+      "source": "The richest deals apart from quarterbacks: Nick Bosa's $34M (September 2023), 15.1% of the $224.8M cap; Justin Jefferson's $35M (June 2024), 13.7% of $255.4M; Micah Parsons's $47M (August 2025, NFL.com), 16.8% of $279.2M.",
+      "note": "The largest yearly value of any other player's deal on week 1, as a share of the cap; the mean over seasons."
+    },
+    "economy.faTopShare": {
+      "pass": [0.1, 0.2],
+      "warn": [0.07, 0.24],
+      "source": "The richest deals unrestricted free agents signed with new teams: Kirk Cousins's $45M a year with Atlanta (March 2024), 17.6% of the $255.4M cap; Sam Darnold's $33.5M a year with Seattle (March 2025), 12.0% of $279.2M.",
+      "note": "Among the unrestricted free agents whose deals ran out as the league year opened and who signed with a new team, the largest yearly value by week 1, as a share of the cap; the mean over seasons."
+    },
+    "economy.compNetLoss": {
+      "pass": [28, 32],
+      "warn": [20, 32],
+      "source": "NFL.com, \"2025 NFL Draft: NFL awards 35 compensatory picks\": 32 awarded under the net loss formula, and 3 special picks for minority coaching and executive hires; Over the Cap's methodology: net value and supplemental picks fill the 32 only when the formula falls short.",
+      "note": "Compensatory picks for net losses of qualifying free agents, per draft, before net value and supplemental picks fill the 32 (D-58)."
+    },
+    "economy.cashShare": {
+      "pass": [0.95, 1.07],
+      "warn": [0.89, 1.12],
+      "source": "Over the Cap, \"CBA Suggestion Number 4\" (April 2019): from 2015 to 2018 the league's average cash spending was about 101% of the cap; the CBA's league-wide minimum is 95% over each four-year period.",
+      "note": "Cash each team paid in a league year (salary for the weeks in force, bonuses when paid, money owed after releases), as a share of that year's cap, across the league."
+    },
+    "economy.cashLow": {
+      "pass": [0.91, 1.0],
+      "warn": [0.89, 1.05],
+      "source": "Over the Cap, \"CBA Suggestion Number 4\" (April 2019): the lowest-spending team from 2015 to 2018, Houston, paid 92.8% of the cap; the club minimum is 89% (D-33).",
+      "note": "The lowest team's cash over each four-year salary floor window, as a share of the window's caps; windows from each chain's second, since the first holds the generated league's deals."
+    },
+    "economy.floorShort": {
+      "pass": [0, 0],
+      "warn": [0, 0.5],
+      "source": "Over the Cap, \"CBA Suggestion Number 4\" (April 2019): no team came close to the 89% club minimum from 2015 to 2018.",
+      "note": "Teams short of the salary floor per four-year window (D-33), windows from each chain's second."
     }
   }
 }
