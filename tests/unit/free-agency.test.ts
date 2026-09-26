@@ -27,7 +27,8 @@ import {
   withdrawOffer
 } from '../../src/engine/contracts/free-agency';
 import { askOf, floorEstimate } from '../../src/engine/contracts/negotiation';
-import { draftOrder } from '../../src/engine/generate/rookies';
+import { draftOrder, rookieReserve } from '../../src/engine/generate/rookies';
+import { dealValue } from '../../src/engine/contracts/value';
 import { freeAgents } from '../../src/engine/league/transactions';
 import type { League } from '../../src/engine/league/types';
 import type { Player } from '../../src/engine/model/player';
@@ -111,6 +112,38 @@ describe('the AI bidding (spec 11.8)', () => {
     const again = teamBids(league, 'GB', draftOrder(league));
     expect(again.filter(p => offered.includes(p))).toEqual([]);
   });
+});
+
+describe('the AI bidding for a position every game-day roster needs (D-62)', () => {
+  it('offers one long snapper his ask when it has none, even over its value of him', () => {
+    const league = inFreeAgency();
+    for (const p of Object.values(league.players))
+      if (p.team === 'GB' && p.position === 'LS') Object.assign(p, { team: null, status: 'freeAgent', contractId: null });
+    const snappers = freeAgents(league).filter(p => p.position === 'LS');
+    expect(snappers.length).toBeGreaterThan(1);
+    teamBids(league, 'GB', draftOrder(league));
+    const offers = snappers.flatMap(p => offersFor(league, p.id).filter(o => o.team === 'GB').map(o => ({ p, offer: o.offer })));
+    expect(offers).toHaveLength(1);
+    const [bid] = offers;
+    if (!bid) throw new Error('no offer');
+    const ctx = contextFor(league);
+    expect(offerWorth(league, ctx, bid.p, 'GB', bid.offer).total).toBeGreaterThanOrEqual(reachable(league, ctx, bid.p, 'GB', bid.offer.years, demand(league, bid.p)));
+    // Another week, it doesn't bid for a second one while the first stands.
+    league.date = { ...league.date, week: 2 };
+    teamBids(league, 'GB', draftOrder(league));
+    expect(snappers.filter(p => offersFor(league, p.id).some(o => o.team === 'GB'))).toHaveLength(1);
+    // With no room premium, its value of a snapper at the minimum falls short of what one asks; it still bids.
+    for (const id of Object.keys(league.faOffers)) withdrawOffer(league, 'GB', id);
+    const order = draftOrder(league);
+    const room = rookieReserve(league, 'GB', order) + (TUNING.freeAgency.buffer + TUNING.market.roomPremium.from) * league.rules.cap.amount;
+    league.teams.GB.carryover += room - capSheet(league, 'GB').space;
+    teamBids(league, 'GB', order);
+    const tight = snappers.flatMap(p => offersFor(league, p.id).filter(o => o.team === 'GB').map(o => ({ p, offer: o.offer })));
+    expect(tight).toHaveLength(1);
+    const [only] = tight;
+    if (!only) throw new Error('no offer');
+    expect(dealValue(league, only.p, only.offer.years) / only.offer.years).toBeLessThan(offerAav(only.offer));
+  }); // prettier-ignore
 });
 
 describe("a week's decisions (spec 11.8)", () => {

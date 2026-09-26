@@ -56,7 +56,7 @@ for (const [position, n] of ACTIVE_ROSTER) {
 const healthy = (p: Player): boolean => !cannotPlay(designation(p.injury));
 
 /** The groups a game-day roster needs one of, whatever a team carries (D-46). */
-const REQUIRED: ReadonlySet<string> = new Set(GAME_DAY_NEEDS.map(p => NEED_GROUP[p]));
+export const REQUIRED: ReadonlySet<string> = new Set(GAME_DAY_NEEDS.map(p => NEED_GROUP[p]));
 
 /** Players missing from each group, from the team's players (active and injured reserve count). */
 function needsOf(players: readonly Player[]): Map<string, number> {

@@ -8,7 +8,7 @@
  * closes, and teams negotiate with free agents one on one.
  */
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
-import { NEED_GROUP, TARGET } from '../ai/decisions/roster-moves';
+import { NEED_GROUP, REQUIRED, TARGET } from '../ai/decisions/roster-moves';
 import { capSheet } from '../cap/sheet';
 import { rookieReserve } from '../generate/rookies';
 import { freeAgents } from '../league/transactions';
@@ -151,6 +151,8 @@ export function teamBids(league: League, team: TeamAbbr, order: readonly TeamAbb
     .sort((a, b) => b.want - a.want || b.p.ovr - a.p.ovr || (a.p.id < b.p.id ? -1 : 1));
   let left = budget;
   const offered: Player[] = [];
+  // A team with nobody at a position every game-day roster needs pays what one asks, one at a time (D-62).
+  const bidding = new Set(pendingFor(league, team).players.flatMap(id => (league.players[id] ? [NEED_GROUP[league.players[id].position]] : []))); // prettier-ignore
   for (const { p, want } of wants) {
     if (offered.length >= F.offersPerWeek || left <= 0) break;
     const years = termFor(ageOn(p.birthDate, today));
@@ -160,14 +162,18 @@ export function teamBids(league: League, team: TeamAbbr, order: readonly TeamAbb
     const premium = Math.min(F.premium, Math.max(0, want) / F.premiumAt * F.premium);
     const step = TUNING.market.quoteStep;
     const worth = Math.floor((dealValue(league, p, years) * rich) / years / step) * step;
+    const group = NEED_GROUP[p.position];
+    const required = REQUIRED.has(group) && !count.get(group);
+    if (required && bidding.has(group)) continue;
     const salary = Math.min(worth, Math.round((ask * (1 + premium)) / step) * step);
     // He asks more than he's worth to the team over the deal.
-    if (salary < ask) continue;
-    const offer = typicalOffer(league.rules, years, salary, minimum);
+    if (salary < ask && !required) continue;
+    const offer = typicalOffer(league.rules, years, Math.max(salary, ask), minimum);
     if (firstYearCharge(league, offer) > left) continue;
     if (makeOffer(league, team, p.id, offer) === null) {
       left -= firstYearCharge(league, offer);
       offered.push(p);
+      if (required) bidding.add(group);
     }
   }
   return offered;
