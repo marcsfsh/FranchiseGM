@@ -14,6 +14,7 @@ import { ageOn, type Player } from '../model/player';
 import { POSITION_GROUP } from '../model/positions';
 import type { Rng } from '../rng';
 import { TUNING } from '../tuning';
+import { putContract } from '../league/contract-index';
 
 const R = TUNING.retirement;
 const logistic = (x: number): number => 1 / (1 + Math.exp(-x));
@@ -66,7 +67,7 @@ export function retirePlayers(league: League, rng: Rng): { player: Player; team:
       injured: false,
       terminationPay: false
     } as const;
-    if (contract) league.contracts[contract.id] = endContract(contract, end);
+    if (contract) putContract(league, endContract(contract, end));
     endPending(league, player, end);
     Object.assign(player, { team: null, status: 'retired', contractId: null, retiredIn: league.date.season });
     retired.push({ player, team });

@@ -15,6 +15,7 @@ import {
 } from '../../src/engine/roster/waivers';
 import { available } from '../../src/engine/sim/setup';
 import { situationLeague } from '../helpers/situations';
+import { putContract } from '../../src/engine/league/contract-index';
 
 const fresh = (): League => structuredClone(situationLeague);
 /** The league's waiver order, from its stream for the season, as the week's advance draws it. */
@@ -28,13 +29,16 @@ function waive(league: League, player: Player): void {
   const team = player.team as TeamAbbr;
   const contract = league.contracts[player.contractId ?? ''];
   if (!contract) throw new Error('no contract');
-  league.contracts[contract.id] = endContract(contract, {
-    date: { ...league.date },
-    how: 'released',
-    designated: false,
-    injured: false,
-    terminationPay: false
-  });
+  putContract(
+    league,
+    endContract(contract, {
+      date: { ...league.date },
+      how: 'released',
+      designated: false,
+      injured: false,
+      terminationPay: false
+    })
+  );
   placeOnWaivers(league, player, team, contract.id);
 }
 

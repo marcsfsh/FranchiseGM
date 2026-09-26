@@ -28,6 +28,7 @@ import {
 import { advanceBlock } from '../../src/engine/roster/legality';
 import { nameData } from '../helpers/base-data';
 import { situationLeague } from '../helpers/situations';
+import { dropContract, putContract } from '../../src/engine/league/contract-index';
 
 // The offseason (spec 4.1): the calendar, the new league year (spec 11.1), retirements (spec 10.7), the
 // draft's place in it (D-48), and the stand-in for free agency until M12 (D-27). Cap numbers are worked by
@@ -181,7 +182,7 @@ describe('new league year (spec 11.1)', () => {
       })
     ];
     for (const c of deals) {
-      league.contracts[c.id] = c;
+      putContract(league, c);
       const p = league.players[c.playerId] as Player;
       p.contractId = c.id;
     }
@@ -209,13 +210,13 @@ describe('new league year (spec 11.1)', () => {
     const [paid, cut] = roster(league, 'MIN') as [Player, Player];
     // Minnesota's only deals: one for 2026 and 2027 with a 1,000,000 signing bonus, and one released
     // before the 2026 season that still owes its guarantees, 4,000,000 in 2026 and 5,000,000 in 2027.
-    for (const c of Object.values(league.contracts)) if (c.team === 'MIN') delete league.contracts[c.id];
+    for (const c of Object.values(league.contracts)) if (c.team === 'MIN') dropContract(league, c.id);
     const released = { date: at(2025, 'preseason'), how: 'released', designated: false, injured: false, terminationPay: false } as const;
     const deals = [
       deal('f1', paid, { signingBonus: 1_000_000, years: [year(2026, { base: 2_000_000 }), year(2027, { base: 3_000_000 })] }),
       deal('f2', cut, { years: [year(2026, { base: 4_000_000, guaranteedBase: 4_000_000 }), year(2027, { base: 5_000_000, guaranteedBase: 5_000_000 })], ended: released })
     ];
-    for (const c of deals) league.contracts[c.id] = c;
+    for (const c of deals) putContract(league, c);
     expect(teamCash(league, 'MIN', 2026)).toBe(7_000_000);
     expect(teamCash(league, 'MIN', 2027)).toBe(8_000_000);
     league.caps = { 2026: 10_000_000, 2027: 10_000_000, 2028: 10_000_000, 2029: 10_000_000 };
@@ -228,23 +229,35 @@ describe('new league year (spec 11.1)', () => {
     expect(league.teams.MIN.spending).toEqual([]);
   }); // prettier-ignore
 
-  it('drops contracts with nothing left to charge, and keeps two league years of history', () => {
+  it('drops contracts with nothing left to charge, and keeps two league years of tags', () => {
     const league = fresh(at(2026, 'annualMeeting'));
     const [held] = roster(league, 'MIN') as [Player];
     const gone = deal('old1', held, { team: 'MIN', signed: at(2022, 'freeAgency'), signingBonus: 2_000_000, years: [year(2023, { base: 3_000_000, guaranteedBase: 1_000_000 })], ended: { date: at(2023, 'regularSeason', 5), how: 'released', designated: false, injured: false, terminationPay: false } });
     const tag = deal('old2', held, { type: 'franchiseTag', signed: at(2024, 'resign'), years: [year(2025)] });
     const expired = deal('old3', held, { signed: at(2021, 'freeAgency'), years: [year(2022), year(2024)] });
-    for (const c of [gone, tag, expired]) league.contracts[c.id] = c;
+    // Two deals to 2027 released as the 2024 league year opened, before June 1: the first owes nothing after
+    // 2024, the second 2027's guaranteed salary.
+    const cutEarly = { date: at(2023, 'freeAgency'), how: 'released', designated: false, injured: false, terminationPay: false } as const;
+    const long = [2023, 2024, 2025, 2026, 2027];
+    const cut = deal('old4', held, { signed: at(2022, 'freeAgency'), years: long.map(y => year(y, { base: 2_000_000 })), ended: cutEarly });
+    const owing = deal('old5', held, { signed: at(2022, 'freeAgency'), years: long.map(y => year(y, { base: 2_000_000, guaranteedBase: y === 2027 ? 2_000_000 : 0 })), ended: cutEarly });
+    for (const c of [gone, tag, expired, cut, owing]) putContract(league, c);
     const own = held.contractId as string;
     const change = openLeagueYear(league, at(2026, 'freeAgency'), stream(1, 'year'));
-    // The 2027 league year keeps 2025 on: the 2025 tag counts toward a third straight one.
+    // The 2027 league year keeps deals that charge it, and tags from 2025 on, which count toward a third
+    // straight one.
     expect(league.contracts.old1).toBeUndefined();
     expect(league.contracts.old3).toBeUndefined();
     expect(league.contracts.old2).toBeDefined();
     expect(league.contracts[own]).toBeDefined();
+    // A released deal's years to come charge nothing once its dead money is counted, apart from salary owed.
+    expect(league.contracts.old4).toBeUndefined();
+    expect(league.contracts.old5).toBeDefined();
     // Each dropped deal leaves a record for the player's history (D-35): the first priced against the
     // league's first cap, since it was signed before the league began.
-    expect(change.records.map(r => r.id).sort()).toEqual(['old1', 'old3']);
+    const records = change.records.map(r => r.id);
+    expect(records).toEqual(expect.arrayContaining(['old1', 'old3', 'old4']));
+    for (const id of ['old2', 'old5', own]) expect(records).not.toContain(id);
     expect(change.records.find(r => r.id === 'old1')).toEqual({ id: 'old1', playerId: held.id, team: 'MIN', type: 'veteran', signed: 2023, from: 2023, to: 2023, years: 1, total: 5_000_000, apy: 5_000_000, guaranteed: 3_000_000, capShare: Math.round((5_000_000 / R.cap.amount) * 10_000) / 10_000, ended: 'released', endedYear: 2023 });
     expect(change.records.find(r => r.id === 'old3')).toMatchObject({ from: 2022, to: 2024, years: 2, ended: 'expired', endedYear: 2024 });
   }); // prettier-ignore

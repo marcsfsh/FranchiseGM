@@ -17,6 +17,7 @@ import { makeMove } from '../../src/engine/roster/moves';
 import { rosterCounts } from '../../src/engine/roster/rules';
 import { TUNING } from '../../src/engine/tuning';
 import { situationLeague } from '../helpers/situations';
+import { putContract } from '../../src/engine/league/contract-index';
 
 // Holdouts and trade requests (spec 10.9, 11.9; D-57).
 const H = TUNING.holdouts;
@@ -49,7 +50,7 @@ function underpaid(league: League, team: TeamAbbr = 'MIN'): Player {
     years: [{ ...emptyYear(2025), base: 1_000_000 }, { ...emptyYear(2026), base: 1_000_000 }],
     signingBonus: 0, signingBonusYears: null, vesting: [], noTrade: false, fifthYearOption: 'none', restructures: [], weeklyPay: 0, ended: null
   }; // prettier-ignore
-  league.contracts[id] = deal;
+  putContract(league, deal);
   p.contractId = id;
   return p;
 }

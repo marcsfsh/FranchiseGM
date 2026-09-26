@@ -26,6 +26,7 @@ import { TUNING } from '../tuning';
 import { draftValue } from './class';
 import { draftUnderWay } from './draft';
 import { needs } from './needs';
+import { putContract } from '../league/contract-index';
 
 const U = TUNING.draft.udfa;
 const SPOTS = new Map<Position, number>(ACTIVE_ROSTER.map(([p, n]) => [p, n]));
@@ -185,7 +186,7 @@ export function signUdfas(league: League, rng: Rng): UdfaSigning[] {
       const deal = udfaContract(league.rules, { id: 'preview', playerId: player.id, team }, year, bonus);
       if (capSheet(league, team, year, { add: [{ contract: deal, status: 'active' }] }).space < 0) continue;
       const contract = { ...deal, id: newId(league, 'c') };
-      league.contracts[contract.id] = contract;
+      putContract(league, contract);
       signRookie(league, player, team, contract.id, rng);
       recordTransaction(league, team, 'signed', player.id, 'an undrafted rookie');
       signed.push({ player, team, bonus });

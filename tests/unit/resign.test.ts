@@ -24,6 +24,7 @@ import { stream } from '../../src/engine/rng';
 import { makeMove } from '../../src/engine/roster/moves';
 import { minimumSalary } from '../../src/engine/rules/ruleset';
 import { situationLeague } from '../helpers/situations';
+import { putContract } from '../../src/engine/league/contract-index';
 
 // The re-sign window (spec 11.4, 11.5): tags, tenders, fifth-year options, and extensions. Amounts are
 // worked by hand from contracts set up here; the 2026 league year runs until free agency opens.
@@ -51,7 +52,7 @@ const deal = (
   ...change
 });
 const give = (league: League, player: Player, contract: Contract) => {
-  league.contracts[contract.id] = contract;
+  putContract(league, contract);
   player.contractId = contract.id;
 };
 

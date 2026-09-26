@@ -22,6 +22,7 @@ import { leagueStandings, PLAYOFF_PHASES } from '../season/state';
 import { winPct } from '../season/standings';
 import { activeLimit } from './rules';
 import { latestDraftOrder } from '../draft/picks';
+import { putContract } from '../league/contract-index';
 
 export interface WaiverEntry {
   playerId: string;
@@ -187,11 +188,11 @@ export function processWaivers(
           claimants.has(abbr) && claimProblem(league, abbr, entry, ai.has(abbr), enforced(abbr)) === null
       ) ?? null;
     if (winner) {
-      if (old.ended) league.contracts[old.id] = { ...old, ended: { ...old.ended, how: 'claimed' } };
+      if (old.ended) putContract(league, { ...old, ended: { ...old.ended, how: 'claimed' } });
       // A deal he'd signed to follow this one doesn't go with him.
       if (old.ended) endPending(league, player, { ...old.ended, how: 'replaced' });
       const contract = claimedContract(old, winner, newId(league, 'c'), league.date, league.rules);
-      league.contracts[contract.id] = contract;
+      putContract(league, contract);
       const taken = new Set(
         Object.values(league.players)
           .filter(p => p.team === winner)

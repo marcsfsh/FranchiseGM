@@ -58,6 +58,7 @@ import { gameWeek, PLAYOFF_PHASES, weekGames } from '../season/state';
 import { dollars, plural, possessive } from '../text';
 import { elevatedThisWeek, elevationsThisSeason, practiceSquadVeteran, rosterCounts } from './rules';
 import { claimedContract, claimProblem, placeOnWaivers, subjectToWaivers } from './waivers';
+import { putContract } from '../league/contract-index';
 
 export type { Offer };
 
@@ -147,7 +148,7 @@ function fitJersey(league: League, player: Player, team: TeamAbbr, rng: Rng): vo
 
 /** Joins a player to a team on a new contract. */
 function join(league: League, player: Player, team: TeamAbbr, contract: Contract, status: Player['status'], rng: Rng) {
-  league.contracts[contract.id] = contract;
+  putContract(league, contract);
   fitJersey(league, player, team, rng);
   if (player.team !== team) player.joined = leagueYear(league.date);
   player.team = team;
@@ -323,7 +324,7 @@ function plan(league: League, move: Move, enforce: boolean): Outcome<Plan> {
           notes
         }),
         apply: () => {
-          league.contracts[contract.id] = endContract(contract, end);
+          putContract(league, endContract(contract, end));
           endPending(league, player, end);
           league.season.elevations = league.season.elevations.filter(
             e => !(e.playerId === player.id && e.week === gameWeek(league))
@@ -397,7 +398,7 @@ function plan(league: League, move: Move, enforce: boolean): Outcome<Plan> {
           notes: [`${name} signs to the active roster at the minimum salary.`]
         }),
         apply: rng => {
-          league.contracts[contract.id] = ended;
+          putContract(league, ended);
           join(league, player, team, { ...deal, id: newId(league, 'c') }, 'active', rng);
           log(league, team, 'promoted', player, move.reason);
         }
@@ -470,7 +471,7 @@ function plan(league: League, move: Move, enforce: boolean): Outcome<Plan> {
           notes: [`${dollars(move.amount)} of ${possessive(name)} salary becomes a bonus spread over ${plural(done.value.restructures.at(-1)?.prorationYears.length ?? 1, 'year')}.`]
         }),
         apply: () => {
-          league.contracts[contract.id] = done.value;
+          putContract(league, done.value);
           log(league, team, 'restructured', player, move.reason);
         }
       });
@@ -504,7 +505,7 @@ function resignPlan(
       preview: { year: year + 1, spaceBefore: before, spaceAfter: after, deadNow: 0, deadNext: 0, active: counts.active, limit: counts.limit, practice: counts.practice, notes },
       apply: () => {
         const id = newId(league, 'c');
-        league.contracts[id] = { ...contract, id };
+        putContract(league, { ...contract, id });
         player.nextContractId = id;
         extra?.(id);
         log(league, team, kind, player, move.reason);
@@ -553,7 +554,7 @@ function resignPlan(
         return ok({
           preview: { year, spaceBefore: capSheet(league, team).space, spaceAfter: capSheet(league, team).space, deadNow: 0, deadNext: 0, active: counts.active, limit: counts.limit, practice: counts.practice, notes: [`${name} plays out his rookie deal and can be a free agent after ${year + 1}.`] },
           apply: () => {
-            league.contracts[contract.id] = { ...contract, fifthYearOption: 'declined' };
+            putContract(league, { ...contract, fifthYearOption: 'declined' });
             log(league, team, 'optionDeclined', player, move.reason);
           }
         });
@@ -565,7 +566,7 @@ function resignPlan(
       return ok({
         preview: { year: fifth, spaceBefore: before, spaceAfter: after, deadNow: 0, deadNext: 0, active: counts.active, limit: counts.limit, practice: counts.practice, notes: [`${name} is under contract through ${fifth} at ${dollars(option.salary)} that year, fully guaranteed.`] },
         apply: () => {
-          league.contracts[contract.id] = exercised;
+          putContract(league, exercised);
           log(league, team, 'optionExercised', player, move.reason);
         }
       });

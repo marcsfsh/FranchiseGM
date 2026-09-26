@@ -13,6 +13,7 @@ import type { League } from '../../src/engine/league/types';
 import type { Player } from '../../src/engine/model/player';
 import { stream } from '../../src/engine/rng';
 import { situationLeague } from '../helpers/situations';
+import { putContract } from '../../src/engine/league/contract-index';
 
 // Compensatory picks (spec 11.8; D-58).
 /** The league at the 2026 combine, before the annual meeting, with the 2027 draft numbered in team order. */
@@ -47,7 +48,7 @@ function moved(league: League, from: TeamAbbr, to: TeamAbbr, apy: number, snaps 
     years: [{ ...emptyYear(2026), base: apy }, { ...emptyYear(2027), base: apy }],
     signingBonus: 0, signingBonusYears: null, vesting: [], noTrade: false, fifthYearOption: 'none', restructures: [], weeklyPay: 0, ended: null
   }; // prettier-ignore
-  league.contracts[id] = deal;
+  putContract(league, deal);
   Object.assign(p, { team: to, contractId: id });
   (league.departures as NonNullable<League['departures']>).players[p.id] = from;
   league.season.scrimmage[p.id] = [Math.round(snaps * 1000), 0];

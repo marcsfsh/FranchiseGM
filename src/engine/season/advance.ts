@@ -40,6 +40,7 @@ import { closeSeason } from './offseason';
 import { conferenceRound, superBowl, type Seed } from './playoffs';
 import { playoffSchedule } from './schedule';
 import { gameWeek, leagueStandings, PLAYOFF_PHASES, weekGames, type GameOutcome } from './state';
+import { putContract } from '../league/contract-index';
 
 export { gameWeek, weekGames } from './state';
 
@@ -285,7 +286,7 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
   if (week === league.rules.season.weeks)
     for (const c of Object.values(league.contracts))
       if (c.years.some(y => y.year === season && y.incentives.length))
-        league.contracts[c.id] = settleIncentives(c, season, league.season.totals[c.playerId], league.rules);
+        putContract(league, settleIncentives(c, season, league.season.totals[c.playerId], league.rules));
   // Players of the week are a regular-season award; the rookie award goes to a first-year player.
   const rookies = new Set(Object.values(league.players).flatMap(p => (p.experience === 0 ? [p.id] : [])));
   const awards = playoff ? [] : playersOfTheWeek(season, week, results, rookies);

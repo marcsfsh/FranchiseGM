@@ -16,6 +16,7 @@ import { askingFrom, contextFor, demand, offerWorth, reachable } from './decisio
 import { capHit } from './cap';
 import { endContract } from './moves';
 import type { Contract, ContractEnd } from './types';
+import { putContract } from '../league/contract-index';
 
 /** Tag positions (spec 11.5): the offensive line is one, the defensive line two, the specialists one. */
 export const TAG_POSITION: Record<Position, string> = {
@@ -288,5 +289,5 @@ export function endPending(league: League, player: Player, end: ContractEnd): vo
   if (!pending || pending.ended) return;
   const rescinded =
     pending.type === 'franchiseTag' || pending.type === 'transitionTag' || pending.type === 'rfaTender';
-  league.contracts[pending.id] = endContract(pending, rescinded ? { ...end, how: 'replaced' } : end);
+  putContract(league, endContract(pending, rescinded ? { ...end, how: 'replaced' } : end));
 }

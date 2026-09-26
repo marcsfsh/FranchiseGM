@@ -3,6 +3,7 @@ import { capSheet } from '../../src/engine/cap/sheet';
 import { endContract } from '../../src/engine/contracts/moves';
 import type { League } from '../../src/engine/league/types';
 import { situationLeague } from '../helpers/situations';
+import { putContract } from '../../src/engine/league/contract-index';
 
 const fresh = (): League => structuredClone(situationLeague);
 
@@ -43,13 +44,13 @@ describe('the team cap sheet (spec 11.1, 11.2)', () => {
     const contract = league.contracts[player.contractId];
     if (!contract) throw new Error('no contract');
     const before = capSheet(league, 'MIN');
-    league.contracts[contract.id] = endContract(contract, {
+    putContract(league, endContract(contract, {
       date: { ...league.date },
       how: 'released',
       designated: false,
       injured: false,
       terminationPay: false
-    });
+    }));
     player.contractId = null;
     player.team = null;
     player.status = 'freeAgent';
@@ -71,9 +72,9 @@ describe('the team cap sheet (spec 11.1, 11.2)', () => {
     const squad = Object.values(league.players).find(p => p.team === 'MIN' && p.status === 'practice');
     const old = league.contracts[squad?.contractId ?? ''];
     if (!squad || !old) throw new Error('no practice squad player');
-    league.contracts[old.id] = endContract(old, { date: { ...league.date }, how: 'replaced', designated: false, injured: false, terminationPay: false });
+    putContract(league, endContract(old, { date: { ...league.date }, how: 'replaced', designated: false, injured: false, terminationPay: false }));
     const deal = { ...old, id: 'promoted', type: 'minimum' as const, weeklyPay: 0, signed: { ...league.date }, ended: null };
-    league.contracts[deal.id] = deal;
+    putContract(league, deal);
     Object.assign(squad, { status: 'active', contractId: deal.id });
     const sheet = capSheet(league, 'MIN');
     const line = sheet.lines.find(l => l.contractId === old.id);

@@ -25,6 +25,7 @@ import { generateClass, type DraftClass } from './class';
 import { mediaBoard } from './media';
 import { aiChoice } from './needs';
 import { issueNextYear, numberDraft, picksIn, type DraftPickRecord } from './picks';
+import { putContract } from '../league/contract-index';
 
 const G = TUNING.draft.grades;
 
@@ -96,7 +97,7 @@ export function makePick(league: League, prospectId: string, rng: Rng): Outcome<
   const { owner: team, round, year } = clock;
   const pick = clock.number as number;
   const contract = rookieDeal(league, clock, player.id, newId(league, 'c'));
-  league.contracts[contract.id] = contract;
+  putContract(league, contract);
   player.draft = { year, round, pick, team };
   league.players[player.id] = player;
   signRookie(league, player, team, contract.id, rng);

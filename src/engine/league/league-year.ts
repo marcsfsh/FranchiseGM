@@ -9,6 +9,7 @@ import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { closeFloorYear, type FloorShortfall } from '../cap/floor';
 import { nextCap } from '../cap/growth';
 import { capSheet } from '../cap/sheet';
+import { guaranteedAt, splitsDeadMoney } from '../contracts/cap';
 import { contractRecord, type ContractRecord } from '../contracts/history';
 import { clearDemands } from '../contracts/holdouts';
 import { endContract } from '../contracts/moves';
@@ -27,6 +28,7 @@ import type { Rng } from '../rng';
 import { minimumSalary, type RuleSet } from '../rules/ruleset';
 import { TUNING } from '../tuning';
 import type { League } from './types';
+import { dropContract, putContract } from './contract-index';
 
 const Y = TUNING.leagueYear;
 
@@ -134,13 +136,16 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
     }
     // A deal with an option year nobody exercised ends as declined, which accelerates its proration.
     if (contract.years.some(y => y.year >= year && !y.isVoid))
-      league.contracts[contract.id] = endContract(contract, {
-        date: { ...date },
-        how: 'declined',
-        designated: false,
-        injured: false,
-        terminationPay: false
-      });
+      putContract(
+        league,
+        endContract(contract, {
+          date: { ...date },
+          how: 'declined',
+          designated: false,
+          injured: false,
+          terminationPay: false
+        })
+      );
     // A deal signed to follow this one (an extension, a tag, or a tender) takes over.
     const next = player.nextContractId ? league.contracts[player.nextContractId] : undefined;
     delete player.nextContractId;
@@ -183,22 +188,41 @@ function meetNewScales(league: League, year: number): void {
       base: floor,
       guaranteedBase: current.guaranteedBase === current.base ? floor : current.guaranteedBase
     };
-    league.contracts[contract.id] = {
+    putContract(league, {
       ...contract,
       years: contract.years.map((y, i) => (i === index ? raised : y))
-    };
+    });
   }
 }
 
-/** League years a finished contract is kept after its last year or its end: a third straight tag looks back two. */
-const KEPT_YEARS = 2;
+/** League years a tag is kept after its last charge: a third straight tag looks back two (D-61). */
+const KEPT_TAG_YEARS = 2;
+
+const TAGS = new Set<Contract['type']>(['franchiseTag', 'transitionTag']);
 
 /**
- * Drops the contracts with nothing left to do (D-31): no player holds one or is due to take it over, none is
- * on waivers, and its last year and any end are more than two league years back, so it charges no cap and
- * counts toward no tag or June 1 limit. Cap figures are always computed from contracts (spec 6.5), and
- * these compute to nothing now; keeping them would only slow every cap sheet as the seasons pass. Returns
- * each dropped deal's record, for the players' histories (D-35).
+ * The last league year a deal charges the cap or pays cash: its last year while it runs, or one it replaced
+ * whose proration still counts; else its end's year, the next one when its dead money splits, or a later year
+ * of guaranteed salary still owed after a release.
+ */
+function lastCharged(c: Contract, rules: RuleSet): number {
+  const last = Math.max(leagueYear(c.signed), ...c.years.map(y => y.year));
+  const end = c.ended;
+  if (!end || end.how === 'replaced') return last;
+  let through = leagueYear(end.date) + (splitsDeadMoney(end, rules) ? 1 : 0);
+  if (end.how === 'released')
+    for (const y of c.years)
+      if (y.year > through && !y.isVoid && guaranteedAt(c, y, end.date, end.injured) > 0) through = y.year;
+  return through;
+}
+
+/**
+ * Drops the contracts with nothing left to do (D-31, D-61): no player holds one or is due to take it over,
+ * none is on waivers, and its last charge to the cap or cash came in a league year now closed, two before
+ * that for a tag, which a third straight tag looks back to. A deal released with years to run ends its
+ * charges when it ends, apart from guaranteed salary still owed. Cap figures are always computed from
+ * contracts (spec 6.5), and these compute to nothing now; keeping them would only slow every cap sheet as the
+ * seasons pass. Returns each dropped deal's record, for the players' histories (D-35).
  */
 function dropSpentContracts(league: League, year: number): ContractRecord[] {
   const held = new Set<string>(league.waivers.map(w => w.contractId));
@@ -208,13 +232,11 @@ function dropSpentContracts(league: League, year: number): ContractRecord[] {
   }
   const records: ContractRecord[] = [];
   for (const c of Object.values(league.contracts)) {
-    if (held.has(c.id)) continue;
-    const last = Math.max(leagueYear(c.signed), ...c.years.map(y => y.year));
-    const ended = c.ended ? leagueYear(c.ended.date) : last;
-    if (Math.max(last, ended) >= year - KEPT_YEARS) continue;
+    const kept = TAGS.has(c.type) ? KEPT_TAG_YEARS : 0;
+    if (held.has(c.id) || lastCharged(c, league.rules) >= year - kept) continue;
     // Its record goes to the player's history first (D-35).
     records.push(contractRecord(league, c));
-    delete league.contracts[c.id];
+    dropContract(league, c.id);
   }
   return records;
 }

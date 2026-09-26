@@ -9,6 +9,7 @@
 import type { TeamAbbr } from '../../data/team-colors';
 import { afterJune1, capCharge, payWeek, type CapCharge, type CapFacts } from '../contracts/cap';
 import type { Contract } from '../contracts/types';
+import { contractsOf } from '../league/contract-index';
 import type { League } from '../league/types';
 import { leagueYear } from '../model/calendar';
 import type { RosterStatus } from '../model/player';
@@ -71,7 +72,7 @@ export function capFacts(league: League, playerId: string): CapFacts {
 
 /** The contracts that charge a team's cap: its players' current deals and every deal that ended there. */
 export function teamContracts(league: League, abbr: TeamAbbr): Contract[] {
-  return Object.values(league.contracts).filter(c => c.team === abbr);
+  return contractsOf(league, abbr);
 }
 
 /**
