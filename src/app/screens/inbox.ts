@@ -54,10 +54,17 @@ export function inboxScreen(): Screen {
           return h('label', null, input, label);
         }))
       ); // prettier-ignore
+      // A change that leaves the messages as they were (a save's status) keeps the list, and with it the
+      // focus and a click under way on one of its links.
+      let drawn = '';
       const draw = () => {
         const league: League | null = app.league;
         if (!league) return;
-        const items = inboxOrder(league.inbox).filter(i => !unreadOnly || !i.read);
+        const inbox = league.inbox;
+        const key = [league.meta.id, unreadOnly, inbox.length, inbox[0]?.id, inbox.at(-1)?.id, inbox.filter(i => i.read).length].join('|'); // prettier-ignore
+        if (key === drawn) return;
+        drawn = key;
+        const items = inboxOrder(inbox).filter(i => !unreadOnly || !i.read);
         const weeks: { key: string; label: string; items: typeof items }[] = [];
         for (const item of items) {
           const key = `${item.season}-${item.week}`;

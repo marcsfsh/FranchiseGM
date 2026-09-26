@@ -67,7 +67,18 @@ test('walks the offseason from the hub into the next season', async ({ page }, i
   // A preseason result opens its box score, kept apart from the season's games.
   const preseason = page.locator('main .inbox-item', { hasText: /Preseason, week 1: You (beat|lost to|tied) the / });
   await expect(preseason).toContainText('the game counts only in the preseason');
+  // The pointer's events and the page's errors, to say what went wrong if the click doesn't open the game.
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.evaluate(() => {
+    const seen: string[] = [];
+    Object.assign(window, { seenEvents: seen });
+    for (const type of ['mousedown', 'mouseup', 'click', 'hashchange'])
+      window.addEventListener(type, event => seen.push(`${type} on ${(event.target as Element | null)?.tagName ?? 'window'} at ${location.hash}`), true);
+  });
   await preseason.getByRole('link', { name: /^Box score: Preseason, week 1/ }).click();
+  const events = await page.evaluate(() => (window as unknown as { seenEvents: string[] }).seenEvents.join('; '));
+  await expect(page, `Events: ${events}. Errors: ${errors.join('; ') || 'none'}.`).toHaveURL(/#\/game\/2027-P1-/);
   await expect(page.locator('main .nameplate-tag')).toHaveText('2027 · Preseason, week 1');
   await expect(page.locator('main table.line-score')).toBeVisible();
 
