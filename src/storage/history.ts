@@ -3,6 +3,7 @@
  * records kept forever, player histories, season summaries, and the records book, in IndexedDB beside the
  * league save. When the browser blocks IndexedDB, history lives in memory for the session.
  */
+import type { ContractRecord } from '../engine/contracts/history';
 import { TABLE_IDS, type TableId } from '../engine/stats/categories';
 import type { PlayerHistory } from '../engine/stats/aggregate';
 import {
@@ -157,6 +158,36 @@ export class HistoryStore {
     ]);
     this.cache = { leagueId, season, tables: patch.tables, index: new Map() };
     return patch.broken;
+  }
+
+  /** Adds deals that left the league to their players' histories (D-35); one already there is skipped. */
+  recordContracts(leagueId: string, records: readonly ContractRecord[]): Promise<void> {
+    const run = this.queue.then(() => this.recordContractsNow(leagueId, records));
+    this.queue = run.catch(() => undefined);
+    return run;
+  }
+
+  private async recordContractsNow(leagueId: string, records: readonly ContractRecord[]): Promise<void> {
+    if (!records.length) return;
+    const ids = [...new Set(records.map(r => r.playerId))];
+    const found = await this.getMany<PlayerHistory>(
+      'playerHistory',
+      ids.map(id => [leagueId, id])
+    );
+    const histories = new Map(
+      ids.map((id, i): [string, PlayerHistory] => [id, found[i] ?? { id, seasons: [] }])
+    );
+    for (const r of records) {
+      const history = histories.get(r.playerId) as PlayerHistory;
+      const kept = history.contracts ?? [];
+      if (kept.some(k => k.id === r.id)) continue;
+      history.contracts = [...kept, r].sort(
+        (a, b) => a.signed - b.signed || a.from - b.from || (a.id < b.id ? -1 : 1)
+      );
+    }
+    await this.write(
+      [...histories.values()].map(h => ({ store: 'playerHistory' as const, key: [leagueId, h.id], value: h }))
+    );
   }
 
   private indexFor(id: TableId, table: StatTable): Map<string, number[]> {

@@ -20,6 +20,7 @@ import type { NameData } from '../generate/player';
 import { draftOrder, rookieReserve, signUndrafted, standInDraft } from '../generate/rookies';
 import { windowDecisions } from '../contracts/resign';
 import { depthChanges, startersByTeam, type DepthChange } from '../league/depth-changes';
+import type { ContractRecord } from '../contracts/history';
 import { openLeagueYear } from '../league/league-year';
 import { capSheet, seasonSpace } from '../cap/sheet';
 import { activeRoster, freeAgents, type TransactionKind } from '../league/transactions';
@@ -109,6 +110,8 @@ export interface StepOutcome {
   games: { result: GameResult; meta: GameMeta }[];
   /** Starting jobs that changed hands this step, with reasons (post-M42 section 1.1). */
   depth: DepthChange[];
+  /** Records of the spent deals that left the league this step, for the players' histories (D-35). */
+  contracts: ContractRecord[];
   /** What the user must do before the league can move on; null when the step happened. */
   blocked: string | null;
 }
@@ -196,7 +199,7 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
   const step = offseasonStep(from);
   if (step === 0) throw new Error(`The ${from.phase} phase isn't part of the offseason.`);
   const blocked = offseasonBlock(league);
-  if (blocked) return { league, decisions: [], news: [], inbox: [], pauses: [], ratings: [], games: [], depth: [], blocked }; // prettier-ignore
+  if (blocked) return { league, decisions: [], news: [], inbox: [], pauses: [], ratings: [], games: [], depth: [], contracts: [], blocked }; // prettier-ignore
   const to = nextStep(from);
   const user = league.meta.start.userTeam;
   const rng = (key: string) => leagueStream(league.random, 'offseason', step, key);
@@ -207,6 +210,7 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
   const ratings: RatingChange[] = [];
   const games: StepOutcome['games'] = [];
   const depth: DepthChange[] = [];
+  const contracts: ContractRecord[] = [];
   /** A step's week on the league's timeline, after the regular season and the playoffs. */
   const timeline = (date: GameDate) =>
     league.rules.season.weeks + PLAYOFF_PHASES.length + offseasonStep(date);
@@ -321,6 +325,7 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
   // The next step opens.
   if (to.phase === 'freeAgency' && to.week === 1) {
     const change = openLeagueYear(league, to, rng('leagueYear'));
+    contracts.push(...change.records);
     for (const abbr of aiTeams(league)) capCompliance(league, abbr, rng(`cap-${abbr}`));
     const mine = change.expired.filter(e => e.team === user).map(e => league.players[e.playerId]).filter((p): p is Player => !!p); // prettier-ignore
     messages.push({
@@ -471,6 +476,7 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     ratings,
     games,
     depth,
+    contracts,
     blocked: null
   };
 }

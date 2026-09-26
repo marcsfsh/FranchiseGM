@@ -8,6 +8,7 @@
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { closeFloorYear, type FloorShortfall } from '../cap/floor';
 import { capSheet } from '../cap/sheet';
+import { contractRecord, type ContractRecord } from '../contracts/history';
 import { endContract } from '../contracts/moves';
 import { tenderAmount, TENDER_LABELS, type TenderLevel } from '../contracts/resign';
 import type { Contract } from '../contracts/types';
@@ -29,6 +30,8 @@ export interface LeagueYearChange {
   expired: { playerId: string; team: TeamAbbr }[];
   /** Teams whose cash spending fell short of the salary floor over a window that just closed. */
   shortfalls: FloorShortfall[];
+  /** Records of the spent deals that left the league, for the players' histories (D-35). */
+  records: ContractRecord[];
 }
 
 /**
@@ -140,8 +143,8 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
   }
   for (const abbr of TEAM_ABBRS) league.teams[abbr].resting = [];
   meetNewScales(league, year);
-  dropSpentContracts(league, year);
-  return { year, capBefore, cap: league.rules.cap.amount, carryover, expired, shortfalls };
+  const records = dropSpentContracts(league, year);
+  return { year, capBefore, cap: league.rules.cap.amount, carryover, expired, shortfalls, records };
 }
 
 /**
@@ -181,18 +184,24 @@ const KEPT_YEARS = 2;
  * Drops the contracts with nothing left to do (D-31): no player holds one or is due to take it over, none is
  * on waivers, and its last year and any end are more than two league years back, so it charges no cap and
  * counts toward no tag or June 1 limit. Cap figures are always computed from contracts (spec 6.5), and
- * these compute to nothing now; keeping them would only slow every cap sheet as the seasons pass.
+ * these compute to nothing now; keeping them would only slow every cap sheet as the seasons pass. Returns
+ * each dropped deal's record, for the players' histories (D-35).
  */
-function dropSpentContracts(league: League, year: number): void {
+function dropSpentContracts(league: League, year: number): ContractRecord[] {
   const held = new Set<string>(league.waivers.map(w => w.contractId));
   for (const p of Object.values(league.players)) {
     if (p.contractId) held.add(p.contractId);
     if (p.nextContractId) held.add(p.nextContractId);
   }
+  const records: ContractRecord[] = [];
   for (const c of Object.values(league.contracts)) {
     if (held.has(c.id)) continue;
     const last = Math.max(leagueYear(c.signed), ...c.years.map(y => y.year));
     const ended = c.ended ? leagueYear(c.ended.date) : last;
-    if (Math.max(last, ended) < year - KEPT_YEARS) delete league.contracts[c.id];
+    if (Math.max(last, ended) >= year - KEPT_YEARS) continue;
+    // Its record goes to the player's history first (D-35).
+    records.push(contractRecord(league, c));
+    delete league.contracts[c.id];
   }
+  return records;
 }

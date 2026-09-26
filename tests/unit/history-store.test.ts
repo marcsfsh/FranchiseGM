@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TeamAbbr } from '../../src/data/team-colors';
+import type { ContractRecord } from '../../src/engine/contracts/history';
 import { emptyTotals } from '../../src/engine/sim/stats';
 import type { GameRecord } from '../../src/engine/stats/record';
 import { appendRows, emptyTable, encodeTable, type StatRow } from '../../src/engine/stats/table';
@@ -60,5 +61,40 @@ describe('history queries for the League section', () => {
     const lines = await store.gameLines('L', 2026, '2026-01-GB-MIN');
     expect(lines.map(l => l.row.playerId)).toEqual(['p1', 'p2']);
     expect(await store.careerPlayerTotals('L')).toEqual([]);
+  });
+});
+
+describe('contract history (D-35)', () => {
+  it("adds deals that left the league to their players' histories, once each", async () => {
+    const store = new HistoryStore(null);
+    const record = (id: string, playerId: string, signed: number): ContractRecord => ({
+      id,
+      playerId,
+      team: 'MIN',
+      type: 'veteran',
+      signed,
+      from: signed,
+      to: signed + 1,
+      years: 2,
+      total: 4_000_000,
+      apy: 2_000_000,
+      guaranteed: 1_000_000,
+      capShare: 0.0066,
+      ended: 'expired',
+      endedYear: signed + 1
+    });
+    await store.recordContracts('L', [
+      record('c2', 'p1', 2028),
+      record('c1', 'p1', 2026),
+      record('c3', 'p2', 2027)
+    ]);
+    await store.recordContracts('L', [record('c1', 'p1', 2026)]);
+    expect((await store.playerHistory('L', 'p1'))?.contracts?.map(c => c.id)).toEqual(['c1', 'c2']);
+    expect(await store.playerHistory('L', 'p2')).toMatchObject({
+      id: 'p2',
+      seasons: [],
+      contracts: [{ id: 'c3' }]
+    });
+    expect(await store.playerHistory('M', 'p1')).toBeNull();
   });
 });

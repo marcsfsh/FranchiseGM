@@ -41,7 +41,7 @@ export interface ContractYearView {
 }
 
 export interface ContractSummary {
-  /** Money over the deal's real years: salaries, bonuses, and the signing bonus. */
+  /** Money over the deal's real years: salaries, bonuses, the signing bonus, and salary a restructure converted. */
   total: number;
   years: number;
   /** Average per year. */
@@ -58,6 +58,7 @@ export function contractSummary(c: Contract, today: GameDate): ContractSummary {
   const real = realYears(c);
   const total =
     c.signingBonus +
+    c.restructures.reduce((sum, r) => sum + r.amount, 0) +
     real.reduce(
       (sum, y) => sum + y.base + y.rosterBonus + y.workoutBonus + y.perGameBonus + y.optionBonus,
       0

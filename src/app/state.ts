@@ -269,6 +269,9 @@ export class AppState {
           // Preseason games go into history the same way, tagged so they stay out of career totals.
           if (offseason.games.length)
             await this.store.history.record(offseason.league.meta.id, offseason.games);
+          // Deals that left the league live on in their players' histories (D-35).
+          if (offseason.contracts.length)
+            await this.store.history.recordContracts(offseason.league.meta.id, offseason.contracts);
           step = offseason;
         }
       } finally {

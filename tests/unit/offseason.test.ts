@@ -221,17 +221,22 @@ describe('new league year (spec 11.1)', () => {
   it('drops contracts with nothing left to charge, and keeps two league years of history', () => {
     const league = fresh(at(2026, 'annualMeeting'));
     const [held] = roster(league, 'MIN') as [Player];
-    const gone = deal('old1', held, { team: 'MIN', signed: at(2022, 'freeAgency'), years: [year(2023)], ended: { date: at(2023, 'regularSeason', 5), how: 'released', designated: false, injured: false, terminationPay: false } });
+    const gone = deal('old1', held, { team: 'MIN', signed: at(2022, 'freeAgency'), signingBonus: 2_000_000, years: [year(2023, { base: 3_000_000, guaranteedBase: 1_000_000 })], ended: { date: at(2023, 'regularSeason', 5), how: 'released', designated: false, injured: false, terminationPay: false } });
     const tag = deal('old2', held, { type: 'franchiseTag', signed: at(2024, 'resign'), years: [year(2025)] });
     const expired = deal('old3', held, { signed: at(2021, 'freeAgency'), years: [year(2022), year(2024)] });
     for (const c of [gone, tag, expired]) league.contracts[c.id] = c;
     const own = held.contractId as string;
-    openLeagueYear(league, at(2026, 'freeAgency'), stream(1, 'year'));
+    const change = openLeagueYear(league, at(2026, 'freeAgency'), stream(1, 'year'));
     // The 2027 league year keeps 2025 on: the 2025 tag counts toward a third straight one.
     expect(league.contracts.old1).toBeUndefined();
     expect(league.contracts.old3).toBeUndefined();
     expect(league.contracts.old2).toBeDefined();
     expect(league.contracts[own]).toBeDefined();
+    // Each dropped deal leaves a record for the player's history (D-35): the first priced against the
+    // league's first cap, since it was signed before the league began.
+    expect(change.records.map(r => r.id).sort()).toEqual(['old1', 'old3']);
+    expect(change.records.find(r => r.id === 'old1')).toEqual({ id: 'old1', playerId: held.id, team: 'MIN', type: 'veteran', signed: 2023, from: 2023, to: 2023, years: 1, total: 5_000_000, apy: 5_000_000, guaranteed: 3_000_000, capShare: Math.round((5_000_000 / R.cap.amount) * 10_000) / 10_000, ended: 'released', endedYear: 2023 });
+    expect(change.records.find(r => r.id === 'old3')).toMatchObject({ from: 2022, to: 2024, years: 2, ended: 'expired', endedYear: 2024 });
   }); // prettier-ignore
 });
 

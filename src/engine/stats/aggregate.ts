@@ -4,6 +4,7 @@
  * count; regular season and playoffs are kept apart.
  */
 import type { TeamAbbr } from '../../data/team-colors';
+import type { ContractRecord } from '../contracts/history';
 import { LONG_STATS, STAT_KEYS, type PlayerLine, type StatKey, type TeamTotals } from '../sim/stats';
 import type { GameKind } from './table';
 
@@ -25,6 +26,8 @@ export interface PlayerHistory {
   seasons: SeasonLine[];
   /** Seasons with any stored game, preseason included, oldest first: the seasons his game log can open. */
   logSeasons?: number[];
+  /** His deals that have left the league, oldest first (D-35). */
+  contracts?: ContractRecord[];
 }
 
 /** Adds a game line into running totals: sums, except "longest" stats, which keep the best game. */
