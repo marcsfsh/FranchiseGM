@@ -21,6 +21,8 @@
 - Weekly awards are the players of the week and the rookie of the week; players of the month and the season awards with their voting arrive with M17 (spec 18.4).
 - The practice squad's international pathway exemption isn't modeled (no player carries the designation), so squads hold 16; the PUP, NFI, and suspended lists have their rules but nothing places players on them until M10's preseason and M12's suspensions.
 - Cap growth, rollover of unused space, and the salary floor (spec 11.1) take effect at the league year turnover, which M10 builds; option deadlines and settling bonuses for past years come with it. Extensions (spec 19.3's contract tools) arrive with M12's negotiations.
+- AI teams keep expiring players only through age 30 (D-32) until M12's value-based re-sign choice (D-38).
+- Non-exclusive franchise and transition tags average the current year's top cap hits until M12 prices them from five years of cap percentages (D-39).
 - Waiver priority before week 4 of a season follows a seeded order until M11's draft order exists (D-22). Guaranteed money a released player earns from a new team doesn't offset what his old team owes.
 - Pause rules list only the event types this build raises (injuries to starters); the others appear with the milestones that create them (spec 19.6).
 - The user's team makes only the roster moves the user makes; left alone it plays short-handed through injuries, while AI teams use injured reserve, elevations, and signings. The engine has spec 22.7's roster management auto setting (calibration's weekly loop turns it on, D-24), but Settings shows no automation toggles yet.
