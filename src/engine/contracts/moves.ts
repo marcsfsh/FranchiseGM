@@ -132,6 +132,17 @@ export function decideOption(
 }
 
 /**
+ * Classifies a year's incentives as the league year opens (the CBA's Article 13): one with a stat mark is
+ * likely to be earned when the player's last regular season reached it, and counts on the cap now if so.
+ */
+export function classifyIncentives(c: Contract, year: number, totals: SeasonLine | undefined): Contract {
+  const entry = c.years.find(y => y.year === year);
+  if (!entry?.incentives.some(i => i.stat)) return c;
+  const incentives = entry.incentives.map(i => (i.stat ? { ...i, likely: (totals?.[i.stat.key] ?? 0) >= i.stat.atLeast } : i));
+  return { ...c, years: c.years.map(y => (y.year === year ? { ...y, incentives } : y)) };
+} // prettier-ignore
+
+/**
  * Settles a year's incentives when the regular season ends: each is earned if the player's season total
  * reaches its mark (incentives without a stat mark aren't earned). A deal that ended before the season did
  * leaves them unsettled.

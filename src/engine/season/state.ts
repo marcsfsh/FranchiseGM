@@ -31,7 +31,7 @@ export interface SeasonState {
   news: NewsItem[];
   /** Players of the week (spec 18.4). */
   awards: WeeklyAward[];
-  /** Season totals of the stats the news follows, by player. */
+  /** Regular-season totals of the stats the news follows, by player; incentives count them (spec 11.2). */
   totals: Record<string, SeasonLine>;
   /**
    * Regular-season games each player's team played while he was on its roster but not active on game

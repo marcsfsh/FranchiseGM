@@ -12,7 +12,7 @@ import { capSheet } from '../cap/sheet';
 import { guaranteedAt, splitsDeadMoney } from '../contracts/cap';
 import { contractRecord, type ContractRecord } from '../contracts/history';
 import { clearDemands } from '../contracts/holdouts';
-import { endContract } from '../contracts/moves';
+import { classifyIncentives, endContract } from '../contracts/moves';
 import { resetNegotiations } from '../contracts/negotiation';
 import {
   currentTagShares,
@@ -113,6 +113,11 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
   league.caps[year] = league.rules.cap.amount;
   league.date = { ...date };
   for (const abbr of TEAM_ABBRS) league.teams[abbr].carryover = carryover[abbr];
+  // Each deal's incentives for the new year count on the cap as likely to be earned when last regular
+  // season reached their marks (the CBA's Article 13).
+  for (const c of Object.values(league.contracts))
+    if (c.years.some(y => y.year === year && y.incentives.length))
+      putContract(league, classifyIncentives(c, year, league.season.totals[c.playerId]));
   // A new league year eases last season's highs and lows (spec 10.9).
   resetMorale(league);
   resetNegotiations(league);

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { capCharge, capHit, releaseImpact, weeksInForce } from '../../src/engine/contracts/cap';
 import { minimumContract } from '../../src/engine/contracts/build';
-import { decideOption, endContract, restructure, settleIncentives } from '../../src/engine/contracts/moves';
+import {
+  classifyIncentives,
+  decideOption,
+  endContract,
+  restructure,
+  settleIncentives
+} from '../../src/engine/contracts/moves';
 import { contractSummary, contractView } from '../../src/engine/contracts/view';
 import {
   emptyYear,
@@ -301,6 +307,15 @@ describe('options and incentives (spec 11.2)', () => {
     const done = decideOption(option, 2028, false, R);
     if (!done.ok) throw new Error(done.reason);
     expect(hits(done.value, [2027, 2028, 2029])).toEqual([5_500_000, 3_000_000, 0]);
+  });
+
+  it("classifies a year's incentives as its league year opens, by the last regular season (Article 13)", () => {
+    // 2028: $9M, $2.5M of the bonus, and the likely $750,000; after an 8-sack season it's no longer likely.
+    expect(capHit(vet, 2028, R)).toBe(12_250_000);
+    expect(capHit(classifyIncentives(vet, 2028, { sacks: 8 }), 2028, R)).toBe(11_500_000);
+    // 2029's 15-sack incentive after a 16-sack season is likely: its $1M counts in 2029.
+    expect(capHit(classifyIncentives(vet, 2029, { sacks: 16 }), 2029, R)).toBe(13_000_000);
+    expect(classifyIncentives(vet, 2029, { sacks: 12 })).toEqual(vet);
   });
 
   it('settles incentives: an unlikely one earned is charged next year, a likely one missed is credited', () => {

@@ -284,9 +284,10 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
   if (week === league.rules.season.weeks + PLAYOFF_PHASES.length - 1) healWeek(league);
   // The scouts work the next draft's class every week (spec 10.4).
   scoutWeek(league);
-  // Season totals and players of the week, then the calendar moves on (seeds come after week 18).
+  // Regular-season totals and players of the week, then the calendar moves on (seeds come after week 18).
+  // Season totals and incentives count the regular season only, as NFL records do (spec 11.2).
   const before = league.season.totals;
-  league.season.totals = addToTotals(before, results);
+  if (!playoff) league.season.totals = addToTotals(before, results);
   // Incentives settle on regular-season totals once the last week is played (spec 11.2).
   if (week === league.rules.season.weeks)
     for (const c of Object.values(league.contracts))

@@ -205,6 +205,25 @@ describe('new league year (spec 11.1)', () => {
     expect(league.caps).toEqual({ 2026: R.cap.amount, 2027: change.cap });
   }); // prettier-ignore
 
+  it("counts a deal's incentives for the new league year as likely when last regular season reached them", () => {
+    const league = fresh(at(2026, 'annualMeeting'));
+    const [reached, short] = roster(league, 'MIN') as [Player, Player];
+    const sacks = [{ condition: '10 sacks', amount: 500_000, likely: false, stat: { key: 'sacks' as const, atLeast: 10 }, earned: null }];
+    for (const p of [reached, short]) {
+      const c = deal(`i-${p.id}`, p, { years: [year(2026, { base: 1_000_000 }), year(2027, { base: 1_000_000, incentives: sacks })] });
+      putContract(league, c);
+      p.contractId = c.id;
+    }
+    league.season.totals = { [reached.id]: { sacks: 12 }, [short.id]: { sacks: 6 } };
+    openLeagueYear(league, at(2026, 'freeAgency'), stream(1, 'year'));
+    // 12 sacks reach the mark, so its 500,000 counts on the 2027 cap from the start (Article 13); 6 don't. The
+    // base is his 2027 salary, raised to the new minimum where it falls under it.
+    const entry = (p: Player) => league.contracts[`i-${p.id}`] as Contract;
+    const base = (p: Player) => entry(p).years.find(y => y.year === 2027)?.base ?? 0;
+    expect(capHit(entry(reached), 2027, league.rules)).toBe(base(reached) + 500_000);
+    expect(capHit(entry(short), 2027, league.rules)).toBe(base(short));
+  }); // prettier-ignore
+
   it("counts each team's cash toward the salary floor, and finds shortfalls when a window closes", () => {
     const league = fresh(at(2026, 'annualMeeting'));
     const [paid, cut] = roster(league, 'MIN') as [Player, Player];
