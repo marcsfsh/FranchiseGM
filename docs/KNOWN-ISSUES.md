@@ -25,7 +25,6 @@
 - The practice squad's international pathway exemption isn't modeled (no player carries the designation), so squads hold 16. The PUP, NFI, and suspended lists have their rules, but nothing places players on them yet: players hurt at camp stay on the active roster, and suspensions arrive with M12.
 - Free agency's bidding (D-53) leaves teams a median of about 17% of the cap after its four weeks in a league's first offseason; M12's close judges spending against the salary floor (D-33) and the economy's targets. Extensions and free agents' deals are negotiated in talks or settled by a GM (D-54).
 - The player decision model (D-52) leaves out relationships with coaches and climate preferences until M13's staff.
-- Non-exclusive franchise and transition tags average the current year's top cap hits until M12 prices them from five years of cap percentages (D-39).
 - Waiver priority before week 4 of a league's first season follows a seeded order, since no draft has been ordered yet (D-22, D-42). Guaranteed money a released player earns from a new team doesn't offset what his old team owes.
 - Pause rules list only the event types this build raises (injuries to starters); the others appear with the milestones that create them (spec 19.6).
 - The user's team makes only the roster moves the user makes unless Settings > Automation hands roster moves or contracts to the staff (D-34); the rest of spec 22.7's toggles arrive with M20.
