@@ -896,7 +896,7 @@ export const TUNING = {
     minOvr: 78,
     minSeasons: 3,
     underpaid: 0.7,
-    rate: 0.5,
+    rate: 0.35,
     loyaltyDamp: 0.6,
     report: 0.3,
     fined: 0.1,
