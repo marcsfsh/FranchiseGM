@@ -1,5 +1,6 @@
 /** Player display helpers (style guide 7.5, 13.4): overall plates, development tags, and rating rows. */
 import type { DevTrait, Player, RosterStatus } from '../../engine/model/player';
+import type { PositionGroup } from '../../engine/model/positions';
 import { designation } from '../../engine/season/injuries';
 import { fullName } from '../../engine/model/player';
 import { h } from '../dom';
@@ -115,3 +116,9 @@ export const signed = (points: number): string =>
 
 /** Height in feet and inches: 6'3". */
 export const heightText = (inches: number): string => `${Math.floor(inches / 12)}'${inches % 12}"`;
+
+/** Position groups in words, for filters and headings. */
+export const GROUP_LABELS: Record<PositionGroup, string> = {
+  QB: 'Quarterbacks', RB: 'Running backs', WR: 'Receivers', TE: 'Tight ends', OL: 'Offensive line',
+  DL: 'Defensive line', LB: 'Linebackers', DB: 'Defensive backs', ST: 'Specialists'
+}; // prettier-ignore

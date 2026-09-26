@@ -28,6 +28,7 @@ import { PLAN_LIMITS, type Rotation, type SituationalSubs } from '../../engine/s
 import { joinList } from '../../engine/text';
 import { TUNING } from '../../engine/tuning';
 import { h } from '../dom';
+import { ordinal } from '../format';
 import { icon } from '../icons';
 import { playerLink, tierPlate } from '../ui/players';
 import { tabs } from '../ui/tabs';
@@ -44,15 +45,6 @@ const UNITS = [
 
 /** The visit's state, kept across renders and layout changes: the open tab and the slots shown in full. */
 const visit: { tab: string; expanded: Set<Slot> } = { tab: 'offense', expanded: new Set() };
-
-const ordinal = (n: number): string => {
-  const tens = n % 100;
-  const suffix =
-    tens >= 11 && tens <= 13
-      ? 'th'
-      : (({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th');
-  return `${n}${suffix}`;
-};
 
 const percent = (share: number): string => `${Math.round(share * 100)}%`;
 

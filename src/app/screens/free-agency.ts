@@ -22,16 +22,12 @@ import { money } from '../format';
 import { href } from '../router';
 import type { AppState } from '../state';
 import { dollarField, openMoveDialog, placeOf, refocus, WAIT_FOR_GAMES } from '../ui/moves';
-import { playerLink, tierPlate } from '../ui/players';
+import { GROUP_LABELS, playerLink, tierPlate } from '../ui/players';
 import { sortableTable, type TableColumn } from '../ui/sortable';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
 
 const PAGE = 40;
-const GROUP_LABELS: Record<PositionGroup, string> = {
-  QB: 'Quarterbacks', RB: 'Running backs', WR: 'Receivers', TE: 'Tight ends', OL: 'Offensive line',
-  DL: 'Defensive line', LB: 'Linebackers', DB: 'Defensive backs', ST: 'Specialists'
-}; // prettier-ignore
 const SQUAD_PHASES = new Set<string>(['cutdown', 'regularSeason', ...PLAYOFF_PHASES]);
 const OFFER = 'Make an offer to ';
 
