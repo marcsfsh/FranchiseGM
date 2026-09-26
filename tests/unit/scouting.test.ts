@@ -138,8 +138,20 @@ describe('scouting by hand (spec 10.4)', () => {
     if (!mine || !theirs) throw new Error('no scouts');
     expect(assignScout(league, user, mine.id, 'West')).toBeNull();
     expect(mine.region).toBe('West');
-    expect(assignScout(league, user, mine.id, NATIONAL)).toBe('Choose a region.');
+    expect(assignScout(league, user, mine.id, 'Atlantis')).toBe('Choose a region, or national.');
     expect(assignScout(league, user, theirs.id, 'West')).toBe("He isn't one of your scouts.");
+    // Sent national, he earns a share of his points, and they go to the bank any prospect draws on.
+    const regional = weeklyPoints(mine);
+    expect(assignScout(league, user, mine.id, NATIONAL)).toBeNull();
+    expect(weeklyPoints(mine)).toBe(Math.round(regional * S.nationalShare));
+    const draft = classOf(league);
+    const before = draft.scouting[user].bank[NATIONAL] ?? 0;
+    league.settings.auto.scouting = false;
+    scoutWeek(league);
+    const director = teamStaff(league, user).find(s => s.role === 'DOS');
+    expect(draft.scouting[user].bank[NATIONAL]).toBe(
+      before + weeklyPoints(mine) + (director ? weeklyPoints(director) : 0)
+    );
   });
 
   it('earns points a week by role and by the points rating', () => {

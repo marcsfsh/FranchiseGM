@@ -69,9 +69,16 @@ export function revealed(draft: DraftClass, team: TeamAbbr, id: string): { trait
 const weekly = (member: StaffMember, [low, high]: readonly [number, number]): number =>
   Math.round(low + ((high - low) * (member.ratings.points ?? 50)) / 99);
 
-/** A scout's or the director of scouting's points a week; 0 for anyone else. */
-export const weeklyPoints = (member: StaffMember): number =>
-  member.role === 'DOS' ? weekly(member, S.directorPoints) : member.role === 'SCOUT' ? weekly(member, S.scoutPoints) : 0; // prettier-ignore
+/**
+ * A scout's or the director of scouting's points a week; 0 for anyone else. A scout sent national earns a
+ * share of his, which go to any prospect.
+ */
+export function weeklyPoints(member: StaffMember): number {
+  if (member.role === 'DOS') return weekly(member, S.directorPoints);
+  if (member.role !== 'SCOUT') return 0;
+  const points = weekly(member, S.scoutPoints);
+  return member.region === NATIONAL ? Math.round(points * S.nationalShare) : points;
+}
 
 /** Why a team can't spend a round of points on a prospect by hand now, or null. */
 export function scoutProblem(league: League, team: TeamAbbr, id: string): string | null {
@@ -96,11 +103,11 @@ export function scoutProspect(league: League, team: TeamAbbr, id: string): strin
   return problem;
 }
 
-/** Sends one of a team's scouts to a region. Returns why not, or null. */
+/** Sends one of a team's scouts to a region, or national. Returns why not, or null. */
 export function assignScout(league: League, team: TeamAbbr, scoutId: string, region: string): string | null {
   const scout = league.staff[scoutId];
   if (!scout || scout.role !== 'SCOUT' || !league.teams[team].staff.SCOUT?.includes(scoutId)) return "He isn't one of your scouts.";
-  if (!(REGIONS as readonly string[]).includes(region)) return 'Choose a region.';
+  if (![...REGIONS, NATIONAL].includes(region)) return 'Choose a region, or national.';
   scout.region = region;
   return null;
 } // prettier-ignore

@@ -464,9 +464,13 @@ function scoutingTabs(
       width === 0
         ? "as wide as an average department's"
         : `${width}% ${scale < 1 ? 'narrower' : 'wider'} than an average department's`;
+    // National scouts' points go anywhere, as the director's do.
+    const national = team.filter(s => s.region === NATIONAL).reduce((sum, s) => sum + weeklyPoints(s), 0);
     const directorText = director
-      ? `${fullName(director)} is your director of scouting. He earns ${weeklyPoints(director)} points a week for any prospect, and ${bank[NATIONAL] ?? 0} are on hand. With his accuracy (${director.ratings.accuracy ?? 50}), your grades' ranges run ${accuracy}.`
-      : 'You have no director of scouting, so no points come in for prospects outside your scouts\' regions.'; // prettier-ignore
+      ? `${fullName(director)} is your director of scouting. He earns ${weeklyPoints(director)} points a week for any prospect,${national ? ` your national scouts ${national} more,` : ''} and ${bank[NATIONAL] ?? 0} are on hand. With his accuracy (${director.ratings.accuracy ?? 50}), your grades' ranges run ${accuracy}.`
+      : national
+        ? `You have no director of scouting. Your national scouts earn ${national} points a week for any prospect, and ${bank[NATIONAL] ?? 0} are on hand.`
+        : 'You have no director of scouting, so no points come in for prospects outside your scouts\' regions.'; // prettier-ignore
     const staffColumns: TableColumn<(typeof team)[number]>[] = [
       { id: 'scout', label: 'Scout', name: 'scout', type: 'text', value: s => `${s.lastName} ${s.firstName}`, cell: s => h('th', { scope: 'row' }, fullName(s)) },
       { id: 'points', label: 'Points a week', name: 'points a week', type: 'number', numeric: true, value: s => weeklyPoints(s), cell: s => h('td', { class: 'num' }, weeklyPoints(s)) },
@@ -474,7 +478,7 @@ function scoutingTabs(
         id: 'region', label: 'Region', name: 'region', type: 'text', value: s => s.region ?? '',
         cell: s => {
           if (!manual) return h('td', null, s.region ?? unknownCell('No region'));
-          const select = h('select', { class: 'select', id: `scout-${s.id}`, 'aria-label': `${fullName(s)}'s region` }, ...REGIONS.map(r => h('option', { value: r }, r)));
+          const select = h('select', { class: 'select', id: `scout-${s.id}`, 'aria-label': `${fullName(s)}'s region` }, ...[...REGIONS, NATIONAL].map(r => h('option', { value: r }, r)));
           select.value = s.region ?? '';
           select.addEventListener('change', () => {
             const region = select.value;
@@ -482,7 +486,7 @@ function scoutingTabs(
               assignScout(l, abbr, s.id, region);
             }, ['assignScout', s.id, region]);
             rebuild(`#scout-${CSS.escape(s.id)}`);
-            status.textContent = `${fullName(s)} now scouts the ${region}.`;
+            status.textContent = region === NATIONAL ? `${fullName(s)} now scouts nationally, for ${weeklyPoints({ ...s, region })} points a week.` : `${fullName(s)} now scouts the ${region}.`;
           });
           return h('td', null, select);
         }
@@ -508,7 +512,7 @@ function scoutingTabs(
       { class: 'stack' },
       h('p', null, directorText),
       h('h2', null, 'Scouts'),
-      h('p', { class: 'hint' }, manual ? 'Each scout earns points every week for prospects in his region. Send scouts where the prospects you want to know more about are.' : 'Your director of scouting sends your scouts where his best-graded prospects are. Turn off auto scouting to place them yourself.'),
+      h('p', { class: 'hint' }, manual ? `Each scout earns points every week for prospects in his region. Send scouts where the prospects you want to know more about are, or national, for ${Math.round(S.nationalShare * 100)}% of his points to spend on anyone.` : 'Your director of scouting sends your scouts where his best-graded prospects are. Turn off auto scouting to place them yourself.'),
       team.length ? sortableTable({ key: 'scouting.scouts', name: 'scouts', caption: 'Your scouts', captionClass: 'sr-only', className: 'stat-table', columns: staffColumns, rows: team, rowId: s => s.id, defaultOrder: 'as they were hired', scroll: true, status }).element : h('p', { class: 'empty' }, 'You have no scouts.'),
       h('h2', null, 'Regions'),
       sortableTable({ key: 'scouting.regions', name: 'regions', caption: 'Scouting regions', captionClass: 'sr-only', className: 'stat-table', columns: regionColumns, rows: regions, rowId: r => r.region, defaultOrder: 'by region', scroll: true, status }).element

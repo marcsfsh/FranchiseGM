@@ -619,9 +619,10 @@ export const TUNING = {
      * `fullPoints` points make a full workup, which cuts that error by `pointsCut` and sees through
      * `consensusCut` of the consensus misjudgment. A director of scouting rated 99 on accuracy shrinks the
      * error by `directorEffect` (one rated 1 grows it as much). A week brings a scout `scoutPoints` and the
-     * director `directorPoints` [rated 0, rated 99]. Teams on auto spend `spendEach` points at a time on
-     * their best-graded prospects and place scouts by their top `placeFrom`; `traitsAt` points reveal a
-     * prospect's traits and `abilitiesAt` his abilities.
+     * director `directorPoints` [rated 0, rated 99]; a scout sent national earns `nationalShare` of his, for
+     * any prospect. Teams on auto spend `spendEach` points at a time on their best-graded prospects and place
+     * scouts by their top `placeFrom`; `traitsAt` points reveal a prospect's traits and `abilitiesAt` his
+     * abilities.
      */
     /**
      * Workouts (spec 10.4; D-44): the combine invites `invites` prospects by the consensus view and pro days
@@ -714,6 +715,7 @@ export const TUNING = {
       directorEffect: 0.3,
       scoutPoints: [6, 18],
       directorPoints: [4, 10],
+      nationalShare: 0.6,
       spendEach: 15,
       placeFrom: 150,
       traitsAt: 30,

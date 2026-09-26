@@ -52,7 +52,7 @@ export interface Measurables {
 export interface TeamScouting {
   /** Scouting points spent on each prospect, by player ID. */
   points: Record<string, number>;
-  /** Points on hand, by region; the director of scouting's go anywhere, under "National". */
+  /** Points on hand, by region; the director of scouting's and national scouts' go anywhere, under "National". */
   bank: Record<string, number>;
   /** Prospects the team brought in for a top-30 visit, whose personality it knows. */
   visits: string[];
