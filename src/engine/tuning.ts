@@ -618,6 +618,25 @@ export const TUNING = {
      * their best-graded prospects and place scouts by their top `placeFrom`; `traitsAt` points reveal a
      * prospect's traits and `abilitiesAt` his abilities.
      */
+    /**
+     * Workouts (spec 10.4; D-44): the combine invites `invites` prospects by the consensus view and pro days
+     * take the next `proDays`. Each drill is `[a, b, sd]`: a + b x the rating it tests, with noise of sd `sd`
+     * (b below 0 for the runs, where faster is lower), set so a typical wide receiver runs the 40 in about
+     * 4.45 seconds and a typical lineman in about 5.25. Working out narrows the consensus misjudgment by
+     * `reveal`, and the `headlines` biggest risers and fallers make the news.
+     */
+    workout: {
+      invites: 330,
+      proDays: 150,
+      forty: [6.4, -0.0222, 0.04],
+      bench: [-21.4, 0.59, 2],
+      vertical: [8, 0.33, 1.5],
+      broad: [60, 0.72, 3],
+      cone: [9.67, -0.032, 0.08],
+      shuttle: [5.78, -0.018, 0.06],
+      reveal: { combine: 0.3, proDay: 0.15 },
+      headlines: 3
+    },
     scouting: {
       teamSd: 6,
       fullPoints: 60,
@@ -629,7 +648,9 @@ export const TUNING = {
       spendEach: 15,
       placeFrom: 150,
       traitsAt: 30,
-      abilitiesAt: 60
+      abilitiesAt: 60,
+      /** Top-30 visits a team may make, from the combine to the draft. */
+      visits: 30
     }
   },
   /**

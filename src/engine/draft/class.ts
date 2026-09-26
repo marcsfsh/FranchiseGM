@@ -30,6 +30,19 @@ export interface Prospect {
   region: string | null;
   /** Each team's own error on his grade, in hundredths of a standard deviation, in TEAM_ABBRS order. */
   noise: number[];
+  /** Where he worked out, and his results (D-44); null until then. */
+  workout: 'combine' | 'proDay' | null;
+  measurables: Measurables | null;
+}
+
+/** Workout results (spec 10.4): seconds for the runs, reps at 225 pounds, and inches for the jumps. */
+export interface Measurables {
+  forty: number;
+  bench: number;
+  vertical: number;
+  broad: number;
+  cone: number;
+  shuttle: number;
 }
 
 /** What one team's scouting department has done on a class (spec 10.4; D-43). */
@@ -138,7 +151,7 @@ export function generateClass(
       { position, quality, age: rng.int(D.classAge[0], D.classAge[1]), classYear: year }
     );
     const noise = TEAM_ABBRS.map(() => Math.round(rng.normal() * 100) || 0);
-    prospects.push({ player, perception: perception(rng, s, group), region: regions.get(player.college) ?? null, noise }); // prettier-ignore
+    prospects.push({ player, perception: perception(rng, s, group), region: regions.get(player.college) ?? null, noise, workout: null, measurables: null }); // prettier-ignore
   }
   const scouting = Object.fromEntries(TEAM_ABBRS.map(t => [t, emptyScouting()] as const)) as Record<TeamAbbr, TeamScouting>; // prettier-ignore
   return { year, strength: { overall, groups }, prospects, scouting };

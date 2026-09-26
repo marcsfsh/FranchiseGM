@@ -16,9 +16,10 @@ import { capCompliance, cutdown, freeAgencySignings, offseasonClaims } from '../
 import { resignDecisions } from '../ai/decisions/resign';
 import { fillPracticeSquad, waiverClaims } from '../ai/decisions/roster-moves';
 import type { DecisionLog } from '../ai/framework';
-import { generateClass } from '../draft/class';
+import { generateClass, type Prospect } from '../draft/class';
 import { closeDraftYear } from '../draft/picks';
-import { scoutWeek } from '../draft/scouting';
+import { scoutsItself, scoutWeek } from '../draft/scouting';
+import { autoVisits, workOut } from '../draft/workouts';
 import type { NameData } from '../generate/player';
 import { draftOrder, rookieReserve, signUndrafted, standInDraft } from '../generate/rookies';
 import { windowDecisions } from '../contracts/resign';
@@ -132,6 +133,14 @@ const RESIGN_WORDS: Partial<Record<TransactionKind, string>> = {
 /** The teams the AI runs this step: all but the user's, unless the user's roster management is on auto. */
 const aiTeams = (league: League): TeamAbbr[] =>
   TEAM_ABBRS.filter(t => league.settings.auto.roster || t !== league.meta.start.userTeam);
+
+/** A prospect's standout drill for a headline: a lineman's bench reps, everyone else's 40. */
+function highlight(p: Prospect): string {
+  const m = p.measurables;
+  if (!m) return 'his workout';
+  return LINEMEN.has(p.player.position) ? `${m.bench} reps on the bench` : `a ${m.forty.toFixed(2)} 40`;
+}
+const LINEMEN = new Set<string>(['LT', 'LG', 'C', 'RG', 'RT', 'LE', 'RE', 'DT']);
 
 /** A preseason result from the user's side: "You beat the Bears 24-17". */
 function preseasonWords(result: GameResult, user: TeamAbbr): string {
@@ -374,6 +383,17 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
         body: `${open.expiring.length ? `${plural(open.expiring.length, 'contract')} of yours ${open.expiring.length === 1 ? 'runs' : 'run'} out when the ${to.season + 1} league year opens. ` : ''}${open.options.length ? `${plural(open.options.length, 'fifth-year option')} ${open.options.length === 1 ? 'is' : 'are'} yours to decide. ` : ''}Extend, tag, or tender players, and decide options, on the Contracts screen. The window closes when you advance to the ${stepLabel(nextStep(to)).toLowerCase()}.`,
         players: [...open.options, ...open.expiring].slice(0, 5).map(p => p.id)
       });
+  } else if ((to.phase === 'combine' || to.phase === 'proDays') && league.draft) {
+    // The combine and the pro days (spec 10.4): workouts, and the biggest risers and fallers in the news;
+    // after the pro days, teams scouting on their own have made their top-30 visits.
+    league.date = { ...to };
+    const where = to.phase === 'combine' ? 'combine' : 'proDay';
+    const moved = workOut(league.draft, where, rng(where));
+    const at = where === 'combine' ? 'at the combine' : 'at his pro day';
+    for (const p of moved.risers) headline('draft', `${named(p.player)} helps himself ${at} with ${highlight(p)}`, [], [], 40); // prettier-ignore
+    for (const p of moved.fallers) headline('draft', `${named(p.player)}'s stock slips ${at}`, [], [], 30);
+    if (where === 'proDay')
+      for (const team of TEAM_ABBRS) if (scoutsItself(league, team)) autoVisits(league, league.draft, team);
   } else if (to.phase === 'draft') {
     league.date = { ...to };
     const picks = standInDraft(league, data.names, rng('draft'));
