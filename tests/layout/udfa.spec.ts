@@ -51,7 +51,9 @@ test('offers undrafted rookies a bonus, and hears who signed as the step ends', 
   await expect(page.locator('#toastRegion .toast').last()).toContainText(`You offered ${name} a $25,000 signing bonus.`);
   const change = page.getByRole('button', { name: `Change your offer to ${name}` }).filter({ visible: true });
   await expect(change).toBeFocused();
-  await expect(card).toContainText("Your pool has $175,000 left. You've made 1 offer.");
+  // The pool grows with the cap, so the amount left follows the pool the card names.
+  const pool = Number((/pool of \$([\d,]+)/.exec((await card.textContent()) ?? '')?.[1] ?? '').replaceAll(',', ''));
+  await expect(card).toContainText(`Your pool has $${(pool - 25_000).toLocaleString('en-US')} left. You've made 1 offer.`);
 
   // The filter narrows the list and says how many.
   await page.selectOption('#udfa-group', 'QB');
