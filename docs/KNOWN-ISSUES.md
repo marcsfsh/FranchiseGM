@@ -10,6 +10,7 @@
 - Muffed punts, blocked field goals, roughing the kicker, and the 10-second runoff aren't simulated (D-13).
 - M1 check "overall formulas reproduce Madden's OVR within a small error": waits for data-raw/madden-roster.csv (formulas are hand-set; the fitter runs on the fixture only).
 - M11 check "generated players match the fitted archetypes": waits for the CSV; src/data/archetypes.json is hand-written and provisional.
+- Draft calibration (spec 23.3) measures multi-year starters by round, which carry first-round busts and day-3 gems, and the quarterbacks each first round takes (D-50). The Pro Bowl rate waits for M17's honors, quarterback trade-ups for M15's trades, and reaches for M14's AI brain.
 - Madden CSV headers in src/data/madden-mapping.ts are provisional until the real file arrives (docs/MAPPING.md).
 - Franchise totals and franchise records (spec 9.3, 18.5) arrive with M17's franchise history (D-15).
 - Records lists keep a total that drops but stays positive (a negative play) even if a player outside the top 10 now has more; rebuild on read if this ever shows.
@@ -32,7 +33,7 @@
 - Games lost to injury is measured without a target: no public all-player count was found. Football Outsiders' adjusted games lost (starters and key reserves, camp injuries included) was 68.9 to 80.9 per team in 2021-2023.
 - Pass volume barely falls as passing efficiency rises: team pass attempts against yards per attempt correlate about -0.05 in replays and -0.54 in the 2024 NFL, because good passing teams don't lead and run enough. The passing leader is held near the NFL mean by a league-wide pass rate shift (C-13); M7's opponent-tailored game plans and M14's coaching should carry more of it.
 - Leader metrics move about 3% between seeds because a 100-season run draws only 10 leagues. Perfect and winless teams are rare enough that even 100 weekly-loop seasons count only a few, so that metric can warn on one seed and pass on the next (C-20, D-40).
-- Staff (M13), Scouting and draft (M11), and Trades (M15) show placeholders, and the offseason's draft and free agency are stand-ins until M11 and M12 (D-27).
+- Staff (M13) and Trades (M15) show placeholders, and the offseason's free agency is a stand-in until M12 (D-27).
 - The playoff picture shows the seeds, the Wild Card matchups, and the clubs chasing them, without clinched or eliminated markers, which need every remaining result's scenarios.
 - A game from an earlier season opens from history without its venue, since past schedules aren't kept (spec 8.8 doesn't ask for them).
 - Dragging depth chart rows works with a mouse or trackpad; on touch screens players move with Up, Down, and the starter menu (style guide 7.4 makes dragging a supplement).
