@@ -4,7 +4,7 @@
  * a first violation) or the conduct policy (more likely for the volatile), and a player on a roster or a
  * practice squad may turn up in the news in a legal matter (flavor, with no discipline) or do charity work
  * that counts toward the Man of the Year. A suspended player goes on the suspended list, off the active
- * roster and unpaid, and returns to it once his team has played the games.
+ * roster, and returns to it once his team has played the games; his lost pay waits for M16's finances.
  */
 import { TEAM_COLORS, type TeamAbbr } from '../../data/team-colors';
 import { recordTransaction } from '../league/transactions';
@@ -100,9 +100,9 @@ export function offFieldMessage(league: League, e: OffFieldEvent): { title: stri
   const games = plural(e.games ?? 0, 'game');
   switch (e.kind) {
     case 'ped':
-      return { title: `${who} is suspended ${games}`, body: `He violated the league's policy on performance-enhancing drugs. He's on the suspended list, off your active roster and unpaid, until you've played ${games}.` };
+      return { title: `${who} is suspended ${games}`, body: `He violated the league's policy on performance-enhancing drugs. He's on the suspended list, off your active roster, until you've played ${games}.` };
     case 'conduct':
-      return { title: `${who} is suspended ${games}`, body: `He violated the league's personal conduct policy. He's on the suspended list, off your active roster and unpaid, until you've played ${games}.` };
+      return { title: `${who} is suspended ${games}`, body: `He violated the league's personal conduct policy. He's on the suspended list, off your active roster, until you've played ${games}.` };
     case 'legal':
       return { title: `${who} is in the news off the field`, body: 'He faces a legal matter away from football. The league is looking into it; no discipline has come of it.' };
     case 'reinstated':

@@ -6,6 +6,7 @@
 - Spec 11.1 calls the salary floor's window rolling; it checks the CBA's consecutive four-year periods from the league's first league year (D-33).
 - Spec 23.2 allows a handful of perfect or winless teams per 100 seasons at most; the band follows the NFL's rate, about 6.8 per 100 (D-40).
 - Spec 11.8 awards up to 32 compensatory picks; the league fills its 32 with net value and supplemental picks, as the NFL does (D-58).
+- Spec 11.6 lists incentives among an offer's terms; an offer's incentive is a per-game roster bonus, which the player counts on at 80%, and stat incentives appear only on generated deals (D-54).
 ## Deferred
 - Crowd noise isn't scaled by team hype until fans arrive (M16, D-12).
 - Muffed punts, blocked field goals, roughing the kicker, and the 10-second runoff aren't simulated (D-13).
@@ -16,7 +17,11 @@
 - Madden CSV headers in src/data/madden-mapping.ts are provisional until the real file arrives (docs/MAPPING.md).
 - Franchise totals and franchise records (spec 9.3, 18.5) arrive with M17's franchise history (D-15).
 - Records lists keep a total that drops but stays positive (a negative play) even if a player outside the top 10 now has more; rebuild on read if this ever shows.
-- Calibration metrics that need several seasons (repeat rates, droughts, dynasties, title spread) wait for M12, when chained leagues with real free agency can judge them (D-40); cohesion and coaching (M13), facilities (M16), and locker room (M12) effects show as not measured yet.
+- Calibration metrics that need a history of playoff fields and champions (division and playoff repeat rates, Super Bowl teams missing the next postseason, worst to first, dynasties, the longest droughts, and titles across franchises over 50 years) wait for M17's season archives and franchise history; chains run 20 seasons and record regular-season records only (D-40). Cohesion and coaching (M13) and facilities (M16) effects show as not measured yet.
+- Team finances in spec 23.3's economy (no franchise bankrupt, a reasonable revenue spread) wait for M16's revenue and expenses; the rest of the economy is judged on chained leagues (D-60).
+- Morale doesn't yet move with coaching conflicts, and star players don't clash with coaches, until M13's staff (spec 10.9); public complaints wait for M18's media and social feed.
+- A suspended player's lost game checks aren't taken off his team's cap or cash until M16's finances (D-59).
+- Auto negotiation doesn't use cap strategy settings until M14's team modes add them (spec 11.6, D-54).
 - The red zone touchdown band is wide until a sourced league average is found (calibration/targets.json).
 - Calibration replays use each head coach's auto depth chart and rotation and an AI game plan per game, and hurt players sit out while their backups dress, but nobody goes on injured reserve or gets signed, so every game stays independent (D-17, D-20). Season records are judged on weekly-loop seasons instead, which play through the weekly advance (D-24); each is the first season of a fresh league until M12 moves them to chained seasons 3 to 20 (D-40).
 - Game plans (spec 8.7) set the run and pass balance overall and by down and distance, with red zone and two-minute overrides, but formation shares aren't modeled (the sim knows personnel groupings, not formations). AI coordinators plan one balance for every situation until M14.
