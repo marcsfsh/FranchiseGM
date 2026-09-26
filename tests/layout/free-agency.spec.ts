@@ -10,8 +10,12 @@ import {
 } from './helpers';
 
 /** The free agents as shown: table rows where there's room, list rows on phones. */
+/** The free agents' rows, on a phone or wider; players on waivers, listed apart, aren't among them. */
 const agents = (page: Page) =>
-  page.locator('main .fa-list > li, main .fa-table tbody tr').filter({ visible: true });
+  page
+    .locator('main .fa-list > li')
+    .or(page.getByRole('table', { name: 'Free agents' }).locator('tbody tr'))
+    .filter({ visible: true });
 
 // Spec 11.8 (D-53): through free agency's weeks, the user's offers stand until the week ends, when the free
 // agents weigh every team's offers.
@@ -24,7 +28,7 @@ test('makes a standing offer in free agency, and hears the answer as the week en
   const summary = page.locator('main section.card', { hasText: 'Your roster and cap' });
   await expect(summary).toContainText(/Free agency, week 1: offers stand until the week ends, when free agents decide\. You have 0 offers standing/);
   await expect(agents(page).first()).toBeVisible();
-  if (!phone) await expect(page.locator('main .fa-table thead')).toContainText('Bidding');
+  if (!phone) await expect(page.getByRole('table', { name: 'Free agents' }).locator('thead')).toContainText('Bidding');
   await expectNoHorizontalOverflow(page);
   await expectRegionsMatchOverflow(page);
   await expectTouchTargets(page, 'main', phone ? 48 : 44);
