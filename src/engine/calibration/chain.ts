@@ -22,7 +22,9 @@ export interface ChainPlayer {
   age: number;
   exactAge: number;
   ovr: number;
+  /** Credited seasons, and accrued ones, which NFL rosters count as experience (D-37). */
   experience: number;
+  accrued: number;
   active: boolean;
 }
 
@@ -65,6 +67,7 @@ function snapshot(league: League): ChainSnapshot {
       exactAge: exactAge(p.birthDate, day),
       ovr: p.ovr,
       experience: p.experience,
+      accrued: p.accrued,
       active: p.team !== null && p.status === 'active'
     }));
   return { season: league.date.season, teams: Object.keys(league.teams).length, players };
@@ -157,9 +160,10 @@ export function computeAging(samples: readonly AgingFacts[]): Map<string, Metric
   if (!rosters.length) return out;
   const teamSeasons = snapshots.reduce((a, s) => a + s.teams, 0);
   out.set('aging.meanAge', { value: mean(rosters.map(p => p.exactAge)), n: rosters.length });
-  // Seasons in the league counting this one, as the NFL's roster reports count them (a rookie has one).
-  out.set('aging.meanExperience', { value: mean(rosters.map(p => p.experience + 1)), n: rosters.length });
-  out.set('aging.rookiesPerTeam', { value: rosters.filter(p => p.experience === 0).length / teamSeasons, n: teamSeasons }); // prettier-ignore
+  // Experience as the NFL's roster reports count it: accrued seasons and this one, so a rookie has one; its
+  // rookies and first-year players are those with no accrued season (D-37).
+  out.set('aging.meanExperience', { value: mean(rosters.map(p => p.accrued + 1)), n: rosters.length });
+  out.set('aging.rookiesPerTeam', { value: rosters.filter(p => p.accrued === 0).length / teamSeasons, n: teamSeasons }); // prettier-ignore
   out.set('aging.over30PerTeam', { value: rosters.filter(p => p.age >= 30).length / teamSeasons, n: teamSeasons }); // prettier-ignore
 
   // Rating inflation: each chain's league-average overall on active rosters, its first season to its last.

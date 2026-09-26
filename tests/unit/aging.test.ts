@@ -10,7 +10,7 @@ import type { PositionGroup } from '../../src/engine/model/positions';
 
 // The aging metrics (spec 23.3) from leagues chained through the offseason, on made-up chains.
 const player = (id: string, group: PositionGroup, age: number, ovr: number, change: Partial<ChainPlayer> = {}): ChainPlayer => ({
-  id, group, age, exactAge: age + 0.5, ovr, experience: Math.max(0, age - 22), active: true, ...change
+  id, group, age, exactAge: age + 0.5, ovr, experience: Math.max(0, age - 22), accrued: Math.max(0, age - 22), active: true, ...change
 }); // prettier-ignore
 const snap = (season: number, players: ChainPlayer[], teams = 2): ChainSnapshot => ({
   season,
@@ -46,7 +46,7 @@ describe('aging curves (spec 23.3)', () => {
 
   it('measures the rosters, their drift, and retirements', () => {
     const first = snap(2026, [
-      player('a', 'QB', 22, 60, { experience: 0 }),
+      player('a', 'QB', 22, 60, { experience: 1, accrued: 0 }),
       player('b', 'QB', 31, 80),
       player('c', 'WR', 25, 70),
       player('d', 'WR', 30, 74, { active: false })

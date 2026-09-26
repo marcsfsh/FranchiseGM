@@ -402,13 +402,13 @@
       "pass": [4.0, 4.8],
       "warn": [3.6, 5.2],
       "source": "NFL Football Operations, \"A Look at 2024 NFL Kickoff Weekend Rosters\", \"A Look at 2025 NFL Kickoff Weekend Rosters\", and \"A Look at 2026 NFL Kickoff Weekend Rosters\": league average experience 4.30 (2024), 4.44 (2025), and 4.47 (2026) seasons.",
-      "note": "Week 1 active rosters, counting the current season, so a rookie has one. The reports don't define experience, but their average age less average experience is about 21.9 for the league and for the youngest team alike (2025: 26.36 less 4.44; Green Bay 25.28 less 3.41), and rookies are 22 to 23 at kickoff, so the count includes the current season."
+      "note": "Week 1 active rosters: accrued seasons, as NFL rosters count experience (D-37), plus the current season, so a rookie has one. The reports don't define experience, but their average age less average experience is about 21.9 for the league and for the youngest team alike (2025: 26.36 less 4.44; Green Bay 25.28 less 3.41), and rookies are 22 to 23 at kickoff, so the count includes the current season."
     },
     "aging.rookiesPerTeam": {
       "pass": [8.5, 10.5],
       "warn": [7.5, 11.5],
       "source": "NFL Football Operations, \"A Look at 2024 NFL Kickoff Weekend Rosters\", \"A Look at 2025 NFL Kickoff Weekend Rosters\", and \"A Look at 2026 NFL Kickoff Weekend Rosters\": 9.69 (2024), 9.47 (2025), and 9.06 (2026) rookies and first-year players per team.",
-      "note": "Players with no credited season on week 1 active rosters, per team."
+      "note": "Players with no accrued season on week 1 active rosters, per team: the NFL's rookies and first-year players (D-37)."
     },
     "aging.over30PerTeam": {
       "pass": [7.5, 9.8],

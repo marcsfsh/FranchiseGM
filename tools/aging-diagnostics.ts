@@ -42,8 +42,8 @@ for (const s of facts.snapshots) {
     fmt(mean(active.filter(p => p.group === g).map(p => p.ovr))).padStart(5)
   );
   console.log(
-    `${s.season}   ${fmt(mean(active.map(p => p.exactAge)), 2)} ${fmt(mean(active.map(p => p.experience)), 2)}  ` +
-      `${fmt(active.filter(p => p.experience === 0).length / s.teams).padStart(6)}  ${fmt(active.filter(p => p.age >= 30).length / s.teams).padStart(6)}  ` +
+    `${s.season}   ${fmt(mean(active.map(p => p.exactAge)), 2)} ${fmt(mean(active.map(p => p.accrued)), 2)}  ` +
+      `${fmt(active.filter(p => p.accrued === 0).length / s.teams).padStart(6)}  ${fmt(active.filter(p => p.age >= 30).length / s.teams).padStart(6)}  ` +
       `${byGroup.join(' ')}  ${s.players.length - active.length}`
   );
 }

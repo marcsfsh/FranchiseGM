@@ -164,10 +164,10 @@ def('aging.meanAge', 'aging', 'Average age, week 1 active rosters', 'dec2');
 def(
   'aging.meanExperience',
   'aging',
-  'Average seasons in the league, this one included, week 1 active rosters',
+  'Average accrued seasons, this one included, week 1 active rosters',
   'dec2'
 );
-def('aging.rookiesPerTeam', 'aging', 'Players in their first season, per week 1 roster', 'dec1');
+def('aging.rookiesPerTeam', 'aging', 'Players with no accrued season, per week 1 roster', 'dec1');
 def('aging.over30PerTeam', 'aging', 'Players 30 or older, per week 1 roster', 'dec1');
 def('aging.ovrDrift', 'aging', 'League average overall, change over the run', 'signed1');
 def('aging.groupDrift', 'aging', 'Largest position group overall change over the run', 'dec1');
