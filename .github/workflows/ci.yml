@@ -27,3 +27,7 @@ jobs:
         env:
           GM_REQUIRE_WEBKIT: '1'
           GM_SKIP_BUILD: '1'
+      # A failed layout test's page snapshot, in the log where it can be read.
+      - name: Show failed layout tests' page snapshots
+        if: failure()
+        run: find test-results -name error-context.md -exec sh -c 'echo "== $1"; cat "$1"' _ {} \;
