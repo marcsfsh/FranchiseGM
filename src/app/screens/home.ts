@@ -133,7 +133,7 @@ const STEP_NOTES: Record<Exclude<Phase, 'regularSeason' | 'wildCard' | 'division
   resign: 'Extend, tag, or tender your players whose deals run out, and decide fifth-year options, on the Contracts screen. The other teams decide as the window closes; deals nobody kept end when free agency opens.',
   combine: "Prospects worked out at the combine; the results are on the Scouting screen. Top-30 visits are open until the draft.",
   annualMeeting: 'The new league year starts when free agency opens: contracts that run out end, and the cap grows.',
-  freeAgency: 'Sign free agents from the Free agency screen. The other teams sign theirs as each week ends.',
+  freeAgency: 'Make offers on the Free agency screen. As each week ends, free agents weigh every team\'s offers and sign with the best or wait for more.',
   proDays: 'The draft is next. Make your picks in the Draft room when it opens, or let your staff make them.',
   draft: 'The draft is over: your class is on your roster, and the media graded every team in the Draft room. Undrafted rookies take offers on the Free agency screen.',
   udfa: 'Offer undrafted rookies a signing bonus on the Free agency screen. They choose as this step ends, weighing their chance to make your roster more than the money.',

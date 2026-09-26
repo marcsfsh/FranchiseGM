@@ -1,12 +1,15 @@
 /**
- * Free agency (spec 19.3, 19.4): the free agents with what each asks for, offers made in a contract dialog
- * that previews the cap effect and says whether he'll sign, practice squad signings, and the waiver wire
- * with claims, each a sortable table (a list on phones). M12's market and negotiation build on this.
+ * Free agency (spec 19.3, 19.4, 11.8): the free agents with what each asks of the user's team, practice
+ * squad signings, and the waiver wire with claims, each a sortable table (a list on phones). Through the
+ * four weeks of free agency the user's offers stand until the week ends, with the teams bidding and the
+ * user's offer on each row (D-53); after them, an offer made in the contract dialog signs him at once when
+ * it's good enough.
  */
 import { TEAM_COLORS, teamFullName } from '../../data/team-colors';
 import { capSheet } from '../../engine/cap/sheet';
 import { scrambleOpen, undraftedRookies } from '../../engine/draft/udfa';
 import { askingSalary } from '../../engine/contracts/acceptance';
+import { biddingOpen, offersFor, pendingFor } from '../../engine/contracts/free-agency';
 import { capHit } from '../../engine/contracts/cap';
 import { freeAgents } from '../../engine/league/transactions';
 import type { League } from '../../engine/league/types';
@@ -17,6 +20,7 @@ import { minimumSalary } from '../../engine/rules/ruleset';
 import { rosterCounts } from '../../engine/roster/rules';
 import { claimedContract } from '../../engine/roster/waivers';
 import { PLAYOFF_PHASES } from '../../engine/season/state';
+import { plural } from '../../engine/text';
 import { TUNING } from '../../engine/tuning';
 import { h, mount } from '../dom';
 import { visibleMatch } from '../focus';
@@ -26,6 +30,7 @@ import type { AppState } from '../state';
 import { dollarField, openMoveDialog, placeOf, refocus, WAIT_FOR_GAMES } from '../ui/moves';
 import { GROUP_LABELS, playerLink, tierPlate } from '../ui/players';
 import { sortableTable, type TableColumn } from '../ui/sortable';
+import { offerWords, openBid } from '../ui/bidding';
 import { udfaCard } from '../ui/udfa';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
@@ -124,11 +129,16 @@ export function freeAgencyScreen(): Screen {
 
         const counts = rosterCounts(league, abbr);
         const space = capSheet(league, abbr).space;
+        // Free agency's weeks (D-53): offers stand until each week ends.
+        const bidding = biddingOpen(league);
+        const pending = pendingFor(league, abbr);
+        const bidders = (p: Player) => offersFor(league, p.id).filter(o => o.team !== abbr).length;
         const summary = card(
           'Your roster and cap',
           h('span', { class: 'label' }, `${year} cap space`),
           h('p', { class: `big-number${space < 0 ? ' delta-bad' : ''}` }, money(space)),
           h('p', null, `${counts.active} of ${counts.limit} on the active roster · ${counts.practice} of ${league.rules.roster.practiceSquad} on the practice squad`),
+          bidding ? h('p', { class: 'hint' }, `Free agency, week ${league.date.week}: offers stand until the week ends, when free agents decide. You have ${plural(pending.players.length, 'offer')} standing, ${money(pending.charge, true)} on your cap if all are taken.`) : null,
           h('div', { class: 'btn-row' }, h('a', { class: 'btn btn-outline', href: href('finances') }, 'Cap sheet')),
           app.advancing ? h('p', { class: 'hint' }, WAIT_FOR_GAMES) : null
         ); // prettier-ignore
@@ -334,12 +344,15 @@ export function freeAgencyScreen(): Screen {
         // Each call makes fresh controls: the table and the phone list both show them.
         const actions = (p: Player): HTMLElement => {
           const name = fullName(p);
+          const mine = bidding && offersFor(league, p.id).some(o => o.team === abbr);
           const offer = h(
             'button',
             { class: 'btn btn-solid', type: 'button', 'aria-label': `${OFFER}${name}` },
-            'Make an offer'
+            mine ? 'Change your offer' : 'Make an offer'
           );
-          offer.addEventListener('click', () => openOffer(app, league, p, offer, after(offer, OFFER)));
+          offer.addEventListener('click', () =>
+            (bidding ? openBid : openOffer)(app, league, p, offer, after(offer, OFFER))
+          );
           const squad = squadOpen
             ? h(
                 'button',
@@ -388,7 +401,13 @@ export function freeAgencyScreen(): Screen {
                 h(
                   'p',
                   { class: 'list-sub' },
-                  `Age ${ageOn(p.birthDate, today)} · asks ${money(asking.get(p.id) ?? 0)} a year`
+                  [
+                    `Age ${ageOn(p.birthDate, today)} · asks ${money(asking.get(p.id) ?? 0)} a year`,
+                    bidding ? `${plural(bidders(p), 'team')} bidding` : null,
+                    bidding && offerWords(league, p.id) ? `your offer: ${offerWords(league, p.id)}` : null
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')
                 )
               ),
               tierPlate(p.ovr),
@@ -449,6 +468,28 @@ export function freeAgencyScreen(): Screen {
             value: p => asking.get(p.id),
             cell: p => h('td', { class: 'num' }, money(asking.get(p.id) ?? 0))
           },
+          ...(bidding
+            ? ([
+                {
+                  id: 'bidders',
+                  label: 'Bidding',
+                  title: 'Other teams bidding',
+                  name: 'teams bidding',
+                  type: 'number',
+                  numeric: true,
+                  value: bidders,
+                  cell: p => h('td', { class: 'num' }, bidders(p))
+                },
+                {
+                  id: 'mine',
+                  label: 'Your offer',
+                  name: 'your offer',
+                  type: 'text',
+                  value: p => offerWords(league, p.id) ?? '',
+                  cell: p => h('td', null, offerWords(league, p.id) ?? '—')
+                }
+              ] satisfies TableColumn<Player>[])
+            : []),
           {
             id: 'actions',
             label: 'Offers',
