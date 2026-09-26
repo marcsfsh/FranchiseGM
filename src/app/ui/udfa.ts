@@ -48,7 +48,7 @@ function openOffer(
   const user = league.meta.start.userTeam;
   const name = fullName(player);
   const mine = league.udfaOffers[player.id]?.find(o => o.team === user);
-  const left = U.pool - pledged(league, user) + (mine?.bonus ?? 0);
+  const left = league.rules.rookieScale.udfaBonusPool - pledged(league, user) + (mine?.bonus ?? 0);
   const others = (league.udfaOffers[player.id] ?? []).filter(o => o.team !== user).length;
   const bonus = dollarField('udfa-bonus', 'Signing bonus, dollars', `From $0 to ${money(U.maxBonus, true)}, in steps of ${money(U.step, true)}. Your pool has ${money(left, true)} left for him.`, mine?.bonus ?? Math.min(U.step * 2, left), U.step); // prettier-ignore
   const outlook = h('p', { class: 'hint', role: 'status' });
@@ -196,8 +196,8 @@ export function udfaCard(
     { class: 'card udfa-card' },
     h('div', { class: 'signbar' }, h('h2', { class: 'signbar-title' }, 'Undrafted rookies')),
     h('div', { class: 'card-body stack' },
-      h('p', null, `The rookies nobody drafted choose among teams' offers as the undrafted free agents step ends. Each offer is three years at the minimum with a signing bonus from your pool of ${money(U.pool, true)}. They weigh their chance to make your roster more than the money.`),
-      h('p', { class: 'hint' }, `Your pool has ${money(U.pool - pledged(league, user), true)} left. You've made ${plural(offered, 'offer')}.`),
+      h('p', null, `The rookies nobody drafted choose among teams' offers as the undrafted free agents step ends. Each offer is three years at the minimum with a signing bonus from your pool of ${money(league.rules.rookieScale.udfaBonusPool, true)}. They weigh their chance to make your roster more than the money.`),
+      h('p', { class: 'hint' }, `Your pool has ${money(league.rules.rookieScale.udfaBonusPool - pledged(league, user), true)} left. You've made ${plural(offered, 'offer')}.`),
       h('div', { class: 'filterbar' }, h('div', { class: 'field' }, h('label', { for: 'udfa-group' }, 'Position'), group)),
       h('p', { class: 'udfa-count' }, `${plural(shown.length, 'rookie')}${where}.`),
       table ? h('div', { class: 'roster-region' }, table.element, list) : h('p', { class: 'empty' }, kept.group === 'all' ? 'Every undrafted rookie has signed.' : 'No undrafted rookies at this position. Choose another position to see the rest.'),

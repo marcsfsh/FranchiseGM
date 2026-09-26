@@ -4,7 +4,9 @@
  * spreads, frequencies, and accuracy are multipliers where 1 is normal; the strength means shift classes
  * by up to `TUNING.draft.strengthMax` quality units at 1 or -1.
  */
+import { TEAM_ABBRS } from '../../data/team-colors';
 import { POSITION_GROUP, type Position, type PositionGroup } from '../model/positions';
+import type { RuleSet } from '../rules/ruleset';
 import { POSITION_GROUPS } from '../progression/settings';
 import { TUNING } from '../tuning';
 
@@ -28,7 +30,11 @@ export interface DraftSettings {
 
 /** The multipliers' range, as for the development settings; the strength means run from -1 to 1. */
 export const DRAFT_RANGE = { min: 0, max: 2 } as const;
-export const CLASS_SIZE_RANGE = { min: 224, max: 700 } as const;
+/** A class's size: at least a prospect for every regular pick in the rules' draft, and at most 700. */
+export const classSizeRange = (rules: RuleSet): { min: number; max: number } => ({
+  min: rules.season.draftRounds * TEAM_ABBRS.length,
+  max: 700
+});
 /** The least scouting accuracy: grades' errors grow at most tenfold. */
 export const ACCURACY_MIN = 0.1;
 

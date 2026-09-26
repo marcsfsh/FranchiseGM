@@ -23,9 +23,6 @@ export interface DraftPickRecord {
   playerId: string | null;
 }
 
-/** Drafts ahead that teams hold picks in: this one and the next two. */
-export const PICK_YEARS = 3;
-
 /** Every team's regular picks, `rounds` of them, in the draft of league year `year`. */
 export function issuePicks(rounds: number, year: number): DraftPickRecord[] {
   const picks: DraftPickRecord[] = [];
@@ -80,9 +77,9 @@ export function closeDraftYear(league: League, year: number, order: readonly Tea
   numberDraft(league, year, order);
 }
 
-/** After a draft, teams get their picks in the draft `PICK_YEARS` - 1 years on. */
+/** After a draft, teams get their picks in the draft as many years on as the rules hold picks ahead (D-42). */
 export function issueNextYear(league: League, drafted: number): void {
-  const year = drafted + PICK_YEARS;
+  const year = drafted + league.rules.season.draftPickYears;
   if (!league.picks.some(p => p.year === year))
     league.picks.push(...issuePicks(league.rules.season.draftRounds, year));
 }

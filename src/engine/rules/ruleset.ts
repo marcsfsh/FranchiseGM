@@ -102,6 +102,8 @@ export interface RookieScaleRules {
   firstRoundBaseShare: number;
   /** Undrafted rookie contracts run this many years. */
   udfaYears: number;
+  /** Signing bonus money each team may offer its undrafted rookies in a league year (D-49); it grows with the cap. */
+  udfaBonusPool: number;
 }
 
 /** Tags, tenders, and fifth-year options (spec 11.4, 11.5, default, review). */
@@ -135,6 +137,10 @@ export interface SeasonRules {
   /** Week of the trade deadline (spec 22.2). */
   tradeDeadlineWeek: number;
   draftRounds: number;
+  /** Drafts ahead that teams hold picks in, this one included: picks trade up to this many drafts out (D-42). */
+  draftPickYears: number;
+  /** Prospects each team may bring in for top-30 visits before a draft (D-44). */
+  draftVisits: number;
   /** Wild card ties use common games only when every tied club played at least this many (spec 5.3). */
   commonGamesMin: number;
 }
@@ -316,6 +322,8 @@ export const DEFAULT_RULES: RuleSet = {
     playoffTeamsPerConference: 7,
     tradeDeadlineWeek: 9,
     draftRounds: 7,
+    draftPickYears: 3,
+    draftVisits: 30,
     commonGamesMin: 4
   },
   cap: {
@@ -372,7 +380,8 @@ export const DEFAULT_RULES: RuleSet = {
     laterPickScale: 36,
     minimumSigningBonus: 80_000,
     firstRoundBaseShare: 0.12,
-    udfaYears: 3
+    udfaYears: 3,
+    udfaBonusPool: 200_000
   },
   tags: {
     franchiseTop: 5,
@@ -435,6 +444,10 @@ export function validateRules(rules: RuleSet): string[] {
   whole(rules.pay.prorationYearsMax, 'The proration limit', 1);
   whole(rules.rookieScale.years, 'Rookie contract length', 1);
   whole(rules.rookieScale.topSigningBonus, 'The top rookie signing bonus', 0);
+  whole(rules.rookieScale.udfaBonusPool, "The undrafted rookies' bonus pool", 0);
+  whole(rules.season.draftRounds, 'Draft rounds', 1);
+  whole(rules.season.draftPickYears, 'Drafts teams hold picks in', 1);
+  whole(rules.season.draftVisits, 'Top-30 visits');
   for (const [level, amount] of Object.entries(rules.tags.tenders)) whole(amount, `The ${level} tender`, 1);
   whole(rules.tags.franchiseTop, 'Players averaged for the franchise tag', 1);
   whole(rules.tags.transitionTop, 'Players averaged for the transition tag', 1);

@@ -96,9 +96,9 @@ export function offerProblem(league: League, team: TeamAbbr, playerId: string, b
   if (!Number.isInteger(bonus) || bonus < 0 || bonus > U.maxBonus || bonus % U.step)
     return `Offer a signing bonus from $0 to ${dollars(U.maxBonus)}, in steps of ${dollars(U.step)}.`;
   const mine = league.udfaOffers[playerId]?.find(o => o.team === team)?.bonus ?? 0;
-  const left = U.pool - (pledged(league, team) - mine);
-  if (bonus > left)
-    return `That's more than your bonus pool has left: ${dollars(left)} of ${dollars(U.pool)}.`;
+  const pool = league.rules.rookieScale.udfaBonusPool;
+  const left = pool - (pledged(league, team) - mine);
+  if (bonus > left) return `That's more than your bonus pool has left: ${dollars(left)} of ${dollars(pool)}.`;
   return null;
 }
 
@@ -136,10 +136,11 @@ export function aiOffers(league: League, teams: readonly TeamAbbr[], rng: Rng): 
       .map(p => ({ p, worth: worth(p) }))
       .sort((a, b) => b.worth - a.worth || (a.p.id < b.p.id ? -1 : 1))
       .slice(0, count);
-    let left = U.pool - pledged(league, team);
+    const pool = league.rules.rookieScale.udfaBonusPool;
+    let left = pool - pledged(league, team);
     targets.forEach(({ p }, i) => {
       const share = U.topShare * U.shrink ** i;
-      const bonus = Math.min(left, U.maxBonus, Math.round((U.pool * share) / U.step) * U.step);
+      const bonus = Math.min(left, U.maxBonus, Math.round((pool * share) / U.step) * U.step);
       if (bonus < 0 || makeOffer(league, team, p.id, bonus)) return;
       left -= bonus;
     });

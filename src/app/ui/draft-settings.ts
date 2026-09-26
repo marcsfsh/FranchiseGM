@@ -8,7 +8,7 @@
 import { POSITIONS, type Position, type PositionGroup } from '../../engine/model/positions';
 import {
   ACCURACY_MIN,
-  CLASS_SIZE_RANGE,
+  classSizeRange,
   defaultDraftSettings,
   DRAFT_RANGE,
   type DraftSettings
@@ -134,13 +134,14 @@ export function draftSettingsCard(app: AppState, status: HTMLElement, onReset: (
     app.edit(l => change(l.settings.draft), ['draft', ...action]);
 
   // The class size: a whole number of prospects in its range.
+  const sizes = classSizeRange(league.rules);
   const sizeError = h('p', { class: 'field-error', id: 'draftClassSize-error', hidden: true });
   const size = h('input', {
     class: 'input',
     type: 'number',
     id: 'draftClassSize',
-    min: String(CLASS_SIZE_RANGE.min),
-    max: String(CLASS_SIZE_RANGE.max),
+    min: String(sizes.min),
+    max: String(sizes.max),
     step: '1',
     inputmode: 'numeric',
     value: String(s.classSize),
@@ -148,7 +149,7 @@ export function draftSettingsCard(app: AppState, status: HTMLElement, onReset: (
   });
   size.addEventListener('change', () => {
     const typed = size.value.trim() === '' ? NaN : Number(size.value);
-    const range = `${CLASS_SIZE_RANGE.min} to ${CLASS_SIZE_RANGE.max}`;
+    const range = `${sizes.min} to ${sizes.max}`;
     if (!Number.isFinite(typed)) {
       sizeError.textContent = `Enter a whole number from ${range}.`;
       sizeError.hidden = false;
@@ -159,10 +160,10 @@ export function draftSettingsCard(app: AppState, status: HTMLElement, onReset: (
     sizeError.textContent = '';
     sizeError.hidden = true;
     size.removeAttribute('aria-invalid');
-    const next = Math.min(CLASS_SIZE_RANGE.max, Math.max(CLASS_SIZE_RANGE.min, Math.round(typed)));
+    const next = Math.min(sizes.max, Math.max(sizes.min, Math.round(typed)));
     size.value = String(next);
     edit(d => (d.classSize = next), ['classSize', next]);
-    const note = typed > CLASS_SIZE_RANGE.max ? ', the most allowed' : typed < CLASS_SIZE_RANGE.min ? ', the fewest allowed' : '';
+    const note = typed > sizes.max ? ', the most allowed' : typed < sizes.min ? ', the fewest allowed' : '';
     status.textContent = `Class size: ${next} prospects${note}.`;
   }); // prettier-ignore
 
@@ -243,7 +244,7 @@ export function draftSettingsCard(app: AppState, status: HTMLElement, onReset: (
 
   return [
     h('p', { class: 'muted' }, 'How draft classes are made. Values are percentages of normal, where 100% is the calibrated league; strength runs from −100% for the weakest classes to +100% for the strongest. Classes are made a season ahead, so changes apply to the next class. Scouting accuracy applies at once.'),
-    h('div', { class: 'field' }, h('label', { for: 'draftClassSize' }, 'Prospects in each class'), size, h('p', { class: 'hint', id: 'draftClassSize-hint' }, `${defaultDraftSettings().classSize} is normal. From ${CLASS_SIZE_RANGE.min} to ${CLASS_SIZE_RANGE.max}.`), sizeError),
+    h('div', { class: 'field' }, h('label', { for: 'draftClassSize' }, 'Prospects in each class'), size, h('p', { class: 'hint', id: 'draftClassSize-hint' }, `${defaultDraftSettings().classSize} is normal. From ${sizes.min} to ${sizes.max}.`), sizeError),
     h('details', { class: 'slider-group', open: true }, h('summary', null, 'The whole class'), sliders),
     h('details', { class: 'slider-group' }, h('summary', null, 'By position group'), sortableTable({ key: 'draft.groups', name: 'Draft classes by position group', caption: 'Draft classes by position group', captionClass: 'sr-only', className: 'stat-table curve-table', columns: groupColumns, rows: groups, rowId: r => r.group, defaultOrder: 'by position group', scroll: true, status }).element),
     h('details', { class: 'slider-group' }, h('summary', null, 'Position mix'), sortableTable({ key: 'draft.mix', name: 'Position mix', caption: "Each position's share of a class", captionClass: 'sr-only', className: 'stat-table curve-table', columns: mixColumns, rows: mix, rowId: r => r.position, defaultOrder: 'by position', scroll: true, status }).element),

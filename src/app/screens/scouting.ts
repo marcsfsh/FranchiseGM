@@ -184,10 +184,10 @@ function summaryCard(
   return card(
     'Your scouting',
     h('p', null, `${draft.prospects.length} prospects in the ${draft.year} class. ${outlookText(draft)}`),
-    h('div', { class: 'stat-grid' }, stat('Points on hand', String(onHand)), stat('Points a week', String(perWeek)), stat('Top-30 visits', `${visits} of ${S.visits}`)),
+    h('div', { class: 'stat-grid' }, stat('Points on hand', String(onHand)), stat('Points a week', String(perWeek)), stat('Top-30 visits', `${visits} of ${league.rules.season.draftVisits}`)),
     draft.board
       ? h('p', null, 'The draft is on, and your scouting is done. Make your picks in the Draft room.')
-      : h('p', { class: 'hint' }, visitsOpen ? `Visits run from the combine to the draft. ${visits < S.visits ? `${S.visits - visits} left.` : 'All made.'}` : 'Top-30 visits open after the combine.'),
+      : h('p', { class: 'hint' }, visitsOpen ? `Visits run from the combine to the draft. ${visits < league.rules.season.draftVisits ? `${league.rules.season.draftVisits - visits} left.` : 'All made.'}` : 'Top-30 visits open after the combine.'),
     switchRow,
     room
   ); // prettier-ignore
@@ -207,7 +207,7 @@ function scoutingTabs(
   const rows = boardRows(league, draft, abbr);
   const byId = new Map(rows.map(r => [r.player.id, r]));
   const visitsOpen = draft.prospects.some(p => p.workout);
-  const visitsLeft = S.visits - draft.scouting[abbr].visits.length;
+  const visitsLeft = league.rules.season.draftVisits - draft.scouting[abbr].visits.length;
   /** Focuses the first visible control the keys name, else the page heading. */
   const focusOn = (...keys: string[]): void =>
     (keys.map(k => visibleMatch(view, k)).find(Boolean) ?? view.querySelector<HTMLElement>('h1'))?.focus();
@@ -250,7 +250,7 @@ function scoutingTabs(
       const row = now?.draft ? boardRows(now, now.draft, abbr).find(r => r.player.id === id) : undefined;
       if (!now || !row) return;
       mount(body, ...prospectDetails(now, row, abbr));
-      const left = S.visits - (now.draft?.scouting[abbr].visits.length ?? 0);
+      const left = now.rules.season.draftVisits - (now.draft?.scouting[abbr].visits.length ?? 0);
       scoutButton.hidden = row.grade.scouted >= 1;
       visitButton.hidden = row.visited || !visitsOpen || left <= 0;
       if (message !== undefined) note.textContent = message;
@@ -336,7 +336,7 @@ function scoutingTabs(
     rebuild(null);
     focusOn(keyOf('scout', id), keyOf('prospect', id));
     const used = app.league?.draft?.scouting[abbr].visits.length ?? 0;
-    status.textContent = `${fullName(row.player)} came in for a visit. ${used} of ${S.visits} visits made.`;
+    status.textContent = `${fullName(row.player)} came in for a visit. ${used} of ${league.rules.season.draftVisits} visits made.`;
   };
 
   // Each call makes fresh controls: the table and the phone list both show them.

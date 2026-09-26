@@ -80,9 +80,8 @@ export function visitProblem(league: League, team: TeamAbbr, id: string): string
   if (!draft.prospects.some(p => p.workout)) return 'Visits open after the combine.';
   const visits = draft.scouting[team].visits;
   if (visits.includes(id)) return 'You already brought him in.';
-  return visits.length >= TUNING.draft.scouting.visits
-    ? `You've made all ${TUNING.draft.scouting.visits} of your visits.`
-    : null;
+  const most = league.rules.season.draftVisits;
+  return visits.length >= most ? `You've made all ${most} of your visits.` : null;
 }
 
 /** Brings a prospect in for a top-30 visit, if the team can. Returns the reason it can't, or null. */
@@ -96,5 +95,5 @@ export function visit(league: League, team: TeamAbbr, id: string): string | null
 export function autoVisits(league: League, draft: DraftClass, team: TeamAbbr): void {
   const grades = teamGrades(league, draft, team);
   const order = [...draft.prospects].sort((a, b) => (grades.get(b.player.id)?.value ?? 0) - (grades.get(a.player.id)?.value ?? 0) || (a.player.id < b.player.id ? -1 : 1)); // prettier-ignore
-  for (const p of order) if (visit(league, team, p.player.id) && draft.scouting[team].visits.length >= TUNING.draft.scouting.visits) return; // prettier-ignore
+  for (const p of order) if (visit(league, team, p.player.id) && draft.scouting[team].visits.length >= league.rules.season.draftVisits) return; // prettier-ignore
 }

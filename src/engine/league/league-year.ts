@@ -65,7 +65,8 @@ export function withCap(rules: RuleSet, cap: number): RuleSet {
     rookieScale: {
       ...rules.rookieScale,
       topSigningBonus: grow(rules.rookieScale.topSigningBonus, Y.salaryRound),
-      minimumSigningBonus: grow(rules.rookieScale.minimumSigningBonus, Y.salaryRound)
+      minimumSigningBonus: grow(rules.rookieScale.minimumSigningBonus, Y.salaryRound),
+      udfaBonusPool: grow(rules.rookieScale.udfaBonusPool, Y.salaryRound)
     },
     tags: {
       ...rules.tags,

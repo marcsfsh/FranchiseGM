@@ -18,6 +18,7 @@ import type { Player } from '../../src/engine/model/player';
 import { stream } from '../../src/engine/rng';
 import { previewMove } from '../../src/engine/roster/moves';
 import { advanceOffseason } from '../../src/engine/season/offseason';
+import { DEFAULT_RULES } from '../../src/engine/rules/ruleset';
 import { TUNING } from '../../src/engine/tuning';
 import { nameData } from '../helpers/base-data';
 import { situationLeague } from '../helpers/situations';
@@ -25,6 +26,7 @@ import { situationLeague } from '../helpers/situations';
 // The UDFA scramble (spec 10.4, 11.7; D-49): offers with bonuses from each team's pool, rookies choosing by
 // the money and, more, their chance to make the roster, and the AI's offers.
 const U = TUNING.draft.udfa;
+const POOL = DEFAULT_RULES.rookieScale.udfaBonusPool;
 const at = (season: number, phase: Phase, week = 1): GameDate => ({ season, phase, week });
 
 /** A league whose 2027 draft just ended, every pick made by the staffs. */
@@ -48,12 +50,12 @@ describe('the UDFA scramble (spec 10.4)', () => {
     expect(offerProblem(league, 'MIN', a.id, 12_345)).toMatch(/in steps of/);
     // Two of the biggest bonuses spend the pool; changing an offer frees its own bonus first.
     expect(makeOffer(league, 'MIN', a.id, U.maxBonus)).toBeNull();
-    expect(makeOffer(league, 'MIN', b.id, U.pool - U.maxBonus)).toBeNull();
-    expect(offerProblem(league, 'MIN', c.id, U.step)).toBe(`That's more than your bonus pool has left: $0 of $${U.pool.toLocaleString('en-US')}.`);
+    expect(makeOffer(league, 'MIN', b.id, POOL - U.maxBonus)).toBeNull();
+    expect(offerProblem(league, 'MIN', c.id, U.step)).toBe(`That's more than your bonus pool has left: $0 of $${POOL.toLocaleString('en-US')}.`);
     expect(makeOffer(league, 'MIN', a.id, U.step)).toBeNull();
-    expect(pledged(league, 'MIN')).toBe(U.pool - U.maxBonus + U.step);
+    expect(pledged(league, 'MIN')).toBe(POOL - U.maxBonus + U.step);
     withdrawOffer(league, 'MIN', a.id);
-    expect(pledged(league, 'MIN')).toBe(U.pool - U.maxBonus);
+    expect(pledged(league, 'MIN')).toBe(POOL - U.maxBonus);
     expect(league.udfaOffers[a.id]).toBeUndefined();
     // While the scramble is open he signs only through it.
     const signing = previewMove(league, { kind: 'sign', team: 'MIN', playerId: c.id, offer: { years: 1, salary: 1_000_000, signingBonus: 0 } });
@@ -78,7 +80,7 @@ describe('the UDFA scramble (spec 10.4)', () => {
     // The AI's offers: every AI team offers, within its pool.
     aiOffers(league, TEAM_ABBRS.filter(t => t !== 'MIN'), stream(2, 'udfa'));
     for (const team of TEAM_ABBRS.filter(t => t !== 'MIN')) {
-      expect(pledged(league, team), team).toBeLessThanOrEqual(U.pool);
+      expect(pledged(league, team), team).toBeLessThanOrEqual(POOL);
       expect(Object.values(league.udfaOffers).some(offers => offers.some(o => o.team === team)), team).toBe(true);
     }
   }); // prettier-ignore

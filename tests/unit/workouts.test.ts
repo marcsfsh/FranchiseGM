@@ -67,8 +67,8 @@ describe('workouts (spec 10.4)', () => {
     expect(visit(league, 'MIN', id)).toBeNull();
     expect(visit(league, 'MIN', id)).toBe('You already brought him in.');
     autoVisits(league, draft, 'KC');
-    expect(draft.scouting.KC.visits).toHaveLength(TUNING.draft.scouting.visits);
-    expect(new Set(draft.scouting.KC.visits).size).toBe(TUNING.draft.scouting.visits);
+    expect(draft.scouting.KC.visits).toHaveLength(league.rules.season.draftVisits);
+    expect(new Set(draft.scouting.KC.visits).size).toBe(league.rules.season.draftVisits);
   });
 
   it('reports the combine in the news as the offseason reaches it', () => {

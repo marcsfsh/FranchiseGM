@@ -138,7 +138,7 @@ export function createLeague(input: NewLeagueInput): League {
     preseason: null,
     season: emptySeason(start.startSeason),
     draft: null,
-    picks: [1, 2, 3].flatMap(ahead => issuePicks(rules.season.draftRounds, start.startSeason + ahead)),
+    picks: Array.from({ length: rules.season.draftPickYears }, (_, i) => issuePicks(rules.season.draftRounds, start.startSeason + i + 1)).flat(), // prettier-ignore
     draftGrades: null,
     udfaOffers: {},
     inbox: [],
