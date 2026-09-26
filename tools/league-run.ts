@@ -1,10 +1,11 @@
 /**
  * An unattended league run (M12's done when, Checkpoint B): a generated league played season after season
- * through every offseason, as the game does it, with the user's club on auto. After every week and every
- * offseason step it checks each team's legality (League health: the cap, the roster limits and minimum, and a
- * game-day roster), and it writes a league summary: each season's champion and runner-up, standings spread,
- * stat leaders, and week 1 market; each team's record over the run; and the problems found. Exits with 1 when
- * a team was ever illegal or a team's average wins fell outside the competitive band.
+ * through every offseason, as the game does it, with the user's club on auto. It checks each team's legality
+ * when the rules bind (D-46): every roster at each game's kickoff (the cap, the roster limit and minimum, and
+ * a game-day roster, as the weekly advance reports them), and after every week and offseason step the cap and
+ * the active and practice squad limits. It writes a league summary: each season's champion and runner-up,
+ * standings spread, stat leaders, and week 1 market; each team's record over the run; and the problems found.
+ * Exits with 1 when a team was ever illegal or a team's average wins fell outside the competitive band.
  *
  *   npx tsx tools/league-run.ts [--seasons 10] [--seed 1] [--out calibration/reports]
  */
@@ -17,7 +18,8 @@ import { loopLeague } from '../src/engine/calibration/loop';
 import type { League } from '../src/engine/league/types';
 import { fullName } from '../src/engine/model/player';
 import { stream } from '../src/engine/rng';
-import { leagueHealth } from '../src/engine/roster/legality';
+import { legalityProblems } from '../src/engine/roster/legality';
+import { rosterProblems } from '../src/engine/roster/rules';
 import { advanceWeek } from '../src/engine/season/advance';
 import { advanceOffseason } from '../src/engine/season/offseason';
 import { buildStandings, type WinLoss } from '../src/engine/season/standings';
@@ -36,7 +38,8 @@ const seed = Number(values.seed);
 
 /**
  * Average wins a season that every team's run must land within: the NFL's range over 2015 to 2024 ran from
- * the Jets' 5.6 to the Chiefs' 12.3 (Pro Football Reference), and the band leaves room around it.
+ * the Jets' 5.6 to the Chiefs' 12.3 (Pro Football Reference), widened by about the chance spread of a
+ * 10-season average (a team's wins vary by about 3 a season, so their 10-season average by about 1).
  */
 const COMPETITIVE: readonly [number, number] = [4, 13];
 
@@ -85,9 +88,15 @@ const data = loadData();
 const league = loopLeague(data, stream(seed, 'league-run').nextU32());
 const input = { actions: 0, entropy: 0 };
 const problems: string[] = [];
+// Between steps a team stays under the cap and within its limits; the minimum and a game-day roster bind at
+// kickoff, which each week's advance reports.
 const check = (when: string) => {
-  for (const { team, problems: found } of leagueHealth(league))
-    for (const p of found) problems.push(`${when}: ${team} ${p.fact}`);
+  for (const team of TEAM_ABBRS) {
+    for (const p of legalityProblems(league, team))
+      if (p.kind === 'cap' || p.kind === 'limit') problems.push(`${when}: ${team} ${p.fact}`);
+    for (const text of rosterProblems(league, team))
+      if (text.includes('practice squad')) problems.push(`${when}: ${team} ${text}`);
+  }
 };
 const lines: SeasonLine[] = [];
 const started = performance.now();
@@ -97,8 +106,10 @@ for (let s = 0; s < seasons; s++) {
   const space = [...market.space].sort((a, b) => a - b);
   const power = strengths(league);
   while (gameWeek(league) !== null) {
+    const kickoff = `${league.date.season} ${league.date.phase} ${league.date.week} kickoff`;
     const week = advanceWeek(league, data.climate, input);
     if (week.blocked) throw new Error(`The run stopped in ${league.date.season} week ${league.date.week}: ${week.blocked}`); // prettier-ignore
+    for (const { team, problems: found } of week.illegal) for (const f of found) problems.push(`${kickoff}: ${team} ${f}`); // prettier-ignore
     check(`${league.date.season} ${league.date.phase} ${league.date.week}`);
   }
   const results = Object.values(league.season.results);
@@ -156,7 +167,7 @@ const md: string[] = [
   `# League run: ${seasons} seasons, seed ${seed}`,
   '',
   `- A generated league played through ${seasons} seasons and ${seasons - 1} offseasons unattended, every club run by its AI staff (the user's on auto), in ${((performance.now() - started) / 1000).toFixed(0)} s.`, // prettier-ignore
-  `- Legality: ${problems.length ? `${problems.length} problems found` : 'every team legal after every week and every offseason step'} (League health: the cap, roster limits and minimums, and game-day rosters).`, // prettier-ignore
+  `- Legality: ${problems.length ? `${problems.length} problems found` : 'every team legal at every kickoff (the cap, the roster limit and minimum, and a game-day roster) and within the cap and the active and practice squad limits after every week and offseason step'}.`, // prettier-ignore
   `- Competitive balance: average wins a season range from ${teams.at(-1)?.average.toFixed(1)} to ${teams[0]?.average.toFixed(1)} (the band is ${COMPETITIVE[0]} to ${COMPETITIVE[1]}; the NFL's 2015 to 2024 ran from 5.6 to 12.3); ${outside.length ? `outside it: ${outside.map(t => t.team).join(', ')}` : 'every team within it'}. ${new Set(lines.map(l => l.champion)).size} different champions in ${seasons} seasons.`, // prettier-ignore
   '',
   '## Seasons',
