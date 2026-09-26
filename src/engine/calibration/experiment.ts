@@ -1,13 +1,16 @@
 /**
  * The fit experiment (spec 7.3, 23.3): in an experiment replay, each starter plays every game at his best
  * or his worst fit across the named schemes, drawn at random per game, while his team keeps its own scheme.
- * Comparing the two arms' per-play production measures what fit alone is worth for the same players.
+ * Comparing the two arms' per-play production measures what fit alone is worth for the same players. The
+ * same games measure the locker room (spec 10.9): one team plays with the best locker room and the other
+ * with the worst, drawn at random, so the home margin's swing between the draws is twice the effect.
  */
 import type { TeamAbbr } from '../../data/team-colors';
 import { teamFitContext } from '../fit/cohesion';
 import { recipeFor, roleRating, type FitContext } from '../fit/role-rating';
 import { teamStaff } from '../league/fit';
 import type { League } from '../league/types';
+import { LOCKER_ROOM_BEST } from '../locker/room';
 import type { Rng } from '../rng';
 import { DEFENSE_LIST, OFFENSE_LIST } from '../schemes/catalog';
 import { named } from '../schemes/resolve';
@@ -40,12 +43,20 @@ export interface FitArm {
   fit: number;
 }
 
-export type FitSample = Record<FitGroup, { best: FitArm; worst: FitArm }>;
+/** The home team's margin summed over the games it had the best locker room, and the worst. */
+export interface LockerRoomSample {
+  best: { margin: number; games: number };
+  worst: { margin: number; games: number };
+}
+
+export type FitSample = Record<FitGroup, { best: FitArm; worst: FitArm }> & { lockerRoom: LockerRoomSample };
 
 const emptyArm = (): FitArm => ({ num: 0, den: 0, games: 0, fit: 0 });
 
-export const emptyFitSample = (): FitSample =>
-  Object.fromEntries(FIT_GROUP_IDS.map(g => [g, { best: emptyArm(), worst: emptyArm() }])) as FitSample;
+export const emptyFitSample = (): FitSample => ({
+  ...(Object.fromEntries(FIT_GROUP_IDS.map(g => [g, { best: emptyArm(), worst: emptyArm() }])) as Record<FitGroup, { best: FitArm; worst: FitArm }>),
+  lockerRoom: { best: { margin: 0, games: 0 }, worst: { margin: 0, games: 0 } }
+}); // prettier-ignore
 
 interface Extremes {
   best: number;
@@ -84,6 +95,8 @@ export class FitExperiment {
   /** Each team's starters' best and worst fit in the slots the groups measure. */
   private readonly extremes = new Map<TeamAbbr, Map<string, Partial<Record<Slot, Extremes>>>>();
   private assigned: { side: Side; id: string; slot: Slot; group: FitGroup; arm: 'best' | 'worst' }[] = [];
+  /** The home team's locker room this game. */
+  private room: 'best' | 'worst' = 'best';
 
   constructor(private readonly league: League) {}
 
@@ -121,9 +134,17 @@ export class FitExperiment {
     return out;
   }
 
-  /** Gives each measured starter in the game his best or worst fit, a coin flip each. */
+  /**
+   * Gives each measured starter in the game his best or worst fit, a coin flip each, and one team the best
+   * locker room and the other the worst.
+   */
   assign(setup: GameSetup, rng: Rng): void {
     this.assigned = [];
+    this.room = rng.fork('lockerRoom').chance(0.5) ? 'best' : 'worst';
+    const best = { offense: LOCKER_ROOM_BEST, defense: LOCKER_ROOM_BEST };
+    const worst = { offense: -LOCKER_ROOM_BEST, defense: -LOCKER_ROOM_BEST };
+    setup.home.lockerRoom = this.room === 'best' ? best : worst;
+    setup.away.lockerRoom = this.room === 'best' ? worst : best;
     for (const side of ['home', 'away'] as const) {
       const team = setup[side];
       const extremes = this.teamExtremes(team.abbr, team);
@@ -154,5 +175,8 @@ export class FitExperiment {
       arm.fit += setup[a.side].players[a.id]?.fit[a.slot] ?? 0;
     }
     this.assigned = [];
+    const room = this.sample.lockerRoom[this.room];
+    room.margin += result.score.home - result.score.away;
+    room.games++;
   }
 }

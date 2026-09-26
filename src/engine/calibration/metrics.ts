@@ -485,6 +485,19 @@ function effectMetrics(
     value: effects.length === FIT_GROUP_IDS.length ? mean(effects) : null,
     n: experiments.length
   });
+  // The locker room (spec 10.9): half the home margin's swing between its best and its worst draw.
+  const room = { best: { margin: 0, games: 0 }, worst: { margin: 0, games: 0 } };
+  for (const s of experiments)
+    for (const arm of ['best', 'worst'] as const) {
+      room[arm].margin += s.facts.fit?.lockerRoom[arm].margin ?? 0;
+      room[arm].games += s.facts.fit?.lockerRoom[arm].games ?? 0;
+    }
+  const best = ratio(room.best.margin, room.best.games);
+  const worst = ratio(room.worst.margin, room.worst.games);
+  out.set('effects.lockerRoom', {
+    value: best === null || worst === null ? null : (best - worst) / 2,
+    n: room.best.games + room.worst.games
+  });
 
   // Weather, from the regular replays.
   const games = samples.flatMap(s => s.facts.games);
@@ -541,8 +554,8 @@ function effectMetrics(
     });
   rateGap('effects.windCompletion', 'passCmp', 'passAtt');
   rateGap('effects.windFieldGoal', 'fgMade', 'fgAtt');
-  // Measured once their features arrive: cohesion and coaching (M13), facilities (M16), locker room (M12).
-  for (const id of ['effects.cohesion', 'effects.coaching', 'effects.facilities', 'effects.lockerRoom'])
+  // Measured once their features arrive: cohesion and coaching (M13), facilities (M16).
+  for (const id of ['effects.cohesion', 'effects.coaching', 'effects.facilities'])
     out.set(id, { value: null, n: 0 });
 }
 

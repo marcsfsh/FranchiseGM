@@ -113,7 +113,10 @@ export const TUNING = {
    * each disruptive player (morale under `disruptiveBelow`, ego and volatility averaging `disruptiveAt` or
    * more) costs them `disruptive`, counting `voices` of each at most. Releasing a leader who's been with the
    * team `popularSeasons` costs his teammates `releaseLeader` at once. A new league year moves every morale
-   * `offseasonReset` of the way back to the baseline.
+   * `offseasonReset` of the way back to the baseline. In games, a roster's average morale `moraleSpan` over
+   * or under the baseline is worth `moralePoints` of cohesion on both sides of the ball, and a unit's time
+   * together (its starters' average league years with the team, `chemistryTypical` for none, `chemistrySpan`
+   * more or less for all) `chemistryPoints`: the offensive line's on offense, the secondary's on defense.
    */
   lockerRoom: {
     baseline: 70,
@@ -134,7 +137,12 @@ export const TUNING = {
     voices: 3,
     popularSeasons: 3,
     releaseLeader: 3,
-    offseasonReset: 0.5
+    offseasonReset: 0.5,
+    moraleSpan: 15,
+    moralePoints: 1.2,
+    chemistryTypical: 2.5,
+    chemistrySpan: 2.5,
+    chemistryPoints: 0.8
   },
 
   /**

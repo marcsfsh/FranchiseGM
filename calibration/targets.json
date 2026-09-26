@@ -362,6 +362,13 @@
       "source": "Design target, spec 7.3: best versus worst fit for the same player produces meaningful but not dominant stat differences.",
       "note": "Meaningful: at least a 4% change in per-play production. Not dominant: at most 15%. Mean of the six groups, each measured as the change from the worst arm to the best."
     },
+    "effects.lockerRoom": {
+      "pass": [1.0, 3.0],
+      "warn": [0.5, 4.0],
+      "ci": [-1.0, 6.0],
+      "source": "Design target, spec 10.9 and 23.3: no public study isolates a locker room's worth in points, so its extremes stay about the size of home field (1.5 to 2 points in recent NFL seasons) and a typical gap between two teams a fraction of that.",
+      "note": "Points a game between the best locker room and the worst: the experiment replays give one team each at random, and half the home margin's swing between the draws is the effect (D-51)."
+    },
     "effects.windPoints": {
       "pass": [-3.2, -1.0],
       "warn": [-4.5, -0.3],

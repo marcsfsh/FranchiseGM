@@ -1452,7 +1452,9 @@ class GameSim {
           ]),
         0
       ) / Math.max(1, blockers.length);
-    const cohesion = this.teams[off].cohesion.offense.execution * this.setup.sliders.general.cohesionEffect;
+    const cohesion =
+      this.teams[off].cohesion.offense.execution * this.setup.sliders.general.cohesionEffect +
+      this.teams[off].lockerRoom.offense;
     const blitzEdge = dcall.blitz ? S.blitzPressure : dcall.simPressure ? S.simPressure : 0;
     const passBlockSlider = this.slider(off, 'passBlocking');
     let pPressure = sigmoid(
@@ -1725,7 +1727,8 @@ class GameSim {
         (back(r.tslot) ? C.backfieldSeparation : 0) +
         help +
         chip -
-        this.teams[def].cohesion.defense.execution * C.cohesionSeparation;
+        (this.teams[def].cohesion.defense.execution + this.teams[def].lockerRoom.defense) *
+          C.cohesionSeparation;
       return { ...r, defender, defSlot, sep };
     });
     const depthFavor = (tslot: TargetSlot | 'EXTRA') =>
@@ -2052,7 +2055,8 @@ class GameSim {
     const net =
       block - stop + light * C.lightBoxPoints + (this.slider(off, 'runBlocking') - 1) * C.sliderPoints;
     const cohesionOff =
-      this.teams[off].cohesion.offense.execution * this.setup.sliders.general.cohesionEffect;
+      this.teams[off].cohesion.offense.execution * this.setup.sliders.general.cohesionEffect +
+      this.teams[off].lockerRoom.offense;
     const pStuff = sigmoid(
       logit(S.stuff) +
         (100 - this.ball <= C.goalLineStuffYards ? C.goalLineStuff : 0) -
@@ -2201,9 +2205,11 @@ class GameSim {
     players: readonly SimPlayer[],
     slider: PenaltySlider | null
   ): number {
-    const unit =
-      side === this.offense ? this.teams[side].cohesion.offense : this.teams[side].cohesion.defense;
-    const cohesion = 1 - unit.execution * C.cohesionPenalty * this.setup.sliders.general.cohesionEffect;
+    const offense = side === this.offense;
+    const unit = offense ? this.teams[side].cohesion.offense : this.teams[side].cohesion.defense;
+    const room = offense ? this.teams[side].lockerRoom.offense : this.teams[side].lockerRoom.defense;
+    const cohesion =
+      1 - (unit.execution * this.setup.sliders.general.cohesionEffect + room) * C.cohesionPenalty;
     return (
       base *
       this.discipline(players) *

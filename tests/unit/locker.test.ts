@@ -2,12 +2,17 @@ import { describe, expect, it } from 'vitest';
 import type { TeamAbbr } from '../../src/data/team-colors';
 import type { League } from '../../src/engine/league/types';
 import {
+  chemistry,
   isDisruptive,
   isLeader,
+  LINE,
+  LOCKER_ROOM_BEST,
+  lockerRoomEffect,
   popular,
   resetMorale,
   roomOf,
   roomPull,
+  SECONDARY,
   weeklyMorale
 } from '../../src/engine/locker/room';
 import { leagueYear } from '../../src/engine/model/calendar';
@@ -141,4 +146,40 @@ describe('the locker room and roster moves (spec 10.9)', () => {
     expect(high.morale).toBe(Math.round(90 + (L.baseline - 90) * L.offseasonReset));
     expect(low.morale).toBe(Math.round(50 + (L.baseline - 50) * L.offseasonReset));
   });
+});
+
+describe('the locker room in games (spec 10.9)', () => {
+  it("rates a unit's chemistry by its starters' time together, from -1 to 1", () => {
+    const league = quiet();
+    const year = leagueYear(league.date);
+    const line = room(league)
+      .filter(p => p.position === 'LT' || p.position === 'C')
+      .slice(0, 3);
+    for (const p of line) p.joined = year;
+    expect(chemistry(league, line)).toBeCloseTo(-L.chemistryTypical / L.chemistrySpan);
+    for (const p of line) p.joined = year - 20;
+    expect(chemistry(league, line)).toBe(1);
+    for (const p of line) p.joined = year - L.chemistryTypical;
+    expect(chemistry(league, line)).toBeCloseTo(0);
+    expect(chemistry(league, [])).toBe(0);
+  });
+
+  it("lifts both sides with the room's morale, the offense with the line's chemistry and the defense with the secondary's", () => {
+    const league = quiet();
+    const players = room(league);
+    const year = leagueYear(league.date);
+    const starters = new Map<string, Player>();
+    LINE.forEach((slot, i) => starters.set(slot, Object.assign(players[i] as Player, { joined: year - 20 })));
+    SECONDARY.forEach((slot, i) => starters.set(slot, Object.assign(players[10 + i] as Player, { joined: year - L.chemistryTypical })));
+    const effect = (list: readonly Player[]) => lockerRoomEffect(league, list, slot => starters.get(slot));
+    const even = effect(players);
+    expect(even.defense).toBeCloseTo(0);
+    expect(even.offense).toBeCloseTo(L.chemistryPoints * TUNING.cohesion.executionPerPoint);
+    for (const p of players) p.morale = 100;
+    const happy = effect(players);
+    expect(happy.defense).toBeCloseTo(L.moralePoints * TUNING.cohesion.executionPerPoint);
+    expect(happy.offense).toBeCloseTo(LOCKER_ROOM_BEST);
+    for (const p of players) p.morale = 0;
+    expect(effect(players).defense).toBeCloseTo(-L.moralePoints * TUNING.cohesion.executionPerPoint);
+  }); // prettier-ignore
 });

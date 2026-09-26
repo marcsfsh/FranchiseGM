@@ -155,6 +155,40 @@ export function releaseMorale(league: League, team: TeamAbbr, released: Player):
     if (p.id !== released.id) p.morale = clampMorale(p.morale - L.releaseLeader);
 }
 
+const clampUnit = (value: number): number => Math.max(-1, Math.min(1, value));
+
+/** The starters whose time together is a unit's chemistry (spec 10.9). */
+export const LINE: readonly Slot[] = ['LT', 'LG', 'C', 'RG', 'RT'];
+export const SECONDARY: readonly Slot[] = ['CB1', 'CB2', 'FS', 'SS'];
+
+/** A unit's chemistry, -1 to 1: its starters' average league years with the team against the typical. */
+export function chemistry(league: League, players: readonly Player[]): number {
+  if (!players.length) return 0;
+  const together = players.reduce((sum, p) => sum + tenure(league, p), 0) / players.length;
+  return clampUnit((together - L.chemistryTypical) / L.chemistrySpan);
+}
+
+/** A team's locker room in a game, in cohesion's execution units for each side of the ball. */
+export interface LockerRoomEffect {
+  offense: number;
+  defense: number;
+}
+
+/** The locker room at its best, on each side: the most morale and chemistry can add. */
+export const LOCKER_ROOM_BEST = (L.moralePoints + L.chemistryPoints) * TUNING.cohesion.executionPerPoint;
+
+/**
+ * A team's locker room in a game (spec 10.9): its dressed players' morale on both sides of the ball, the
+ * offensive line's chemistry on offense and the secondary's on defense. `starters` gives each slot's starter.
+ */
+export function lockerRoomEffect(league: League, players: readonly Player[], starters: (slot: Slot) => Player | undefined): LockerRoomEffect {
+  const morale = players.length ? players.reduce((sum, p) => sum + p.morale, 0) / players.length : L.baseline;
+  const mood = clampUnit((morale - L.baseline) / L.moraleSpan) * L.moralePoints;
+  const unit = (slots: readonly Slot[]) => chemistry(league, slots.flatMap(s => starters(s) ?? [])) * L.chemistryPoints;
+  const per = TUNING.cohesion.executionPerPoint;
+  return { offense: (mood + unit(LINE)) * per, defense: (mood + unit(SECONDARY)) * per };
+} // prettier-ignore
+
 /** A new league year eases every morale `offseasonReset` of the way back to the baseline. */
 export function resetMorale(league: League): void {
   for (const p of Object.values(league.players))

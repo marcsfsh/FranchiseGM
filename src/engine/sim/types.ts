@@ -3,6 +3,7 @@ import type { GamePlan, Rotation } from './plan';
 import type { TeamAbbr } from '../../data/team-colors';
 import type { Venue } from '../../data/stadiums';
 import type { Cohesion } from '../fit/cohesion';
+import type { LockerRoomEffect } from '../locker/room';
 import type { Position } from '../model/positions';
 import type { Traits } from '../model/traits';
 import type { GameRules, PenaltyId } from '../rules/ruleset';
@@ -74,6 +75,8 @@ export interface TeamSetup {
   tendencies: { offense: OffenseTendencies; defense: DefenseTendencies };
   coach: CoachStyle;
   cohesion: Cohesion;
+  /** The locker room's execution modifier on each side (spec 10.9): morale and units' chemistry. */
+  lockerRoom: LockerRoomEffect;
   /** Rating points for today: form (spec 8.5) plus home field (spec 17.3), negative for visitors. */
   boost: number;
   /**

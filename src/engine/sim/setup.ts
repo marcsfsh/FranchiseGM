@@ -12,6 +12,7 @@ import { divisionOf, homeStadium } from '../../data/teams';
 import { teamFullName, type TeamAbbr } from '../../data/team-colors';
 import { ability } from '../abilities/catalog';
 import { adaptedTendencies, chosenLineup, teamCohesion, type LineupPlayer } from '../fit/cohesion';
+import { lockerRoomEffect } from '../locker/room';
 import { recipeFor, roleRating, type FitContext } from '../fit/role-rating';
 import { startersOf, type DepthOrder } from '../league/depth';
 import { leagueFitContext, teamStaff } from '../league/fit';
@@ -265,6 +266,11 @@ export function teamSetup(
     tendencies: { offense: adapted.offense, defense: adapted.defense },
     coach: coachStyle(league, abbr),
     cohesion: teamCohesion(lineup, ctx, flexibility),
+    lockerRoom: lockerRoomEffect(
+      league,
+      roster.filter(p => dressed.has(p.id)),
+      slot => league.players[lineup.get(slot)?.player.id ?? '']
+    ),
     boost,
     lean:
       Math.max(-1, Math.min(1, passRunBalance(players, depth) / S.leanScale)) *
