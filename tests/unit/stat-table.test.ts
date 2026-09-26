@@ -39,6 +39,20 @@ describe('columnar stat tables (spec 9.3)', () => {
     expect(one.columns.rushAtt?.length).toBe(2);
   });
 
+  it('keeps signs, and stores whole numbers within the 16-bit range (D-36)', () => {
+    const t = appendRows(emptyTable(2026, 'rushing', ['rushYds', 'rushLong']), [
+      row('p1', 'g1', { rushYds: -12, rushLong: -2 }),
+      row('p2', 'g1', { rushYds: 2.6, rushLong: 40_000 }),
+      row('p3', 'g1', { rushYds: -40_000 })
+    ]);
+    const back = decodeTable(encodeTable(t));
+    expect([0, 1, 2].map(i => readRow(back, i).values)).toEqual([
+      { rushYds: -12, rushLong: -2 },
+      { rushYds: 3, rushLong: 32_767 },
+      { rushYds: -32_768, rushLong: 0 }
+    ]);
+  });
+
   it('indexes rows by player and survives structured cloning', () => {
     let table = emptyTable(2026, 'passing', ['passAtt']);
     for (let g = 0; g < 17; g++)
