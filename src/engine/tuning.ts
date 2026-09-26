@@ -185,10 +185,13 @@ export const TUNING = {
       P: 0.015,
       LS: 0.0053
     },
-    /** Overall where a player earns half the top of the market, and how quickly pay rises around it. */
-    midOverall: 83,
-    midOverallQb: 80,
-    width: 4,
+    /**
+     * Overall where a player earns half the top of the market, and how quickly pay rises around it. Set so
+     * that chained leagues' teams spend near the cap, as NFL teams do (D-60).
+     */
+    midOverall: 80,
+    midOverallQb: 77,
+    width: 4.5,
     /** Pay falls by this share for each year past the position's prime. */
     ageDiscountPerYear: 0.08,
     /** Spread of individual deals around the market value (log scale). */
@@ -196,7 +199,14 @@ export const TUNING = {
     /** No deal exceeds the top of its position's market by more than this share. */
     topOverage: 0.08,
     /** Salaries are quoted in steps of this many dollars. */
-    quoteStep: 5000
+    quoteStep: 5000,
+    /**
+     * Teams with room overpay, as NFL teams with cap space do (D-60): the AI pays up to its value of a deal
+     * times 1 plus `perShare` for each share of the cap its room runs past `from`, at most `most` times it,
+     * and in free agency wants players up to `depthPoints` overall under its weakest starter for each 1 of it
+     * past 1.
+     */
+    roomPremium: { from: 0.04, perShare: 3, most: 1.6, depthPoints: 10 }
   },
 
   /** Contract structure for generated deals (spec 11.3, 6.5). Tiers are by average annual value. */
@@ -209,6 +219,15 @@ export const TUNING = {
     ],
     /** Years of fully guaranteed base salary at signing. */
     guaranteedYears: [
+      { minApy: 20_000_000, years: 2 },
+      { minApy: 8_000_000, years: 1 },
+      { minApy: 0, years: 0 }
+    ],
+    /**
+     * Void years the AI adds to its offers to spread the signing bonus, up to the proration limit (D-60):
+     * NFL clubs add them to big deals, and the bonus left when a deal runs out is dead money.
+     */
+    voidYears: [
       { minApy: 20_000_000, years: 2 },
       { minApy: 8_000_000, years: 1 },
       { minApy: 0, years: 0 }
@@ -247,7 +266,8 @@ export const TUNING = {
      * much), `home` for a team in his home state, `loyalty` for his own team at loyalty 100, and `fit` for
      * his best role at the fit cap. He takes the offer worth most once it's worth his demand: `demand`
      * [greed 0, greed 100] of his market value, times the date's share, falling `softening` a week of free
-     * agency.
+     * agency. The demand counts what a typical offer adds on top of its money (about a fifth of his market
+     * value), so the money a deal settles for centers on his market value (D-60).
      */
     decision: {
       perYear: 0.03,
@@ -260,7 +280,7 @@ export const TUNING = {
       home: 0.05,
       loyalty: 0.1,
       fit: 0.05,
-      demand: [0.9, 1.1] as readonly [number, number],
+      demand: [1.1, 1.3] as readonly [number, number],
       softening: 0.05,
       /** The share of a per-game roster bonus a player counts on earning. */
       perGameEarned: 0.8,
@@ -924,7 +944,13 @@ export const TUNING = {
   resign: {
     optionValue: 0.9,
     freeAgencyRoom: 0.04,
-    tagOvr: 80
+    tagOvr: 80,
+    /**
+     * Cap casualties (D-60): as a league year opens, a team releases a veteran worth less than `cutValue`
+     * of the salary a release saves over his deal's years left, at most `cutsPerTeam` of them.
+     */
+    cutValue: 0.85,
+    cutsPerTeam: 4
   },
   /**
    * Training camp and the preseason (spec 4.1; D-30). A battle is a depth chart starter no more than

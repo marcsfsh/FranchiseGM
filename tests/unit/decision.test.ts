@@ -108,12 +108,14 @@ describe('his demand and his choice (spec 11.7)', () => {
     const ctx = neutral(league);
     league.date = { season: league.date.season, phase: 'freeAgency', week: 1 };
     const value = market(league, p);
-    const offer = (team: TeamAbbr, share: number) => ({ team, offer: { years: 1, salary: Math.round(value * share), signingBonus: 0 } }); // prettier-ignore
-    expect(chooseOffer(league, ctx, p, [offer('MIN', 0.8), offer('GB', 0.85)])).toBeNull();
-    expect(chooseOffer(league, ctx, p, [offer('MIN', 1.02), offer('GB', 1.1)])?.team).toBe('GB');
+    // Shares of his market value around his demand, which counts what a typical offer adds (D-60).
+    const need = demand(league, p);
+    const offer = (team: TeamAbbr, share: number) => ({ team, offer: { years: 1, salary: Math.round(value * (need + share)), signingBonus: 0 } }); // prettier-ignore
+    expect(chooseOffer(league, ctx, p, [offer('MIN', -0.2), offer('GB', -0.15)])).toBeNull();
+    expect(chooseOffer(league, ctx, p, [offer('MIN', 0.02), offer('GB', 0.1)])?.team).toBe('GB');
     // He takes less to go home.
     p.hometown = `Anytown, ${homeStadium('DAL').region}`;
-    expect(chooseOffer(league, ctx, p, [offer('GB', 1.03), offer('DAL', 1.0)])?.team).toBe('DAL');
+    expect(chooseOffer(league, ctx, p, [offer('GB', 0.03), offer('DAL', 0)])?.team).toBe('DAL');
   });
 
   it("asks each team the least it can pay for an offer worth his demand", () => {

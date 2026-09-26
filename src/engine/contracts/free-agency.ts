@@ -21,11 +21,11 @@ import { makeMove } from '../roster/moves';
 import { cannotPlay, designation } from '../season/injuries';
 import { dollars, plural } from '../text';
 import { TUNING } from '../tuning';
-import { offerAav, termsProblem, type Offer } from './build';
+import { offerAav, termsProblem, typicalOffer, type Offer } from './build';
 import { askingFrom, chooseOffer, contextFor, demand, mattersMost, offerWorth, reachable } from './decision';
 import { marketValue } from './market';
 import { lowballed, mattersWords, termFor } from './negotiation';
-import { dealValue } from './value';
+import { dealValue, roomPremium } from './value';
 
 const F = TUNING.freeAgency;
 const N = TUNING.contracts.negotiation;
@@ -129,12 +129,16 @@ export function teamBids(league: League, team: TeamAbbr, order: readonly TeamAbb
     if (!cannotPlay(designation(p.injury))) weakest.set(group, Math.min(weakest.get(group) ?? Infinity, p.ovr));
   }
   const budget = capSheet(league, team).space - rookieReserve(league, team, order) - F.buffer * league.rules.cap.amount - pendingFor(league, team).charge;
+  // A team with room overpays and signs depth (D-60): its value of each deal, what it offers over his ask,
+  // and how far under its weakest starter it still wants a player rise with it.
+  const rich = roomPremium(league, budget);
+  const depth = (rich - 1) * TUNING.market.roomPremium.depthPoints;
   const wants = freeAgents(league)
     .filter(p => !offersFor(league, p.id).some(o => o.team === team) && !cannotPlay(designation(p.injury)))
     .map(p => {
       const group = NEED_GROUP[p.position];
       const short = Math.max(0, (TARGET.get(group) ?? 0) - (count.get(group) ?? 0));
-      const upgrade = p.ovr - (weakest.get(group) ?? 0) - F.upgradeBy;
+      const upgrade = p.ovr - (weakest.get(group) ?? 0) - F.upgradeBy + depth;
       return { p, want: short * F.needPoints + upgrade, short };
     })
     .filter(w => w.short > 0 || w.want > 0)
@@ -147,11 +151,11 @@ export function teamBids(league: League, team: TeamAbbr, order: readonly TeamAbb
     const ask = askingFrom(league, ctx, p, team, years);
     const premium = Math.min(F.premium, Math.max(0, want) / F.premiumAt * F.premium);
     const step = TUNING.market.quoteStep;
-    const worth = Math.floor(dealValue(league, p, years) / years / step) * step;
-    const salary = Math.min(worth, Math.round((ask * (1 + premium)) / step) * step);
+    const worth = Math.floor((dealValue(league, p, years) * rich) / years / step) * step;
+    const salary = Math.min(worth, Math.round((ask * (1 + premium) * rich) / step) * step);
     // He asks more than he's worth to the team over the deal.
     if (salary < ask) continue;
-    const offer = { years, salary, signingBonus: 0 };
+    const offer = typicalOffer(league.rules, years, salary, minimumSalary(league.rules, p.experience));
     if (firstYearCharge(league, offer) > left) continue;
     if (makeOffer(league, team, p.id, offer) === null) {
       left -= firstYearCharge(league, offer);

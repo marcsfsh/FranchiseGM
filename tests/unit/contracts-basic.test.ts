@@ -134,8 +134,10 @@ describe('contract builders', () => {
     expect(qbStar).toBeGreaterThan(50_000_000);
     expect(qbStar).toBeLessThanOrEqual(61_000_000);
     expect(marketValue(R, 'WR', 90, 27, 5)).toBeGreaterThan(marketValue(R, 'HB', 90, 27, 5));
-    expect(marketValue(R, 'CB', 70, 26, 4)).toBeLessThan(4_000_000);
+    expect(marketValue(R, 'CB', 70, 26, 4)).toBeLessThan(5_000_000);
     expect(marketValue(R, 'LT', 88, 34, 12)).toBeLessThan(marketValue(R, 'LT', 88, 28, 6));
-    expect(marketValue(R, 'LS', 60, 30, 8)).toBe(1_300_000);
+    // A long snapper at 60 earns about his minimum.
+    expect(marketValue(R, 'LS', 60, 30, 8)).toBeGreaterThanOrEqual(1_300_000);
+    expect(marketValue(R, 'LS', 60, 30, 8)).toBeLessThan(1_325_000);
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TeamAbbr } from '../../src/data/team-colors';
 import { capSheet } from '../../src/engine/cap/sheet';
+import { offerAav } from '../../src/engine/contracts/build';
 import { askingFrom, contextFor } from '../../src/engine/contracts/decision';
 import {
   closeBidding,
@@ -18,6 +19,7 @@ import { freeAgents } from '../../src/engine/league/transactions';
 import type { League } from '../../src/engine/league/types';
 import type { Player } from '../../src/engine/model/player';
 import { stream } from '../../src/engine/rng';
+import { TUNING } from '../../src/engine/tuning';
 import { advanceOffseason } from '../../src/engine/season/offseason';
 import { nameData } from '../helpers/base-data';
 import { situationLeague } from '../helpers/situations';
@@ -66,11 +68,13 @@ describe('the AI bidding (spec 11.8)', () => {
     const offered = teamBids(league, 'GB', draftOrder(league));
     expect(offered.length).toBeGreaterThan(0);
     const ctx = contextFor(league);
+    // Each is built as NFL deals are (D-60): its yearly value, bonus spread in, meets his ask.
     for (const p of offered) {
       const mine = offersFor(league, p.id).find(o => o.team === 'GB');
-      expect(mine?.offer.salary).toBeGreaterThanOrEqual(
-        askingFrom(league, ctx, p, 'GB', mine?.offer.years ?? 1)
-      );
+      if (!mine) throw new Error('no offer');
+      const ask = askingFrom(league, ctx, p, 'GB', mine.offer.years);
+      expect(offerAav(mine.offer)).toBeGreaterThanOrEqual(ask - TUNING.market.quoteStep);
+      if (offerAav(mine.offer) >= 5_000_000) expect(mine.offer.signingBonus).toBeGreaterThan(0);
     }
     expect(pendingFor(league, 'GB').charge).toBeLessThanOrEqual(before);
     // A second pass doesn't offer the same players again.

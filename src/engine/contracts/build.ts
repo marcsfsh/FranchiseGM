@@ -176,6 +176,24 @@ export const offerAav = (offer: Offer): number =>
   offer.salary + Math.round(offer.signingBonus / Math.max(1, offer.years)) + (offer.perGameBonus ?? 0);
 
 /**
+ * An offer of `aav` a year for `years`, built as NFL deals are (spec 11.3; D-60): a signing bonus of the
+ * middle of its tier's share of the total, guaranteed salary for its tier's years, void years to spread the
+ * bonus, within the proration limit, and the rest as the same salary each year, never under `minimum`. The AI
+ * makes its offers this way, so a release, or a deal running out with bonus left, leaves dead money.
+ */
+export function typicalOffer(rules: RuleSet, years: number, aav: number, minimum: number): Offer {
+  const C = TUNING.contracts;
+  const step = TUNING.market.quoteStep;
+  const tier = <T extends { minApy: number }>(table: readonly T[]) => table.find(t => aav >= t.minApy);
+  const [low, high] = tier(C.bonusShare)?.range ?? [0, 0];
+  const signingBonus = Math.round((aav * years * (low + high)) / 2 / step) * step;
+  const salary = Math.max(minimum, Math.round((aav * years - signingBonus) / years / step) * step);
+  const guaranteedYears = Math.min(years, tier(C.guaranteedYears)?.years ?? 0);
+  const voidYears = signingBonus ? Math.min(Math.max(0, rules.pay.prorationYearsMax - years), tier(C.voidYears)?.years ?? 0) : 0; // prettier-ignore
+  return { years, salary, signingBonus, ...(guaranteedYears ? { guaranteedYears } : {}), ...(voidYears ? { voidYears } : {}) }; // prettier-ignore
+}
+
+/**
  * Why an offer's terms can't be made (spec 11.6), or null: 1 to the most years, whole dollars, at least
  * `minimum` a year, guaranteed salary for no more years than the deal, and void years only to spread a
  * signing bonus over the years proration allows.

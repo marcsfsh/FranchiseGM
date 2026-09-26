@@ -14,7 +14,7 @@ import type { ClimateTable } from '../../data/climate';
 import { TEAM_ABBRS, TEAM_COLORS, type TeamAbbr } from '../../data/team-colors';
 import { makeLegal } from '../ai/decisions/compliance';
 import { cutdown, offseasonClaims } from '../ai/decisions/offseason';
-import { resignDecisions } from '../ai/decisions/resign';
+import { capCasualties, resignDecisions } from '../ai/decisions/resign';
 import { fillPracticeSquad, waiverClaims } from '../ai/decisions/roster-moves';
 import type { DecisionLog } from '../ai/framework';
 import { generateClass, type Prospect } from '../draft/class';
@@ -690,7 +690,10 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
       messages.push({ kind: 'roster', title: `Cut your roster to ${league.rules.roster.active}`, body: 'The regular season starts after the final cutdown.', players: [] }); // prettier-ignore
   } else if (to.phase === 'regularSeason') startSeason(league, to, data.names, rng('draftClass'));
   league.date = { ...to };
-  // A week of free agency opens: the AI teams make their offers (spec 11.8; D-53).
+  // A week of free agency opens: the AI teams make their offers (spec 11.8; D-53), the first week after
+  // their cap cuts (D-60).
+  if (to.phase === 'freeAgency' && to.week === 1)
+    for (const abbr of aiTeams(league)) capCasualties(league, abbr, rng(`cuts-${abbr}`));
   if (to.phase === 'freeAgency') aiBids(league, aiTeams(league), draftOrder(league));
   // The scouts work the class until its draft, and the media cover it (spec 10.4).
   scoutWeek(league);

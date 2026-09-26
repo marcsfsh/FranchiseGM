@@ -84,7 +84,7 @@ describe('signing free agents (spec 19.4, simple acceptance)', () => {
     const other = players(league, null, 'freeAgent')[0];
     if (!other) throw new Error('no free agent');
     makeRoom(league);
-    const signing: Move = { kind: 'sign', team: 'MIN', playerId: other.id, offer: { years: 1, salary: askingSalary(league, other), signingBonus: 0 } };
+    const signing: Move = { kind: 'sign', team: 'MIN', playerId: other.id, offer: { years: 1, salary: askingSalary(league, other, 'MIN'), signingBonus: 0 } };
     league.teams.MIN.carryover -= capSheet(league, 'MIN').space - 100_000;
     expect(reason(league, signing)).toMatch(/^His 2026 cap hit of \$[\d,]+ is more than your \$100,000 of cap space\.$/);
     league.teams.MIN.carryover -= 1_100_000;

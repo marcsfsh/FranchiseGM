@@ -15,8 +15,10 @@ import { calendarDay, leagueYear } from '../model/calendar';
 import { ageOn, fullName, type Player } from '../model/player';
 import type { PauseEvent } from '../season/inbox';
 import type { Rng } from '../rng';
+import { minimumSalary } from '../rules/ruleset';
 import { dollars } from '../text';
 import { TUNING } from '../tuning';
+import { typicalOffer } from './build';
 import { marketValue } from './market';
 import { settledSalary, termFor } from './negotiation';
 import { expiring } from './resign';
@@ -168,8 +170,9 @@ export function answerDemands(league: League, teams: readonly TeamAbbr[], extend
     const team = p.team;
     if (!team || !p.demand || !teams.includes(team) || !expiring(league, p)) continue;
     const years = termFor(ageOn(p.birthDate, calendarDay(league.date)));
-    const offer = { years, salary: settledSalary(league, p, team, years, true), signingBonus: 0 };
-    if (offer.salary > capSheet(league, team, year + 1).space || !worthIt(league, p, offer)) continue;
+    const aav = settledSalary(league, p, team, years, true);
+    const offer = typicalOffer(league.rules, years, aav, minimumSalary(league.rules, p.experience));
+    if (aav > capSheet(league, team, year + 1).space || !worthIt(league, p, offer)) continue;
     const kind = p.demand.kind;
     if (extend(team, p, offer)) done.push({ player: p, team, kind: 'extended', ended: kind });
   }

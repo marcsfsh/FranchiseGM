@@ -8,9 +8,11 @@
  * agents get the highest tender their value reaches, and exclusive-rights players the minimum tender.
  */
 import type { TeamAbbr } from '../../../data/team-colors';
-import { capSheet } from '../../cap/sheet';
+import { capFacts, capSheet } from '../../cap/sheet';
+import { releaseImpact } from '../../contracts/cap';
+import { typicalOffer } from '../../contracts/build';
 import { settledSalary, termFor } from '../../contracts/negotiation';
-import { dealValue, worthIt } from '../../contracts/value';
+import { dealValue, roomPremium, worthIt } from '../../contracts/value';
 import {
   freeAgentKind,
   optionSalary,
@@ -26,6 +28,7 @@ import { calendarDay, leagueYear } from '../../model/calendar';
 import { ageOn, type Player } from '../../model/player';
 import type { Rng } from '../../rng';
 import { makeMove, type Move } from '../../roster/moves';
+import { minimumSalary } from '../../rules/ruleset';
 import { TUNING } from '../../tuning';
 import { groupWords, NEED_GROUP, TARGET } from './roster-moves';
 
@@ -93,8 +96,43 @@ export function resignDecisions(league: League, abbr: TeamAbbr, rng: Rng): void 
       move({ kind: 'tag', playerId: p.id, tag: 'nonExclusive', reason });
       continue;
     }
-    const offer = { years, salary: ask, signingBonus: 0 };
-    if (ask > room() || !worthIt(league, p, offer)) continue;
+    const offer = typicalOffer(league.rules, years, ask, minimumSalary(league.rules, p.experience));
+    const left = room();
+    if (ask > left || !worthIt(league, p, offer, roomPremium(league, left))) continue;
     move({ kind: 'extend', playerId: p.id, offer, reason });
   }
+}
+
+/** Deals a cap cut never ends: the rookie scale's, and a tag's single year. */
+const UNCUT = new Set(['rookie', 'udfa', 'practiceSquad', 'franchiseTag', 'transitionTag']);
+
+/**
+ * Cap casualties as a league year opens (spec 11.1; D-60): a team releases the veterans whose deals would pay
+ * them well more than they're worth over the years left, when a release saves room this league year, the
+ * worst value first and at most a few. Their dead money stays on the cap, as NFL cap cuts leave it. Returns
+ * the players released.
+ */
+export function capCasualties(league: League, abbr: TeamAbbr, rng: Rng): Player[] {
+  const year = leagueYear(league.date);
+  const cuts: { p: Player; gap: number }[] = [];
+  for (const p of Object.values(league.players)) {
+    const c = p.team === abbr && p.contractId ? league.contracts[p.contractId] : undefined;
+    if (!c || UNCUT.has(c.type) || p.nextContractId) continue;
+    const left = c.years.filter(y => y.year >= year && !y.isVoid);
+    if (!left.length) continue;
+    // What a release saves him being paid, and what he's worth over those years.
+    const saved = left.reduce((sum, y) => sum + y.base - y.guaranteedBase, 0);
+    const value = dealValue(league, p, left.length);
+    if (value >= saved * R.cutValue) continue;
+    const impact = releaseImpact(c, league.date, league.rules, {}, capFacts(league, p.id));
+    if (impact.savings > 0) cuts.push({ p, gap: saved - value });
+  }
+  const released: Player[] = [];
+  for (const { p } of cuts
+    .sort((a, b) => b.gap - a.gap || (a.p.id < b.p.id ? -1 : 1))
+    .slice(0, R.cutsPerTeam)) {
+    const done = makeMove(league, { kind: 'release', team: abbr, playerId: p.id, reason: 'a cap casualty, paid more than he is worth' }, rng); // prettier-ignore
+    if (done.ok) released.push(p);
+  }
+  return released;
 }
