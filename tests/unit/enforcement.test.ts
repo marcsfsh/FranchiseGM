@@ -234,6 +234,19 @@ describe('the staff keeps its team legal (D-46)', () => {
     expect(league.season.transactions.some(t => t.team === team && t.kind === 'released' && t.reason === 'to open a roster spot')).toBe(true); // prettier-ignore
   });
 
+  it("keeps a staff-run team's kickoff gaps out of League health between games, and its cap problem in", () => {
+    const league = fresh(at(2026, 'regularSeason', 1));
+    const team: TeamAbbr = 'GB';
+    for (const p of teamOf(league, team).filter(q => q.position === 'QB')) hurt(p, 3);
+    expect(gameDayProblem(league, team)).not.toBeNull();
+    expect(leagueHealth(league).some(t => t.team === team)).toBe(false);
+    overBy(league, team, 1_000_000);
+    expect(leagueHealth(league)).toContainEqual({
+      team,
+      problems: [expect.objectContaining({ kind: 'cap' })]
+    });
+  });
+
   it('fills back to the minimum after moving injured players to reserve to dress for the game', () => {
     const league = fresh(at(2026, 'regularSeason', 1));
     const team: TeamAbbr = 'GB';

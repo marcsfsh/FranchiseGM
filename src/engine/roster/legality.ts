@@ -129,9 +129,18 @@ export function advanceBlock(league: League): string | null {
   return problems.length ? problems.map(p => p.text).join(' ') : null;
 }
 
-/** Every team with a problem, for the League health card (post-M23 2.10.1). */
+/** Problems that bind as a week's games kick off (D-46): the active roster's minimum and a game-day roster. */
+const AT_KICKOFF: ReadonlySet<ProblemKind> = new Set(['minimum', 'gameDay']);
+
+/**
+ * Every team breaking a rule, for the League health card (post-M23 2.10.1). A team its staff runs, the
+ * user's too with roster moves on auto, shows only what binds between games, the cap and the roster limit:
+ * the staff meets the minimum and dresses a game-day roster as the week's games begin.
+ */
 export function leagueHealth(league: League): { team: TeamAbbr; problems: LegalityProblem[] }[] {
-  return TEAM_ABBRS.map(team => ({ team, problems: legalityProblems(league, team) })).filter(
-    t => t.problems.length > 0
-  );
+  const user = league.meta.start.userTeam;
+  return TEAM_ABBRS.map(team => {
+    const staff = team !== user || league.settings.auto.roster;
+    return { team, problems: legalityProblems(league, team).filter(p => !staff || !AT_KICKOFF.has(p.kind)) };
+  }).filter(t => t.problems.length > 0);
 }
