@@ -110,8 +110,8 @@ describe('releases (spec 11.2, 12.1)', () => {
     const league = fresh();
     const [young, vested] = players(league, 'MIN', 'active').filter(p => (league.contracts[p.contractId ?? '']?.signingBonus ?? 0) > 0);
     if (!young || !vested) throw new Error('no players');
-    young.experience = 1;
-    vested.experience = 7;
+    young.accrued = 1;
+    vested.accrued = 7;
     const contract = league.contracts[young.contractId ?? ''];
     if (!contract) throw new Error('no contract');
     const impact = releaseImpact(contract, league.date, league.rules);
@@ -191,7 +191,7 @@ describe('releases (spec 11.2, 12.1)', () => {
   it('owes a vested veteran the rest of his season after week 1', () => {
     const league = fresh();
     league.date = { ...league.date, week: 5 };
-    const vet = players(league, 'MIN', 'active').find(p => p.experience >= 4);
+    const vet = players(league, 'MIN', 'active').find(p => p.accrued >= 4);
     if (!vet) throw new Error('no veteran');
     const preview = previewMove(league, { kind: 'release', team: 'MIN', playerId: vet.id });
     if (!preview.ok) throw new Error(preview.reason);
@@ -248,7 +248,7 @@ describe('reserve lists, promotions, elevations, claims, and restructures (spec 
     const league = fresh();
     const cut = players(league, 'KC', 'active').at(-1);
     if (!cut) throw new Error('no player');
-    cut.experience = 1;
+    cut.accrued = 1;
     expect(makeMove(league, { kind: 'release', team: 'KC', playerId: cut.id }, rng).ok).toBe(true);
     expect(reason(league, { kind: 'claim', team: 'MIN', playerId: cut.id })).toBe('The active roster is full.');
     makeRoom(league);

@@ -46,14 +46,13 @@ export const TENDER_LABELS: Record<TenderLevel, string> = {
 const runningYears = (c: Contract): number[] =>
   c.years.filter(y => !y.isVoid && (y.option === null || y.optionExercised === true)).map(y => y.year);
 
-/** What a player whose deal runs out will be (spec 11.5): by accrued seasons, counting the one just played. */
+/**
+ * What a player whose deal runs out will be (spec 11.5): by accrued seasons, counting the one just played
+ * once the season's over.
+ */
 export function freeAgentKind(league: League, player: Player): FreeAgentKind {
   const seasons = league.rules.tags.rfaSeasons;
-  return player.experience > seasons
-    ? 'unrestricted'
-    : player.experience === seasons
-      ? 'restricted'
-      : 'exclusive';
+  return player.accrued > seasons ? 'unrestricted' : player.accrued === seasons ? 'restricted' : 'exclusive';
 }
 
 /** A player's current deal, if any. */

@@ -57,7 +57,7 @@ describe('roster limits (spec 12.1)', () => {
     const squad = mine(league, 'MIN', 'practice');
     for (const p of free.slice(extra, extra + 17 - squad.length)) Object.assign(p, { team: 'MIN', status: 'practice' });
     expect(rosterProblems(league, 'MIN')).toContain('17 players on the practice squad; the limit is 16.');
-    for (const p of mine(league, 'MIN', 'practice')) p.experience = 5;
+    for (const p of mine(league, 'MIN', 'practice')) p.accrued = 5;
     expect(rosterProblems(league, 'MIN')).toContain(
       '17 veterans on the practice squad; at most 6 may have more than 2 accrued seasons.'
     );
@@ -95,8 +95,8 @@ describe('waivers (spec 12.1)', () => {
     const [young, vested] = mine(league, 'MIN', 'active');
     const [squad] = mine(league, 'MIN', 'practice');
     if (!young || !vested || !squad) throw new Error('no players');
-    young.experience = 2;
-    vested.experience = 6;
+    young.accrued = 2;
+    vested.accrued = 6;
     expect(subjectToWaivers(league, young)).toBe(true);
     expect(subjectToWaivers(league, vested)).toBe(false);
     expect(subjectToWaivers(league, squad)).toBe(false);

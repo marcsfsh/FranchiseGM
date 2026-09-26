@@ -91,8 +91,8 @@ describe('tags and tenders (spec 11.5)', () => {
   it('tenders restricted free agents by level, and exclusive-rights players at the minimum', () => {
     const { league } = window();
     const [rfa, erfa] = Object.values(league.players).filter(p => p.team === 'MIN' && p.position !== 'QB' && p.status === 'active') as [Player, Player];
-    Object.assign(rfa, { experience: 3 });
-    Object.assign(erfa, { experience: 2 });
+    Object.assign(rfa, { experience: 3, accrued: 3 });
+    Object.assign(erfa, { experience: 2, accrued: 2 });
     give(league, rfa, deal('r1', rfa, [[2026, 5_000_000]]));
     give(league, erfa, deal('e1', erfa, [[2026, 1_000_000]]));
     expect(freeAgentKind(league, rfa)).toBe('restricted');
@@ -111,7 +111,7 @@ describe('tags and tenders (spec 11.5)', () => {
     const team = league.meta.start.userTeam;
     const [star, other] = Object.values(league.players).filter(p => p.team === team && p.position !== 'QB' && p.status === 'active') as [Player, Player];
     for (const [p, id] of [[star, 's1'], [other, 's2']] as const) {
-      Object.assign(p, { experience: 6 });
+      Object.assign(p, { experience: 6, accrued: 6 });
       give(league, p, deal(id, p, [[2026, 2_000_000]]));
     }
     league.date = at('awards');
@@ -161,7 +161,7 @@ describe('extensions', () => {
     const team = league.meta.start.userTeam;
     const [kept, cut] = Object.values(league.players).filter(p => p.team === team && p.position !== 'QB' && p.status === 'active') as [Player, Player];
     for (const [p, id] of [[kept, 'k1'], [cut, 'k2']] as const) {
-      Object.assign(p, { experience: 6 });
+      Object.assign(p, { experience: 6, accrued: 6 });
       give(league, p, deal(id, p, [[2026, 2_000_000]]));
     }
     const ask = extensionAsk(league, kept);
@@ -199,9 +199,9 @@ describe("the new league year's pay scales (spec 11.1, 11.5)", () => {
     Object.assign(sure, { experience: 2 });
     give(league, sure, deal('g1', sure, [[2026, min[1] as number], [2027, min[2] as number]], { type: 'rookie' }));
     (league.contracts.g1 as Contract).years.forEach(y => (y.guaranteedBase = y.base));
-    Object.assign(rfa, { experience: 3 });
+    Object.assign(rfa, { experience: 3, accrued: 3 });
     give(league, rfa, deal('r1', rfa, [[2026, 1_000_000]]));
-    Object.assign(erfa, { experience: 2 });
+    Object.assign(erfa, { experience: 2, accrued: 2 });
     give(league, erfa, deal('e1', erfa, [[2026, 900_000]]));
     expect(makeMove(league, { kind: 'tender', team, playerId: rfa.id, level: 'second' }, stream(1)).ok).toBe(true);
     expect(makeMove(league, { kind: 'tender', team, playerId: erfa.id, level: 'exclusive' }, stream(1)).ok).toBe(true);

@@ -43,7 +43,7 @@ export const pastTradeDeadline = (league: League): boolean =>
 /** Whether releasing this player puts him on waivers. */
 export function subjectToWaivers(league: League, player: Player): boolean {
   if (player.status === 'practice') return false;
-  return player.experience < league.rules.roster.vestedVeteranSeasons || pastTradeDeadline(league);
+  return player.accrued < league.rules.roster.vestedVeteranSeasons || pastTradeDeadline(league);
 }
 
 /**

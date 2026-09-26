@@ -92,7 +92,7 @@ function prospects(league: League, names: NameData, rng: Rng): Player[] {
       team: null,
       status: 'freeAgent'
     });
-    Object.assign(player, { experience: 0, draft: { year, undrafted: true }, jersey: 0 });
+    Object.assign(player, { experience: 0, accrued: 0, draft: { year, undrafted: true }, jersey: 0 });
     league.players[player.id] = player;
     return player;
   });

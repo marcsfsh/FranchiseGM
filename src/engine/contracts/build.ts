@@ -136,16 +136,16 @@ export function minimumContract(rules: RuleSet, base: Base, season: number, cred
   return c;
 }
 
-/** A practice squad deal at the weekly rate for the player's experience (2026 CBA). */
+/** A practice squad deal at the weekly rate for the player's accrued seasons (2026 CBA). */
 export function practiceSquadContract(
   rules: RuleSet,
   base: Base,
   season: number,
-  credited: number,
+  accrued: number,
   rng: Rng
 ): Contract {
   const c = contract(base, 'practiceSquad', inLeagueYear(season, 'cutdown'), 0);
-  const veteran = credited > rules.roster.practiceSquadVeteranSeasons;
+  const veteran = accrued > rules.roster.practiceSquadVeteranSeasons;
   c.weeklyPay = veteran
     ? roundK(
         rng.range(rules.pay.practiceSquadVeteranWeeklyMin, rules.pay.practiceSquadVeteranWeeklyMax) / 10

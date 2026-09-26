@@ -15,6 +15,7 @@ import { coachTraining, weeklyDevelopment } from '../progression/develop';
 import type { Conference, TeamAbbr } from '../../data/teams';
 import type { League } from '../league/types';
 import type { Phase } from '../model/calendar';
+import type { Player } from '../model/player';
 import { advanceLeagueRandom, leagueStream, stream, type AdvanceInput } from '../rng';
 import { playLeagueGame } from '../sim';
 import type { TeamTotals } from '../sim/stats';
@@ -82,6 +83,21 @@ function countInactive(league: League, setups: readonly GameSetup[]): void {
     if (!p.team || !playing.has(p.team) || p.status === 'practice' || p.status === 'freeAgent') continue;
     if (!dressed.has(p.id)) league.season.inactive[p.id] = (league.season.inactive[p.id] ?? 0) + 1;
   }
+}
+
+/** Roster statuses on full pay: the active roster (dressed or not), injured reserve, and PUP. */
+const FULL_PAY = new Set<Player['status']>(['active', 'ir', 'pup']);
+
+/**
+ * Counts this week's game for every player on full pay status with a team that played, and for practice
+ * squad players elevated for it, toward credited and accrued seasons (D-37).
+ */
+function countFullPay(league: League, setups: readonly GameSetup[], week: number): void {
+  const playing = new Set(setups.flatMap(s => [s.home.abbr, s.away.abbr]));
+  const elevated = new Set(league.season.elevations.filter(e => e.week === week).map(e => e.playerId));
+  for (const p of Object.values(league.players))
+    if (p.team && playing.has(p.team) && (FULL_PAY.has(p.status) || elevated.has(p.id)))
+      league.season.fullPay[p.id] = (league.season.fullPay[p.id] ?? 0) + 1;
 }
 
 /** Seeds still alive in a conference: seeded, and without a playoff loss. */
@@ -161,11 +177,17 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
   const played = weekGames(league).map(g => playLeagueGame(league, g.id, climate));
   const results = played.map(p => p.result);
   for (const r of results) league.season.results[r.id] = outcome(r, week, playoff);
-  if (!playoff)
+  if (!playoff) {
     countInactive(
       league,
       played.map(p => p.setup)
     );
+    countFullPay(
+      league,
+      played.map(p => p.setup),
+      week
+    );
+  }
   // The week passes for every player, then this week's injuries start their clocks.
   healWeek(league);
   const ratings = applyInjuries(

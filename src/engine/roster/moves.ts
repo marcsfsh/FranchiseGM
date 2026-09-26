@@ -153,7 +153,7 @@ function owedTerminationPay(league: League, player: Player, contract: Contract):
     (date.phase === 'regularSeason' && date.week >= 2) || (PLAYOFF_PHASES as readonly string[]).includes(date.phase);
   return (
     inSeason &&
-    player.experience >= rules.roster.vestedVeteranSeasons &&
+    player.accrued >= rules.roster.vestedVeteranSeasons &&
     payWeek(contract.signed, leagueYear(date), rules) === 1
   );
 } // prettier-ignore

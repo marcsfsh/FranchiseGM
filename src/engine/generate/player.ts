@@ -363,6 +363,8 @@ export function generatePlayer(ctx: GenContext, req: PlayerRequest): Player {
         ? 'L'
         : 'R',
     experience,
+    // A generated veteran's seasons all counted both ways.
+    accrued: experience,
     draft,
     ratings,
     potential,

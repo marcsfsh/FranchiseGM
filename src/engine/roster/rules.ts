@@ -26,7 +26,7 @@ export const activeLimit = (league: League): number =>
 
 /** Whether a practice squad player counts against the veteran limit: more than the allowed accrued seasons. */
 export const practiceSquadVeteran = (league: League, player: Player): boolean =>
-  player.experience > league.rules.roster.practiceSquadVeteranSeasons;
+  player.accrued > league.rules.roster.practiceSquadVeteranSeasons;
 
 const teamPlayers = (league: League, abbr: TeamAbbr): Player[] =>
   Object.values(league.players).filter(p => p.team === abbr);

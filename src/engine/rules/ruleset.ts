@@ -47,6 +47,12 @@ export interface RosterRules {
    * and he skips waivers when released before the trade deadline.
    */
   vestedVeteranSeasons: number;
+  /**
+   * Regular-season games on full pay status (the active roster, injured reserve, or PUP) that earn a
+   * credited season, for minimum salaries, and an accrued season, for free agency and veteran status.
+   */
+  creditedSeasonGames: number;
+  accruedSeasonGames: number;
   /** Games a player on the reserve PUP or NFI list must miss. */
   pupMinGames: number;
   /** Through this regular-season week the waiver order follows the draft order, then the standings. */
@@ -332,6 +338,8 @@ export const DEFAULT_RULES: RuleSet = {
     irMinGames: 4,
     irReturns: 8,
     vestedVeteranSeasons: 4,
+    creditedSeasonGames: 3,
+    accruedSeasonGames: 6,
     pupMinGames: 4,
     waiverDraftOrderWeeks: 3
   },
@@ -398,6 +406,8 @@ export function validateRules(rules: RuleSet): string[] {
   if (!/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(rules.pay.june1))
     problems.push('The June 1 date must be MM-DD.');
   whole(rules.roster.vestedVeteranSeasons, 'Seasons for a vested veteran', 1);
+  whole(rules.roster.creditedSeasonGames, 'Games for a credited season', 1);
+  whole(rules.roster.accruedSeasonGames, 'Games for an accrued season', 1);
   whole(rules.roster.pupMinGames, 'Games on the reserve PUP list');
   whole(rules.roster.waiverDraftOrderWeeks, 'Weeks of waivers in draft order');
   if (rules.roster.gameDayActives > rules.roster.active)

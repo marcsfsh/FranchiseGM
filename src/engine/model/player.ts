@@ -45,8 +45,16 @@ export interface Player {
   height: number;
   weight: number;
   handedness: 'R' | 'L';
-  /** Credited seasons. */
+  /**
+   * Credited seasons: seasons with 3 or more regular-season games on full pay status, for minimum salaries
+   * (spec 11.1).
+   */
   experience: number;
+  /**
+   * Accrued seasons: seasons with 6 or more regular-season games on full pay status, for free agency, vested
+   * veterans, and the practice squad's veteran limit (spec 11.5, 12.1).
+   */
+  accrued: number;
   draft: DraftInfo;
   ratings: Ratings;
   /** Hidden ceiling overall for generated and young players. */

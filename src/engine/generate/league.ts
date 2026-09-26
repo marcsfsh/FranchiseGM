@@ -198,7 +198,7 @@ function contractFor(
   const base = { id: ids.next('c'), playerId: player.id, team };
   const age = season - Number(player.birthDate.slice(0, 4));
   if (player.status === 'practice') {
-    return { contract: practiceSquadContract(rules, base, season, player.experience, rng), terms: null };
+    return { contract: practiceSquadContract(rules, base, season, player.accrued, rng), terms: null };
   }
   if ('round' in player.draft && player.experience <= 3) {
     return { contract: rookieContract(rules, base, player.draft.year, player.draft.pick), terms: null };
@@ -365,7 +365,7 @@ export function generateFictionalLeague(input: LeagueInput): FictionalLeague {
         team,
         status: 'practice'
       });
-      if (player.experience > practiceSquadVeteranSeasons) veterans++;
+      if (player.accrued > practiceSquadVeteranSeasons) veterans++;
       roster.push(player);
     }
     const taken = new Set<number>();

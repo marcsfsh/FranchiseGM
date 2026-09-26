@@ -84,19 +84,22 @@ describe('offseason calendar (spec 4.1)', () => {
     expect(() => nextStep(at(2026, 'regularSeason'))).toThrow();
   });
 
-  it('removes undrafted rookies nobody signed and credits a season to everyone on a roster', () => {
+  it('removes undrafted rookies nobody signed and credits seasons by games on full pay status', () => {
     const league = fresh(at(2026, 'superBowl'));
     const [free, cut] = Object.values(league.players).filter(p => p.status === 'freeAgent');
-    const onRoster = roster(league, 'MIN')[0];
-    if (!onRoster || !free || !cut) throw new Error('no players');
+    const [onRoster, late, brief] = roster(league, 'MIN');
+    if (!onRoster || !late || !brief || !free || !cut) throw new Error('no players');
     for (const p of [free, cut]) Object.assign(p, { experience: 0, draft: { year: 2026, undrafted: true } });
     // One signed in camp and cut in week 5 has games on record, so he stays.
     league.contracts.u1 = deal('u1', cut, { team: 'MIN', signed: at(2025, 'udfa'), years: [year(2026, { base: 885_000 })], ended: { date: at(2026, 'regularSeason', 5), how: 'released', designated: false, injured: false, terminationPay: false } });
-    const before = onRoster.experience;
+    // A whole season, 4 games, and 2: 6 earn an accrued season as well as a credited one, 3 a credited one.
+    Object.assign(league.season.fullPay, { [onRoster.id]: 17, [late.id]: 4, [brief.id]: 2 });
+    const before = [onRoster, late, brief].map(p => [p.experience, p.accrued]);
     closeSeason(league);
     expect(league.players[free.id]).toBeUndefined();
     expect(league.players[cut.id]).toBeDefined();
-    expect(onRoster.experience).toBe(before + 1);
+    const after = [onRoster, late, brief].map((p, i) => [p.experience - (before[i]?.[0] ?? 0), p.accrued - (before[i]?.[1] ?? 0)]);
+    expect(after).toEqual([[1, 1], [1, 0], [0, 0]]);
   }); // prettier-ignore
 });
 

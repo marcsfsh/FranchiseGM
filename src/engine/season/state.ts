@@ -48,6 +48,11 @@ export interface SeasonState {
    */
   scrimmage: Record<string, [offense: number, defense: number]>;
   teamScrimmage: Partial<Record<TeamAbbr, [offense: number, defense: number]>>;
+  /**
+   * Regular-season games each player's team played while he was on full pay status (the active roster,
+   * elevated from the practice squad, injured reserve, or PUP), for credited and accrued seasons.
+   */
+  fullPay: Record<string, number>;
 }
 
 export const emptySeason = (season: number): SeasonState => ({
@@ -63,7 +68,8 @@ export const emptySeason = (season: number): SeasonState => ({
   elevations: [],
   snaps: {},
   scrimmage: {},
-  teamScrimmage: {}
+  teamScrimmage: {},
+  fullPay: {}
 });
 
 /** Playoff phases in order: round 1 is the Wild Card round, the last is the Super Bowl. */

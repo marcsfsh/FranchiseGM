@@ -142,16 +142,20 @@ function preseasonWords(result: GameResult, user: TeamAbbr): string {
 
 /**
  * The end of the season (spec 4.1, 12.1), when the Super Bowl week ends: undrafted rookies nobody ever
- * signed leave the game (one signed and cut stays, with his history), and every player on a roster earns a
- * credited season.
+ * signed leave the game (one signed and cut stays, with his history), and players earn their seasons by
+ * regular-season games on full pay status: 3 for a credited season, 6 for an accrued one (D-37).
  */
 export function closeSeason(league: League): void {
   const signed = new Set(Object.values(league.contracts).map(c => c.playerId));
   for (const p of Object.values(league.players))
     if (p.status === 'freeAgent' && p.experience === 0 && 'undrafted' in p.draft && !signed.has(p.id))
       delete league.players[p.id];
-  const credited = new Set<Player['status']>(['active', 'ir', 'pup', 'nfi', 'suspended']);
-  for (const p of Object.values(league.players)) if (p.team && credited.has(p.status)) p.experience++;
+  const { creditedSeasonGames, accruedSeasonGames } = league.rules.roster;
+  for (const p of Object.values(league.players)) {
+    const games = league.season.fullPay[p.id] ?? 0;
+    if (games >= creditedSeasonGames) p.experience++;
+    if (games >= accruedSeasonGames) p.accrued++;
+  }
 }
 
 /** The next season's schedule (spec 5.2), from the season just played: its standings, records, and champion. */

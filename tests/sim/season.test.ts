@@ -78,6 +78,15 @@ describe('the season loop (spec 4.2, 5.3)', { timeout: 120_000 }, () => {
         expect(team?.[1]).toBe(Math.max(...lines.map(([, l]) => l.snapsDefense ?? 0)));
         for (const [id, line] of lines) expect(scrimmage[id]).toEqual([line.snapsOffense ?? 0, line.snapsDefense ?? 0]);
       }
+    // A game on full pay status for everyone on the active roster, injured reserve, or PUP of a team that
+    // played, toward credited and accrued seasons (D-37); none for the practice squad unless elevated.
+    const teams = new Set(a.games.flatMap(g => [g.result.home, g.result.away]));
+    const elevated = new Set(a.league.season.elevations.map(e => e.playerId));
+    for (const p of Object.values(a.league.players)) {
+      const onFullPay = !!p.team && teams.has(p.team) && ['active', 'ir', 'pup'].includes(p.status);
+      if (onFullPay) expect(a.league.season.fullPay[p.id]).toBe(1);
+      else if (!elevated.has(p.id)) expect(a.league.season.fullPay[p.id]).toBeUndefined();
+    }
   }); // prettier-ignore
 
   it('plays week 1 through the Super Bowl: seeds, byes, re-seeding, and one champion', () => {
