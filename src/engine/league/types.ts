@@ -32,7 +32,7 @@ import type { DraftSettings } from '../draft/settings';
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 29;
+export const SAVE_SCHEMA_VERSION = 30;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -183,6 +183,11 @@ export interface League {
   faOffers: Record<string, FreeAgentOffer[]>;
   /** Teams' contract talks with players this league year (spec 11.6; D-54), by team and player ID. */
   negotiations: Record<string, Negotiation>;
+  /**
+   * The unrestricted free agents whose deals ran out as the league year opened, by player ID, with the team
+   * each left, for its compensatory picks (spec 11.8; D-58); null before a league year opens.
+   */
+  departures: { year: number; players: Record<string, TeamAbbr> } | null;
   /** Messages for the user (spec 19.6), oldest first. */
   inbox: InboxItem[];
   /** Players on waivers until the league next advances (spec 12.1). */

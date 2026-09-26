@@ -30,6 +30,7 @@ import {
 } from '../draft/draft';
 import { closeDraftYear, picksIn, type DraftPickRecord } from '../draft/picks';
 import { draftMediaWeek } from '../draft/media';
+import { awardCompensatoryPicks } from '../draft/compensatory';
 import { scoutsItself, scoutWeek } from '../draft/scouting';
 import { aiOffers, signUdfas } from '../draft/udfa';
 import { autoVisits, workOut } from '../draft/workouts';
@@ -580,6 +581,25 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     for (const p of moved.fallers) headline('draft', `${named(p.player)}'s stock slips ${at}`, [], [], 30);
     if (where === 'proDay')
       for (const team of TEAM_ABBRS) if (scoutsItself(league, team)) autoVisits(league, league.draft, team);
+  } else if (to.phase === 'annualMeeting') {
+    // The annual meeting awards the compensatory picks for last spring's free agency (spec 11.8; D-58).
+    const year = to.season + 1;
+    const awarded = awardCompensatoryPicks(league, year);
+    const mine = awarded.filter(p => p.team === user);
+    const who = (id: string) => (league.players[id] ? named(league.players[id]) : 'a free agent');
+    if (mine.length)
+      messages.push({ kind: 'draft', title: `You get ${plural(mine.length, 'compensatory pick')} in the ${year} draft`, body: `${mine.map(p => `Round ${p.round}, for losing ${who(p.lost.playerId)} to the ${nick(p.lost.to)}`).join('. ')}. Each comes after its round's regular picks.`, players: mine.map(p => p.lost.playerId) }); // prettier-ignore
+    if (awarded.length)
+      headline(
+        'draft',
+        `The league awards ${plural(awarded.length, 'compensatory pick')} for the ${year} draft`,
+        [],
+        [],
+        0
+      );
+    const [first] = league.rules.season.compensatoryRounds;
+    for (const p of awarded.filter(a => a.round === first))
+      headline('draft', `The ${nick(p.team)} get a round ${p.round} compensatory pick for losing ${who(p.lost.playerId)}`, [p.team], [p.lost.playerId], league.players[p.lost.playerId]?.ovr ?? 0); // prettier-ignore
   } else if (to.phase === 'draft') {
     // The draft opens (spec 10.4; D-48): the AI picks until the user is on the clock, or to the end.
     league.date = { ...to };

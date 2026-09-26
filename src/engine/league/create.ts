@@ -146,6 +146,7 @@ export function createLeague(input: NewLeagueInput): League {
     personalityKnown: [],
     faOffers: {},
     negotiations: {},
+    departures: null,
     inbox: [],
     waivers: [],
     nextId: idCounters([

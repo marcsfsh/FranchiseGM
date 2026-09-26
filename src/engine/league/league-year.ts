@@ -13,7 +13,13 @@ import { contractRecord, type ContractRecord } from '../contracts/history';
 import { clearDemands } from '../contracts/holdouts';
 import { endContract } from '../contracts/moves';
 import { resetNegotiations } from '../contracts/negotiation';
-import { currentTagShares, tenderAmount, TENDER_LABELS, type TenderLevel } from '../contracts/resign';
+import {
+  currentTagShares,
+  freeAgentKind,
+  tenderAmount,
+  TENDER_LABELS,
+  type TenderLevel
+} from '../contracts/resign';
 import type { Contract } from '../contracts/types';
 import { resetMorale } from '../locker/room';
 import { leagueYear, type GameDate } from '../model/calendar';
@@ -112,6 +118,8 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
   clearDemands(league);
 
   const expired: { playerId: string; team: TeamAbbr }[] = [];
+  // The unrestricted free agents who hit the market count toward compensatory picks (spec 11.8).
+  const departed: Record<string, TeamAbbr> = {};
   for (const player of Object.values(league.players)) {
     const contract = player.contractId ? league.contracts[player.contractId] : undefined;
     if (!contract || !player.team) continue;
@@ -142,8 +150,10 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
       continue;
     }
     expired.push({ playerId: player.id, team: player.team });
+    if (freeAgentKind(league, player) === 'unrestricted') departed[player.id] = player.team;
     Object.assign(player, { team: null, lastTeam: player.team, status: 'freeAgent', contractId: null });
   }
+  league.departures = { year, players: departed };
   for (const abbr of TEAM_ABBRS) league.teams[abbr].resting = [];
   meetNewScales(league, year);
   const records = dropSpentContracts(league, year);

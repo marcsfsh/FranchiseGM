@@ -147,6 +147,13 @@ export interface SeasonRules {
   draftPickYears: number;
   /** Prospects each team may bring in for top-30 visits before a draft (D-44). */
   draftVisits: number;
+  /**
+   * Compensatory picks (spec 11.8): at most `compensatoryPicks` a draft, in rounds `compensatoryRounds`
+   * (first and last), and `compensatoryPerTeam` for a team.
+   */
+  compensatoryPicks: number;
+  compensatoryRounds: [number, number];
+  compensatoryPerTeam: number;
   /** Wild card ties use common games only when every tied club played at least this many (spec 5.3). */
   commonGamesMin: number;
 }
@@ -330,6 +337,9 @@ export const DEFAULT_RULES: RuleSet = {
     draftRounds: 7,
     draftPickYears: 3,
     draftVisits: 30,
+    compensatoryPicks: 32,
+    compensatoryRounds: [3, 7],
+    compensatoryPerTeam: 4,
     commonGamesMin: 4
   },
   cap: {

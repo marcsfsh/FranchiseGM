@@ -848,6 +848,23 @@ export const TUNING = {
     }
   },
   /**
+   * Compensatory picks (spec 11.8; D-58). A free agent qualifies when his new deal's yearly value ranks in
+   * the top share of the league's veteran deals that `rounds` lists last; `rounds` gives his round by the
+   * smallest top share he ranks in, a round better with `starter` or more of his new team's snaps last
+   * season and a round worse under `partTime`.
+   */
+  compPicks: {
+    rounds: [
+      [0.03, 3],
+      [0.08, 4],
+      [0.15, 5],
+      [0.25, 6],
+      [0.35, 7]
+    ] as readonly (readonly [number, number])[],
+    starter: 0.75,
+    partTime: 0.25
+  },
+  /**
    * Holdouts and trade demands (spec 10.9, 11.9; D-57). As training camp opens, a player in the last year
    * of his deal rated `minOvr` or more, with `minSeasons` credited seasons and paid under `underpaid` of
    * his market value, holds out when a draw falls under `rate` x the frequency setting x his greed weight
