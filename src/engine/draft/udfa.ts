@@ -2,12 +2,14 @@
  * The UDFA scramble (spec 10.4, 11.7; D-49). From the draft's end through the undrafted free agents step,
  * teams offer the rookies nobody drafted the undrafted deal (three years at the minimum) with a signing
  * bonus, out of a pool each team has. As the step ends, each rookie signs with the team whose offer looks
- * best to him: the bonus, weighed by his greed, and his chance to make the roster, weighed more. A team at
- * its roster's limit or without the cap room signs nobody; a rookie it can't sign takes his next offer.
- * The AI offers to the rookies it values most where its roster is thinnest.
+ * best to him by the player decision model: the bonus, weighed by his greed, and his chance to make the
+ * roster, weighed more, with the team's standing, his home, and his fit (D-52). A team at its roster's
+ * limit or without the cap room signs nobody; a rookie it can't sign takes his next offer. The AI offers
+ * to the rookies it values most where its roster is thinnest.
  */
 import type { TeamAbbr } from '../../data/team-colors';
 import { udfaContract } from '../contracts/build';
+import { contextFor, offerWorth } from '../contracts/decision';
 import { capSheet } from '../cap/sheet';
 import { ACTIVE_ROSTER } from '../generate/league';
 import { signRookie } from '../generate/rookies';
@@ -17,6 +19,7 @@ import { leagueYear } from '../model/calendar';
 import type { Player } from '../model/player';
 import type { Position } from '../model/positions';
 import type { Rng } from '../rng';
+import { minimumSalary } from '../rules/ruleset';
 import { activeLimit, rosterCounts } from '../roster/rules';
 import { dollars } from '../text';
 import { TUNING } from '../tuning';
@@ -62,14 +65,17 @@ export function opportunity(league: League, team: TeamAbbr, player: Player): num
 }
 
 /**
- * How an offer looks to a rookie (spec 11.7): its bonus against the most a team may offer, weighed by his
- * greed, and his chance to make the team, which weighs more (spec 10.4).
+ * How an offer looks to a rookie, by the player decision model (spec 11.7, D-52): its money is the bonus
+ * against the most a team may offer, weighed by his greed, and his role his chance to make the team, which
+ * weighs more (spec 10.4); a contender, his home state, and his fit count as for any free agent.
  */
 export function offerScore(league: League, player: Player, offer: UdfaOffer): number {
   const [low, high] = U.moneyWeight;
   const money = low + ((high - low) * player.personality.greed) / 100;
-  return money * (offer.bonus / U.maxBonus) + U.opportunityWeight * opportunity(league, offer.team, player);
-}
+  const deal = { years: 3, salary: minimumSalary(league.rules, 0), signingBonus: offer.bonus };
+  const worth = offerWorth(league, contextFor(league), player, offer.team, deal);
+  return money * (offer.bonus / U.maxBonus) + U.opportunityWeight * opportunity(league, offer.team, player) + worth.contender + worth.home + worth.fit;
+} // prettier-ignore
 
 /** A rookie's offers, the best to him first. */
 export function offersFor(league: League, player: Player): UdfaOffer[] {
