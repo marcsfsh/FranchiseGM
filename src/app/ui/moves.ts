@@ -119,7 +119,10 @@ export function openMoveDialog(
       if (c.inputs) c.inputs.hidden = i !== selected;
     });
     const choice = selected === null ? undefined : choices[selected];
-    confirm.textContent = choice?.confirm ?? 'Confirm move';
+    // A field's change fires as the pointer presses the button; replacing the label's text then would cost
+    // WebKit the click.
+    const label = choice?.confirm ?? 'Confirm move';
+    if (confirm.textContent !== label) confirm.textContent = label;
     confirm.className = `btn ${choice?.danger ? 'btn-danger' : 'btn-primary'}`;
     const move = choice?.move() ?? null;
     if (!choice || !move) {
