@@ -1,5 +1,6 @@
 /** The player record (spec 6.1). */
 import type { PlayerInjury } from '../season/injuries';
+import type { GameDate } from './calendar';
 import type { TeamAbbr } from '../../data/team-colors';
 import type { Position } from './positions';
 import type { Ratings } from './ratings';
@@ -9,8 +10,9 @@ import type { Traits } from './traits';
 export const DEV_TRAITS = ['Normal', 'Star', 'Superstar', 'X-Factor'] as const;
 export type DevTrait = (typeof DEV_TRAITS)[number];
 
+/** Where a player is (spec 12.1): 'holdout' is the reserve list for players who didn't report (spec 11.9). */
 export const ROSTER_STATUSES = [
-  'active', 'practice', 'ir', 'pup', 'nfi', 'suspended', 'waivers', 'freeAgent', 'retired', 'removed'
+  'active', 'practice', 'ir', 'pup', 'nfi', 'suspended', 'holdout', 'waivers', 'freeAgent', 'retired', 'removed'
 ] as const; // prettier-ignore
 export type RosterStatus = (typeof ROSTER_STATUSES)[number];
 
@@ -85,10 +87,22 @@ export interface Player {
   nextContractId?: string;
   /** The injury he's carrying, if any (spec 10.8). */
   injury: PlayerInjury | null;
+  /** What he's demanding of his team, if anything (spec 11.9). */
+  demand?: PlayerDemand;
   /** The season he retired after (spec 10.7); Hall of Fame candidates wait five seasons from it. */
   retiredIn?: number;
   /** Columns from an import that the model doesn't use, kept for lossless round trips. */
   extra?: Record<string, string>;
+}
+
+/**
+ * A player's demand of his team (spec 11.9): a holdout for a new deal, or a trade request; `fines` counts
+ * what holding out has cost him in fines and missed pay, in dollars.
+ */
+export interface PlayerDemand {
+  kind: 'holdout' | 'trade';
+  since: GameDate;
+  fines: number;
 }
 
 /** Age in whole years on a calendar date (YYYY-MM-DD). */

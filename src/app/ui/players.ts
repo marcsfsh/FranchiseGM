@@ -57,11 +57,18 @@ export const STATUS_LABELS: Record<RosterStatus, string> = {
   pup: 'Physically unable to perform',
   nfi: 'Non-football injury',
   suspended: 'Suspended',
+  holdout: 'Holding out',
   waivers: 'On waivers',
   freeAgent: 'Free agent',
   retired: 'Retired',
   removed: 'Removed'
 };
+
+/** A player's holdout or trade request as a status tag (spec 11.9), or null. */
+export const demandTag = (player: Pick<Player, 'demand'>): HTMLElement | null =>
+  player.demand
+    ? h('span', { class: `status status-${player.demand.kind === 'holdout' ? 'bad' : 'warn'}` }, player.demand.kind === 'holdout' ? 'Holding out' : 'Wants a trade')
+    : null; // prettier-ignore
 
 /** A player's injury designation as a status tag (style guide 2.4), or null when he's healthy. */
 export function injuryTag(player: Pick<Player, 'injury'>): HTMLElement | null {
@@ -76,7 +83,9 @@ export function injuryTag(player: Pick<Player, 'injury'>): HTMLElement | null {
 export const statusTag = (status: RosterStatus): HTMLElement =>
   h(
     'span',
-    { class: `status status-${status === 'ir' || status === 'suspended' ? 'bad' : 'neutral'}` },
+    {
+      class: `status status-${status === 'ir' || status === 'suspended' || status === 'holdout' ? 'bad' : 'neutral'}`
+    },
     STATUS_LABELS[status]
   );
 

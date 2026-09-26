@@ -3,7 +3,7 @@ import type { AutoJobs } from '../../engine/league/types';
 import { leagueHealth } from '../../engine/roster/legality';
 import { LIVE_PAUSE_EVENTS, PAUSE_LABELS } from '../../engine/season/inbox';
 import { toast, whileBusy, type ToastAction } from '../feedback';
-import { savedAgo } from '../format';
+import { money, savedAgo } from '../format';
 import { EXPORT_REMINDER, clearsSiteData } from '../platform';
 import { dateLine } from '../shell';
 import { exportToDevice, type AppState } from '../state';
@@ -227,7 +227,7 @@ function pauseSettings(app: AppState): HTMLElement | null {
 /** The user's jobs that run on auto (spec 22.7), beyond the switches on their own screens. */
 const AUTO_JOBS: { job: keyof AutoJobs; label: string; hint: string }[] = [
   { job: 'roster', label: 'Roster moves', hint: 'Signings, cuts, injured reserve, the practice squad, waiver claims, and the final cutdown.' },
-  { job: 'contracts', label: 'Contracts', hint: 'Extensions, tags, tenders, and fifth-year options in the re-sign window.' },
+  { job: 'contracts', label: 'Contracts', hint: 'Extensions, tags, tenders, and fifth-year options in the re-sign window, and new deals for players who hold out or ask for trades.' },
   { job: 'draft', label: 'Draft picks', hint: "Each of your picks in the draft, by your staff's grades and your needs. With it off, the draft waits for your pick in the Draft room." }
 ]; // prettier-ignore
 
@@ -291,6 +291,48 @@ function rulesSettings(app: AppState): HTMLElement | null {
   };
   draw();
   return card('League rules', body, status);
+} // prettier-ignore
+
+/** How often players hold out or ask for trades (spec 22.5), from never to twice as often. */
+const DRAMA_LEVELS: readonly [number, string][] = [
+  [0, 'Never'],
+  [0.5, 'Rarely'],
+  [1, 'Normal'],
+  [1.5, 'Often'],
+  [2, 'Very often']
+];
+
+/** Holdouts and trade requests (spec 11.9, 22.5): how often, and whether holdouts are fined. */
+function dramaSettings(app: AppState): HTMLElement | null {
+  const league = app.league;
+  if (!league) return null;
+  const status = h('p', { class: 'sr-only', role: 'status' });
+  const drama = league.settings.drama;
+  const pay = league.rules.pay;
+  const often = h('select', { class: 'select', id: 'drama-holdouts', 'aria-describedby': 'drama-holdouts-hint' }, ...DRAMA_LEVELS.map(([value, label]) => h('option', { value, selected: drama.holdouts === value }, label)));
+  often.addEventListener('change', () => {
+    const value = Number(often.value);
+    app.edit(l => {
+      l.settings.drama.holdouts = value;
+    }, ['drama', 'holdouts', value]);
+    status.textContent = `Holdouts and trade requests: ${DRAMA_LEVELS.find(([v]) => v === value)?.[1].toLowerCase() ?? 'normal'}.`;
+  });
+  const id = 'drama-fines';
+  const fines = h('button', { class: 'switch', type: 'button', role: 'switch', id, 'aria-checked': String(drama.fines), 'aria-labelledby': `${id}-label`, 'aria-describedby': `${id}-hint` });
+  fines.addEventListener('click', () => {
+    const on = !(app.league ?? league).settings.drama.fines;
+    app.edit(l => {
+      l.settings.drama.fines = on;
+    }, ['drama', 'fines', on]);
+    fines.setAttribute('aria-checked', String(on));
+    status.textContent = on ? 'Holdouts are fined per the CBA.' : "Holdouts aren't fined.";
+  });
+  return card(
+    'Holdouts and trade requests',
+    h('div', { class: 'field' }, h('label', { for: often.id }, 'How often players hold out or ask for trades'), often, h('p', { class: 'hint', id: 'drama-holdouts-hint' }, 'Underpaid players in the last year of their deals may hold out of training camp for a new one, and unhappy players may ask to be traded.')),
+    h('div', null, h('div', { class: 'switch-row' }, h('span', { class: 'field-label', id: `${id}-label` }, 'Holdout fines'), fines), h('p', { class: 'muted', id: `${id}-hint` }, `Per the CBA, a holdout is fined ${money(pay.holdoutFineDaily, true)} for each day of training camp he misses (${money(pay.holdoutFineDailyRookie, true)} on a rookie deal) and a week's pay for each preseason game. Missed regular-season games cost him their pay either way.`)),
+    status
+  );
 } // prettier-ignore
 
 /** The game sim and stat sliders (spec 22.3). */
@@ -398,6 +440,7 @@ export function settingsScreen(): Screen {
         pauseSettings(ctx.app),
         automationSettings(ctx.app),
         rulesSettings(ctx.app),
+        dramaSettings(ctx.app),
         sliderSettings(ctx.app),
         developmentSettings(ctx.app),
         draftSettings(ctx.app),

@@ -29,7 +29,15 @@ import { needs } from './needs';
 
 const U = TUNING.draft.udfa;
 const SPOTS = new Map<Position, number>(ACTIVE_ROSTER.map(([p, n]) => [p, n]));
-const ON_ROSTER = new Set<Player['status']>(['active', 'practice', 'ir', 'pup', 'nfi', 'suspended']);
+const ON_ROSTER = new Set<Player['status']>([
+  'active',
+  'practice',
+  'ir',
+  'pup',
+  'nfi',
+  'suspended',
+  'holdout'
+]);
 
 /** A team's offer to an undrafted rookie: the undrafted deal with this signing bonus. */
 export interface UdfaOffer {

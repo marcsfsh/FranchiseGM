@@ -47,6 +47,15 @@ import {
   weighing
 } from '../contracts/free-agency';
 import { windowDecisions } from '../contracts/resign';
+import { makeMove } from '../roster/moves';
+import {
+  answerDemands,
+  campDemands,
+  demandHeadline,
+  demandMessage,
+  stepDemands,
+  type DemandEvent
+} from '../contracts/holdouts';
 import { depthChanges, startersByTeam, type DepthChange } from '../league/depth-changes';
 import type { ContractRecord } from '../contracts/history';
 import { openLeagueYear } from '../league/league-year';
@@ -357,6 +366,38 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
       template: kind
     });
 
+  // Holdouts and trade requests (spec 11.9; D-57): the user hears of his own, the news of the stars'. The
+  // teams whose contracts the staff decides answer them with a new deal when he's worth it.
+  const deciders = TEAM_ABBRS.filter(t => t !== user || league.settings.auto.contracts);
+  const demands = (events: readonly DemandEvent[]) => {
+    for (const e of events) {
+      const m = demandMessage(league, e);
+      if (m)
+        messages.push({
+          kind: 'contracts',
+          title: m.title,
+          body: m.body,
+          players: [e.player.id],
+          ...(m.event ? { event: m.event } : {})
+        });
+      const text = demandHeadline(e);
+      if (text) headline('transaction', text, [e.team], [e.player.id], e.player.ovr);
+    }
+  };
+  const answer = () =>
+    demands(
+      answerDemands(
+        league,
+        deciders,
+        (team, p, offer) =>
+          makeMove(
+            league,
+            { kind: 'extend', team, playerId: p.id, offer, reason: 'to end his demand' },
+            rng(`demand-${p.id}`)
+          ).ok
+      )
+    );
+
   // The waiver wire clears first, as it does each week (spec 12.1). Offseason claims need roster room. After
   // the cutdown a team claims as in the season, a few players at most, and cuts back to the limit; then the
   // practice squads form.
@@ -479,6 +520,12 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     if (signed.length) headline('transaction', `${plural(signed.length, 'free agent')} ${signed.length === 1 ? 'signs' : 'sign'} in week ${from.week} of free agency`, [], [], 0);
   } // prettier-ignore
 
+  // A step of camp, the preseason, or the cutdown passes for every holdout and trade request.
+  if (from.phase === 'trainingCamp' || from.phase === 'preseason' || from.phase === 'cutdown') {
+    demands(stepDemands(league, from.phase === 'trainingCamp' ? 'camp' : from.phase, rng('demands')));
+    answer();
+  }
+
   // The weeks between the two dates pass for every injury.
   const days = (Date.parse(calendarDay(to)) - Date.parse(calendarDay(from))) / 86_400_000;
   for (let w = Math.round(days / 7); w > 0; w--) healWeek(league);
@@ -555,6 +602,9 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     ratings.push(...campDevelopment(league, rng('camp')));
     const hurt = campInjuries(league, rng('campInjuries'));
     ratings.push(...applyInjuries(league, hurt, to.season, timeline(to), rng('campCareer')));
+    // The underpaid hold out, and the unhappy ask for trades, as camp opens (spec 11.9).
+    demands(campDemands(league, rng('campDemands')));
+    answer();
     // The coaches chart the healthy rosters, and the battles decide the close jobs on those charts.
     const before = startersByTeam(league);
     decisions.push(...setDepthCharts(league, stream(league.random.baseSeed, 'ai', to.season + 1)));

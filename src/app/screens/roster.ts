@@ -35,6 +35,7 @@ const GROUP: Partial<Record<Player['status'], number>> = {
   pup: 1,
   nfi: 1,
   suspended: 1,
+  holdout: 1,
   practice: 2
 };
 

@@ -36,7 +36,7 @@ import { href } from '../router';
 import type { AppState } from '../state';
 import { openMoveDialog, placeOf, refocus, type MoveChoice } from '../ui/moves';
 import { offerTerms } from '../ui/offer-terms';
-import { playerLink, tierPlate } from '../ui/players';
+import { demandTag, playerLink, tierPlate } from '../ui/players';
 import { sortableTable, type TableColumn } from '../ui/sortable';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
@@ -174,7 +174,7 @@ function openExpiring(
     {
       id: 'resignDialog',
       title: `Keep ${name}`,
-      intro: `${name}, ${player.position}, OVR ${player.ovr}. His deal runs out when the ${next} league year opens; he'd be ${KIND_WORDS[kind]} then.${window ? '' : ' Tags and tenders open in the re-sign window.'}`,
+      intro: `${name}, ${player.position}, OVR ${player.ovr}. His deal runs out when the ${next} league year opens; he'd be ${KIND_WORDS[kind]} then.${player.demand?.kind === 'holdout' ? " He's holding out for a new deal: an extension ends it." : player.demand ? ' He has asked to be traded: an extension can win him back.' : ''}${window ? '' : ' Tags and tenders open in the re-sign window.'}`,
       choices
     },
     trigger,
@@ -272,12 +272,14 @@ export function contractsScreen(): Screen {
         ]; // prettier-ignore
 
         const expiringList = h('ul', { class: 'roster-list', 'aria-label': 'Expiring contracts' });
+        const demanding = (p: Player) =>
+          p.demand ? `${p.demand.kind === 'holdout' ? 'holding out' : 'wants a trade'} · ` : '';
         const expiringItems = new Map(
           expiring.map(p => [
             p.id,
             listRow(
               p,
-              `Age ${age(p)} · ${KIND_LABELS[freeAgentKind(league, p)].toLowerCase()} · asks ${money(asks.get(p.id) ?? 0)} a year`,
+              `${demanding(p)}Age ${age(p)} · ${KIND_LABELS[freeAgentKind(league, p)].toLowerCase()} · asks ${money(asks.get(p.id) ?? 0)} a year`,
               decide(p, openExpiring)
             )
           ])
@@ -285,7 +287,7 @@ export function contractsScreen(): Screen {
         const expiringTable = sortableTable({
           key: 'contracts.expiring', name: 'expiring contracts', caption: `Contracts that run out when the ${year + 1} league year opens`, captionClass: 'sr-only', className: 'roster-table', status,
           columns: [
-            ...common,
+            ...common.map(c => (c.id === 'player' ? { ...c, cell: (p: Player) => h('th', { scope: 'row' }, playerLink(p), demandTag(p) ? ' ' : null, demandTag(p)) } : c)),
             { id: 'kind', label: 'Free agent', name: 'free agent kind', type: 'text', value: p => KIND_LABELS[freeAgentKind(league, p)], cell: p => h('td', null, KIND_LABELS[freeAgentKind(league, p)]) },
             { id: 'hit', label: `${year} cap hit`, name: `${year} cap hit`, type: 'money', numeric: true, className: 'cap-col', value: hit, cell: p => h('td', { class: 'num' }, money(hit(p))) },
             { id: 'ask', label: 'Asks a year', name: 'asking salary', type: 'money', numeric: true, className: 'cap-col', value: p => asks.get(p.id), cell: p => h('td', { class: 'num' }, money(asks.get(p.id) ?? 0)) },

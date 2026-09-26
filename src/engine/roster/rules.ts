@@ -65,7 +65,7 @@ export interface RosterCounts {
   limit: number;
   practice: number;
   practiceVeterans: number;
-  /** Injured reserve, PUP, NFI, and suspended: none count against the limit. */
+  /** Injured reserve, PUP, NFI, suspended, and did not report: none count against the limit. */
   reserve: number;
   elevated: number;
 }
@@ -78,7 +78,7 @@ export function rosterCounts(league: League, abbr: TeamAbbr): RosterCounts {
     limit: activeLimit(league),
     practice: practice.length,
     practiceVeterans: practice.filter(p => practiceSquadVeteran(league, p)).length,
-    reserve: players.filter(p => ['ir', 'pup', 'nfi', 'suspended'].includes(p.status)).length,
+    reserve: players.filter(p => ['ir', 'pup', 'nfi', 'suspended', 'holdout'].includes(p.status)).length,
     elevated: elevatedThisWeek(league, abbr).length
   };
 }

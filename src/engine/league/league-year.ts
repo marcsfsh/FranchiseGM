@@ -10,6 +10,7 @@ import { closeFloorYear, type FloorShortfall } from '../cap/floor';
 import { nextCap } from '../cap/growth';
 import { capSheet } from '../cap/sheet';
 import { contractRecord, type ContractRecord } from '../contracts/history';
+import { clearDemands } from '../contracts/holdouts';
 import { endContract } from '../contracts/moves';
 import { resetNegotiations } from '../contracts/negotiation';
 import { currentTagShares, tenderAmount, TENDER_LABELS, type TenderLevel } from '../contracts/resign';
@@ -107,6 +108,8 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
   // A new league year eases last season's highs and lows (spec 10.9).
   resetMorale(league);
   resetNegotiations(league);
+  // Holdouts and trade requests end with the league year (spec 11.9).
+  clearDemands(league);
 
   const expired: { playerId: string; team: TeamAbbr }[] = [];
   for (const player of Object.values(league.players)) {

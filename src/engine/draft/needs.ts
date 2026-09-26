@@ -15,7 +15,15 @@ import { teamGrades } from './scouting';
 
 const N = TUNING.draft.needs;
 const ROSTER_COUNT = new Map<Position, number>(ACTIVE_ROSTER.map(([p, n]) => [p, n]));
-const ON_ROSTER = new Set<Player['status']>(['active', 'practice', 'ir', 'pup', 'nfi', 'suspended']);
+const ON_ROSTER = new Set<Player['status']>([
+  'active',
+  'practice',
+  'ir',
+  'pup',
+  'nfi',
+  'suspended',
+  'holdout'
+]);
 
 /** How much a team needs a position, from 0 to 1, from its players' overalls there, best first. */
 function needFrom(position: Position, overalls: readonly number[]): number {

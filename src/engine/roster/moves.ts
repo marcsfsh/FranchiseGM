@@ -19,6 +19,7 @@ import {
 } from '../contracts/build';
 import { afterJune1, capHit, payWeek, releaseImpact } from '../contracts/cap';
 import { endContract, restructure, type Outcome } from '../contracts/moves';
+import { endDemand } from '../contracts/holdouts';
 import { hear, replyWords, talks } from '../contracts/negotiation';
 import {
   creditedNextYear,
@@ -117,7 +118,7 @@ const ok = <T>(value: T): Outcome<T> => ({ ok: true, value });
 const refuse = <T>(reason: string): Outcome<T> => ({ ok: false, reason });
 
 const PRACTICE_SQUAD_PHASES = new Set<string>(['cutdown', 'regularSeason', ...PLAYOFF_PHASES]);
-const RESERVE = new Set<Player['status']>(['ir', 'pup', 'nfi', 'suspended']);
+const RESERVE = new Set<Player['status']>(['ir', 'pup', 'nfi', 'suspended', 'holdout']);
 
 /** The weekly pay a practice squad player signs for: the minimum, or the veterans' minimum. */
 const practiceSquadPay = (league: League, player: Player): number =>
@@ -328,6 +329,7 @@ function plan(league: League, move: Move, enforce: boolean): Outcome<Plan> {
             e => !(e.playerId === player.id && e.week === gameWeek(league))
           );
           league.teams[team].resting = league.teams[team].resting.filter(id => id !== player.id);
+          endDemand(player, 'gone');
           log(league, team, 'released', player, move.reason);
           releaseMorale(league, team, player);
           if (waived) placeOnWaivers(league, player, team, contract.id);
@@ -519,7 +521,8 @@ function resignPlan(
       if (declined) return refuse(declined);
       const deal = extensionContract(rules, base, league.date, move.offer, creditedNextYear(league, player));
       const extension = `a ${move.offer.years}-year extension from ${year + 1}`;
-      const planned = next(deal, [move.talks ? `He answers when you send the offer. If he takes it, he signs ${extension}.` : `${name} signs ${extension}.`], 'extended');
+      // A new deal ends a holdout or a trade request (spec 11.9).
+      const planned = next(deal, [move.talks ? `He answers when you send the offer. If he takes it, he signs ${extension}.` : `${name} signs ${extension}.`], 'extended', () => endDemand(player, 'deal'));
       return planned.ok ? ok({ ...planned.value, taken: [`${name} takes your offer and signs ${extension}.`] }) : planned;
     } // prettier-ignore
 

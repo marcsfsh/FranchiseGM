@@ -159,7 +159,7 @@ test('puts contracts on auto from Settings, and offers only extensions during th
   const status = card.locator('[role="status"]');
   const contracts = card.getByRole('switch', { name: 'Contracts' });
   await expect(contracts).toHaveAttribute('aria-checked', 'false');
-  await expect(contracts).toHaveAccessibleDescription('Extensions, tags, tenders, and fifth-year options in the re-sign window.');
+  await expect(contracts).toHaveAccessibleDescription('Extensions, tags, tenders, and fifth-year options in the re-sign window, and new deals for players who hold out or ask for trades.');
   await expectTouchTargets(page, 'main section.card:has(#auto-contracts)', phone ? 48 : 44);
   await contracts.click();
   await expect(contracts).toHaveAttribute('aria-checked', 'true');
@@ -174,4 +174,44 @@ test('puts contracts on auto from Settings, and offers only extensions during th
   await expect(page.locator('main h1')).toHaveText('Settings');
   await expect(section(page, 'Automation').getByRole('switch', { name: 'Contracts' })).toHaveAttribute('aria-checked', 'true');
   await expect(section(page, 'Automation').getByRole('switch', { name: 'Roster moves' })).toHaveAttribute('aria-checked', 'true');
+}); // prettier-ignore
+
+// Spec 11.9: a holdout shows on the Contracts screen, the roster, and his page; Settings sets how often.
+test('shows a holdout, and sets how often players hold out or ask for trades', async ({ page }, info) => {
+  const phone = sizeOf(info) === 'phone';
+  await importLeagueFixture(page, SEASON_FIXTURE, SEASON_FIXTURE_NAME);
+  await goTo(page, '#/contracts', 'Contracts');
+  const row = rowsOf(section(page, 'Expiring contracts'), phone).first();
+  const name = await nameIn(row);
+  const id = (await row.getByRole('link').first().getAttribute('data-player-link')) ?? '';
+  // As training camp would: he goes on the list for players who didn't report.
+  type Gm = { __gm: { app: { league: { date: object; players: Record<string, { status: string; demand?: object }> } } } };
+  await page.evaluate(pid => {
+    const league = (globalThis as unknown as Gm).__gm.app.league;
+    const p = league.players[pid];
+    if (p) Object.assign(p, { status: 'holdout', demand: { kind: 'holdout', since: { season: 2025, phase: 'trainingCamp', week: 1 }, fines: 1_050_000 } });
+  }, id);
+  await goTo(page, '#/roster', 'Roster');
+  await goTo(page, '#/contracts', 'Contracts');
+  const again = rowsOf(section(page, 'Expiring contracts'), phone).filter({ hasText: name });
+  await expect(again).toContainText(phone ? 'holding out ·' : 'Holding out');
+  await again.getByRole('button', { name: `Decide on ${name}` }).click();
+  const dialog = page.getByRole('dialog', { name: `Keep ${name}` });
+  await expect(dialog).toContainText("He's holding out for a new deal: an extension ends it.");
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await page.evaluate(pid => (location.hash = `#/player/${pid}`), id);
+  await expect(page.locator('main')).toContainText('He has held out for a new deal since training camp opened, losing $1,050,000 in fines and pay so far. Extend him on the Contracts screen, or wait for him to report.');
+
+  await goTo(page, '#/settings', 'Settings');
+  const card = section(page, 'Holdouts and trade requests');
+  const status = card.locator('[role="status"]');
+  await expect(card.getByLabel('How often players hold out or ask for trades')).toHaveValue('1');
+  await card.getByLabel('How often players hold out or ask for trades').selectOption({ label: 'Never' });
+  await expect(status).toHaveText('Holdouts and trade requests: never.');
+  const fines = card.getByRole('switch', { name: 'Holdout fines' });
+  await expect(fines).toHaveAttribute('aria-checked', 'true');
+  await fines.click();
+  await expect(status).toHaveText("Holdouts aren't fined.");
+  await expectTouchTargets(page, 'main section.card:has(#drama-fines)', phone ? 48 : 44);
+  await expectNoHorizontalOverflow(page);
 }); // prettier-ignore

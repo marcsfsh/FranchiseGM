@@ -848,6 +848,39 @@ export const TUNING = {
     }
   },
   /**
+   * Holdouts and trade demands (spec 10.9, 11.9; D-57). As training camp opens, a player in the last year
+   * of his deal rated `minOvr` or more, with `minSeasons` credited seasons and paid under `underpaid` of
+   * his market value, holds out when a draw falls under `rate` x the frequency setting x his greed weight
+   * x (1 - `loyaltyDamp` x loyalty / 100) x how far under the line he's paid. At each later step (a week of
+   * the preseason, the cutdown, a game week) he reports with chance `report` x (1.5 - greed / 100), plus
+   * `fined` while fines are on. A player whose morale is `tradeBelow` or less, with `tradeSeasons` credited
+   * seasons and rated `tradeOvr` or more, asks for a trade at camp with chance `tradeRate` x the frequency
+   * x his ego weight, and in a game week with `tradeWeekly` of that; the request lapses once his morale is
+   * back to `tradeLapse`. A new deal ends a demand with `dealMorale` more morale; reporting without one
+   * costs `reportMorale`, and a leader's holdout costs his teammates `leaderRoom`. Camp is `campDays` days;
+   * the news covers players rated `newsFrom` or more.
+   */
+  holdouts: {
+    minOvr: 78,
+    minSeasons: 3,
+    underpaid: 0.7,
+    rate: 0.5,
+    loyaltyDamp: 0.6,
+    report: 0.3,
+    fined: 0.1,
+    tradeBelow: 60,
+    tradeSeasons: 2,
+    tradeOvr: 70,
+    tradeRate: 0.15,
+    tradeWeekly: 0.1,
+    tradeLapse: 70,
+    dealMorale: 10,
+    reportMorale: 8,
+    leaderRoom: 2,
+    campDays: 21,
+    newsFrom: 78
+  },
+  /**
    * The AI in the re-sign window (spec 11.4, 11.5; D-29 stand-in until M14, value-based since D-38): an
    * option is exercised when his asking price reaches this share of it; next year's cap keeps this share
    * free for free agency beyond the draft class; the franchise tag goes only to players of this overall or

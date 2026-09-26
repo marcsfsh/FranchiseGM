@@ -32,7 +32,7 @@ import type { DraftSettings } from '../draft/settings';
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 28;
+export const SAVE_SCHEMA_VERSION = 29;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -94,7 +94,10 @@ export interface TeamState {
 export interface AutoJobs {
   /** Signings, cuts, injured reserve, practice squad moves, and waiver claims. */
   roster: boolean;
-  /** Extensions, tags, tenders, and fifth-year options in the re-sign window (spec 11.4, 11.5). */
+  /**
+   * Extensions, tags, tenders, and fifth-year options in the re-sign window (spec 11.4, 11.5), and new deals
+   * for players who hold out or ask for trades (spec 11.9).
+   */
   contracts: boolean;
   /** Placing scouts and spending their points (spec 10.4); on by default, as the director of scouting's job. */
   scouting: boolean;
@@ -118,6 +121,11 @@ export interface LeagueSettings {
   draft: DraftSettings;
   /** Whether the league's rules bind the user's moves and advances (post-M23 2.10.1; D-46). */
   commissioner: { enforceRules: boolean };
+  /**
+   * Player drama (spec 10.9, 11.9, 22.5): how often players hold out or ask for trades, from 0 (never) to
+   * 2 (twice as often), and whether holdouts are fined per the CBA.
+   */
+  drama: { holdouts: number; fines: boolean };
 }
 
 export interface League {

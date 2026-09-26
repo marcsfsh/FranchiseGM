@@ -25,7 +25,7 @@ const isTeamTab = (tab: string | undefined): tab is TeamTab =>
   (TEAM_TABS as readonly string[]).includes(tab ?? '');
 
 const ORDER = new Map<string, number>(POSITIONS.map((p, i) => [p, i]));
-const RESERVE: readonly Player['status'][] = ['ir', 'pup', 'nfi', 'suspended'];
+const RESERVE: readonly Player['status'][] = ['ir', 'pup', 'nfi', 'suspended', 'holdout'];
 
 /** The roster by position, best first within each; reserve lists and the practice squad after. */
 function rosterTable(league: League, abbr: TeamAbbr): HTMLElement {

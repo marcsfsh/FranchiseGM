@@ -6,6 +6,7 @@
  */
 import { TEAM_COLORS, type TeamAbbr } from '../../data/team-colors';
 import { team } from '../../data/teams';
+import { demandMessage, type DemandEvent } from '../contracts/holdouts';
 import type { League } from '../league/types';
 import { fullName } from '../model/player';
 import type { GameResult } from '../sim/types';
@@ -86,6 +87,8 @@ export interface WeekInboxInput {
   news: readonly NewsItem[];
   /** The waiver wire this week, before teams set their rosters. */
   waivers?: readonly WaiverResult[];
+  /** Holdouts and trade requests made or ended this week (spec 11.9). */
+  demands?: readonly DemandEvent[];
 }
 
 /** The user's messages from a finished week, in the league as it stands after the week. */
@@ -169,6 +172,11 @@ export function weekInbox(league: League, input: WeekInboxInput): InboxItem[] {
         w.claimedBy ? 'They take over his contract; you keep only its proration.' : 'He is a free agent now.'
       );
   } // prettier-ignore
+
+  for (const e of input.demands ?? []) {
+    const m = demandMessage(league, e);
+    if (m) add({ kind: 'contracts', event: m.event, title: m.title, body: m.body, players: [e.player.id] });
+  }
 
   for (const n of input.news)
     if (n.kind === 'milestone' && n.teams.includes(user))

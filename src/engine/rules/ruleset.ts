@@ -86,6 +86,12 @@ export interface PayRules {
    * designated release before it keeps the player's cap hit on the books until the day after it.
    */
   june1: string;
+  /**
+   * A holdout's fine for each day of training camp he misses (spec 11.9; CBA Article 42): the veterans',
+   * and the lower one for players on rookie deals.
+   */
+  holdoutFineDaily: number;
+  holdoutFineDailyRookie: number;
 }
 
 export interface RookieScaleRules {
@@ -370,7 +376,10 @@ export const DEFAULT_RULES: RuleSet = {
     paychecks: 18,
     prorationYearsMax: 5,
     june1Designations: 2,
-    june1: '06-01'
+    june1: '06-01',
+    // 2020 CBA Article 42: $50,000 a day of camp missed, $40,000 on a rookie contract.
+    holdoutFineDaily: 50_000,
+    holdoutFineDailyRookie: 40_000
   },
   rookieScale: {
     // Fitted to recent slot values: about $33M for the first pick, $6.3M at pick 32, $2.6M at 64.

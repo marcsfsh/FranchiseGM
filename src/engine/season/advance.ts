@@ -5,10 +5,13 @@
  */
 import type { ClimateTable } from '../../data/climate';
 import type { DecisionLog } from '../ai/framework';
+import type { Offer } from '../contracts/build';
+import { answerDemands, demandHeadline, stepDemands } from '../contracts/holdouts';
 import { settleIncentives } from '../contracts/moves';
 import { draftMediaWeek } from '../draft/media';
 import { scoutWeek } from '../draft/scouting';
 import { draftOrder } from '../generate/rookies';
+import { makeMove } from '../roster/moves';
 import { processWaivers, waiverOrder } from '../roster/waivers';
 import { waiverClaims } from '../ai/decisions/roster-moves';
 import { makeLegal } from '../ai/decisions/compliance';
@@ -248,6 +251,20 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     for (const team of [r.home, r.away])
       outcomes.set(team, r.winner === null ? 'T' : r.winner === team ? 'W' : 'L');
   weeklyMorale(league, outcomes, leagueStream(league.random, 'morale', week));
+  // Holdouts miss the week and may report, and the unhappy may ask for trades (spec 11.9); the teams whose
+  // contracts the staff decides answer with a new deal when he's worth it (D-57).
+  const user = league.meta.start.userTeam;
+  const deciders = TEAM_ABBRS.filter(t => t !== user || league.settings.auto.contracts);
+  const extend = (team: TeamAbbr, p: Player, offer: Offer) =>
+    makeMove(
+      league,
+      { kind: 'extend', team, playerId: p.id, offer, reason: 'to end his demand' },
+      leagueStream(league.random, `demand-${p.id}`, week)
+    ).ok;
+  const demands = [
+    ...stepDemands(league, 'game', leagueStream(league.random, 'demands', week)),
+    ...answerDemands(league, deciders, extend)
+  ];
   // The Super Bowl comes two weeks after the conference championships: the off week heals too.
   if (week === league.rules.season.weeks + PLAYOFF_PHASES.length - 1) healWeek(league);
   // The scouts work the next draft's class every week (spec 10.4).
@@ -277,8 +294,12 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
   draftNews.forEach((d, i) =>
     news.push({ id: `${season}-${week}-d${i}`, season, week, kind: 'draft', headline: d.headline, teams: d.teams, players: [], score: d.score, template: 'draft' })
   ); // prettier-ignore
+  demands.forEach((e, i) => {
+    const text = demandHeadline(e);
+    if (text) news.push({ id: `${season}-${week}-h${i}`, season, week, kind: 'transaction', headline: text, teams: [e.team], players: [e.player.id], score: e.player.ovr, template: 'transaction' });
+  }); // prettier-ignore
   league.season.news.push(...news);
-  const inbox = weekInbox(league, { week, results, awards, news, waivers: waived });
+  const inbox = weekInbox(league, { week, results, awards, news, waivers: waived, demands });
   league.inbox = addToInbox(league.inbox, inbox);
   league.random = advanceLeagueRandom(league.random, input);
   return {
