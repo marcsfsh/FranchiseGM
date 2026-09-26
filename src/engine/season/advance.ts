@@ -23,7 +23,7 @@ import { coachTraining, weeklyDevelopment } from '../progression/develop';
 import type { Conference, TeamAbbr } from '../../data/teams';
 import { TEAM_ABBRS } from '../../data/team-colors';
 import { offFieldHeadline, offFieldWeek } from '../locker/off-field';
-import { weeklyMorale } from '../locker/room';
+import { gamePerformances, weeklyMorale } from '../locker/room';
 import type { League } from '../league/types';
 import type { Phase } from '../model/calendar';
 import type { Player } from '../model/player';
@@ -247,12 +247,17 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     coachTraining(league);
     ratings.push(...weeklyDevelopment(league, snaps, leagueStream(league.random, 'development', week)));
   }
-  // Morale moves with the week's results, roles, pay, and the locker room (spec 10.9).
+  // Morale moves with the week's results, the starters' games, roles, pay, and the locker room (spec 10.9).
   const outcomes = new Map<TeamAbbr, 'W' | 'L' | 'T'>();
   for (const r of results)
     for (const team of [r.home, r.away])
       outcomes.set(team, r.winner === null ? 'T' : r.winner === team ? 'W' : 'L');
-  weeklyMorale(league, outcomes, leagueStream(league.random, 'morale', week));
+  weeklyMorale(
+    league,
+    outcomes,
+    leagueStream(league.random, 'morale', week),
+    gamePerformances(league, results)
+  );
   // Holdouts miss the week and may report, and the unhappy may ask for trades (spec 11.9); the teams whose
   // contracts the staff decides answer with a new deal when he's worth it (D-57).
   const user = league.meta.start.userTeam;

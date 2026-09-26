@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { TeamAbbr } from '../../src/data/team-colors';
+import { hear, replyWords } from '../../src/engine/contracts/negotiation';
 import type { League } from '../../src/engine/league/types';
 import {
   characterKnown,
   chemistry,
+  gamePerformances,
   isDisruptive,
   isLeader,
   learnCharacters,
@@ -21,6 +23,8 @@ import { leagueYear } from '../../src/engine/model/calendar';
 import type { Player } from '../../src/engine/model/player';
 import { stream } from '../../src/engine/rng';
 import { makeMove } from '../../src/engine/roster/moves';
+import { emptyLine, emptyTotals, type PlayerLine } from '../../src/engine/sim/stats';
+import type { GameResult } from '../../src/engine/sim/types';
 import { TUNING } from '../../src/engine/tuning';
 import { situationLeague } from '../helpers/situations';
 
@@ -38,6 +42,11 @@ function quiet(): League {
 }
 
 const room = (league: League, team: TeamAbbr = 'MIN'): Player[] => roomOf(league, team);
+
+const line = (change: Partial<PlayerLine>): PlayerLine => ({ ...emptyLine(), ...change });
+/** A finished game with these player lines on each side; the morale step reads only the box score. */
+const game = (home: Record<string, PlayerLine>, away: Record<string, PlayerLine>): GameResult =>
+  ({ box: { home: { totals: emptyTotals(), players: home }, away: { totals: emptyTotals(), players: away } } }) as unknown as GameResult; // prettier-ignore
 
 /** One player's average morale change over many weeks from the same start, since weeks round at random. */
 function averageChange(league: League, player: Player, week: (seed: number) => void, n = 60): number {
@@ -62,6 +71,45 @@ describe('weekly morale (spec 10.9)', () => {
     expect(averageChange(league, keen, lost)).toBeCloseTo(-L.result * L.traitScale[1], 0);
     expect(averageChange(league, easy, lost)).toBeCloseTo(-L.result * L.traitScale[0], 0);
     expect(averageChange(league, keen, won)).toBeGreaterThan(averageChange(league, easy, won));
+  });
+
+  it("judges a starter's own game against the week's other starters at his position", () => {
+    const league = quiet();
+    const at = (position: string) => Object.values(league.players).filter(p => p.position === position && p.team).map(p => p.id); // prettier-ignore
+    const [great, poor, ...rest] = at('QB').slice(0, 8);
+    const [lt] = at('LT');
+    const [k] = at('K');
+    const [wr] = at('WR');
+    if (!great || !poor || rest.length < 6 || !lt || !k || !wr) throw new Error('no players');
+    const usual = line({ started: 1, passYds: 250, passTd: 1 });
+    const home = Object.fromEntries(rest.slice(0, 3).map(id => [id, usual]));
+    const away = Object.fromEntries(rest.slice(3).map(id => [id, usual]));
+    home[great] = line({ started: 1, passYds: 450, passTd: 5 });
+    away[poor] = line({ started: 1, passYds: 100, passInt: 3 });
+    // The box score doesn't score a lineman's game. A kicker who only kicked off had no kicks to judge,
+    // and the backup receiver didn't start.
+    home[lt] = line({ started: 1 });
+    home[k] = line({ kickoffs: 5 });
+    away[wr] = line({ receptions: 12, recYds: 200 });
+    expect(Object.fromEntries(gamePerformances(league, [game(home, away)]))).toEqual({
+      [great]: 1,
+      [poor]: -1
+    });
+    // Nobody stands out when every game is the same.
+    expect(gamePerformances(league, [game(Object.fromEntries(rest.map(id => [id, usual])), {})]).size).toBe(
+      0
+    );
+  });
+
+  it("moves a player's morale with his own game, more for the competitive", () => {
+    const league = quiet();
+    const [keen] = room(league);
+    if (!keen) throw new Error('no player');
+    keen.personality.competitiveness = 100;
+    const week = (verdict: number) => (seed: number) => weeklyMorale(league, new Map(), stream(seed), new Map([[keen.id, verdict]])); // prettier-ignore
+    const usual = averageChange(league, keen, week(0));
+    expect(averageChange(league, keen, week(1)) - usual).toBeCloseTo(L.performance * L.traitScale[1], 0);
+    expect(averageChange(league, keen, week(-1)) - usual).toBeCloseTo(-L.performance * L.traitScale[1], 0);
   });
 
   it('drifts toward the baseline', () => {
@@ -136,6 +184,27 @@ describe('the locker room and roster moves (spec 10.9)', () => {
     expect(room(league).every(p => p.morale === L.baseline - L.releaseLeader)).toBe(true);
     expect(makeMove(league, { kind: 'release', team: 'MIN', playerId: other.id }, stream(3)).ok).toBe(true);
     expect(room(league).every(p => p.morale === L.baseline - L.releaseLeader)).toBe(true);
+  });
+
+  it('costs the room a lowball offer to a popular leader in talks, and nobody else', () => {
+    const league = quiet();
+    const [leader, other] = room(league).filter(
+      p => p.status === 'active' && !['K', 'P', 'LS'].includes(p.position)
+    );
+    if (!leader || !other) throw new Error('no players');
+    for (const p of [leader, other]) p.ovr = 85;
+    Object.assign(leader, { experience: 8, joined: leagueYear(league.date) - L.popularSeasons });
+    leader.personality.leadership = 90;
+    const lowball = (p: Player) => ({ years: 1, salary: league.rules.pay.minimumSalary[p.experience] ?? 0, signingBonus: 0 }); // prettier-ignore
+    const reply = hear(league, 'MIN', leader, lowball(leader), true);
+    expect(reply).toMatchObject({ lowball: true, teammates: true });
+    expect(replyWords(reply)).toMatch(/His teammates took it badly/);
+    expect(leader.morale).toBe(L.baseline - TUNING.contracts.negotiation.lowballMorale);
+    expect(room(league).every(p => p === leader || p.morale === L.baseline - L.lowballLeader)).toBe(true);
+    const plain = hear(league, 'MIN', other, lowball(other), true);
+    expect(plain).toMatchObject({ lowball: true });
+    expect('teammates' in plain).toBe(false);
+    expect(room(league).every(p => p === leader || p === other || p.morale === L.baseline - L.lowballLeader)).toBe(true); // prettier-ignore
   });
 
   it('eases every morale partway back to the baseline as a league year opens', () => {

@@ -1,9 +1,10 @@
 /**
  * Morale and the locker room (spec 10.9; D-51). Each game week every player in a team's room moves toward
- * the baseline, then with his team's result, his role against what his ratings earn him, and his pay
- * against his market value, each scaled by the trait that cares about it; the room's leaders lift him and
- * its disruptive players drag him down. Releasing a leader costs his teammates at once, and each new league
- * year eases every morale back toward the baseline.
+ * the baseline, then with his team's result, his own game if he started it, his role against what his
+ * ratings earn him, and his pay against his market value, each scaled by the trait that cares about it; the
+ * room's leaders lift him and its disruptive players drag him down. Releasing a popular leader or lowballing
+ * him in talks costs his teammates at once, and each new league year eases every morale back toward the
+ * baseline.
  */
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { marketValue } from '../contracts/market';
@@ -12,11 +13,14 @@ import { BASE_SLOTS, startersOf } from '../league/depth';
 import type { League } from '../league/types';
 import { calendarDay, leagueYear } from '../model/calendar';
 import { ageOn, type Player } from '../model/player';
-import { POSITION_GROUP, type PositionGroup } from '../model/positions';
+import { POSITION_GROUP, sideOf, type Position, type PositionGroup } from '../model/positions';
 import type { Rng } from '../rng';
 import type { Slot } from '../schemes/slots';
+import { gameScore } from '../season/awards';
 import { PLAYOFF_PHASES } from '../season/state';
 import { cannotPlay, designation } from '../season/injuries';
+import type { PlayerLine } from '../sim/stats';
+import type { GameResult } from '../sim/types';
 import { TUNING } from '../tuning';
 
 const L = TUNING.lockerRoom;
@@ -104,6 +108,49 @@ function underpaid(league: League, p: Player): number {
   return paid >= value * L.underpaid ? 0 : 1 - paid / (value * L.underpaid);
 }
 
+/** Positions whose games are judged against each other: left and right play the same roles. */
+const PEERS: Partial<Record<Position, Position>> = { LE: 'RE', LOLB: 'ROLB' };
+
+/**
+ * Whether a player's game counts toward his performance: a start, or for a kicker or punter a kick or a
+ * punt. The box score doesn't score the offensive line's games or the long snapper's.
+ */
+function judged(position: Position, line: PlayerLine): boolean {
+  if (POSITION_GROUP[position] === 'OL' || position === 'LS') return false;
+  if (position === 'K') return line.fgAtt + line.xpAtt > 0;
+  if (position === 'P') return line.punts > 0;
+  return line.started > 0;
+}
+
+/**
+ * Each judged player's game this week against the others' at his position (spec 10.9): 1 for a game score
+ * `standout` standard deviations or more over their mean, -1 for one as far under it, 0 else.
+ */
+export function gamePerformances(league: League, results: readonly GameResult[]): Map<string, number> {
+  const scores = new Map<Position, { id: string; score: number }[]>();
+  for (const r of results)
+    for (const side of [r.box.home, r.box.away])
+      for (const [id, line] of Object.entries(side.players)) {
+        const p = league.players[id];
+        if (!p || !judged(p.position, line)) continue;
+        const peers = PEERS[p.position] ?? p.position;
+        const games = scores.get(peers) ?? [];
+        games.push({ id, score: gameScore[sideOf(p.position)](line) });
+        scores.set(peers, games);
+      }
+  const verdicts = new Map<string, number>();
+  for (const games of scores.values()) {
+    const mean = games.reduce((sum, g) => sum + g.score, 0) / games.length;
+    const sd = Math.sqrt(games.reduce((sum, g) => sum + (g.score - mean) ** 2, 0) / games.length);
+    if (sd === 0) continue;
+    for (const g of games) {
+      const z = (g.score - mean) / sd;
+      if (Math.abs(z) >= L.standout) verdicts.set(g.id, Math.sign(z));
+    }
+  }
+  return verdicts;
+}
+
 /** Whole points, rounded up or down at random in proportion, so small weekly changes add up. */
 const whole = (value: number, rng: Rng): number => {
   const floor = Math.floor(value);
@@ -112,12 +159,13 @@ const whole = (value: number, rng: Rng): number => {
 
 /**
  * A game week of morale for every room (spec 10.9). `results` holds each team's result this week, if it
- * played. Returns each player's change.
+ * played, and `performances` each judged player's game, from gamePerformances. Returns each player's change.
  */
 export function weeklyMorale(
   league: League,
   results: ReadonlyMap<TeamAbbr, 'W' | 'L' | 'T'>,
-  rng: Rng
+  rng: Rng,
+  performances: ReadonlyMap<string, number> = new Map()
 ): Map<string, number> {
   const changes = new Map<string, number>();
   const rooms = new Map<TeamAbbr, Player[]>();
@@ -139,6 +187,7 @@ export function weeklyMorale(
       let change = (L.baseline - p.morale) * L.drift + pull(p);
       if (result === 'W') change += L.result * weigh(traits.competitiveness);
       if (result === 'L') change -= L.result * weigh(traits.competitiveness);
+      change += L.performance * (performances.get(p.id) ?? 0) * weigh(traits.competitiveness);
       const now = role(p, starters);
       if (now > 0) change += L.starting;
       if (now < 0) change -= L.benched * weigh(traits.ego);
@@ -155,12 +204,24 @@ export function weeklyMorale(
 export const popular = (league: League, p: Player): boolean =>
   isLeader(p) && tenure(league, p) >= L.popularSeasons;
 
+/** His teammates' morale drops `cost` when the team treats a popular leader badly; whether it did. */
+function hurtTeammates(league: League, team: TeamAbbr, leader: Player, cost: number): boolean {
+  if (!popular(league, leader)) return false;
+  for (const p of roomOf(league, team)) if (p.id !== leader.id) p.morale = clampMorale(p.morale - cost);
+  return true;
+}
+
 /** His teammates' morale drops when the team releases a popular leader (spec 10.9). */
 export function releaseMorale(league: League, team: TeamAbbr, released: Player): void {
-  if (!popular(league, released)) return;
-  for (const p of roomOf(league, team))
-    if (p.id !== released.id) p.morale = clampMorale(p.morale - L.releaseLeader);
+  hurtTeammates(league, team, released, L.releaseLeader);
 }
+
+/**
+ * His teammates' morale drops when the team lowballs a popular leader on it in talks (spec 10.9). Returns
+ * whether it did.
+ */
+export const lowballMorale = (league: League, team: TeamAbbr, player: Player): boolean =>
+  player.team === team && hurtTeammates(league, team, player, L.lowballLeader);
 
 const clampUnit = (value: number): number => Math.max(-1, Math.min(1, value));
 

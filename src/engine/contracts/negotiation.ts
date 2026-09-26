@@ -11,7 +11,7 @@
 import type { TeamAbbr } from '../../data/team-colors';
 import { competence, staffIn } from '../ai/profile';
 import type { League } from '../league/types';
-import { clampMorale } from '../locker/room';
+import { clampMorale, lowballMorale } from '../locker/room';
 import { leagueYear, type GameDate } from '../model/calendar';
 import type { Player } from '../model/player';
 import { minimumSalary } from '../rules/ruleset';
@@ -50,9 +50,9 @@ export interface Negotiation {
 /** A player's reply to an offer in talks. */
 export type Reply =
   | { kind: 'accept' }
-  | { kind: 'counter'; offer: Offer; matters: Term[]; lowball: boolean }
+  | { kind: 'counter'; offer: Offer; matters: Term[]; lowball: boolean; teammates?: boolean }
   /** He turned down a take-it-or-leave-it offer, or ran out of patience, and broke off talks. */
-  | { kind: 'final' | 'brokeOff'; lowball: boolean }
+  | { kind: 'final' | 'brokeOff'; lowball: boolean; teammates?: boolean }
   /** He'd already broken off talks. */
   | { kind: 'closed' };
 
@@ -126,8 +126,8 @@ export function settledSalary(league: League, player: Player, team: TeamAbbr, ye
 
 /**
  * A player's reply to a team's offer in talks (spec 11.6), kept in the league: an offer he turns down uses
- * his patience, and a lowball his interest in the team and his morale. `extension` is for a player under
- * contract with the team.
+ * his patience, and a lowball his interest in the team and his morale, and his teammates' too when he's a
+ * popular leader on the team (spec 10.9). `extension` is for a player under contract with the team.
  */
 export function hear(league: League, team: TeamAbbr, player: Player, offer: Offer, extension = false): Reply {
   const now = talks(league, team, player.id);
@@ -152,20 +152,23 @@ export function hear(league: League, team: TeamAbbr, player: Player, offer: Offe
   }
   const lowball = worth < floor * N.lowball;
   now.rounds++;
+  let teammates = false;
   if (lowball) {
     now.lowballs++;
     player.morale = clampMorale(player.morale - N.lowballMorale);
+    teammates = lowballMorale(league, team, player);
   }
+  const hurt = teammates ? { teammates } : {};
   now.closed = !!offer.final || now.rounds >= patience(player);
   delete now.counter;
   league.negotiations[key] = now;
-  if (now.closed) return { kind: offer.final ? 'final' : 'brokeOff', lowball };
+  if (now.closed) return { kind: offer.final ? 'final' : 'brokeOff', lowball, ...hurt };
   // His counter keeps the rest of the offer, at the salary worth what he asks now that he's turned it down.
   const next = reachable(league, ctx, player, team, offer.years, askedWorth(league, player, team, extension));
   const salary = salaryFor(league, ctx, player, team, offer, next, talksMinimum(league, player, extension));
   const counter = { ...offer, salary };
   now.counter = counter;
-  return { kind: 'counter', offer: counter, matters: mattersMost(league, player, counter), lowball };
+  return { kind: 'counter', offer: counter, matters: mattersMost(league, player, counter), lowball, ...hurt };
 }
 
 const TERM_WORDS: Record<Term, string> = {
@@ -186,9 +189,11 @@ export const counterWords = (offer: Offer): string =>
 
 /** A reply in words for the user (spec 11.6). */
 export function replyWords(reply: Reply): string {
+  const teammates =
+    'teammates' in reply && reply.teammates ? ' His teammates took it badly, and their morale fell too.' : '';
   const lowball =
     'lowball' in reply && reply.lowball
-      ? ' His agent called it a lowball: it cost his interest in your team, and his morale.'
+      ? ` His agent called it a lowball: it cost his interest in your team, and his morale.${teammates}`
       : '';
   switch (reply.kind) {
     case 'accept':

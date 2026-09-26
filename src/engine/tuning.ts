@@ -107,16 +107,19 @@ export const TUNING = {
    * Morale and the locker room (spec 10.9; D-51), in morale points a game week. Morale moves `drift` of the
    * way to `baseline`, then a win or a loss moves it `result`; a player who'd start on ratings (`benchedBy`
    * or more over his group's weakest starter) but doesn't loses `benched`, and a starter gains `starting`;
-   * a player past his rookie deal paid under `underpaid` of his market value loses `pay`. Competitiveness,
-   * ego, and greed scale those three from `traitScale[0]` (0) to `traitScale[1]` (100). Each leader
+   * a player past his rookie deal paid under `underpaid` of his market value loses `pay`. A starter's own
+   * game moves it `performance` when its game score is `standout` standard deviations or more over or under
+   * the mean of the week's starters at his position. Competitiveness scales the result and the game, ego
+   * the bench, and greed the pay, from `traitScale[0]` (0) to `traitScale[1]` (100). Each leader
    * (leadership `leaderAt` or more with `leaderSeasons` credited seasons) lifts his teammates `leader`, and
    * each disruptive player (morale under `disruptiveBelow`, ego and volatility averaging `disruptiveAt` or
    * more) costs them `disruptive`, counting `voices` of each at most. Releasing a leader who's been with the
-   * team `popularSeasons` costs his teammates `releaseLeader` at once. A new league year moves every morale
-   * `offseasonReset` of the way back to the baseline. In games, a roster's average morale `moraleSpan` over
-   * or under the baseline is worth `moralePoints` of cohesion on both sides of the ball, and a unit's time
-   * together (its starters' average league years with the team, `chemistryTypical` for none, `chemistrySpan`
-   * more or less for all) `chemistryPoints`: the offensive line's on offense, the secondary's on defense.
+   * team `popularSeasons` costs his teammates `releaseLeader` at once, and a lowball offer to him in talks
+   * `lowballLeader`. A new league year moves every morale `offseasonReset` of the way back to the baseline.
+   * In games, a roster's average morale `moraleSpan` over or under the baseline is worth `moralePoints` of
+   * cohesion on both sides of the ball, and a unit's time together (its starters' average league years with
+   * the team, `chemistryTypical` for none, `chemistrySpan` more or less for all) `chemistryPoints`: the
+   * offensive line's on offense, the secondary's on defense.
    */
   lockerRoom: {
     baseline: 70,
@@ -127,6 +130,8 @@ export const TUNING = {
     starting: 0.3,
     pay: 1,
     underpaid: 0.75,
+    performance: 1.5,
+    standout: 1.28,
     traitScale: [0.5, 1.5] as readonly [number, number],
     leaderAt: 75,
     leaderSeasons: 4,
@@ -137,6 +142,7 @@ export const TUNING = {
     voices: 3,
     popularSeasons: 3,
     releaseLeader: 3,
+    lowballLeader: 2,
     offseasonReset: 0.5,
     /** The user learns a player's character after this many game weeks on the user's team. */
     revealWeek: 9,
