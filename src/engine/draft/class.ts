@@ -5,6 +5,7 @@
  * hidden from teams, and the consensus misjudgment of his value that makes busts and gems. A prospect can
  * be made any number of years before his class (post-M23 section 1.1's college pipeline).
  */
+import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import type { League } from '../league/types';
 import { fullName, type Player } from '../model/player';
 import { POSITION_GROUP, type Position, type PositionGroup } from '../model/positions';
@@ -25,6 +26,20 @@ export interface Prospect {
    * making), below 0 underrated (a gem). Scouting grades start from it.
    */
   perception: number;
+  /** His college's scouting region; null for the International Player Pathway. */
+  region: string | null;
+  /** Each team's own error on his grade, in hundredths of a standard deviation, in TEAM_ABBRS order. */
+  noise: number[];
+}
+
+/** What one team's scouting department has done on a class (spec 10.4; D-43). */
+export interface TeamScouting {
+  /** Scouting points spent on each prospect, by player ID. */
+  points: Record<string, number>;
+  /** Points on hand, by region; the director of scouting's go anywhere, under "National". */
+  bank: Record<string, number>;
+  /** Prospects the team brought in for a top-30 visit, whose personality it knows. */
+  visits: string[];
 }
 
 export interface DraftClass {
@@ -33,7 +48,10 @@ export interface DraftClass {
   /** Its strength draws in quality units: the class's, and each position group's on top. */
   strength: { overall: number; groups: Record<PositionGroup, number> };
   prospects: Prospect[];
+  scouting: Record<TeamAbbr, TeamScouting>;
 }
+
+const emptyScouting = (): TeamScouting => ({ points: {}, bank: {}, visits: [] });
 
 /** A prospect's draft value: his ceiling and his overall now, blended. */
 export const draftValue = (p: Pick<Player, 'potential' | 'ovr'>): number =>
@@ -107,6 +125,8 @@ export function generateClass(
   ) as Record<PositionGroup, number>; // prettier-ignore
   const [positions, weights] = positionWeights(s);
   const usedNames = namesInUse(league, year);
+  const { names, regions: collegeRegions } = ctx.names.colleges;
+  const regions = new Map(names.map((name, i) => [name, collegeRegions[i] ?? null]));
   const prospects: Prospect[] = [];
   const [mean, spread] = D.classQuality;
   for (let i = 0; i < s.classSize; i++) {
@@ -117,7 +137,9 @@ export function generateClass(
       { ...ctx, rng, season: year, usedNames },
       { position, quality, age: rng.int(D.classAge[0], D.classAge[1]), classYear: year }
     );
-    prospects.push({ player, perception: perception(rng, s, group) });
+    const noise = TEAM_ABBRS.map(() => Math.round(rng.normal() * 100) || 0);
+    prospects.push({ player, perception: perception(rng, s, group), region: regions.get(player.college) ?? null, noise }); // prettier-ignore
   }
-  return { year, strength: { overall, groups }, prospects };
+  const scouting = Object.fromEntries(TEAM_ABBRS.map(t => [t, emptyScouting()] as const)) as Record<TeamAbbr, TeamScouting>; // prettier-ignore
+  return { year, strength: { overall, groups }, prospects, scouting };
 }

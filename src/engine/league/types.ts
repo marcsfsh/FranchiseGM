@@ -27,7 +27,7 @@ import type { DraftSettings } from '../draft/settings';
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 18;
+export const SAVE_SCHEMA_VERSION = 19;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -91,6 +91,8 @@ export interface AutoJobs {
   roster: boolean;
   /** Extensions, tags, tenders, and fifth-year options in the re-sign window (spec 11.4, 11.5). */
   contracts: boolean;
+  /** Placing scouts and spending their points (spec 10.4); on by default, as the director of scouting's job. */
+  scouting: boolean;
 }
 
 /** League settings that can change mid-save (spec 22). Sections are added as their features arrive. */

@@ -122,7 +122,7 @@ export function createLeague(input: NewLeagueInput): League {
       fitCap: TUNING.fit.cap,
       sim: defaultSliders(),
       pause: defaultPauses(),
-      auto: { roster: false, contracts: false },
+      auto: { roster: false, contracts: false, scouting: true },
       development: defaultDevelopment(),
       draft: defaultDraftSettings()
     },

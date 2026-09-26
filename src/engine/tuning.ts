@@ -608,7 +608,29 @@ export const TUNING = {
     bustRate: 0.12,
     gemRate: 0.06,
     misjudgedBy: [5, 12],
-    nameWindow: 20
+    nameWindow: 20,
+    /**
+     * Scouting (spec 10.4; D-43): a team's own error on a grade, sd `teamSd` points before any scouting;
+     * `fullPoints` points make a full workup, which cuts that error by `pointsCut` and sees through
+     * `consensusCut` of the consensus misjudgment. A director of scouting rated 99 on accuracy shrinks the
+     * error by `directorEffect` (one rated 1 grows it as much). A week brings a scout `scoutPoints` and the
+     * director `directorPoints` [rated 0, rated 99]. Teams on auto spend `spendEach` points at a time on
+     * their best-graded prospects and place scouts by their top `placeFrom`; `traitsAt` points reveal a
+     * prospect's traits and `abilitiesAt` his abilities.
+     */
+    scouting: {
+      teamSd: 6,
+      fullPoints: 60,
+      pointsCut: 0.75,
+      consensusCut: 0.5,
+      directorEffect: 0.3,
+      scoutPoints: [6, 18],
+      directorPoints: [4, 10],
+      spendEach: 15,
+      placeFrom: 150,
+      traitsAt: 30,
+      abilitiesAt: 60
+    }
   },
   /**
    * The AI in the re-sign window (spec 11.4, 11.5; D-29 stand-in until M12 and M14): players older than

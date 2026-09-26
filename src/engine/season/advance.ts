@@ -6,6 +6,7 @@
 import type { ClimateTable } from '../../data/climate';
 import type { DecisionLog } from '../ai/framework';
 import { settleIncentives } from '../contracts/moves';
+import { scoutWeek } from '../draft/scouting';
 import { processWaivers, waiverOrder } from '../roster/waivers';
 import { waiverClaims } from '../ai/decisions/roster-moves';
 import { manageWeek } from '../ai/weekly';
@@ -224,6 +225,8 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
   }
   // The Super Bowl comes two weeks after the conference championships: the off week heals too.
   if (week === league.rules.season.weeks + PLAYOFF_PHASES.length - 1) healWeek(league);
+  // The scouts work the next draft's class every week (spec 10.4).
+  scoutWeek(league);
   // Season totals and players of the week, then the calendar moves on (seeds come after week 18).
   const before = league.season.totals;
   league.season.totals = addToTotals(before, results);
