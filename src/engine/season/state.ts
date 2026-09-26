@@ -38,8 +38,11 @@ export interface SeasonState {
    * day, for per-game roster bonuses (spec 11.2).
    */
   inactive: Record<string, number>;
-  /** Practice squad players elevated for a game week (spec 12.1); they revert after that week's game. */
-  elevations: { playerId: string; team: TeamAbbr; week: number }[];
+  /**
+   * Practice squad players elevated for a game week (spec 12.1); they revert after that week's game. Each
+   * one's cost is his pay for the game over his practice squad pay, fixed when he's elevated.
+   */
+  elevations: { playerId: string; team: TeamAbbr; week: number; cost: number }[];
   /** Regular-season snaps by player, for development's playing time (spec 10.5). */
   snaps: Record<string, number>;
   /**

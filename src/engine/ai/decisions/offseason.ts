@@ -60,7 +60,7 @@ export function keepValue(league: League, p: Player): number {
  * The player to let go: the least valuable healthy player in a group over its standard count (the deepest
  * group first), or anyone healthy once no group has extra. Players in `skip` stay.
  */
-function nextCut(league: League, abbr: TeamAbbr, skip: ReadonlySet<string>): Player | null {
+export function nextCut(league: League, abbr: TeamAbbr, skip: ReadonlySet<string> = new Set()): Player | null {
   const active = teamPlayers(league, abbr).filter(
     p => p.status === 'active' && !skip.has(p.id) && !cannotPlay(designation(p.injury))
   );

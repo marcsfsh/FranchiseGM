@@ -14,6 +14,7 @@ import type { League } from '../league/types';
 import { leagueYear } from '../model/calendar';
 import type { RosterStatus } from '../model/player';
 import { minimumSalary } from '../rules/ruleset';
+import { gameWeek } from '../season/state';
 
 export interface CapSheetLine {
   playerId: string;
@@ -61,6 +62,8 @@ export interface SheetChange {
   add?: readonly { contract: Contract; status: RosterStatus }[];
   /** A practice squad player to be elevated for this week's game. */
   elevate?: string;
+  /** A player whose elevation this week the move takes back: he's promoted, so his deal pays the week. */
+  unelevate?: string;
 }
 
 /** Facts about a player the cap needs: games of the current season he sat inactive. */
@@ -142,11 +145,12 @@ export function capSheet(
   const dead = sum(gone.filter(l => l.held), c => c.total) + sum(gone.filter(l => !l.held), c => c.proration + c.dead);
   const departed = sum(gone.filter(l => !l.held), c => c.base + c.bonuses);
   const earlier = sum(ended.filter(l => l.replaced), c => c.total);
-  const elevated =
+  const week = gameWeek(league);
+  const charged = league.season.elevations.filter(e => e.team === abbr && !(e.playerId === change.unelevate && e.week === week)); // prettier-ignore
+  const elevations =
     year === league.season.season
-      ? [...league.season.elevations.filter(e => e.team === abbr).map(e => e.playerId), ...(change.elevate ? [change.elevate] : [])]
-      : [];
-  const elevations = elevated.reduce((total, id) => total + elevationCost(league, id), 0);
+      ? charged.reduce((total, e) => total + e.cost, 0) + (change.elevate ? elevationCost(league, change.elevate) : 0)
+      : 0;
   const carryover = year === current ? league.teams[abbr].carryover : 0;
   const used = rosterTotal + dead + departed + earlier + elevations;
   return {

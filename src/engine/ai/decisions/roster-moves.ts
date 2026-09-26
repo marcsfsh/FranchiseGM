@@ -17,6 +17,7 @@ import { calendarDay } from '../../model/calendar';
 import { ageOn, fullName, type Player } from '../../model/player';
 import type { Position } from '../../model/positions';
 import type { Rng } from '../../rng';
+import { GAME_DAY_NEEDS } from '../../roster/legality';
 import { makeMove, type Move } from '../../roster/moves';
 import { activeLimit, elevatedThisWeek } from '../../roster/rules';
 import type { WaiverEntry } from '../../roster/waivers';
@@ -54,6 +55,9 @@ for (const [position, n] of ACTIVE_ROSTER) {
 
 const healthy = (p: Player): boolean => !cannotPlay(designation(p.injury));
 
+/** The groups a game-day roster needs one of, whatever a team carries (D-46). */
+const REQUIRED: ReadonlySet<string> = new Set(GAME_DAY_NEEDS.map(p => NEED_GROUP[p]));
+
 /** Players missing from each group, from the team's players (active and injured reserve count). */
 function needsOf(players: readonly Player[]): Map<string, number> {
   const count = new Map<string, number>();
@@ -65,14 +69,17 @@ function needsOf(players: readonly Player[]): Map<string, number> {
     if (p.status === 'active' && healthy(p)) well.set(group, (well.get(group) ?? 0) + 1);
   }
   const needs = new Map<string, number>();
-  for (const [group, target] of TARGET)
-    needs.set(group, Math.max(0, Math.min(target, count.get(group) ?? 0) - (well.get(group) ?? 0)));
+  for (const [group, target] of TARGET) {
+    const carried = Math.max(Math.min(target, count.get(group) ?? 0), REQUIRED.has(group) ? 1 : 0);
+    needs.set(group, Math.max(0, carried - (well.get(group) ?? 0)));
+  }
   return needs;
 }
 
 /**
  * Players missing from each group: the standard roster's count, or the team's own count when it carries
- * fewer (active and injured reserve), less its healthy active players.
+ * fewer (active and injured reserve), but at least one where a game-day roster needs one, less its healthy
+ * active players.
  */
 export const rosterNeeds = (league: League, abbr: TeamAbbr): Map<string, number> =>
   needsOf(Object.values(league.players).filter(p => p.team === abbr));
@@ -156,8 +163,11 @@ function decideSigning(
 /** A move with the team left out, for a team making its own moves. */
 type TeamMove = Move extends infer M ? (M extends Move ? Omit<M, 'team'> : never) : never;
 
-/** The team's weakest healthy player in the group with the most to spare over its standard count. */
-function surplusCut(league: League, abbr: TeamAbbr, roster: readonly Player[]): Player | null {
+/**
+ * The team's weakest healthy player in the group with the most to spare over its standard count, passing
+ * over a group whose players all joined this week.
+ */
+export function surplusCut(league: League, abbr: TeamAbbr, roster: readonly Player[]): Player | null {
   const surplus = new Map<string, Player[]>();
   for (const p of roster) {
     if (!healthy(p)) continue;
@@ -169,8 +179,12 @@ function surplusCut(league: League, abbr: TeamAbbr, roster: readonly Player[]): 
     .sort(
       ([a, pa], [b, pb]) =>
         pb.length - (TARGET.get(b) ?? 0) - (pa.length - (TARGET.get(a) ?? 0)) || (a < b ? -1 : 1)
-    )[0];
-  return deepest ? weakest(league, abbr, deepest[1]) : null;
+    );
+  for (const [, players] of deepest) {
+    const cut = weakest(league, abbr, players);
+    if (cut) return cut;
+  }
+  return null;
 }
 
 export function rosterMoves(league: League, abbr: TeamAbbr, rng: Rng): DecisionLog[] {
@@ -318,23 +332,39 @@ export function fillPracticeSquad(
   }
 } // prettier-ignore
 
+/** The players each team has claimed off waivers at a group this week, from the latest transactions back. */
+function claimedThisWeek(league: League, group: string): Map<TeamAbbr, number> {
+  const { season, phase, week } = league.date;
+  const claims = new Map<TeamAbbr, number>();
+  const all = league.season.transactions;
+  for (let i = all.length - 1; i >= 0; i--) {
+    const t = all[i] as (typeof all)[number];
+    if (t.season !== season || t.phase !== phase || t.week !== week) break;
+    const p = league.players[t.playerId];
+    if (t.kind === 'claimed' && p && NEED_GROUP[p.position] === group) claims.set(t.team, (claims.get(t.team) ?? 0) + 1);
+  }
+  return claims;
+} // prettier-ignore
+
 /**
  * AI waiver claims (spec 12.1): an AI team claims a player who beats its weakest healthy player at his
- * position group by `claimMargin` points; a full roster cuts that weakest player before the next game.
- * Teams short at a group sign free agents instead, which costs no one a roster spot.
+ * position group by `claimMargin` points; a full roster cuts that weakest player before the next game. Each
+ * claim at a group this week takes that weakest player's place, so the next is measured against the one
+ * above him. Teams short at a group sign free agents instead, which costs no one a roster spot.
  */
 export function waiverClaims(league: League, entry: WaiverEntry, player: Player): TeamAbbr[] {
   // The user's team claims for itself unless its roster management is on auto (spec 22.7).
   const user = league.settings.auto.roster ? null : league.meta.start.userTeam;
   const group = NEED_GROUP[player.position];
-  // One pass over the league finds every team's weakest healthy player at the group.
-  const weakest = new Map<TeamAbbr, number>();
+  // One pass over the league finds every team's healthy players at the group.
+  const ratings = new Map<TeamAbbr, number[]>();
   for (const p of Object.values(league.players))
     if (p.team && p.status === 'active' && NEED_GROUP[p.position] === group && healthy(p))
-      weakest.set(p.team, Math.min(weakest.get(p.team) ?? Infinity, p.ovr));
+      ratings.set(p.team, [...(ratings.get(p.team) ?? []), p.ovr]);
+  const claimed = claimedThisWeek(league, group);
   return TEAM_ABBRS.filter(abbr => {
     if (abbr === user || abbr === entry.from) return false;
-    const low = weakest.get(abbr);
+    const low = (ratings.get(abbr) ?? []).sort((a, b) => a - b)[claimed.get(abbr) ?? 0];
     return low !== undefined && player.ovr >= low + S.claimMargin;
   });
 }

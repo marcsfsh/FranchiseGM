@@ -410,7 +410,8 @@ function plan(league: League, move: Move, enforce: boolean, known?: TeamNow): Ou
       if (full) return refuse(full);
       const deal = offerContract(rules, { id: 'preview', playerId: player.id, team }, league.date, { years: 1, salary: minimumSalary(rules, player.experience), signingBonus: 0 }, player.experience);
       const ended = endContract(contract, { date: { ...league.date }, how: 'replaced', designated: false, injured: false, terminationPay: false });
-      const after = spaceWith({ replace: [ended], add: [{ contract: deal, status: 'active' }] });
+      // Promoted in a week he's elevated, his new deal pays the week, not the elevation.
+      const after = spaceWith({ replace: [ended], add: [{ contract: deal, status: 'active' }], unelevate: player.id });
       const over = capRoom(capHit(deal, year, rules), after);
       if (over) return refuse(over);
       return ok({
@@ -422,6 +423,7 @@ function plan(league: League, move: Move, enforce: boolean, known?: TeamNow): Ou
         }),
         apply: rng => {
           putContract(league, ended);
+          league.season.elevations = league.season.elevations.filter(e => !(e.playerId === player.id && e.week === gameWeek(league)));
           join(league, player, team, { ...deal, id: newId(league, 'c') }, 'active', rng);
           log(league, team, 'promoted', player, move.reason);
         }
@@ -451,7 +453,7 @@ function plan(league: League, move: Move, enforce: boolean, known?: TeamNow): Ou
           ]
         }),
         apply: () => {
-          league.season.elevations.push({ playerId: player.id, team, week: game.week });
+          league.season.elevations.push({ playerId: player.id, team, week: game.week, cost });
           log(league, team, 'elevated', player, move.reason);
         }
       });

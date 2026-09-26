@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TeamAbbr } from '../../src/data/team-colors';
+import { makeLegal } from '../../src/engine/ai/decisions/compliance';
 import { capSheet } from '../../src/engine/cap/sheet';
 import { askingSalary } from '../../src/engine/contracts/acceptance';
 import type { League } from '../../src/engine/league/types';
@@ -14,7 +15,7 @@ import {
   saved,
   type Fix
 } from '../../src/engine/roster/fixes';
-import { leagueHealth, legalityProblems } from '../../src/engine/roster/legality';
+import { gameDayProblem, leagueHealth, legalityProblems } from '../../src/engine/roster/legality';
 import { makeMove, previewMove, type Move } from '../../src/engine/roster/moves';
 import { inOffseason } from '../../src/engine/roster/rules';
 import { advanceWeek, gameWeek } from '../../src/engine/season/advance';
@@ -204,5 +205,53 @@ describe('the advance gate (D-46)', () => {
     const week = advanceWeek(off, null, { actions: 0, entropy: 1 });
     expect(week.blocked).toBeNull();
     expect(week.illegal.map(t => t.team)).toEqual([user]);
+  });
+});
+
+describe('the staff keeps its team legal (D-46)', () => {
+  const hurt = (p: Player, weeksOut: number) => {
+    p.injury = { bodyPart: 'knee', severity: 'short', weeksOut, lingering: 1, fragile: 2, season: 2026, week: 1, career: false }; // prettier-ignore
+  };
+
+  it('releases the player the cutdown would let go next to sign a punter onto a full roster', () => {
+    const league = fresh(at(2026, 'regularSeason', 1));
+    const team: TeamAbbr = 'GB';
+    for (const p of Object.values(league.players)) if (p.team === team) p.injury = null;
+    for (const p of teamOf(league, team).filter(q => q.position === 'P'))
+      expect(makeMove(league, { kind: 'release', team, playerId: p.id }, stream(1)).ok).toBe(true);
+    const [squad] = teamOf(league, team, 'practice').filter(p => p.position !== 'P');
+    expect(makeMove(league, { kind: 'promote', team, playerId: (squad as Player).id }, stream(2)).ok).toBe(
+      true
+    );
+    for (const p of teamOf(league, team, 'practice').filter(q => q.position === 'P'))
+      expect(makeMove(league, { kind: 'release', team, playerId: p.id }, stream(3)).ok).toBe(true);
+    expect(teamOf(league, team)).toHaveLength(league.rules.roster.active);
+    expect(gameDayProblem(league, team)?.fact).toBe("Can't dress a game-day roster: no healthy punter");
+    makeLegal(league, team, stream(4));
+    expect(gameDayProblem(league, team)).toBeNull();
+    expect(teamOf(league, team)).toHaveLength(league.rules.roster.active);
+    expect(teamOf(league, team).filter(p => p.position === 'P')).toHaveLength(1);
+    expect(league.season.transactions.some(t => t.team === team && t.kind === 'released' && t.reason === 'to open a roster spot')).toBe(true); // prettier-ignore
+  });
+
+  it('fills back to the minimum after moving injured players to reserve to dress for the game', () => {
+    const league = fresh(at(2026, 'regularSeason', 1));
+    const team: TeamAbbr = 'GB';
+    for (const p of Object.values(league.players)) if (p.team === team) p.injury = null;
+    for (const p of teamOf(league, team, 'practice').filter(q => q.position === 'QB'))
+      expect(makeMove(league, { kind: 'release', team, playerId: p.id }, stream(1)).ok).toBe(true);
+    // Every quarterback hurt, two others out longer, and no room under the cap for a signing until the
+    // staff restructures: dressing moves all of them to reserve before a quarterback joins.
+    for (const p of teamOf(league, team).filter(q => q.position === 'QB')) hurt(p, 3);
+    const others = teamOf(league, team)
+      .filter(q => q.position === 'WR')
+      .slice(0, 2);
+    for (const p of others) hurt(p, 8);
+    overBy(league, team, -100_000);
+    makeLegal(league, team, stream(2));
+    expect(gameDayProblem(league, team)).toBeNull();
+    expect(others.every(p => p.status === 'ir')).toBe(true);
+    expect(teamOf(league, team)).toHaveLength(league.rules.roster.active);
+    expect(capSheet(league, team).space).toBeGreaterThanOrEqual(0);
   });
 });

@@ -76,18 +76,23 @@ describe('practice squad elevations (spec 12.1)', () => {
     const [a, b, c] = mine(league, 'MIN', 'practice');
     if (!a || !b || !c) throw new Error('no practice squad');
     expect(available(league, a)).toBe(false);
-    league.season.elevations.push({ playerId: a.id, team: 'MIN', week: 1 });
+    league.season.elevations.push({ playerId: a.id, team: 'MIN', week: 1, cost: 0 });
     expect(isElevated(league, a)).toBe(true);
     expect(available(league, a)).toBe(true);
     league.date = { ...league.date, week: 2 };
     expect(available(league, a)).toBe(false);
     league.season.elevations.push(
-      { playerId: a.id, team: 'MIN', week: 2 },
-      { playerId: b.id, team: 'MIN', week: 2 },
-      { playerId: c.id, team: 'MIN', week: 2 }
+      { playerId: a.id, team: 'MIN', week: 2, cost: 0 },
+      { playerId: b.id, team: 'MIN', week: 2, cost: 0 },
+      { playerId: c.id, team: 'MIN', week: 2, cost: 0 }
     );
     expect(rosterProblems(league, 'MIN')).toContain('3 players elevated this week; the limit is 2.');
-    league.season.elevations = [1, 2, 3, 4].map(week => ({ playerId: a.id, team: 'MIN' as const, week }));
+    league.season.elevations = [1, 2, 3, 4].map(week => ({
+      playerId: a.id,
+      team: 'MIN' as const,
+      week,
+      cost: 0
+    }));
     league.date = { ...league.date, week: 4 };
     expect(rosterProblems(league, 'MIN')).toContain('A player was elevated more than 3 times this season.');
   });

@@ -11,7 +11,13 @@ import { decideDepthChart, depthWeights } from '../../src/engine/ai/decisions/de
 import { decideGamePlan, idealPlan } from '../../src/engine/ai/decisions/game-plan';
 import { decideRest } from '../../src/engine/ai/decisions/rest';
 import { decideRotation } from '../../src/engine/ai/decisions/rotation';
-import { NEED_GROUP, rosterMoves, waiverClaims } from '../../src/engine/ai/decisions/roster-moves';
+import {
+  NEED_GROUP,
+  rosterMoves,
+  rosterNeeds,
+  surplusCut,
+  waiverClaims
+} from '../../src/engine/ai/decisions/roster-moves';
 import { score } from '../../src/engine/ai/framework';
 import { coachProfile, staffIn } from '../../src/engine/ai/profile';
 import { scoutingReport } from '../../src/engine/ai/scouting';
@@ -19,7 +25,7 @@ import { manageWeek } from '../../src/engine/ai/weekly';
 import { dressable } from '../../src/engine/roster/rules';
 import type { TeamAbbr } from '../../src/data/team-colors';
 import { orderOf } from '../../src/engine/league/depth';
-import { activeRoster } from '../../src/engine/league/transactions';
+import { activeRoster, recordTransaction } from '../../src/engine/league/transactions';
 import type { League } from '../../src/engine/league/types';
 import type { Player } from '../../src/engine/model/player';
 import type { StaffMember } from '../../src/engine/model/staff';
@@ -467,5 +473,47 @@ describe('weekly management (spec 14.10)', () => {
     expect(waiverClaims(league, entry, better)).not.toContain(user);
     league.settings.auto.roster = true;
     expect(waiverClaims(league, entry, better)).toContain(user);
+  }); // prettier-ignore
+});
+
+describe('roster holes and claims (D-46)', () => {
+  it('needs a punter, a kicker, a long snapper, and a quarterback even when the team carries none', () => {
+    const league = fresh();
+    for (const p of activeRoster(league, TEAM)) if (p.position === 'P' || p.position === 'LS') p.team = null;
+    const needs = rosterNeeds(league, TEAM);
+    expect(needs.get('P')).toBe(1);
+    expect(needs.get('LS')).toBe(1);
+    // A group it may carry none of stays unneeded.
+    for (const p of activeRoster(league, TEAM)) if (p.position === 'FB') p.team = null;
+    expect(rosterNeeds(league, TEAM).get('FB')).toBe(0);
+  });
+
+  it('cuts from the deepest group with a player to spare, passing over a group that all joined this week', () => {
+    const league = fresh();
+    // Six quarterbacks claimed this week in place of the team's own: the deepest group, with nobody to cut.
+    const claimed = Object.values(league.players).filter(p => p.position === 'QB' && p.team && p.team !== TEAM).slice(0, 6);
+    for (const p of claimed) recordTransaction(league, TEAM, 'claimed', p.id);
+    const roster = [...activeRoster(league, TEAM).filter(p => p.position !== 'QB'), ...claimed.map(p => ({ ...p, team: TEAM }))];
+    const cut = surplusCut(league, TEAM, roster);
+    expect(cut).not.toBeNull();
+    expect(cut?.position).not.toBe('QB');
+  }); // prettier-ignore
+
+  it("measures a team's next claim at a group against the player its last claim this week displaced", () => {
+    const league = fresh();
+    const [low, ...rest] = activeRoster(league, TEAM).filter(p => p.position === 'QB');
+    if (!low) throw new Error('no quarterback');
+    low.ovr = 50;
+    for (const p of rest) p.ovr = 80;
+    const [waived, joined] = Object.values(league.players).filter(p => p.team === 'GB' && p.position === 'QB');
+    if (!waived || !joined) throw new Error('no quarterbacks');
+    const entry = { playerId: waived.id, from: 'GB' as const, contractId: waived.contractId ?? '', placed: { ...league.date }, claims: [] };
+    const claims = (ovr: number) => waiverClaims(league, entry, { ...waived, ovr }).includes(TEAM);
+    expect(claims(55)).toBe(true);
+    // A 58 claimed this week joins: the next claim must beat him, as the 50 goes before the game.
+    Object.assign(joined, { team: TEAM, ovr: 58, injury: null });
+    recordTransaction(league, TEAM, 'claimed', joined.id);
+    expect(claims(62)).toBe(false);
+    expect(claims(63)).toBe(true);
   }); // prettier-ignore
 });

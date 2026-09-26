@@ -249,6 +249,30 @@ describe('reserve lists, promotions, elevations, claims, and restructures (spec 
     expect(rosterCounts(league, 'MIN').elevated).toBe(2);
   }); // prettier-ignore
 
+  it("charges an elevation what it cost that week, and a promotion takes back the week's (HOU 2032)", () => {
+    const league = fresh();
+    const [a, b] = players(league, 'MIN', 'practice');
+    if (!a || !b) throw new Error('no practice squad');
+    makeRoom(league);
+    makeRoom(league);
+    for (const p of [a, b]) expect(makeMove(league, { kind: 'elevate', team: 'MIN', playerId: p.id }, rng).ok).toBe(true);
+    const cost = elevationCost(league, b.id);
+    expect(capSheet(league, 'MIN').elevations).toBe(elevationCost(league, a.id) + cost);
+    // Promoted in the week he's elevated: his new deal pays the week, and the preview is the sheet after.
+    const promote = previewMove(league, { kind: 'promote', team: 'MIN', playerId: a.id });
+    if (!promote.ok) throw new Error(promote.reason);
+    expect(makeMove(league, { kind: 'promote', team: 'MIN', playerId: a.id }, rng).ok).toBe(true);
+    expect(capSheet(league, 'MIN').space).toBe(promote.value.spaceAfter);
+    expect(capSheet(league, 'MIN').elevations).toBe(cost);
+    // Promoted a week later, the elevation still charges what it cost, though his practice squad pay is gone.
+    league.date = { ...league.date, week: league.date.week + 1 };
+    const later = previewMove(league, { kind: 'promote', team: 'MIN', playerId: b.id });
+    if (!later.ok) throw new Error(later.reason);
+    expect(makeMove(league, { kind: 'promote', team: 'MIN', playerId: b.id }, rng).ok).toBe(true);
+    expect(capSheet(league, 'MIN').space).toBe(later.value.spaceAfter);
+    expect(capSheet(league, 'MIN').elevations).toBe(cost);
+  }); // prettier-ignore
+
   it('puts in a waiver claim and restructures to open cap space', () => {
     const league = fresh();
     const cut = players(league, 'KC', 'active').at(-1);
@@ -285,7 +309,8 @@ describe('reserve lists, promotions, elevations, claims, and restructures (spec 
     const bye = Array.from({ length: 18 }, (_, i) => i + 1).find(w => !games.has(w));
     const later = [...games].filter(w => w > 3).sort((x, y) => x - y)[0];
     if (!bye || !later) throw new Error('no bye');
-    for (const week of [1, 2, 3]) league.season.elevations.push({ playerId: a.id, team: 'MIN', week });
+    for (const week of [1, 2, 3])
+      league.season.elevations.push({ playerId: a.id, team: 'MIN', week, cost: 0 });
     league.date = { ...league.date, week: later };
     expect(reason(league, { kind: 'elevate', team: 'MIN', playerId: a.id })).toBe(
       `${fullName(a)} has been elevated 3 times this season; sign him to the roster instead.`
