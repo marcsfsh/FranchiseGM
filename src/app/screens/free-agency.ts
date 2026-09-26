@@ -5,6 +5,7 @@
  */
 import { TEAM_COLORS, teamFullName } from '../../data/team-colors';
 import { capSheet } from '../../engine/cap/sheet';
+import { scrambleOpen, undraftedRookies } from '../../engine/draft/udfa';
 import { askingSalary } from '../../engine/contracts/acceptance';
 import { capHit } from '../../engine/contracts/cap';
 import { freeAgents } from '../../engine/league/transactions';
@@ -18,12 +19,14 @@ import { claimedContract } from '../../engine/roster/waivers';
 import { PLAYOFF_PHASES } from '../../engine/season/state';
 import { TUNING } from '../../engine/tuning';
 import { h, mount } from '../dom';
+import { visibleMatch } from '../focus';
 import { money } from '../format';
 import { href } from '../router';
 import type { AppState } from '../state';
 import { dollarField, openMoveDialog, placeOf, refocus, WAIT_FOR_GAMES } from '../ui/moves';
 import { GROUP_LABELS, playerLink, tierPlate } from '../ui/players';
 import { sortableTable, type TableColumn } from '../ui/sortable';
+import { udfaCard } from '../ui/udfa';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
 
@@ -294,8 +297,20 @@ export function freeAgencyScreen(): Screen {
               )
         );
 
+        // The UDFA scramble (D-49): undrafted rookies weighing offers have their own card while it's open.
+        const scramble = scrambleOpen(league);
+        const weighing = new Set(scramble ? undraftedRookies(league).map(p => p.id) : []);
+        const rookies = scramble
+          ? udfaCard(app, league, status, key => {
+              build();
+              if (key) (visibleMatch(view, key) ?? view.querySelector<HTMLElement>('h1'))?.focus();
+            })
+          : null;
+
         // Free agents, filtered by position group and sorted, a page at a time.
-        const all = freeAgents(league).sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
+        const all = freeAgents(league)
+          .filter(p => !weighing.has(p.id))
+          .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
         const filtered = group === 'all' ? all : all.filter(p => POSITION_GROUP[p.position] === group);
         const filter = h(
           'select',
@@ -496,7 +511,7 @@ export function freeAgencyScreen(): Screen {
         mount(
           content,
           pageHead('Free agency', teamFullName(abbr)),
-          h('div', { class: 'stack' }, summary, waiverCard, agents)
+          h('div', { class: 'stack' }, summary, rookies, waiverCard, agents)
         );
       };
       build();

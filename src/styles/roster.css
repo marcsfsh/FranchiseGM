@@ -150,6 +150,14 @@
 .roster-table .scout-actions-col {
   width: 10.5rem;
 }
+/* Free agency's undrafted rookies in the UDFA scramble (spec 10.4). */
+.roster-table .chance-col,
+.roster-table .offers-col {
+  width: 6rem;
+}
+.roster-table .udfa-action-col {
+  width: 10rem;
+}
 /* The draft room's board (spec 10.4). */
 .roster-table .need-col {
   width: 5rem;
