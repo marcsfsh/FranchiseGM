@@ -67,11 +67,12 @@ test('walks the offseason from the hub into the next season', async ({ page }, i
   // A preseason result opens its box score, kept apart from the season's games.
   const preseason = page.locator('main .inbox-item', { hasText: /Preseason, week 1: You (beat|lost to|tied) the / });
   await expect(preseason).toContainText('the game counts only in the preseason');
-  // In the middle of the view first: WebKit scrolls a link it focuses fully into view, so a click on a link
-  // half past the edge moves it before the button comes up, and the release lands beside it.
+  // From the keyboard: on this long inbox, WebKit's emulated pointer has pressed the link and released on its
+  // list item (runs 73 and 74), even with the link in the middle of the view, so nothing opened. The games
+  // test clicks inbox links with the pointer.
   const box = preseason.getByRole('link', { name: /^Box score: Preseason, week 1/ });
-  await box.evaluate(link => link.scrollIntoView({ block: 'center' }));
-  await box.click();
+  await box.focus();
+  await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/#\/game\/2027-P1-/);
   await expect(page.locator('main .nameplate-tag')).toHaveText('2027 · Preseason, week 1');
   await expect(page.locator('main table.line-score')).toBeVisible();
