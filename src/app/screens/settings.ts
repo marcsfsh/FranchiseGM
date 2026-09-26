@@ -1,5 +1,6 @@
 import { TEAM_ABBRS, teamFullName } from '../../data/team-colors';
 import type { AutoJobs } from '../../engine/league/types';
+import { leagueHealth } from '../../engine/roster/legality';
 import { LIVE_PAUSE_EVENTS, PAUSE_LABELS } from '../../engine/season/inbox';
 import { toast, whileBusy, type ToastAction } from '../feedback';
 import { savedAgo } from '../format';
@@ -254,6 +255,43 @@ function automationSettings(app: AppState): HTMLElement | null {
   );
 } // prettier-ignore
 
+/**
+ * The league's rules (post-M23 2.10.1; D-46): whether the cap and the roster sizes bind the user's moves
+ * and advances, and League health, every team that breaks them now.
+ */
+function rulesSettings(app: AppState): HTMLElement | null {
+  const league = app.league;
+  if (!league) return null;
+  const status = h('p', { class: 'sr-only', role: 'status' });
+  const body = h('div', { class: 'stack' });
+  const id = 'enforceRules';
+  const draw = () => {
+    const l = app.league ?? league;
+    const on = l.settings.commissioner.enforceRules;
+    const button = h('button', { class: 'switch', type: 'button', role: 'switch', id, 'aria-checked': String(on), 'aria-labelledby': `${id}-label`, 'aria-describedby': `${id}-hint` });
+    button.addEventListener('click', () => {
+      const next = !(app.league ?? league).settings.commissioner.enforceRules;
+      app.edit(l => {
+        l.settings.commissioner.enforceRules = next;
+      }, ['commissioner', 'enforceRules', next]);
+      draw();
+      body.querySelector<HTMLElement>(`#${id}`)?.focus();
+      status.textContent = next ? 'Rule enforcement is on: your moves and advances follow the salary cap and the roster sizes.' : 'Rule enforcement is off: your moves and advances can break the salary cap and the roster sizes.';
+    });
+    const health = leagueHealth(l);
+    mount(
+      body,
+      h('div', null, h('div', { class: 'switch-row' }, h('span', { class: 'field-label', id: `${id}-label` }, 'Rule enforcement'), button), h('p', { class: 'muted', id: `${id}-hint` }, on ? 'Your moves and advances follow the salary cap and the roster sizes, as every other team does. Turn it off to break them; the other teams still follow them.' : 'Your moves and advances can break the salary cap and the roster sizes. The other teams still follow them.')),
+      h('h3', null, 'League health'),
+      health.length
+        ? h('ul', { class: 'preview-list', 'aria-label': 'Teams breaking league rules' }, ...health.map(t => h('li', null, h('strong', null, teamFullName(t.team)), h('span', null, `${t.problems.map(p => p.fact).join('; ')}.`))))
+        : h('p', { class: 'muted' }, 'Every team follows the league rules.')
+    );
+  };
+  draw();
+  return card('League rules', body, status);
+} // prettier-ignore
+
 /** The game sim and stat sliders (spec 22.3). */
 function sliderSettings(app: AppState): HTMLElement | null {
   if (!app.league) return null;
@@ -358,6 +396,7 @@ export function settingsScreen(): Screen {
         league?.node ?? null,
         pauseSettings(ctx.app),
         automationSettings(ctx.app),
+        rulesSettings(ctx.app),
         sliderSettings(ctx.app),
         developmentSettings(ctx.app),
         draftSettings(ctx.app),

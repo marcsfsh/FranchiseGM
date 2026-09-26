@@ -27,6 +27,7 @@ import { dateLine } from '../shell';
 import type { AdvanceTarget, AppState } from '../state';
 import { gameCard, weekLabel } from '../ui/games';
 import { inboxList, inboxOrder } from '../ui/inbox';
+import { legalityCard } from '../ui/legality';
 import { attributeRow, devTag, playerLink, stat, tierPlate } from '../ui/players';
 import { pageHead } from './common';
 import type { Screen } from './types';
@@ -466,7 +467,9 @@ export function homeScreen(): Screen {
         // Links (a box score, an arrow) come back by their address.
         const other = key ? null : focusKeyOf(cards);
         const lead = offseasonStep(l.date) > 0 ? offseasonCard(app, l) : nextGameCard(app, l);
-        cards.replaceChildren(...[lead, rosterCard(l), inboxCard(app, l), newsCard(l), ...standingsCards(l), capCard(l), featuredCard(l)].filter(c => c !== null));
+        // What stops the next advance comes first, with its fixes (D-46).
+        const blocked = legalityCard(app, l, draw);
+        cards.replaceChildren(...[blocked, lead, rosterCard(l), inboxCard(app, l), newsCard(l), ...standingsCards(l), capCard(l), featuredCard(l)].filter(c => c !== null));
         // Keep focus on the control the user was using: the advance buttons hand it to Stop while a run goes
         // and take it back when it ends; a disabled button hands it to the play button.
         if (key) {

@@ -29,8 +29,21 @@ test('walks the offseason from the hub into the next season', async ({ page }, i
   await page.getByRole('button', { name: 'Sim to the 2027 season' }).click();
   await expect(status).toHaveText('Now: Re-sign window. Stopped for: The re-sign window is open.', { timeout: 60_000 });
   await expect(card.getByRole('link', { name: 'Contracts' })).toBeVisible();
-  await page.getByRole('button', { name: 'Sim to the 2027 season' }).click();
-  await expect(status).toHaveText('The 2027 season is here: week 1.', { timeout: 240_000 });
+  // Where the user's roster breaks a rule, the league stops (D-46): at the cutdown, a roster short of 53.
+  // The staff's fix is a tap away on the hub.
+  const stop = page.locator('main section.card', { hasText: 'Before you can advance' });
+  const seasonHere = page.locator('main .hub-date', { hasText: '2027 season · Week 1' });
+  for (let stops = 0; stops < 4 && !(await seasonHere.isVisible()); stops++) {
+    if (await stop.isVisible()) {
+      await stop.getByRole('button', { name: 'Let your staff fix it' }).click();
+      await page.getByRole('dialog', { name: 'Let your staff fix it' }).getByRole('button', { name: /^Make \d+ moves?$/ }).click();
+      await expect(stop).toBeHidden();
+    }
+    // At the cutdown, the last step, the button starts the season.
+    await page.getByRole('button', { name: /^(Sim to|Start) the 2027 season$/ }).click();
+    await expect(seasonHere.or(stop).first()).toBeVisible({ timeout: 240_000 });
+  }
+  await expect(status).toHaveText('The 2027 season is here: week 1.');
   await expect(page.locator('main .hub-date')).toHaveText('2027 season · Week 1');
   await expect(page.locator('main section.card', { hasText: 'Next game and game plan' })).toContainText('Week 1');
   await expect(page.getByRole('button', { name: 'Play week 1' })).toBeVisible();

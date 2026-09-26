@@ -12,6 +12,13 @@ test('plays a whole season week by week on a phone, reading results and standing
   for (;;) {
     const play = page.getByRole('button', { name: /^Play / });
     if ((await play.count()) === 0) break;
+    // A roster that can't take the field waits for a fix, the staff's a tap away (D-46).
+    const fix = page.getByRole('button', { name: 'Let your staff fix it' });
+    if (await fix.count()) {
+      await fix.click();
+      await page.getByRole('dialog', { name: 'Let your staff fix it' }).getByRole('button', { name: /^Make \d+ moves?$/ }).click();
+      await expect(fix).toHaveCount(0);
+    }
     const before = await date.textContent();
     await play.click();
     await expect(date).not.toHaveText(before ?? '', { timeout: 120_000 });

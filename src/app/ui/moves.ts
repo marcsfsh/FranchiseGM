@@ -25,7 +25,7 @@ export function applyMove(app: AppState, move: Move): Outcome<MovePreview> {
   app.edit(
     l => {
       const rng = stream(l.random.baseSeed, 'userMoves', l.season.season, l.season.transactions.length);
-      result = makeMove(l, move, rng);
+      result = makeMove(l, move, rng, { enforce: l.settings.commissioner.enforceRules });
     },
     { move: move.kind, player: move.playerId }
   );
@@ -34,7 +34,9 @@ export function applyMove(app: AppState, move: Move): Outcome<MovePreview> {
 
 /** A move's preview, or the reason it can't be made; moves wait while a week is being played. */
 export function preview(app: AppState, league: League, move: Move): Outcome<MovePreview> {
-  return app.advancing ? { ok: false, reason: WAIT_FOR_GAMES } : previewMove(league, move);
+  return app.advancing
+    ? { ok: false, reason: WAIT_FOR_GAMES }
+    : previewMove(league, move, { enforce: league.settings.commissioner.enforceRules });
 }
 
 /** A space change in exact dollars, colored by meaning: more space is good (style guide 9). */
