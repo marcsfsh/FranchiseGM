@@ -15,7 +15,11 @@ test('signs, releases, and reads the cap without ever reaching an illegal roster
   await expect(page.locator('main h1')).toHaveText('Free agency');
   await expect(page.locator('main')).toContainText('53 of 53 on the active roster');
   // A table where there's room, a list on phones.
-  const agents = page.locator('.fa-list > li, table.fa-table tbody tr').filter({ visible: true });
+  // Free agents the user can make an offer to (not a player the user just released, for one).
+  const agents = page
+    .locator('.fa-list > li, table.fa-table tbody tr')
+    .filter({ visible: true })
+    .filter({ has: page.getByRole('button', { name: /^Make an offer to / }) });
   await expect(agents.first()).toBeVisible();
   const firstName = (await agents.first().locator('a').textContent()) ?? '';
   await page.getByRole('button', { name: `Make an offer to ${firstName}` }).click();
@@ -165,6 +169,14 @@ test('signs, releases, and reads the cap without ever reaching an illegal roster
       await expect(page.locator('main h1')).toHaveText(title);
       await expectNoHorizontalOverflow(page);
     }
+    // The signing's toasts can still cover much of this small screen, and they wait while the pointer is
+    // over them: dismiss them first, as the user would.
+    await page.evaluate(() =>
+      document
+        .querySelectorAll<HTMLButtonElement>('.toast-region .toast button[aria-label^="Dismiss"]')
+        .forEach(b => b.click())
+    );
+    await expect(page.locator('.toast-region .toast')).toHaveCount(0);
     await page.locator('.roster-list .list-row .btn-row button').first().click();
     await expect(moves).toBeVisible();
     const body = moves.locator('.dialog-body');
