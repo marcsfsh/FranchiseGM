@@ -1,7 +1,9 @@
 # Status
 - Milestone: M12 (M11 done 2026-09-26, final commit ca49ad4, CI green in run 75)
-- Current slice: M12 slice 1, personality, morale, and the locker room (plan in docs/milestones/m12.md)
-- Done this milestone: nothing yet
+- Current slice: M12 slice 4, negotiation on the Free agency and Contracts screens (plan in docs/milestones/m12.md)
+- Done this milestone: slice 1, morale, the locker room, mentors, and chemistry (D-51, save format 24); slice 2,
+  the player decision model (D-52, format 25); slice 3, free agency weeks with bidding, the UDFA scramble on
+  the same model (D-53, format 26)
 - CI: green (run 75). The offseason walk-through opens the inbox's preseason box score from the keyboard,
   since WebKit pressed the link and released on its list item in runs 67 to 74.
 - Carried into M12, before Checkpoint B: the value-based re-sign choice (D-38), tag pricing from five years
