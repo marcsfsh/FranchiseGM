@@ -8,6 +8,7 @@
  */
 import { TEAM_COLORS, type TeamAbbr } from '../../data/team-colors';
 import { capSheet } from '../cap/sheet';
+import { recordTransaction } from '../league/transactions';
 import type { League } from '../league/types';
 import { clampMorale, isLeader, roomOf } from '../locker/room';
 import { calendarDay, leagueYear } from '../model/calendar';
@@ -73,6 +74,7 @@ function demand(league: League, player: Player, kind: 'holdout' | 'trade'): void
   player.demand = { kind, since: { ...league.date }, fines: 0 };
   if (kind !== 'holdout' || !player.team) return;
   player.status = 'holdout';
+  recordTransaction(league, player.team, 'heldOut', player.id, 'holding out for a new deal');
   if (isLeader(player))
     for (const p of roomOf(league, player.team)) p.morale = clampMorale(p.morale - H.leaderRoom);
 }
@@ -139,6 +141,7 @@ export function stepDemands(league: League, step: 'camp' | 'preseason' | 'game' 
       const chance = H.report * (1.5 - p.personality.greed / 100) + (league.settings.drama.fines ? H.fined : 0);
       if (rng.float() < chance) {
         endDemand(p, 'reported');
+        recordTransaction(league, team, 'reported', p.id, 'ending his holdout without a new deal');
         events.push({ player: p, team, kind: 'reported', cost: d.fines });
       }
     } else if (d?.kind === 'trade') {

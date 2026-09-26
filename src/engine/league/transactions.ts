@@ -27,7 +27,10 @@ export type TransactionKind =
   | 'tagged'
   | 'tendered'
   | 'optionExercised'
-  | 'optionDeclined';
+  | 'optionDeclined'
+  /** A holdout's leaving the active roster for the list of players who didn't report, and his return (spec 11.9). */
+  | 'heldOut'
+  | 'reported';
 
 export interface Transaction {
   season: number;
