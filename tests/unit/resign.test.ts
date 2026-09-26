@@ -16,6 +16,7 @@ import {
 } from '../../src/engine/contracts/resign';
 import { askingFrom, contextFor, demand } from '../../src/engine/contracts/decision';
 import { emptyYear, type Contract, type ContractType } from '../../src/engine/contracts/types';
+import { contractSummary } from '../../src/engine/contracts/view';
 import { openLeagueYear } from '../../src/engine/league/league-year';
 import type { League } from '../../src/engine/league/types';
 import type { GameDate, Phase } from '../../src/engine/model/calendar';
@@ -271,5 +272,11 @@ describe('AI decisions in the window', () => {
     );
     expect(Object.values(league.players).some(p => p.team === user && p.nextContractId)).toBe(false);
     expect(capSheet(league, 'KC', 2027).space).toBeGreaterThanOrEqual(0);
-  });
+    // Its extensions are built as its deals are (D-60) and settled by the same negotiation as any (D-66):
+    // the bigger ones carry a signing bonus and guaranteed salary.
+    const extensions = kept.map(p => league.contracts[p.nextContractId ?? '']).filter((c): c is Contract => c?.type === 'extension');
+    const big = extensions.filter(c => contractSummary(c, league.date).apy >= 8_000_000);
+    expect(big.length).toBeGreaterThan(0);
+    expect(big.every(c => c.signingBonus > 0 && (c.years[0]?.guaranteedBase ?? 0) > 0)).toBe(true);
+  }); // prettier-ignore
 });

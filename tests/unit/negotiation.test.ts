@@ -4,6 +4,7 @@ import { capHit } from '../../src/engine/contracts/cap';
 import {
   offerAav,
   offerContract,
+  offerTermsWords,
   termsProblem,
   typicalOffer,
   type Offer
@@ -57,6 +58,19 @@ function star(league: League, traits: Partial<Player['personality']> = {}): Play
 const plain = (years: number, salary: number): Offer => ({ years, salary, signingBonus: 0 });
 
 describe('the terms of an offer (spec 11.6)', () => {
+  it('reads a settled deal back in words, every term the user agrees to (D-66)', () => {
+    const deal: Offer = {
+      years: 3,
+      salary: 6_000_000,
+      signingBonus: 6_000_000,
+      guaranteedYears: 1,
+      voidYears: 1
+    };
+    expect(offerTermsWords(deal)).toBe("$8,000,000 a year for 3 years, with a $6,000,000 signing bonus, the first year's salary guaranteed, and 1 void year"); // prettier-ignore
+    expect(offerTermsWords({ ...deal, guaranteedYears: 2, voidYears: 0 })).toBe("$8,000,000 a year for 3 years, with a $6,000,000 signing bonus and the first 2 years' salary guaranteed"); // prettier-ignore
+    expect(offerTermsWords(plain(1, 1_000_000))).toBe('$1,000,000 a year for 1 year');
+  });
+
   it('checks guarantees, incentives, and void years', () => {
     const rules = situationLeague.rules;
     const ok = { years: 2, salary: 2_000_000, signingBonus: 3_000_000, guaranteedYears: 1, perGameBonus: 170_000, voidYears: 2 };

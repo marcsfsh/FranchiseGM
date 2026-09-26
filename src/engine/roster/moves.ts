@@ -12,6 +12,7 @@ import { offerProblem } from '../contracts/acceptance';
 import {
   extensionContract,
   offerContract,
+  offerTermsWords,
   practiceSquadSigning,
   rightsContract,
   termsProblem,
@@ -262,7 +263,8 @@ function plan(league: League, move: Move, enforce: boolean, known?: TeamNow): Ou
       const after = spaceWith({ add: [{ contract: deal, status: 'active' }] });
       const over = capRoom(capHit(deal, year, rules), after);
       if (over) return refuse(over);
-      const signs = `${name} signs for ${plural(move.offer.years, 'year')}.`;
+      // A deal the GM settles shows every term the user agrees to (D-66).
+      const signs = `${name} signs for ${offerTermsWords(move.offer)}.`;
       return ok({
         preview: preview({
           spaceAfter: after,
@@ -551,7 +553,7 @@ function resignPlan(
       const deal = extensionContract(rules, base, league.date, move.offer, creditedNextYear(league, player), likely);
       const extension = `a ${move.offer.years}-year extension from ${year + 1}`;
       // A new deal ends a holdout or a trade request (spec 11.9).
-      const planned = next(deal, [move.talks ? `He answers when you send the offer. If he takes it, he signs ${extension}.` : `${name} signs ${extension}.`], 'extended', () => endDemand(player, 'deal'));
+      const planned = next(deal, [move.talks ? `He answers when you send the offer. If he takes it, he signs ${extension}.` : `${name} signs ${extension}: ${offerTermsWords(move.offer)}.`], 'extended', () => endDemand(player, 'deal'));
       return planned.ok ? ok({ ...planned.value, taken: [`${name} takes your offer and signs ${extension}.`] }) : planned;
     } // prettier-ignore
 

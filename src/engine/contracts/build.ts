@@ -6,7 +6,7 @@ import type { TeamAbbr } from '../../data/team-colors';
 import type { Rng } from '../rng';
 import { leagueYear, PHASES, type GameDate, type Phase } from '../model/calendar';
 import { minimumSalary, type RuleSet } from '../rules/ruleset';
-import { dollars, plural } from '../text';
+import { dollars, joinList, plural } from '../text';
 import { TUNING } from '../tuning';
 import { incentiveCondition, type OfferIncentive } from './incentives';
 import { rookieSigningBonus } from './market';
@@ -177,6 +177,25 @@ export interface Offer {
 /** An offer's average a year, as contracts are reported: the salary, the bonus spread over the years, and the per-game bonus. */
 export const offerAav = (offer: Offer): number =>
   offer.salary + Math.round(offer.signingBonus / Math.max(1, offer.years)) + (offer.perGameBonus ?? 0);
+
+/**
+ * An offer's terms in words, for a deal agreed without setting them one by one (spec 11.6): "$8,000,000 a
+ * year for 3 years, with a $6,000,000 signing bonus, the first year's salary guaranteed, and 1 void year".
+ */
+export function offerTermsWords(offer: Offer): string {
+  const guaranteed = offer.guaranteedYears ?? 0;
+  const parts = [
+    offer.signingBonus ? `a ${dollars(offer.signingBonus)} signing bonus` : null,
+    guaranteed ? `the first ${guaranteed === 1 ? "year's" : `${guaranteed} years'`} salary guaranteed` : null,
+    offer.perGameBonus ? `a ${dollars(offer.perGameBonus)} per-game roster bonus` : null,
+    offer.incentive
+      ? `${dollars(offer.incentive.amount)} a season for ${incentiveCondition(offer.incentive)}`
+      : null,
+    offer.voidYears ? plural(offer.voidYears, 'void year') : null
+  ].filter((p): p is string => p !== null);
+  const head = `${dollars(offerAav(offer))} a year for ${plural(offer.years, 'year')}`;
+  return parts.length ? `${head}, with ${joinList(parts)}` : head;
+}
 
 /**
  * An offer of `aav` a year for `years`, built as NFL deals are (spec 11.3; D-60): a signing bonus of the
