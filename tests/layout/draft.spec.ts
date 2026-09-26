@@ -17,12 +17,14 @@ const prospects = (page: Page) =>
 /** The latest toast, where a pick's result is said. */
 const said = (page: Page) => page.locator('#toastRegion .toast').last();
 
-/** Large text on a narrow phone: nothing runs off the page. */
+/** Large text on a narrow phone: nothing runs off the page. The page returns to its size after. */
 async function largeText(page: Page): Promise<void> {
+  const size = page.viewportSize();
   await page.evaluate(() => (document.documentElement.style.fontSize = '200%'));
   await page.setViewportSize({ width: 320, height: 640 });
   await expectNoHorizontalOverflow(page);
   await page.evaluate(() => (document.documentElement.style.fontSize = ''));
+  if (size) await page.setViewportSize(size);
 }
 
 // Spec 10.4 (D-48): the draft waits for the user's pick, made by hand from the board or by the staff, and the
@@ -116,8 +118,10 @@ test('makes picks in the draft room, then shows the class and the grades', async
   await expectTouchTargets(page, 'main', phone ? 48 : 44);
   if (phone) await largeText(page);
 
-  // Now the league moves on.
+  // Now the league moves on, once the picks' toasts have gone from over the hub's buttons.
   await goTo(page, '#/', 'Team hub');
+  await page.mouse.move(0, 0);
+  await expect(page.locator('#toastRegion .toast')).toHaveCount(0, { timeout: 15_000 });
   await expect(hub).toContainText('The draft is over');
   await hub.getByRole('button', { name: 'Advance to Undrafted free agents' }).click();
   await expect(hub.locator('.hero-title')).toHaveText('Undrafted free agents', { timeout: 60_000 });

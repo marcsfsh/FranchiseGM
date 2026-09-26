@@ -61,18 +61,24 @@ test('offers undrafted rookies a bonus, and hears who signed as the step ends', 
 
   // The other teams' offers come in with the undrafted free agents step; the rookies choose as it ends.
   await goTo(page, '#/', 'Team hub');
+  await page.mouse.move(0, 0);
+  await expect(page.locator('#toastRegion .toast')).toHaveCount(0, { timeout: 15_000 });
   const hub = page.locator('main section.card', { hasText: 'The offseason' });
   await hub.getByRole('button', { name: 'Advance to Undrafted free agents' }).click();
   await expect(hub.locator('.hero-title')).toHaveText('Undrafted free agents', { timeout: 60_000 });
   await goTo(page, '#/free-agency', 'Free agency');
   await expect(rookies(page).filter({ hasText: /\d+ teams?|Other offers: \d+ teams?/ }).first()).toBeVisible();
   if (phone) {
+    const size = page.viewportSize();
     await page.evaluate(() => (document.documentElement.style.fontSize = '200%'));
     await page.setViewportSize({ width: 320, height: 640 });
     await expectNoHorizontalOverflow(page);
     await page.evaluate(() => (document.documentElement.style.fontSize = ''));
+    if (size) await page.setViewportSize(size);
   }
   await goTo(page, '#/', 'Team hub');
+  await page.mouse.move(0, 0);
+  await expect(page.locator('#toastRegion .toast')).toHaveCount(0, { timeout: 15_000 });
   await hub.getByRole('button', { name: 'Advance to OTAs and minicamp' }).click();
   await expect(hub.locator('.hero-title')).toHaveText('OTAs and minicamp', { timeout: 60_000 });
   await goTo(page, '#/inbox', 'Inbox');
