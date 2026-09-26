@@ -1,15 +1,16 @@
 /**
  * Contracts (spec 11.4, 11.5, 19.4): the user's expiring deals, with what each player asks to stay and what a
  * tag or tender would cost, the fifth-year options to decide, and the decisions made this league year, each a
- * sortable table (a list on phones). Extensions are open until free agency; tags, tenders, and options are
- * for the re-sign window. Each decision previews its cap effect in a dialog before the user confirms it.
+ * sortable table (a list on phones). Extensions are open until free agency, negotiated in talks or settled by
+ * the user's GM (spec 11.6); tags, tenders, and options are for the re-sign window. Each decision previews
+ * its cap effect in a dialog before the user confirms it.
  */
 import { teamFullName, type TeamAbbr } from '../../data/team-colors';
 import { capHit } from '../../engine/contracts/cap';
+import { askOf, counterWords, settledSalary, talks, termFor } from '../../engine/contracts/negotiation';
 import {
   creditedNextYear,
   currentDeal,
-  extensionAsk,
   freeAgentKind,
   optionSalary,
   TAG_LABELS,
@@ -33,7 +34,8 @@ import { h, mount } from '../dom';
 import { money } from '../format';
 import { href } from '../router';
 import type { AppState } from '../state';
-import { dollarField, openMoveDialog, placeOf, refocus, type MoveChoice } from '../ui/moves';
+import { openMoveDialog, placeOf, refocus, type MoveChoice } from '../ui/moves';
+import { offerTerms } from '../ui/offer-terms';
 import { playerLink, tierPlate } from '../ui/players';
 import { sortableTable, type TableColumn } from '../ui/sortable';
 import { card, pageHead } from './common';
@@ -93,37 +95,59 @@ function decisionsMade(league: League, abbr: TeamAbbr): Decided[] {
   return made.sort((a, b) => b.player.ovr - a.player.ovr || (a.player.id < b.player.id ? -1 : 1));
 } // prettier-ignore
 
-/** The extension offer's inputs, like a free agent offer: length, salary, and signing bonus. */
-function extensionChoice(league: League, player: Player): MoveChoice {
-  const ask = extensionAsk(league, player);
+/**
+ * The extension choices (spec 11.6): the user's own offer, with every term, which he answers when it's sent
+ * with a yes, a no, or a counter; or the extension the user's GM settles.
+ */
+function extensionChoices(app: AppState, league: League, player: Player): MoveChoice[] {
+  const team = league.meta.start.userTeam;
+  const name = fullName(player);
   const minimum = minimumSalary(league.rules, creditedNextYear(league, player));
-  const years = h('select', { class: 'select', id: 'extend-years' }, ...Array.from({ length: TUNING.contracts.acceptance.maxYears }, (_, i) => h('option', { value: i + 1 }, `${i + 1} ${i === 0 ? 'year' : 'years'}`)));
-  years.value = String(Math.min(3, TUNING.contracts.acceptance.maxYears));
-  const salary = dollarField('extend-salary', 'Salary each year, dollars', `He asks for ${money(ask, true)} a year to stay; his minimum is ${money(minimum, true)}.`, ask);
-  salary.input.min = String(minimum);
-  const bonus = dollarField('extend-bonus', 'Signing bonus, dollars', 'Paid now and spread over the extension on the cap, up to 5 years.', 0);
-  const totals = h('p', { class: 'hint' });
-  const inputs = h('div', { class: 'stack' }, h('div', { class: 'field' }, h('label', { for: 'extend-years' }, 'Extension length'), years), salary.field, bonus.field, totals);
-  return {
-    label: 'Offer an extension',
-    confirm: `Extend ${fullName(player)}`,
-    inputs,
-    incomplete: 'Fix the highlighted details to see what this extension does.',
-    move: () => {
-      const s = salary.input.valueAsNumber;
-      const b = bonus.input.valueAsNumber;
-      const n = Number(years.value);
-      salary.setError(!Number.isFinite(s) ? 'Enter a salary in dollars.' : s < minimum ? `His minimum salary is ${money(minimum, true)} a year.` : null);
-      bonus.setError(!Number.isFinite(b) ? 'Enter a signing bonus in dollars, or 0.' : b < 0 ? "The signing bonus can't be negative." : null);
-      if (!Number.isFinite(s) || s < minimum || !Number.isFinite(b) || b < 0) {
-        totals.textContent = '';
-        return null;
-      }
-      const total = Math.round(s) * n + Math.round(b);
-      totals.textContent = `Total: ${money(total, true)} over ${plural(n, 'year')}. AAV: ${money(Math.round(total / n), true)}.`;
-      return { kind: 'extend', team: league.meta.start.userTeam, playerId: player.id, offer: { years: n, salary: Math.round(s), signingBonus: Math.round(b) } };
-    }
+  const start = Math.min(3, TUNING.contracts.acceptance.maxYears);
+  const ask = askOf(league, player, team, start, true);
+  const terms = offerTerms({
+    id: 'extend',
+    lengthLabel: 'Extension length',
+    minimum,
+    salaryHint: `His minimum then is ${money(minimum, true)}.`,
+    prorationMax: league.rules.pay.prorationYearsMax,
+    finalHint: 'He answers yes or no, with no counter, and a no ends your talks until you advance.',
+    start: talks(league, team, player.id).counter ?? { years: start, salary: ask, signingBonus: 0 }
+  });
+  const state = h('p', null);
+  const showTalks = () => {
+    const now = talks(app.league ?? league, team, player.id);
+    state.textContent = now.closed
+      ? "He's broken off talks with you until you advance."
+      : now.counter
+        ? `He's turned down ${plural(now.rounds, 'offer')} from you. His last counter: ${counterWords(now.counter)}, on the rest of your terms.`
+        : `His agent asks for ${money(ask, true)} a year over ${plural(start, 'year')} to stay, and comes down as you talk.`;
   };
+  showTalks();
+  const years = termFor(ageOn(player.birthDate, calendarDay(league.date)));
+  const settled = settledSalary(league, player, team, years, true);
+  return [
+    {
+      label: 'Offer an extension',
+      confirm: `Extend ${name}`,
+      inputs: h('div', { class: 'stack' }, state, terms.element),
+      incomplete: 'Fix the highlighted details to see what this extension does.',
+      move: () => {
+        const offer = terms.read();
+        return offer ? { kind: 'extend', team, playerId: player.id, offer, talks: true } : null;
+      },
+      refused: () => {
+        const counter = talks(app.league ?? league, team, player.id).counter;
+        if (counter) terms.set(counter);
+        showTalks();
+      }
+    },
+    {
+      label: `Have your GM negotiate: ${money(settled, true)} a year for ${plural(years, 'year')}`,
+      confirm: `Extend ${name}`,
+      move: () => ({ kind: 'extend', team, playerId: player.id, offer: { years, salary: settled, signingBonus: 0 } })
+    }
+  ];
 } // prettier-ignore
 
 function openExpiring(
@@ -138,7 +162,7 @@ function openExpiring(
   const kind = freeAgentKind(league, player);
   const window = league.date.phase === 'resign';
   const next = leagueYear(league.date) + 1;
-  const choices: MoveChoice[] = [extensionChoice(league, player)];
+  const choices: MoveChoice[] = extensionChoices(app, league, player);
   if (window) {
     for (const tag of ['exclusive', 'nonExclusive', 'transition'] as TagKind[])
       choices.push({ label: `${TAG_LABELS[tag]}: ${money(tagSalary(league, player, tag), true)} for ${next}`, confirm: `Tag ${name}`, move: () => ({ kind: 'tag', team, playerId: player.id, tag }) });
@@ -229,7 +253,7 @@ export function contractsScreen(): Screen {
           const c = currentDeal(league, p);
           return c ? capHit(c, year, league.rules) : 0;
         };
-        const asks = new Map(expiring.map(p => [p.id, extensionAsk(league, p)]));
+        const asks = new Map(expiring.map(p => [p.id, askOf(league, p, abbr, 1, true)]));
         const optionPay = new Map(options.map(p => [p.id, optionSalary(league, p).salary]));
 
         // Each call makes a fresh button: the table and the phone list both show one.

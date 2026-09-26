@@ -314,7 +314,8 @@ fieldset.field > legend {
   font-variant-numeric: tabular-nums;
 }
 /* A list item keeps the native disclosure triangle; the padding makes a full-size target. */
-.slider-group summary {
+.slider-group summary,
+.offer-more summary {
   display: list-item;
   padding: var(--s3) 0;
   font-weight: 800;

@@ -3,7 +3,8 @@
  * releases (with the June 1 option, through waivers when the rules say so), injured reserve and returns
  * from the reserve lists, practice squad promotions and elevations, waiver claims, and restructures. Every
  * move is checked first and previews its effect on the cap and the roster, or says why it can't be made;
- * the user's screens and the AI make their moves through the same functions.
+ * the user's screens and the AI make their moves through the same functions. An offer in talks (spec 11.6)
+ * hears the player's answer only when it's made.
  */
 import type { TeamAbbr } from '../../data/team-colors';
 import { capFacts, capSheet, elevationCost, type SheetChange } from '../cap/sheet';
@@ -13,10 +14,12 @@ import {
   offerContract,
   practiceSquadSigning,
   rightsContract,
+  termsProblem,
   type Offer
 } from '../contracts/build';
 import { afterJune1, capHit, payWeek, releaseImpact } from '../contracts/cap';
 import { endContract, restructure, type Outcome } from '../contracts/moves';
+import { hear, replyWords, talks } from '../contracts/negotiation';
 import {
   creditedNextYear,
   endPending,
@@ -57,9 +60,13 @@ import { claimedContract, claimProblem, placeOnWaivers, subjectToWaivers } from 
 
 export type { Offer };
 
-/** A roster move; `reason` says why for the transaction log (post-M42 section 1.1). */
+/**
+ * A roster move; `reason` says why for the transaction log (post-M42 section 1.1). An offer with `talks` is
+ * the user's in negotiation (spec 11.6): its preview leaves out the player's answer, which he gives only
+ * when the move is made; other offers are judged at the market (spec 11.7).
+ */
 export type Move = (
-  | { kind: 'sign'; team: TeamAbbr; playerId: string; offer: Offer }
+  | { kind: 'sign'; team: TeamAbbr; playerId: string; offer: Offer; talks?: boolean }
   | { kind: 'signPracticeSquad'; team: TeamAbbr; playerId: string }
   | { kind: 'release'; team: TeamAbbr; playerId: string; designated?: boolean }
   | { kind: 'injuredReserve'; team: TeamAbbr; playerId: string }
@@ -68,7 +75,7 @@ export type Move = (
   | { kind: 'elevate'; team: TeamAbbr; playerId: string }
   | { kind: 'claim'; team: TeamAbbr; playerId: string }
   | { kind: 'restructure'; team: TeamAbbr; playerId: string; amount: number; voidYears?: number }
-  | { kind: 'extend'; team: TeamAbbr; playerId: string; offer: Offer }
+  | { kind: 'extend'; team: TeamAbbr; playerId: string; offer: Offer; talks?: boolean }
   | { kind: 'tag'; team: TeamAbbr; playerId: string; tag: TagKind }
   | { kind: 'tender'; team: TeamAbbr; playerId: string; level: TenderLevel }
   | { kind: 'option'; team: TeamAbbr; playerId: string; exercise: boolean }
@@ -94,6 +101,8 @@ export interface MovePreview {
 interface Plan {
   preview: MovePreview;
   apply: (rng: Rng) => void;
+  /** For an offer in talks: what happens once he takes it, in sentences. */
+  taken?: string[];
 }
 
 export interface MoveOptions {
@@ -217,7 +226,8 @@ function plan(league: League, move: Move, enforce: boolean): Outcome<Plan> {
       if (player.status !== 'freeAgent' || player.team) return refuse(`${name} isn't a free agent.`);
       if (scrambleOpen(league) && undraftedRookies(league).includes(player))
         return refuse(`${name} is weighing offers from teams until the undrafted free agents step ends. Offer him a signing bonus in Undrafted rookies instead.`); // prettier-ignore
-      const declined = offerProblem(league, player, move.offer, team);
+      if (move.talks && talks(league, team, player.id).closed) return refuse(replyWords({ kind: 'closed' }));
+      const declined = move.talks ? termsProblem(rules, move.offer, minimumSalary(rules, player.experience)) : offerProblem(league, player, move.offer, team);
       if (declined) return refuse(declined);
       const full = roomOnRoster();
       if (full) return refuse(full);
@@ -225,12 +235,14 @@ function plan(league: League, move: Move, enforce: boolean): Outcome<Plan> {
       const after = spaceWith({ add: [{ contract: deal, status: 'active' }] });
       const over = capRoom(capHit(deal, year, rules), after);
       if (over) return refuse(over);
+      const signs = `${name} signs for ${plural(move.offer.years, 'year')}.`;
       return ok({
         preview: preview({
           spaceAfter: after,
           active: counts.active + 1,
-          notes: [`${name} signs for ${plural(move.offer.years, 'year')}.`]
+          notes: [move.talks ? `He answers when you send the offer. If he takes it, he signs for ${plural(move.offer.years, 'year')}.` : signs]
         }),
+        taken: [`${name} takes your offer and signs for ${plural(move.offer.years, 'year')}.`],
         apply: rng => {
           join(league, player, team, { ...deal, id: newId(league, 'c') }, 'active', rng);
           log(league, team, 'signed', player, move.reason);
@@ -502,10 +514,13 @@ function resignPlan(
   switch (move.kind) {
     case 'extend': {
       if (!expiring(league, player)) return refuse(`${name}'s contract doesn't run out this league year.`);
-      const declined = extensionProblem(league, player, move.offer);
+      if (move.talks && talks(league, team, player.id).closed) return refuse(replyWords({ kind: 'closed' }));
+      const declined = move.talks ? termsProblem(rules, move.offer, minimumSalary(rules, creditedNextYear(league, player))) : extensionProblem(league, player, move.offer);
       if (declined) return refuse(declined);
       const deal = extensionContract(rules, base, league.date, move.offer, creditedNextYear(league, player));
-      return next(deal, [`${name} signs a ${move.offer.years}-year extension from ${year + 1}.`], 'extended');
+      const extension = `a ${move.offer.years}-year extension from ${year + 1}`;
+      const planned = next(deal, [move.talks ? `He answers when you send the offer. If he takes it, he signs ${extension}.` : `${name} signs ${extension}.`], 'extended');
+      return planned.ok ? ok({ ...planned.value, taken: [`${name} takes your offer and signs ${extension}.`] }) : planned;
     } // prettier-ignore
 
     case 'tag': {
@@ -561,7 +576,10 @@ export function previewMove(league: League, move: Move, options: MoveOptions = {
   return p.ok ? ok(p.value.preview) : p;
 }
 
-/** Makes a move after checking it, returning its preview, or why it can't be made. */
+/**
+ * Makes a move after checking it, returning its preview, or why it can't be made. An offer in talks is made
+ * only if the player takes it: otherwise his answer, a counter or a no, is the reason (spec 11.6).
+ */
 export function makeMove(
   league: League,
   move: Move,
@@ -570,6 +588,13 @@ export function makeMove(
 ): Outcome<MovePreview> {
   const p = plan(league, move, options.enforce ?? true);
   if (!p.ok) return p;
+  const player = league.players[move.playerId];
+  if ((move.kind === 'sign' || move.kind === 'extend') && move.talks && player) {
+    const reply = hear(league, move.team, player, move.offer, move.kind === 'extend');
+    if (reply.kind !== 'accept') return refuse(replyWords(reply));
+    p.value.apply(rng);
+    return ok({ ...p.value.preview, notes: p.value.taken ?? p.value.preview.notes });
+  }
   p.value.apply(rng);
   return ok(p.value.preview);
 }

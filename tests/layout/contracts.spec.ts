@@ -50,7 +50,8 @@ test('extends, tags, and exercises an option in the re-sign window, each move pr
   // An extension: its total, then its cost on next year's cap, then focus on the next player's button.
   await decide.click();
   await dialog.getByRole('radio', { name: 'Offer an extension' }).check();
-  await expect(dialog.getByText(/^Total: \$[\d,]+ over 3 years\. AAV: \$[\d,]+\.$/)).toBeVisible();
+  await expect(dialog.getByText(/^Total: \$[\d,]+ over 3 years\. AAV: \$[\d,]+\. Guaranteed: \$0\.$/)).toBeVisible();
+  await expect(dialog).toContainText(/His agent asks for \$[\d,]+ a year over 3 years to stay, and comes down as you talk\./);
   await expect(dialog.locator('output')).toContainText('2027');
   await dialog.getByLabel('Salary each year, dollars').fill('1000');
   await expect(dialog.getByLabel('Salary each year, dollars')).toHaveAttribute('aria-invalid', 'true');
@@ -130,9 +131,28 @@ test('puts contracts on auto from Settings, and offers only extensions during th
   await row.getByRole('button', { name: `Decide on ${name}` }).click();
   const dialog = page.getByRole('dialog', { name: `Keep ${name}` });
   await expect(dialog).toContainText('Tags and tenders open in the re-sign window.');
-  await expect(dialog.getByRole('radio')).toHaveCount(0);
-  await expect(dialog.getByLabel('Extension length')).toBeFocused();
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  // His own offer in talks, or the extension the GM settles (spec 11.6).
+  await expect(dialog.getByRole('radio')).toHaveCount(2);
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await dialog.getByRole('radio', { name: 'Offer an extension' }).check();
+  await expect(dialog.getByLabel('Extension length')).toBeVisible();
+  // More terms wait in a disclosure: guarantees, incentives, and void years, and take it or leave it.
+  await dialog.getByText('Guarantees, incentives, and void years').click();
+  await dialog.getByLabel('Fully guaranteed salary').selectOption('2');
+  await dialog.getByLabel('Void years').selectOption('1');
+  await expect(dialog.locator('#extend-voids-error')).toHaveText('Void years only spread a signing bonus: add one, or choose none.');
+  await expect(dialog.getByRole('button', { name: `Extend ${name}` })).toBeDisabled();
+  await dialog.getByLabel('Signing bonus, dollars').fill('1000000');
+  await expect(dialog.locator('#extend-voids-error')).toBeHidden();
+  await expect(dialog.getByText(/^Total: \$[\d,]+ over 3 years\. AAV: \$[\d,]+\. Guaranteed: \$[1-9][\d,]+\.$/)).toBeVisible();
+  await expect(dialog.getByRole('checkbox', { name: 'Take it or leave it' })).not.toBeChecked();
+  await expectTouchTargets(page, '#resignDialog', phone ? 48 : 44);
+  await expectNoHorizontalOverflow(page);
+  await dialog.getByRole('radio', { name: /^Have your GM negotiate: \$[\d,]+ a year for \d years?$/ }).check();
+  await expect(dialog.locator('output')).toContainText('2027');
+  await dialog.getByRole('button', { name: `Extend ${name}` }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('.toast').last()).toContainText(`${name} signs a`);
 
   await goTo(page, '#/settings', 'Settings');
   const card = section(page, 'Automation');

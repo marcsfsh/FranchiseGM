@@ -3,7 +3,7 @@
  * remaining league year's cap hit and cash, and what releasing him would do before and after June 1:
  * dead money and the cap space it saves. The user's players get their roster moves from here too.
  */
-import { askingSalary } from '../../engine/contracts/acceptance';
+import { askOf } from '../../engine/contracts/negotiation';
 import type { ContractType } from '../../engine/contracts/types';
 import { contractSummary, contractView, type ReleaseView } from '../../engine/contracts/view';
 import { capFacts } from '../../engine/cap/sheet';
@@ -45,7 +45,7 @@ export function contractCard(app: AppState, league: League, player: Player, done
     const body =
       player.status === 'freeAgent'
         ? [
-            h('p', null, `Free agent. He asks you for ${money(askingSalary(league, player, league.meta.start.userTeam), true)} a year.`),
+            h('p', null, `Free agent. He asks you for ${money(askOf(league, player, league.meta.start.userTeam), true)} a year.`),
             h('div', { class: 'btn-row' }, h('a', { class: 'btn btn-outline', href: href('freeagency') }, 'Free agency'))
           ]
         : player.status === 'waivers'

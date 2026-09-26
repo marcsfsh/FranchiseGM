@@ -6,7 +6,6 @@ import { extensionContract } from '../../src/engine/contracts/build';
 import {
   creditedNextYear,
   expiring,
-  extensionAsk,
   freeAgentKind,
   optionOpen,
   optionSalary,
@@ -15,6 +14,7 @@ import {
   tenderLevels,
   tenderSalary
 } from '../../src/engine/contracts/resign';
+import { askingFrom, contextFor, demand } from '../../src/engine/contracts/decision';
 import { emptyYear, type Contract, type ContractType } from '../../src/engine/contracts/types';
 import { openLeagueYear } from '../../src/engine/league/league-year';
 import type { League } from '../../src/engine/league/types';
@@ -22,6 +22,7 @@ import type { GameDate, Phase } from '../../src/engine/model/calendar';
 import type { Player } from '../../src/engine/model/player';
 import { stream } from '../../src/engine/rng';
 import { makeMove } from '../../src/engine/roster/moves';
+import { minimumSalary } from '../../src/engine/rules/ruleset';
 import { situationLeague } from '../helpers/situations';
 
 // The re-sign window (spec 11.4, 11.5): tags, tenders, fifth-year options, and extensions. Amounts are
@@ -164,7 +165,9 @@ describe('extensions', () => {
       Object.assign(p, { experience: 6, accrued: 6 });
       give(league, p, deal(id, p, [[2026, 2_000_000]]));
     }
-    const ask = extensionAsk(league, kept);
+    // His price at the market: what an offer on these terms must pay him to meet his demand.
+    const atMarket = (p: typeof kept) => askingFrom(league, contextFor(league), p, team, 3, demand(league, p, true), minimumSalary(league.rules, creditedNextYear(league, p)));
+    const ask = atMarket(kept);
     const low = { years: 3, salary: ask - 100_000, signingBonus: 0 };
     expect(makeMove(league, { kind: 'extend', team, playerId: kept.id, offer: low }, stream(3))).toMatchObject({ ok: false });
     const before = capSheet(league, team, 2027).space;
@@ -174,7 +177,7 @@ describe('extensions', () => {
     expect(ext.years.map(y => y.year)).toEqual([2027, 2028, 2029]);
     expect(capSheet(league, team, 2027).space).toBe(before - capHit(ext, 2027, league.rules));
     // A 3M bonus on the second one's extension over 2027 to 2029; releasing him now accelerates it all.
-    makeMove(league, { kind: 'extend', team, playerId: cut.id, offer: { years: 3, salary: extensionAsk(league, cut), signingBonus: 3_000_000 } }, stream(4));
+    makeMove(league, { kind: 'extend', team, playerId: cut.id, offer: { years: 3, salary: atMarket(cut), signingBonus: 3_000_000 } }, stream(4));
     const cutExt = cut.nextContractId as string;
     expect(makeMove(league, { kind: 'release', team, playerId: cut.id }, stream(5)).ok).toBe(true);
     expect(league.contracts[cutExt]?.ended?.how).toBe('released');

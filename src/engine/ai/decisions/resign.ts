@@ -1,15 +1,15 @@
 /**
- * AI decisions in the re-sign window (spec 11.4, 11.5), standing in until M12's negotiation and M14's AI
- * brain (D-29). A team exercises a fifth-year option when the player's value covers it, keeps the expiring
- * players it would miss (those who'd still rank within the standard roster's count at their position group),
- * and pays for them best first while next year's cap keeps room for the draft class and free agency: an
- * extension at his asking price, or the franchise tag when he asks for more than the tag costs; restricted
+ * AI decisions in the re-sign window (spec 11.4, 11.5), standing in until M14's AI brain (D-29). A team
+ * exercises a fifth-year option when the player's value covers it, keeps the expiring players it would miss
+ * (those who'd still rank within the standard roster's count at their position group), and pays for them
+ * best first while next year's cap keeps room for the draft class and free agency: an extension at the
+ * price its GM settles (spec 11.6), or the franchise tag when that's more than the tag costs; restricted
  * free agents get the highest tender their value reaches, and exclusive-rights players the minimum tender.
  */
 import type { TeamAbbr } from '../../../data/team-colors';
 import { capSheet } from '../../cap/sheet';
+import { settledSalary, termFor } from '../../contracts/negotiation';
 import {
-  extensionAsk,
   freeAgentKind,
   optionSalary,
   tagSalary,
@@ -28,10 +28,6 @@ import { TUNING } from '../../tuning';
 import { groupWords, NEED_GROUP, TARGET } from './roster-moves';
 
 const R = TUNING.resign;
-
-/** Contract years by age, as in the offseason stand-ins. */
-const termFor = (age: number): number =>
-  TUNING.offseason.termByAge.find(([oldest]) => age <= oldest)?.[1] ?? 1;
 
 /** A move with the team left out. */
 type TeamMove = Move extends infer M ? (M extends Move ? Omit<M, 'team'> : never) : never;
@@ -53,7 +49,8 @@ export function resignDecisions(league: League, abbr: TeamAbbr, rng: Rng): void 
   const { expiring, options } = windowDecisions(league, abbr);
 
   for (const p of options) {
-    const exercise = extensionAsk(league, p) >= R.optionValue * optionSalary(league, p).salary;
+    const exercise =
+      settledSalary(league, p, abbr, 1, true) >= R.optionValue * optionSalary(league, p).salary;
     move({
       kind: 'option',
       playerId: p.id,
@@ -67,7 +64,8 @@ export function resignDecisions(league: League, abbr: TeamAbbr, rng: Rng): void 
   const room = () => capSheet(league, abbr, year + 1).space - reserve;
   for (const p of expiring.filter(p => wanted(league, abbr, p))) {
     const kind = freeAgentKind(league, p);
-    const ask = extensionAsk(league, p);
+    const years = termFor(ageOn(p.birthDate, today));
+    const ask = settledSalary(league, p, abbr, years, true);
     const reason = `to keep him at ${groupWords(p)}`;
     if (kind === 'exclusive') {
       move({ kind: 'tender', playerId: p.id, level: 'exclusive', reason });
@@ -85,7 +83,7 @@ export function resignDecisions(league: League, abbr: TeamAbbr, rng: Rng): void 
       continue;
     }
     if (ask > room()) continue;
-    const offer = { years: termFor(ageOn(p.birthDate, today)), salary: ask, signingBonus: 0 };
+    const offer = { years, salary: ask, signingBonus: 0 };
     move({ kind: 'extend', playerId: p.id, offer, reason });
   }
 }

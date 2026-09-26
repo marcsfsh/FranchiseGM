@@ -80,6 +80,8 @@ export interface MoveChoice {
   inputs?: HTMLElement;
   /** What to say while the inputs are incomplete. */
   incomplete?: string;
+  /** After the move is refused, as when a player answers an offer in talks with a counter. */
+  refused?: () => void;
 }
 
 /**
@@ -156,8 +158,11 @@ export function openMoveDialog(
     if (!move) return;
     const result = applyMove(app, move);
     if (!result.ok) {
+      if (selected !== null) choices[selected]?.refused?.();
+      update();
       error.textContent = result.reason;
       error.hidden = false;
+      if (confirm.disabled) cancel.focus();
       return;
     }
     dialog.close();

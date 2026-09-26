@@ -6,9 +6,10 @@ import type { TeamAbbr } from '../../data/team-colors';
 import type { Rng } from '../rng';
 import { leagueYear, PHASES, type GameDate, type Phase } from '../model/calendar';
 import { minimumSalary, type RuleSet } from '../rules/ruleset';
+import { dollars, plural } from '../text';
 import { TUNING } from '../tuning';
 import { rookieSigningBonus } from './market';
-import { emptyYear, type Contract, type ContractType } from './types';
+import { emptyYear, type Contract, type ContractType, type ContractYear } from './types';
 
 const roundK = (value: number) => Math.round(value / 1000) * 1000;
 
@@ -155,12 +156,56 @@ export function practiceSquadContract(
   return c;
 }
 
-/** A free agent offer (spec 19.4): the same base salary each year and a signing bonus. */
+/**
+ * A contract offer (spec 11.6, 19.4): the same base salary each year and a signing bonus, with, optionally,
+ * years of fully guaranteed salary from the first, a per-game active roster bonus each year (an incentive
+ * paid by games active), void years that spread the bonus on the cap, and a take-it-or-leave-it mark.
+ */
 export interface Offer {
   years: number;
   salary: number;
   signingBonus: number;
+  guaranteedYears?: number;
+  perGameBonus?: number;
+  voidYears?: number;
+  final?: boolean;
 }
+
+/** An offer's average a year, as contracts are reported: the salary, the bonus spread over the years, and the per-game bonus. */
+export const offerAav = (offer: Offer): number =>
+  offer.salary + Math.round(offer.signingBonus / Math.max(1, offer.years)) + (offer.perGameBonus ?? 0);
+
+/**
+ * Why an offer's terms can't be made (spec 11.6), or null: 1 to the most years, whole dollars, at least
+ * `minimum` a year, guaranteed salary for no more years than the deal, and void years only to spread a
+ * signing bonus over the years proration allows.
+ */
+export function termsProblem(rules: RuleSet, offer: Offer, minimum: number): string | null {
+  const max = TUNING.contracts.acceptance.maxYears;
+  if (!Number.isInteger(offer.years) || offer.years < 1 || offer.years > max) return `Offer 1 to ${max} years.`;
+  if (!Number.isInteger(offer.salary) || offer.salary < minimum) return `His minimum salary is ${dollars(minimum)} a year.`;
+  if (!Number.isInteger(offer.signingBonus) || offer.signingBonus < 0) return 'The signing bonus must be a whole-dollar amount, zero or more.';
+  const guaranteed = offer.guaranteedYears ?? 0;
+  if (!Number.isInteger(guaranteed) || guaranteed < 0 || guaranteed > offer.years) return `Guarantee his salary for 0 to ${plural(offer.years, 'year')}.`;
+  const perGame = offer.perGameBonus ?? 0;
+  if (!Number.isInteger(perGame) || perGame < 0) return 'The per-game roster bonus must be a whole-dollar amount, zero or more.';
+  const voids = offer.voidYears ?? 0;
+  const room = Math.max(0, rules.pay.prorationYearsMax - offer.years);
+  if (!Number.isInteger(voids) || voids < 0 || voids > room)
+    return room ? `Add up to ${plural(room, 'void year')}: a bonus spreads over ${rules.pay.prorationYearsMax} years at most.` : `A ${offer.years}-year deal already spreads its bonus over the most years it can.`;
+  if (voids > 0 && offer.signingBonus === 0) return 'Void years only spread a signing bonus: add one, or drop the void years.';
+  return null;
+} // prettier-ignore
+
+/** An offer's years, with its guarantees, incentives, and void years (spec 11.6). */
+function offerYears(rules: RuleSet, offer: Offer, start: number, credited: number): ContractYear[] {
+  const real = Array.from({ length: offer.years }, (_, i) => {
+    const base = Math.max(offer.salary, minimumSalary(rules, credited + i));
+    return { ...emptyYear(start + i), base, perGameBonus: offer.perGameBonus ?? 0, guaranteedBase: i < (offer.guaranteedYears ?? 0) ? base : 0 };
+  });
+  const voids = Array.from({ length: offer.voidYears ?? 0 }, (_, i) => ({ ...emptyYear(start + offer.years + i), isVoid: true }));
+  return [...real, ...voids];
+} // prettier-ignore
 
 /**
  * The contract an offer makes, signed on `date` and running from its league year. Each year's base is the
@@ -177,10 +222,7 @@ export function offerContract(
   const type =
     offer.signingBonus === 0 && offer.salary <= minimumSalary(rules, credited) ? 'minimum' : 'veteran';
   const c = contract(base, type, { ...date }, offer.signingBonus);
-  c.years = Array.from({ length: offer.years }, (_, i) => ({
-    ...emptyYear(start + i),
-    base: Math.max(offer.salary, minimumSalary(rules, credited + i))
-  }));
+  c.years = offerYears(rules, offer, start, credited);
   return c;
 }
 
@@ -211,10 +253,7 @@ export function extensionContract(
 ): Contract {
   const start = leagueYear(date) + 1;
   const c = contract(base, 'extension', { ...date }, offer.signingBonus);
-  c.years = Array.from({ length: offer.years }, (_, i) => ({
-    ...emptyYear(start + i),
-    base: Math.max(offer.salary, minimumSalary(rules, credited + i))
-  }));
+  c.years = offerYears(rules, offer, start, credited);
   return c;
 }
 

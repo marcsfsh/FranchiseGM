@@ -143,6 +143,7 @@ export function createLeague(input: NewLeagueInput): League {
     udfaOffers: {},
     personalityKnown: [],
     faOffers: {},
+    negotiations: {},
     inbox: [],
     waivers: [],
     nextId: idCounters([

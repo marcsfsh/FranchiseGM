@@ -3,14 +3,15 @@
  * he signs, and which offer he takes. Worth is counted in his market value, so an offer at his market value
  * from a team that means nothing else to him is worth 1. His personality weighs the rest: competitiveness
  * the chance to win, ego a starting job, loyalty his own team, greed his demand. Everything a team adds
- * beyond money lowers the yearly value it has to pay, so players take less to stay home or chase a ring.
+ * beyond money lowers the yearly value it has to pay, so players take less to stay home or chase a ring;
+ * a team's lowball offers in talks (spec 11.6; D-54) lower his interest in it.
  */
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { homeStadium } from '../../data/teams';
 import { rolesFor } from '../fit/role-rating';
 import { leagueFitContext } from '../league/fit';
 import type { League } from '../league/types';
-import { calendarDay, type GameDate } from '../model/calendar';
+import { calendarDay, leagueYear, type GameDate } from '../model/calendar';
 import { ageOn, type Player } from '../model/player';
 import { POSITION_GROUP } from '../model/positions';
 import { minimumSalary, type RuleSet } from '../rules/ruleset';
@@ -23,6 +24,7 @@ import { marketCeiling, marketValue } from './market';
 
 const A = TUNING.contracts.acceptance;
 const D = TUNING.contracts.decision;
+const N = TUNING.contracts.negotiation;
 
 /** What an offer's worth is made of, each in shares of his market value. */
 export interface Worth {
@@ -32,7 +34,18 @@ export interface Worth {
   home: number;
   loyalty: number;
   fit: number;
+  /** His interest in the team, lowered by its lowball offers this league year (spec 11.6). */
+  interest: number;
   total: number;
+}
+
+/** The key a team's talks with a player go by in `League.negotiations`. */
+export const talksKey = (team: TeamAbbr, playerId: string): string => `${team}|${playerId}`;
+
+/** The lowball offers a team has made a player this league year (spec 11.6). */
+export function lowballsFrom(league: League, team: TeamAbbr, playerId: string): number {
+  const talks = league.negotiations[talksKey(team, playerId)];
+  return talks && talks.year === leagueYear(league.date) ? talks.lowballs : 0;
 }
 
 /**
@@ -55,9 +68,14 @@ export function demandShare(date: GameDate, rules: RuleSet): number {
   return (PLAYOFF_PHASES as readonly string[]).includes(date.phase) ? A.lateSeasonDemand : A.offseasonDemand;
 }
 
-/** An offer's yearly value: the salary plus the signing bonus spread over the years. */
+/**
+ * An offer's yearly value: the salary, the signing bonus spread over the years, and the share of the
+ * per-game bonus a player expects to earn.
+ */
 export const offerValue = (offer: Offer): number =>
-  offer.salary + Math.round(offer.signingBonus / Math.max(1, offer.years));
+  offer.salary +
+  Math.round(offer.signingBonus / Math.max(1, offer.years)) +
+  Math.round((offer.perGameBonus ?? 0) * D.perGameEarned);
 
 /** A trait's weight: 0.5 at 0, 1.5 at 100. */
 const weigh = (trait: number): number => 0.5 + trait / 100;
@@ -162,7 +180,8 @@ export function offerWorth(league: League, ctx: DecisionContext, player: Player,
   const market = marketValue(league.rules, player.position, player.ovr, age, player.experience);
   const traits = player.personality;
   const total = offerValue(offer) * offer.years;
-  const money = offerValue(offer) / market + D.perYear * (offer.years - 1) * security(age) + D.guarantee * (total ? offer.signingBonus / total : 0);
+  const guaranteed = offer.signingBonus + Math.min(offer.years, offer.guaranteedYears ?? 0) * offer.salary;
+  const money = offerValue(offer) / market + D.perYear * (offer.years - 1) * security(age) + D.guarantee * (total ? Math.min(1, guaranteed / total) : 0);
   const ring = 1 + Math.max(0, age - D.ringFrom) / 10;
   const contender = (ctx.contenders.get(team) ?? 0) * D.contender * weigh(traits.competitiveness) * ring;
   const role = projectedRole(ctx, player, team) * D.role * weigh(traits.ego);
@@ -170,17 +189,31 @@ export function offerWorth(league: League, ctx: DecisionContext, player: Player,
   const home = state !== null && state === homeStadium(team).region ? D.home : 0;
   const loyalty = team === (player.team ?? player.lastTeam) ? (D.loyalty * traits.loyalty) / 100 : 0;
   const fit = D.fit * fitWith(league, ctx, player, team);
-  return { money, contender, role, home, loyalty, fit, total: money + contender + role + home + loyalty + fit };
+  const interest = -N.lowballInterest * lowballsFrom(league, team, player.id);
+  return { money, contender, role, home, loyalty, fit, interest, total: money + contender + role + home + loyalty + fit + interest };
 } // prettier-ignore
 
-/** What an offer must be worth to him now (spec 11.7): more for the greedy, less as the market softens. */
-export function demand(league: League, player: Player): number {
+/**
+ * What an offer must be worth to him now (spec 11.7): more for the greedy, less as the market softens. A
+ * player under contract talking about an extension isn't on the market, so he asks the offseason's share.
+ */
+export function demand(league: League, player: Player, extension = false): number {
   const [low, high] = D.demand;
   const base = low + ((high - low) * player.personality.greed) / 100;
+  if (extension) return base * A.offseasonDemand;
   const { phase, week } = league.date;
   const softened = phase === 'freeAgency' ? 1 - D.softening * (week - 1) : 1;
   return base * demandShare(league.date, league.rules) * softened;
 }
+
+/**
+ * The worth an offer from `team` for `years` years must reach to meet `need`: a record deal at his
+ * position (its ceiling a year, with no bonus) always does, so what he asks never tops the ceiling.
+ */
+export function reachable(league: League, ctx: DecisionContext, player: Player, team: TeamAbbr, years: number, need: number): number {
+  const record = { years, salary: marketCeiling(league.rules, player.position), signingBonus: 0 };
+  return Math.min(need, offerWorth(league, ctx, player, team, record).total);
+} // prettier-ignore
 
 /** The offer he takes among those he has: the one worth most, once it's worth his demand; null to wait. */
 export function chooseOffer<T extends { team: TeamAbbr; offer: Offer }>(league: League, ctx: DecisionContext, player: Player, offers: readonly T[]): T | null {
@@ -188,21 +221,67 @@ export function chooseOffer<T extends { team: TeamAbbr; offer: Offer }>(league: 
   let best: { offer: T; worth: number } | null = null;
   for (const o of offers) {
     const worth = offerWorth(league, ctx, player, o.team, o.offer).total;
-    if (worth >= need && (!best || worth > best.worth || (worth === best.worth && o.team < best.offer.team))) best = { offer: o, worth };
+    if (worth < reachable(league, ctx, player, o.team, o.offer.years, need)) continue;
+    if (!best || worth > best.worth || (worth === best.worth && o.team < best.offer.team)) best = { offer: o, worth };
   }
   return best?.offer ?? null;
 } // prettier-ignore
 
 /**
- * The salary a year `team` must offer for `years` years with no bonus before he signs (spec 11.7): his
- * demand less what the team means to him, in quote steps, between his minimum and his position's ceiling.
+ * The salary a year `team` must offer for `years` years with no bonus before he signs (spec 11.7): an
+ * offer worth `need` (his demand unless given) less what the team means to him, in quote steps, between
+ * `minimum` (his minimum unless given) and his position's ceiling.
  */
-export function askingFrom(league: League, ctx: DecisionContext, player: Player, team: TeamAbbr, years = 1): number {
+export function askingFrom(league: League, ctx: DecisionContext, player: Player, team: TeamAbbr, years = 1, need = demand(league, player), minimum = minimumSalary(league.rules, player.experience)): number {
   const rules = league.rules;
   const age = ageOn(player.birthDate, calendarDay(league.date));
   const market = marketValue(rules, player.position, player.ovr, age, player.experience);
   const unpaid = offerWorth(league, ctx, player, team, { years, salary: 0, signingBonus: 0 }).total;
   const step = TUNING.market.quoteStep;
-  const ask = Math.ceil((market * (demand(league, player) - unpaid)) / step) * step;
-  return Math.max(minimumSalary(rules, player.experience), Math.min(marketCeiling(rules, player.position), ask));
+  const ask = Math.ceil((market * (need - unpaid)) / step) * step;
+  return Math.max(minimum, Math.min(marketCeiling(rules, player.position), ask));
+} // prettier-ignore
+
+/**
+ * The least salary a year, in quote steps and at least `minimum`, that makes an offer on these terms worth
+ * `need` to him from `team` (spec 11.6): for a counter that keeps the rest of an offer.
+ */
+export function salaryFor(league: League, ctx: DecisionContext, player: Player, team: TeamAbbr, terms: Omit<Offer, 'salary'>, need: number, minimum: number): number {
+  const step = TUNING.market.quoteStep;
+  const at = (steps: number) => Math.max(minimum, steps * step);
+  const enough = (steps: number) => offerWorth(league, ctx, player, team, { ...terms, salary: at(steps) }).total >= need;
+  // Salary adds to worth faster than it thins the guaranteed share, so the least enough salary is found by
+  // doubling past it and halving back: `low` steps are never enough, `high` steps always are.
+  let low = Math.floor(minimum / step);
+  if (enough(low)) return minimum;
+  let high = low + 1;
+  while (!enough(high)) {
+    low = high;
+    high *= 2;
+  }
+  while (high - low > 1) {
+    const mid = Math.floor((low + high) / 2);
+    if (enough(mid)) high = mid;
+    else low = mid;
+  }
+  return at(high);
+} // prettier-ignore
+
+/** The terms a counter can name as mattering most to a player (spec 11.6). */
+export type Term = 'guarantees' | 'years' | 'money';
+
+/**
+ * What matters most to him in an offer's terms (spec 11.6), most first: guaranteed money or a longer deal
+ * when more of it could add enough to the offer's worth (older players value years), else money each year.
+ */
+export function mattersMost(league: League, player: Player, offer: Offer): Term[] {
+  const age = ageOn(player.birthDate, calendarDay(league.date));
+  const total = offerValue(offer) * offer.years;
+  const guaranteed = offer.signingBonus + Math.min(offer.years, offer.guaranteedYears ?? 0) * offer.salary;
+  const room: [Term, number][] = [
+    ['guarantees', D.guarantee * (1 - (total ? Math.min(1, guaranteed / total) : 0))],
+    ['years', D.perYear * security(age) * (A.maxYears - offer.years)]
+  ];
+  const terms = room.filter(([, worth]) => worth >= N.matters).sort((a, b) => b[1] - a[1]);
+  return terms.length ? terms.map(([term]) => term) : ['money'];
 } // prettier-ignore

@@ -10,6 +10,7 @@ import { closeFloorYear, type FloorShortfall } from '../cap/floor';
 import { capSheet } from '../cap/sheet';
 import { contractRecord, type ContractRecord } from '../contracts/history';
 import { endContract } from '../contracts/moves';
+import { resetNegotiations } from '../contracts/negotiation';
 import { tenderAmount, TENDER_LABELS, type TenderLevel } from '../contracts/resign';
 import type { Contract } from '../contracts/types';
 import { resetMorale } from '../locker/room';
@@ -111,6 +112,7 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
   for (const abbr of TEAM_ABBRS) league.teams[abbr].carryover = carryover[abbr];
   // A new league year eases last season's highs and lows (spec 10.9).
   resetMorale(league);
+  resetNegotiations(league);
 
   const expired: { playerId: string; team: TeamAbbr }[] = [];
   for (const player of Object.values(league.players)) {

@@ -5,16 +5,14 @@
  */
 import type { TeamAbbr } from '../../data/team-colors';
 import type { League } from '../league/types';
-import { calendarDay, leagueYear, PHASES } from '../model/calendar';
-import { ageOn, type Player } from '../model/player';
+import { leagueYear, PHASES } from '../model/calendar';
+import type { Player } from '../model/player';
 import type { Position } from '../model/positions';
 import { minimumSalary, type RuleSet } from '../rules/ruleset';
 import { dollars } from '../text';
-import { TUNING } from '../tuning';
-import { offerValue } from './decision';
-import type { Offer } from './build';
+import { termsProblem, type Offer } from './build';
+import { askingFrom, contextFor, demand, offerWorth, reachable } from './decision';
 import { capHit } from './cap';
-import { marketValue } from './market';
 import { endContract } from './moves';
 import type { Contract, ContractEnd } from './types';
 
@@ -222,27 +220,20 @@ export function creditedNextYear(league: League, player: Player): number {
 }
 
 /**
- * What a player whose deal runs out asks for a year to stay (M12's negotiation replaces this): his market
- * value as the offseason prices it, and at least next year's minimum.
+ * Why a player whose deal runs out turns down an extension at the market, as a team's GM settles it, or null
+ * if he signs it (spec 11.7): he weighs it like a free agent's offer, from the team he's on, and asks the
+ * offseason's share of his market value whenever he's asked.
  */
-export function extensionAsk(league: League, player: Player): number {
-  const rules = league.rules;
-  const age = ageOn(player.birthDate, calendarDay(league.date));
-  const value = marketValue(rules, player.position, player.ovr, age, player.experience);
-  const step = TUNING.market.quoteStep;
-  return Math.max(minimumSalary(rules, creditedNextYear(league, player)), Math.round(value / step) * step);
-}
-
-/** Why a player turns down an extension, or null if he signs it. */
 export function extensionProblem(league: League, player: Player, offer: Offer): string | null {
-  const max = TUNING.contracts.acceptance.maxYears;
   const minimum = minimumSalary(league.rules, creditedNextYear(league, player));
-  if (!Number.isInteger(offer.years) || offer.years < 1 || offer.years > max) return `Offer 1 to ${max} years.`;
-  if (!Number.isInteger(offer.salary) || offer.salary < minimum) return `His minimum salary is ${dollars(minimum)} a year.`;
-  if (!Number.isInteger(offer.signingBonus) || offer.signingBonus < 0)
-    return 'The signing bonus must be a whole-dollar amount, zero or more.';
-  const ask = extensionAsk(league, player);
-  return offerValue(offer) >= ask ? null : `He wants at least ${dollars(ask)} a year to stay.`;
+  const terms = termsProblem(league.rules, offer, minimum);
+  if (terms) return terms;
+  const team = player.team;
+  if (!team) return "He isn't under contract.";
+  const ctx = contextFor(league);
+  const need = reachable(league, ctx, player, team, offer.years, demand(league, player, true));
+  if (offerWorth(league, ctx, player, team, offer).total >= need) return null;
+  return `He wants at least ${dollars(askingFrom(league, ctx, player, team, offer.years, demand(league, player, true), minimum))} a year to stay.`;
 } // prettier-ignore
 
 /**

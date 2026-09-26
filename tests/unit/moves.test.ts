@@ -3,6 +3,7 @@ import type { TeamAbbr } from '../../src/data/team-colors';
 import { capSheet, elevationCost } from '../../src/engine/cap/sheet';
 import { askingSalary, offerProblem } from '../../src/engine/contracts/acceptance';
 import { capHit, releaseImpact } from '../../src/engine/contracts/cap';
+import { askingFrom, contextFor } from '../../src/engine/contracts/decision';
 import { irReturnsUsed, recordTransaction } from '../../src/engine/league/transactions';
 import type { League } from '../../src/engine/league/types';
 import { fullName, type Player } from '../../src/engine/model/player';
@@ -64,7 +65,10 @@ describe('signing free agents (spec 19.4, simple acceptance)', () => {
     // Every team starts with a full active roster.
     expect(reason(league, { kind: 'sign', team: 'MIN', playerId: player.id, offer })).toMatch(/active roster is full/);
     makeRoom(league);
-    const low = { ...offer, salary: ask - 50_000 };
+    // Under what he'd take at the market, he says what he wants; the GM's price is above it.
+    const floor = askingFrom(league, contextFor(league), player, 'MIN', 2);
+    expect(ask).toBeGreaterThanOrEqual(floor);
+    const low = { ...offer, salary: floor - 50_000 };
     if (low.salary >= (league.rules.pay.minimumSalary[player.experience] ?? Infinity))
       expect(offerProblem(league, player, low, 'MIN')).toMatch(/^He wants at least \$[\d,]+ a year from you\.$/);
     const before = capSheet(league, 'MIN').space;

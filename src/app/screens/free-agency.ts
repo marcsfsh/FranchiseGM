@@ -2,15 +2,15 @@
  * Free agency (spec 19.3, 19.4, 11.8): the free agents with what each asks of the user's team, practice
  * squad signings, and the waiver wire with claims, each a sortable table (a list on phones). Through the
  * four weeks of free agency the user's offers stand until the week ends, with the teams bidding and the
- * user's offer on each row (D-53); after them, an offer made in the contract dialog signs him at once when
- * it's good enough.
+ * user's offer on each row (D-53); after them, the user negotiates one on one (spec 11.6; D-54): an offer
+ * made in the contract dialog gets a yes, a no, or a counter, or the user's GM settles the deal.
  */
 import { TEAM_COLORS, teamFullName } from '../../data/team-colors';
 import { capSheet } from '../../engine/cap/sheet';
 import { scrambleOpen, undraftedRookies } from '../../engine/draft/udfa';
-import { askingSalary } from '../../engine/contracts/acceptance';
 import { biddingOpen, offersFor, pendingFor } from '../../engine/contracts/free-agency';
 import { capHit } from '../../engine/contracts/cap';
+import { askOf, counterWords, settledSalary, talks, termFor } from '../../engine/contracts/negotiation';
 import { freeAgents } from '../../engine/league/transactions';
 import type { League } from '../../engine/league/types';
 import { calendarDay, leagueYear } from '../../engine/model/calendar';
@@ -21,16 +21,16 @@ import { rosterCounts } from '../../engine/roster/rules';
 import { claimedContract } from '../../engine/roster/waivers';
 import { PLAYOFF_PHASES } from '../../engine/season/state';
 import { plural } from '../../engine/text';
-import { TUNING } from '../../engine/tuning';
 import { h, mount } from '../dom';
 import { visibleMatch } from '../focus';
 import { money } from '../format';
 import { href } from '../router';
 import type { AppState } from '../state';
-import { dollarField, openMoveDialog, placeOf, refocus, WAIT_FOR_GAMES } from '../ui/moves';
+import { openMoveDialog, placeOf, refocus, WAIT_FOR_GAMES } from '../ui/moves';
 import { GROUP_LABELS, playerLink, tierPlate } from '../ui/players';
 import { sortableTable, type TableColumn } from '../ui/sortable';
 import { offerWords, openBid } from '../ui/bidding';
+import { offerTerms } from '../ui/offer-terms';
 import { udfaCard } from '../ui/udfa';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
@@ -43,46 +43,63 @@ const OFFER = 'Make an offer to ';
 let group: PositionGroup | 'all' = 'all';
 let shown = PAGE;
 
-/** Opens the contract offer dialog for a free agent (style guide 7.7: an explicit Send offer). */
+/**
+ * Opens the contract dialog for a free agent after the bidding weeks (spec 11.6; style guide 7.7): the
+ * user's own offer, which he answers when it's sent with a yes, a no, or a counter, or the deal the user's
+ * GM settles.
+ */
 function openOffer(app: AppState, league: League, player: Player, trigger: HTMLElement, done: () => void): void {
+  const user = league.meta.start.userTeam;
   const name = fullName(player);
-  const ask = askingSalary(league, player, league.meta.start.userTeam);
   const minimum = minimumSalary(league.rules, player.experience);
-  const years = h('select', { class: 'select', id: 'offer-years' }, ...Array.from({ length: TUNING.contracts.acceptance.maxYears }, (_, i) => h('option', { value: i + 1 }, `${i + 1} ${i === 0 ? 'year' : 'years'}`)));
-  const salary = dollarField('offer-salary', 'Salary each year, dollars', `His minimum is ${money(minimum, true)}. Each year pays at least the minimum for his experience then.`, ask);
-  const bonus = dollarField('offer-bonus', 'Signing bonus, dollars', 'Paid now and spread over the contract on the cap, up to 5 years.', 0);
-  const totals = h('p', { class: 'hint' });
-  const inputs = h('div', { class: 'stack' }, h('div', { class: 'field' }, h('label', { for: 'offer-years' }, 'Contract length'), years), salary.field, bonus.field, totals);
-  const terms = () => {
-    const s = salary.input.valueAsNumber;
-    const b = bonus.input.valueAsNumber;
-    const n = Number(years.value);
-    salary.setError(!Number.isFinite(s) ? 'Enter a salary in dollars.' : s < minimum ? `His minimum salary is ${money(minimum, true)} a year.` : null);
-    bonus.setError(!Number.isFinite(b) ? 'Enter a signing bonus in dollars, or 0.' : b < 0 ? "The signing bonus can't be negative." : null);
-    if (!Number.isFinite(s) || s < minimum || !Number.isFinite(b) || b < 0) {
-      totals.textContent = '';
-      return null;
-    }
-    const total = Math.round(s) * n + Math.round(b);
-    totals.textContent = `Total: ${money(total, true)} over ${n} ${n === 1 ? 'year' : 'years'}. AAV: ${money(Math.round(total / n), true)}.`;
-    return { years: n, salary: Math.round(s), signingBonus: Math.round(b) };
-  }; // prettier-ignore
+  const ask = askOf(league, player, user);
+  const terms = offerTerms({
+    id: 'offer',
+    lengthLabel: 'Contract length',
+    minimum,
+    salaryHint: `His minimum is ${money(minimum, true)}. Each year pays at least the minimum for his experience then.`,
+    prorationMax: league.rules.pay.prorationYearsMax,
+    finalHint: 'He answers yes or no, with no counter, and a no ends your talks until you advance.',
+    start: talks(league, user, player.id).counter ?? { years: 1, salary: ask, signingBonus: 0 }
+  });
+  const state = h('p', null);
+  const showTalks = () => {
+    const now = talks(app.league ?? league, user, player.id);
+    state.textContent = now.closed
+      ? "He's broken off talks with you until you advance."
+      : now.counter
+        ? `He's turned down ${plural(now.rounds, 'offer')} from you. His last counter: ${counterWords(now.counter)}, on the rest of your terms.`
+        : `His agent asks you for ${money(ask, true)} a year, and comes down as you talk. Free agents ask for less as the season goes on.`;
+  };
+  showTalks();
+  const years = termFor(ageOn(player.birthDate, calendarDay(league.date)));
+  const settled = settledSalary(league, player, user, years);
   openMoveDialog(
     app,
     {
       id: 'offerDialog',
       title: `Offer ${name} a contract`,
-      intro: `${name}, ${player.position}, OVR ${player.ovr}. He asks you for ${money(ask, true)} a year; free agents ask for less as the season goes on.`,
+      intro: `${name}, ${player.position}, OVR ${player.ovr}. Make your own offer, and he answers with a yes, a no, or a counter; or have your GM settle a deal.`,
       choices: [
         {
-          label: 'Offer',
+          label: 'Make your own offer',
           confirm: 'Send offer',
-          inputs,
+          inputs: h('div', { class: 'stack' }, state, terms.element),
           incomplete: 'Fix the highlighted details to see what this offer does.',
           move: () => {
-            const offer = terms();
-            return offer ? { kind: 'sign', team: league.meta.start.userTeam, playerId: player.id, offer } : null;
+            const offer = terms.read();
+            return offer ? { kind: 'sign', team: user, playerId: player.id, offer, talks: true } : null;
+          },
+          refused: () => {
+            const counter = talks(app.league ?? league, user, player.id).counter;
+            if (counter) terms.set(counter);
+            showTalks();
           }
+        },
+        {
+          label: `Have your GM negotiate: ${money(settled, true)} a year for ${plural(years, 'year')}`,
+          confirm: `Sign ${name}`,
+          move: () => ({ kind: 'sign', team: user, playerId: player.id, offer: { years, salary: settled, signingBonus: 0 } })
         }
       ]
     },
@@ -338,9 +355,7 @@ export function freeAgencyScreen(): Screen {
           status.textContent = view.querySelector('.fa-count')?.textContent ?? '';
         });
         const squadOpen = SQUAD_PHASES.has(league.date.phase);
-        const asking = new Map(
-          filtered.map(p => [p.id, askingSalary(league, p, league.meta.start.userTeam)])
-        );
+        const asking = new Map(filtered.map(p => [p.id, askOf(league, p, league.meta.start.userTeam)]));
         // Each call makes fresh controls: the table and the phone list both show them.
         const actions = (p: Player): HTMLElement => {
           const name = fullName(p);

@@ -36,11 +36,12 @@ import { autoVisits, workOut } from '../draft/workouts';
 import type { NameData } from '../generate/player';
 import { draftOrder } from '../generate/rookies';
 import type { Outcome } from '../contracts/moves';
-import { offerValue } from '../contracts/decision';
+import { offerAav } from '../contracts/build';
 import {
   aiBids,
   closeBidding,
   decideWeek,
+  offersFor,
   pendingFor,
   signingWords,
   weighing
@@ -458,21 +459,23 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     // The week ends (spec 11.8; D-53): each free agent with offers takes the one worth most to him once one is
     // worth his demand, or waits; after the fourth week the offers left fall away.
     const offered = pendingFor(league, user).players;
+    const finals = offered.filter(id => offersFor(league, id).some(o => o.team === user && o.offer.final));
     const signed = decideWeek(league, rng('freeAgency'));
     if (from.week === 4) closeBidding(league);
     const mine = signed.filter(s => s.team === user);
     const elsewhere = signed.filter(s => s.team !== user && offered.includes(s.player.id));
+    const refused = finals.map(id => league.players[id]).filter((p): p is Player => p?.status === 'freeAgent');
     const waiting = weighing(league, user);
     if (offered.length || mine.length)
       messages.push({
         kind: 'contracts',
         title: `Free agency, week ${from.week}: ${mine.length ? `${plural(mine.length, 'player')} signed with you` : 'nobody signed with you'}`,
-        body: [mine.length ? `${mine.map(signingWords).join('; ')}.` : null, elsewhere.length ? `Chose other teams: ${elsewhere.map(s => `${named(s.player)}, the ${nick(s.team)}`).join('; ')}.` : null, waiting.length ? `Still weighing your offers: ${waiting.map(named).join(', ')}.` : from.week === 4 && offered.length > mine.length + elsewhere.length ? 'The bidding is over: your offers nobody took have lapsed.' : null].filter(Boolean).join(' '),
+        body: [mine.length ? `${mine.map(signingWords).join('; ')}.` : null, elsewhere.length ? `Chose other teams: ${elsewhere.map(s => `${named(s.player)}, the ${nick(s.team)}`).join('; ')}.` : null, refused.length ? `Turned down your take-it-or-leave-it offers: ${refused.map(named).join(', ')}.` : null, waiting.length ? `Still weighing your offers: ${waiting.map(named).join(', ')}.` : from.week === 4 && offered.length > mine.length + elsewhere.length + refused.length ? 'The bidding is over: your offers nobody took have lapsed.' : null].filter(Boolean).join(' '),
         players: mine.map(s => s.player.id)
       });
     for (const s of signed)
       if (s.player.ovr >= TUNING.news.freeAgentFrom)
-        headline('transaction', `The ${nick(s.team)} sign ${named(s.player)}: ${plural(s.offer.years, 'year')}, ${dollars(offerValue(s.offer))} a year`, [s.team], [s.player.id], s.player.ovr);
+        headline('transaction', `The ${nick(s.team)} sign ${named(s.player)}: ${plural(s.offer.years, 'year')}, ${dollars(offerAav(s.offer))} a year`, [s.team], [s.player.id], s.player.ovr);
     if (signed.length) headline('transaction', `${plural(signed.length, 'free agent')} ${signed.length === 1 ? 'signs' : 'sign'} in week ${from.week} of free agency`, [], [], 0);
   } // prettier-ignore
 

@@ -241,7 +241,7 @@ export const TUNING = {
      * The player decision model (spec 11.7; D-52). An offer's worth to a player is counted in his market
      * value: its yearly value over his market value, plus `perYear` for each year past the first, weighted
      * by his need for security (none at `securityFrom` years old, all by `securityFull`), plus `guarantee`
-     * times the share of the deal guaranteed at signing. On top, as shares of his market value, up to:
+     * times the share of the deal guaranteed at signing (the bonus and fully guaranteed salary). On top, as shares of his market value, up to:
      * `contender` for the strongest team over the middle one (weighted by competitiveness, and by age past
      * `ringFrom`), `role` for a starting job over a rotation spot (weighted by ego; a backup's loses as
      * much), `home` for a team in his home state, `loyalty` for his own team at loyalty 100, and `fit` for
@@ -262,11 +262,32 @@ export const TUNING = {
       fit: 0.05,
       demand: [0.9, 1.1] as readonly [number, number],
       softening: 0.05,
+      /** The share of a per-game roster bonus a player counts on earning. */
+      perGameEarned: 0.8,
       /** Starters by position group, for his projected role; specialists count within their position. */
       starters: { QB: 1, RB: 1, WR: 3, TE: 1, OL: 5, DL: 4, LB: 3, DB: 4, ST: 1 } as Record<
         PositionGroup,
         number
       >
+    },
+    /**
+     * Negotiation (spec 11.6; D-54). In talks a player's agent opens `opening` above his demand and comes
+     * down evenly with each offer he turns down, until his patience runs out after `patience` [volatility
+     * 100, volatility 0] of them and he breaks off talks until the calendar advances. A team's GM settles at
+     * once, as far under the opening as his negotiation rating reaches. An offer worth less than `lowball` of
+     * his demand costs his interest in the team `lowballInterest` of his market value for the league year,
+     * and `lowballMorale` morale. A take-it-or-leave-it offer is taken when it's worth his demand plus his
+     * greed's share of the rest of his ask. A counter names guaranteed money or a longer deal as what matters
+     * most when more of it could add `matters` of his market value to the offer's worth, and money each year
+     * otherwise.
+     */
+    negotiation: {
+      opening: 0.08,
+      patience: [2, 5] as readonly [number, number],
+      lowball: 0.85,
+      lowballInterest: 0.03,
+      lowballMorale: 5,
+      matters: 0.02
     }
   },
 
@@ -635,10 +656,6 @@ export const TUNING = {
     surprise: 0.003
   },
   /**
-   * Offseason stand-ins for AI teams (D-27), until M11's draft and M12's free agency: free agents sign to
-   * fill each position group, a generated rookie class goes in draft order, and teams cut down to the limit.
-   */
-  /**
    * Free agency's bidding (spec 11.8; D-53). As each week opens an AI team offers up to `offersPerWeek`
    * free agents who'd fill a hole at their group (`needPoints` of want for each open spot of the standard
    * roster) or start over its weakest player there by more than `upgradeBy`, keeping its draft class's room
@@ -654,8 +671,9 @@ export const TUNING = {
     premiumAt: 12
   },
 
+  /** The AI's offseason roster work (D-27): contract lengths, room for undrafted rookies, and the cutdown. */
   offseason: {
-    /** Free agents' contract years by age (up to the age, years; older players sign for 1). */
+    /** Contract years the AI offers by age (up to the age, years; older players sign for 1). */
     termByAge: [
       [26, 3],
       [29, 2]

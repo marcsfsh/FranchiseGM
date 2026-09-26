@@ -25,6 +25,11 @@ test('signs, releases, and reads the cap without ever reaching an illegal roster
   await page.getByRole('button', { name: `Make an offer to ${firstName}` }).click();
   const offer = page.locator('#offerDialog');
   await expect(offer).toBeVisible();
+  // His own offer or the GM's deal (spec 11.6): nothing is chosen at first.
+  await expect(
+    offer.getByRole('radio', { name: /^Have your GM negotiate: \$[\d,]+ a year for \d years?$/ })
+  ).not.toBeChecked();
+  await offer.getByRole('radio', { name: 'Make your own offer' }).check();
   await expect(offer.locator('output')).toContainText('Your active roster is full (53)');
   await expect(offer.getByRole('button', { name: 'Send offer' })).toBeDisabled();
   await expectNoHorizontalOverflow(page);
@@ -100,6 +105,7 @@ test('signs, releases, and reads the cap without ever reaching an illegal roster
   await expect(page.locator('main h1')).toHaveText('Free agency');
   const overName = (await agents.first().locator('a').textContent()) ?? '';
   await page.getByRole('button', { name: `Make an offer to ${overName}` }).click();
+  await offer.getByRole('radio', { name: 'Make your own offer' }).check();
   await expect(offer.locator('output')).toContainText(
     /^You're \$[\d,]+ over the 2026 cap\. Get under it with a release or a restructure before you add to it\.$/
   );
@@ -109,27 +115,44 @@ test('signs, releases, and reads the cap without ever reaching an illegal roster
   await page.evaluate(() => (location.hash = '#/roster'));
   await expect(page.locator('main h1')).toHaveText('Roster');
 
-  // Now an offer at his asking price goes through; a lower one says what he wants.
+  // Now an offer under his agent's ask gets a counter (spec 11.6), which fills in the offer; he takes it.
   await page.evaluate(() => (location.hash = '#/free-agency'));
   await expect(page.locator('main h1')).toHaveText('Free agency');
   const signName = (await agents.first().locator('a').textContent()) ?? '';
   await page.getByRole('button', { name: `Make an offer to ${signName}` }).click();
+  await offer.getByRole('radio', { name: 'Make your own offer' }).check();
+  await expect(offer).toContainText(/His agent asks you for \$[\d,]+ a year, and comes down as you talk\./);
   await expect(offer.getByRole('button', { name: 'Send offer' })).toBeEnabled();
+  await page.selectOption('#offer-years', '2');
+  await expect(offer.locator('.hint', { hasText: 'Total:' })).toContainText('over 2 years');
+  await expect(offer.locator('output')).toContainText(
+    'He answers when you send the offer. If he takes it, he signs for 2 years.'
+  );
   const ask = Number(await page.locator('#offer-salary').inputValue());
   await page.fill('#offer-salary', String(ask - 100_000));
-  await expect(offer.getByRole('button', { name: 'Send offer' })).toBeDisabled();
-  // Under his minimum the salary field says so; above it but under his ask, the preview says what he wants.
+  // Under his minimum the salary field says so; above it, he answers when the offer is sent.
   const salaryError = page.locator('#offer-salary-error');
   if (await salaryError.isVisible()) {
     await expect(salaryError).toContainText('His minimum salary is');
     await expect(page.locator('#offer-salary')).toHaveAttribute('aria-invalid', 'true');
-  } else await expect(offer.locator('output')).toContainText(/He wants at least \$[\d,]+ a year from you\./);
-  await page.fill('#offer-salary', String(ask));
-  await page.selectOption('#offer-years', '2');
-  await expect(offer.locator('.hint', { hasText: 'Total:' })).toContainText('over 2 years');
+    await expect(offer.getByRole('button', { name: 'Send offer' })).toBeDisabled();
+    await page.fill('#offer-salary', String(ask));
+  } else {
+    await offer.getByRole('button', { name: 'Send offer' }).click();
+    await expect(offer.getByRole('alert')).toContainText(
+      /^He turned it down\. On the rest of your terms he'd sign for \$[\d,]+ a year for 2 years\./
+    );
+    await expect(offer).toContainText(
+      /He's turned down 1 offer from you\. His last counter: \$[\d,]+ a year for 2 years, on the rest of your terms\./
+    );
+    await expect(page.locator('#offer-salary')).not.toHaveValue(String(ask - 100_000));
+    await expectNoHorizontalOverflow(page);
+  }
   await offer.getByRole('button', { name: 'Send offer' }).click();
   await expect(offer).toBeHidden();
-  await expect(page.locator('.toast').last()).toContainText(`${signName} signs for 2 years.`);
+  await expect(page.locator('.toast').last()).toContainText(
+    `${signName} takes your offer and signs for 2 years.`
+  );
   await expect(page.locator('main')).toContainText('53 of 53 on the active roster');
 
   // The cap sheet by league year: the released player's charge shows as dead money.
