@@ -141,6 +141,7 @@ export function createLeague(input: NewLeagueInput): League {
     picks: Array.from({ length: rules.season.draftPickYears }, (_, i) => issuePicks(rules.season.draftRounds, start.startSeason + i + 1)).flat(), // prettier-ignore
     draftGrades: null,
     udfaOffers: {},
+    personalityKnown: [],
     inbox: [],
     waivers: [],
     nextId: idCounters([

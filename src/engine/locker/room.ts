@@ -15,6 +15,7 @@ import { ageOn, type Player } from '../model/player';
 import { POSITION_GROUP, type PositionGroup } from '../model/positions';
 import type { Rng } from '../rng';
 import type { Slot } from '../schemes/slots';
+import { PLAYOFF_PHASES } from '../season/state';
 import { cannotPlay, designation } from '../season/injuries';
 import { TUNING } from '../tuning';
 
@@ -122,6 +123,12 @@ export function weeklyMorale(
   const rooms = new Map<TeamAbbr, Player[]>();
   for (const p of Object.values(league.players))
     if (p.team && ROOM.has(p.status)) rooms.set(p.team, [...(rooms.get(p.team) ?? []), p]);
+  // Time on the user's team teaches his character; the user remembers it after he leaves.
+  const user = rooms.get(league.meta.start.userTeam) ?? [];
+  learnCharacters(
+    league,
+    user.filter(p => characterKnown(league, p)).map(p => p.id)
+  );
   for (const team of TEAM_ABBRS) {
     const room = (rooms.get(team) ?? []).sort((a, b) => (a.id < b.id ? -1 : 1));
     const pull = roomPull(room);
@@ -188,6 +195,28 @@ export function lockerRoomEffect(league: League, players: readonly Player[], sta
   const per = TUNING.cohesion.executionPerPoint;
   return { offense: (mood + unit(LINE)) * per, defense: (mood + unit(SECONDARY)) * per };
 } // prettier-ignore
+
+/**
+ * Whether the user knows a player's character (spec 10.9): learned from a top-30 visit, or from time on the
+ * user's team, a league year before this one or `revealWeek` game weeks into this one.
+ */
+export function characterKnown(league: League, p: Player): boolean {
+  if (league.personalityKnown.includes(p.id)) return true;
+  if (p.team !== league.meta.start.userTeam) return false;
+  if (leagueYear(league.date) > p.joined) return true;
+  const { phase, week } = league.date;
+  return (phase === 'regularSeason' && week > L.revealWeek) || PLAYOFF_PHASES.includes(phase as (typeof PLAYOFF_PHASES)[number]);
+} // prettier-ignore
+
+/** The user remembers these players' characters from now on. */
+export function learnCharacters(league: League, ids: readonly string[]): void {
+  const known = new Set(league.personalityKnown);
+  for (const id of ids)
+    if (!known.has(id)) {
+      known.add(id);
+      league.personalityKnown.push(id);
+    }
+}
 
 /** A new league year eases every morale `offseasonReset` of the way back to the baseline. */
 export function resetMorale(league: League): void {

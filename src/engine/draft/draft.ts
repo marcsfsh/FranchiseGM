@@ -15,6 +15,7 @@ import type { NameData } from '../generate/player';
 import { draftOrder, signRookie } from '../generate/rookies';
 import { newId, recordTransaction } from '../league/transactions';
 import type { League } from '../league/types';
+import { learnCharacters } from '../locker/room';
 import { leagueYear } from '../model/calendar';
 import { fullName } from '../model/player';
 import type { Rng } from '../rng';
@@ -198,6 +199,8 @@ export function finishDraft(league: League): DraftGrades | null {
   if (!draft || onTheClock(league)) return null;
   const grades = gradeDraft(league, draft.year, draft.board ?? []);
   for (const p of draft.prospects) league.players[p.player.id] = p.player;
+  // The user keeps what the visits taught about the prospects (spec 10.9).
+  learnCharacters(league, draft.scouting[league.meta.start.userTeam].visits);
   issueNextYear(league, draft.year);
   league.draft = null;
   league.draftGrades = grades;

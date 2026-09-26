@@ -161,6 +161,8 @@ export interface League {
   draftGrades: DraftGrades | null;
   /** Teams' offers to undrafted rookies in the UDFA scramble (D-49), by player ID; empty outside it. */
   udfaOffers: Record<string, UdfaOffer[]>;
+  /** Players whose character the user has learned (spec 10.9): from a top-30 visit or time on his team. */
+  personalityKnown: string[];
   /** Messages for the user (spec 19.6), oldest first. */
   inbox: InboxItem[];
   /** Players on waivers until the league next advances (spec 12.1). */

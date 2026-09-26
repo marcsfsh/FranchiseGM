@@ -138,6 +138,8 @@ export const TUNING = {
     popularSeasons: 3,
     releaseLeader: 3,
     offseasonReset: 0.5,
+    /** The user learns a player's character after this many game weeks on the user's team. */
+    revealWeek: 9,
     moraleSpan: 15,
     moralePoints: 1.2,
     chemistryTypical: 2.5,

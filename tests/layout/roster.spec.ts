@@ -38,6 +38,13 @@ test('lists the roster with fit and opens a player with the fit breakdown', asyn
   await expect(select).toBeFocused();
   await expect(fit).toContainText(/(Good|Fair|Poor) fit for /);
 
+  // Morale, and his character once the user knows it (spec 10.9, 19.3).
+  const character = page.locator('main section.card', { hasText: 'Morale and character' });
+  await expect(character).toContainText(/Morale(Happy|Content|Unsettled|Unhappy), \d+/);
+  await expect(character).toContainText(
+    /Work ethic(Very high|High|Average|Low|Very low), \d+|Not known\. A top-30 visit/
+  );
+
   const toggle = page.getByRole('button', { name: 'Show all ratings' });
   await toggle.click();
   await expect(page.getByRole('button', { name: 'Hide all ratings' })).toHaveAttribute(

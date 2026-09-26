@@ -10,10 +10,11 @@ import { mediaBoard, roundProjector } from '../../engine/draft/media';
 import { revealed, teamGrades, type Grade } from '../../engine/draft/scouting';
 import type { League } from '../../engine/league/types';
 import { calendarDay } from '../../engine/model/calendar';
-import { ageOn, type Personality, type Player } from '../../engine/model/player';
+import { ageOn, type Player } from '../../engine/model/player';
 import { TUNING } from '../../engine/tuning';
 import { h } from '../dom';
 import { ordinal } from '../format';
+import { characterRows } from './character';
 import { heightText, stat } from './players';
 import { traitList } from './traits';
 
@@ -37,20 +38,6 @@ export const DRILLS: readonly {
   { key: 'cone', label: '3-cone (s)', title: '3-cone drill, seconds', cell: v => v.toFixed(2), words: v => `${v.toFixed(2)} seconds`, timed: true },
   { key: 'shuttle', label: 'Shuttle (s)', title: 'Short shuttle, seconds', cell: v => v.toFixed(2), words: v => `${v.toFixed(2)} seconds`, timed: true }
 ]; // prettier-ignore
-
-const CHARACTER: readonly [keyof Personality, string][] = [
-  ['workEthic', 'Work ethic'],
-  ['competitiveness', 'Competitiveness'],
-  ['leadership', 'Leadership'],
-  ['ego', 'Ego'],
-  ['volatility', 'Volatility'],
-  ['loyalty', 'Loyalty'],
-  ['greed', 'Greed'],
-  ['mediaStyle', 'Outspoken with the media'],
-  ['socialActivity', 'Social life']
-];
-const level = (v: number): string =>
-  v >= 80 ? 'Very high' : v >= 60 ? 'High' : v > 40 ? 'Average' : v > 20 ? 'Low' : 'Very low';
 
 /** A prospect as the user's board shows him. */
 export interface BoardRow {
@@ -144,7 +131,7 @@ export function prospectDetails(league: League, row: BoardRow, abbr: TeamAbbr): 
       : h('p', { class: 'muted' }, 'No abilities.'),
     h('h3', null, 'Character'),
     known.personality
-      ? h('div', { class: 'stack' }, ...CHARACTER.map(([key, label]) => h('div', { class: 'kv' }, h('span', { class: 'label' }, label), h('span', null, `${level(player.personality[key])}, ${player.personality[key]}`))))
+      ? characterRows(player)
       : h('p', { class: 'muted' }, visitsOpen ? '— · Not known. A top-30 visit shows you his character.' : '— · Not known. Top-30 visits, which show a prospect\'s character, open after the combine.')
   ]; // prettier-ignore
 }

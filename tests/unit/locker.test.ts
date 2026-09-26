@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { TeamAbbr } from '../../src/data/team-colors';
 import type { League } from '../../src/engine/league/types';
 import {
+  characterKnown,
   chemistry,
   isDisruptive,
   isLeader,
+  learnCharacters,
   LINE,
   LOCKER_ROOM_BEST,
   lockerRoomEffect,
@@ -182,4 +184,30 @@ describe('the locker room in games (spec 10.9)', () => {
     for (const p of players) p.morale = 0;
     expect(effect(players).defense).toBeCloseTo(-L.moralePoints * TUNING.cohesion.executionPerPoint);
   }); // prettier-ignore
+});
+
+describe("the user's knowledge of characters (spec 10.9)", () => {
+  it("learns a player's character from a visit, or from half a season on the user's team, and keeps it", () => {
+    const league = quiet();
+    const year = leagueYear(league.date);
+    const [mine] = room(league).filter(p => p.status === 'active');
+    const [theirs] = room(league, 'GB');
+    if (!mine || !theirs) throw new Error('no players');
+    mine.joined = year;
+    league.date = { season: year, phase: 'regularSeason', week: 1 };
+    expect(characterKnown(league, mine)).toBe(false);
+    league.date.week = L.revealWeek + 1;
+    expect(characterKnown(league, mine)).toBe(true);
+    mine.joined = year - 1;
+    league.date.week = 1;
+    expect(characterKnown(league, mine)).toBe(true);
+    expect(characterKnown(league, theirs)).toBe(false);
+    learnCharacters(league, [theirs.id, theirs.id]);
+    expect(league.personalityKnown.filter(id => id === theirs.id)).toHaveLength(1);
+    expect(characterKnown(league, theirs)).toBe(true);
+    // The weeks on the user's team are remembered once he's gone.
+    weeklyMorale(league, new Map(), stream(1));
+    mine.team = 'GB';
+    expect(characterKnown(league, mine)).toBe(true);
+  });
 });

@@ -21,6 +21,7 @@ import { href } from '../router';
 import { fitNode, fitSentence } from '../ui/fit';
 import { attributeRow, devTag, heightText, injuryTag, stat, statusTag, tierPlate } from '../ui/players';
 import { traitList } from '../ui/traits';
+import { characterBody } from '../ui/character';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
 
@@ -248,6 +249,8 @@ export function playerScreen(): Screen {
           : h('p', { class: 'muted' }, 'No notable traits.')
       );
 
+      const characterCard = card('Morale and character', ...characterBody(league, player));
+
       // The contract, with the user's roster moves; a move redraws the whole page (his status changes too).
       const contractSlot = contractCard(app, league, player, () => {
         const next = screen.render(screenCtx) as HTMLElement;
@@ -294,7 +297,17 @@ export function playerScreen(): Screen {
         'section',
         { class: 'view' },
         h('p', null, h('a', { class: 'btn btn-outline', href: href('roster') }, 'Back to roster')),
-        h('div', { class: 'stack' }, head, contractSlot, fitCard, ratingsCard, traitsCard, careerSlot)
+        h(
+          'div',
+          { class: 'stack' },
+          head,
+          contractSlot,
+          fitCard,
+          ratingsCard,
+          traitsCard,
+          characterCard,
+          careerSlot
+        )
       );
       return page;
     }
