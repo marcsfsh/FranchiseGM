@@ -8,6 +8,7 @@ import type { League } from '../league/types';
 import { leagueYear, PHASES } from '../model/calendar';
 import type { Player } from '../model/player';
 import type { Position } from '../model/positions';
+import { expectedNextCap } from '../cap/growth';
 import { minimumSalary, type RuleSet } from '../rules/ruleset';
 import { dollars } from '../text';
 import { termsProblem, type Offer } from './build';
@@ -71,10 +72,12 @@ export function expiringPlayers(league: League, abbr: TeamAbbr): Player[] {
     .sort((a, b) => b.ovr - a.ovr || (a.id < b.id ? -1 : 1));
 }
 
+/** The tag positions (spec 11.5). */
+export const TAG_POSITIONS: readonly string[] = [...new Set(Object.values(TAG_POSITION))];
+
 /** Cap hits this league year of the players at a tag position, largest first. */
-function positionHits(league: League, position: Position): number[] {
+function tagHits(league: League, tag: string): number[] {
   const year = leagueYear(league.date);
-  const tag = TAG_POSITION[position];
   const hits: number[] = [];
   for (const p of Object.values(league.players)) {
     if (TAG_POSITION[p.position] !== tag) continue;
@@ -83,9 +86,45 @@ function positionHits(league: League, position: Position): number[] {
   }
   return hits.sort((a, b) => b - a);
 }
+const positionHits = (league: League, position: Position): number[] =>
+  tagHits(league, TAG_POSITION[position]);
 
 const average = (values: readonly number[]): number =>
   values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
+
+/** A tag position's top cap hits as shares of its league year's cap (D-39): the top 5 and the top 10. */
+export interface TagShare {
+  franchise: number;
+  transition: number;
+}
+
+/** Each tag position's shares this league year, from the cap hits under contract now (D-39). */
+export function currentTagShares(league: League): Record<string, TagShare> {
+  const t = league.rules.tags;
+  const cap = league.caps[leagueYear(league.date)] ?? league.rules.cap.amount;
+  const share = (hits: number[], top: number) => Math.round((average(hits.slice(0, top)) / cap) * 1e6) / 1e6;
+  return Object.fromEntries(
+    TAG_POSITIONS.map(tag => {
+      const hits = tagHits(league, tag);
+      return [tag, { franchise: share(hits, t.franchiseTop), transition: share(hits, t.transitionTop) }];
+    })
+  );
+}
+
+/**
+ * A tag's price by the CBA's method (D-39): for each of the last five league years, this one included, the
+ * top cap hits at the tag position as a share of that year's cap, averaged, times next league year's cap
+ * as expected. Years before the league's first count at its first year's shares.
+ */
+function fiveYearPrice(league: League, tag: string, kind: keyof TagShare): number {
+  const year = leagueYear(league.date);
+  const live = currentTagShares(league);
+  const first = Math.min(year, ...Object.keys(league.tagShares).map(Number));
+  const shareIn = (y: number): number => (league.tagShares[y] ?? (y === year ? live : (league.tagShares[first] ?? live)))[tag]?.[kind] ?? 0;
+  const shares = Array.from({ length: 5 }, (_, i) => shareIn(Math.max(first, year - i)));
+  const cap = league.caps[year + 1] ?? expectedNextCap(league.rules);
+  return Math.round((shares.reduce((a, b) => a + b, 0) / shares.length) * cap);
+} // prettier-ignore
 
 /** The tags a player has had in a row from his team, ending with this league year's deal. */
 export function straightTags(league: League, player: Player, team: TeamAbbr): number {
@@ -101,21 +140,23 @@ export function straightTags(league: League, player: Player, team: TeamAbbr): nu
 }
 
 /**
- * A tag's one-year salary (spec 11.5): the average of the top cap hits at his tag position, or 120% of his
- * salary this league year, whichever is more; a second straight tag at least 120% of the last, a third at
- * least 144% of it or the quarterback tag.
+ * A tag's one-year salary (spec 11.5): for an exclusive franchise tag the average of the top 5 cap hits at
+ * his tag position now, for the others the five-year price (D-39), or 120% of his salary this league year,
+ * whichever is more; a second straight tag at least 120% of the last, a third at least 144% of it or the
+ * quarterback tag.
  */
 export function tagSalary(league: League, player: Player, kind: TagKind): number {
   const t = league.rules.tags;
   const year = leagueYear(league.date);
-  const top = kind === 'transition' ? t.transitionTop : t.franchiseTop;
+  const price = (tag: string) =>
+    kind === 'exclusive' ? average(tagHits(league, tag).slice(0, t.franchiseTop)) : fiveYearPrice(league, tag, kind === 'transition' ? 'transition' : 'franchise');
   const deal = currentDeal(league, player);
   const prior = deal ? capHit(deal, year, league.rules) : 0;
-  let salary = Math.max(average(positionHits(league, player.position).slice(0, top)), Math.round(prior * t.priorSalaryShare));
+  let salary = Math.max(price(TAG_POSITION[player.position]), Math.round(prior * t.priorSalaryShare));
   const team = player.team;
   const run = team ? straightTags(league, player, team) : 0;
   if (run === 1) salary = Math.max(salary, Math.round(prior * t.secondTag));
-  if (run >= 2) salary = Math.max(salary, Math.round(prior * t.thirdTag), average(positionHits(league, 'QB').slice(0, top)));
+  if (run >= 2) salary = Math.max(salary, Math.round(prior * t.thirdTag), price('QB'));
   return Math.round(salary / 1000) * 1000;
 } // prettier-ignore
 

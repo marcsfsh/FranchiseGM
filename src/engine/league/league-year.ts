@@ -7,11 +7,12 @@
  */
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { closeFloorYear, type FloorShortfall } from '../cap/floor';
+import { nextCap } from '../cap/growth';
 import { capSheet } from '../cap/sheet';
 import { contractRecord, type ContractRecord } from '../contracts/history';
 import { endContract } from '../contracts/moves';
 import { resetNegotiations } from '../contracts/negotiation';
-import { tenderAmount, TENDER_LABELS, type TenderLevel } from '../contracts/resign';
+import { currentTagShares, tenderAmount, TENDER_LABELS, type TenderLevel } from '../contracts/resign';
 import type { Contract } from '../contracts/types';
 import { resetMorale } from '../locker/room';
 import { leagueYear, type GameDate } from '../model/calendar';
@@ -21,6 +22,8 @@ import { TUNING } from '../tuning';
 import type { League } from './types';
 
 const Y = TUNING.leagueYear;
+
+export { nextCap };
 
 export interface LeagueYearChange {
   year: number;
@@ -34,17 +37,6 @@ export interface LeagueYearChange {
   shortfalls: FloorShortfall[];
   /** Records of the spent deals that left the league, for the players' histories (D-35). */
   records: ContractRecord[];
-}
-
-/**
- * Next league year's cap (spec 11.1): oldCap x (1 + w x fixedRate + (1 - w) x revenueGrowth), the yearly
- * change held within the floor and ceiling.
- */
-export function nextCap(rules: RuleSet, revenueGrowth: number): number {
-  const c = rules.cap;
-  const growth = c.growthFixedWeight * c.growthFixedRate + (1 - c.growthFixedWeight) * revenueGrowth;
-  const bounded = Math.min(c.growthCeiling, Math.max(c.growthFloor, growth));
-  return Math.round((c.amount * (1 + bounded)) / Y.capRound) * Y.capRound;
 }
 
 /** The rule set with a new cap, and the minimums, practice squad pay, and rookie scale grown with it. */
@@ -103,6 +95,8 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
     ])
   ) as Record<TeamAbbr, number>;
   const capBefore = league.rules.cap.amount;
+  // The closing year's top cap hits by tag position price the tags of the next five (D-39).
+  league.tagShares[before] = currentTagShares(league);
   // The year that closes counts toward the salary floor (spec 11.1).
   const shortfalls = closeFloorYear(league, before);
   const [mean, spread] = Y.revenueGrowth;

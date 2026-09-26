@@ -6,6 +6,7 @@ import type { TeamAbbr } from '../../data/team-colors';
 import type { ScheduledGame } from '../../data/schedule';
 import type { FreeAgentOffer } from '../contracts/free-agency';
 import type { Negotiation } from '../contracts/negotiation';
+import type { TagShare } from '../contracts/resign';
 import type { Contract } from '../contracts/types';
 import type { GameDate } from '../model/calendar';
 import type { Player } from '../model/player';
@@ -31,7 +32,7 @@ import type { DraftSettings } from '../draft/settings';
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 27;
+export const SAVE_SCHEMA_VERSION = 28;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -130,6 +131,11 @@ export interface League {
    * past deals against the cap they were signed under.
    */
   caps: Record<number, number>;
+  /**
+   * Each closed league year's top cap hits by tag position as shares of its cap (D-39), for pricing the
+   * franchise and transition tags from five years.
+   */
+  tagShares: Record<number, Record<string, TagShare>>;
   settings: LeagueSettings;
   teams: Record<TeamAbbr, TeamState>;
   players: Record<string, Player>;

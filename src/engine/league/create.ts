@@ -117,6 +117,7 @@ export function createLeague(input: NewLeagueInput): League {
     random: createLeagueRandom(start.seed, input.fixed ?? false),
     rules: structuredClone(rules),
     caps: { [start.startSeason]: rules.cap.amount },
+    tagShares: {},
     settings: {
       version: 1,
       fitCap: TUNING.fit.cap,

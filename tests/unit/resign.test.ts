@@ -75,9 +75,12 @@ describe('tags and tenders (spec 11.5)', () => {
   it('prices a tag at the top of the position, or above his salary, and more for a tag again', () => {
     const { league, qbs } = window();
     const backup = qbs[12] as Player;
-    // Top 5: (50 + 45 + 40 + 35 + 30) / 5 = 40M; top 10 adds 25, 20, 15, 10, 5: 27.5M.
+    // Top 5: (50 + 45 + 40 + 35 + 30) / 5 = 40M, the exclusive tag. The others take five years of shares of
+    // the cap (D-39): with no history, 2026's five times, and top 10 adds 25, 20, 15, 10, 5 for 27.5M. As
+    // shares of the $301.2M cap, 0.132802 and 0.091301, times 2027's expected cap, 301.2M grown 7%, $322.3M.
     expect(tagSalary(league, backup, 'exclusive')).toBe(40_000_000);
-    expect(tagSalary(league, backup, 'transition')).toBe(27_500_000);
+    expect(tagSalary(league, backup, 'nonExclusive')).toBe(42_802_000);
+    expect(tagSalary(league, backup, 'transition')).toBe(29_426_000);
     // The best-paid quarterback: 120% of 50M is 60M, more than the average.
     expect(tagSalary(league, qbs[0] as Player, 'nonExclusive')).toBe(60_000_000);
     // Tagged in 2026 at 45M: a second straight tag is 120% of it, 54M.
@@ -88,6 +91,21 @@ describe('tags and tenders (spec 11.5)', () => {
     league.contracts.tag25 = deal('tag25', tagged, [[2025, 40_000_000]], { type: 'franchiseTag' });
     expect(tagSalary(league, tagged, 'exclusive')).toBe(64_800_000);
   });
+
+  it("averages five years' shares of the cap, counting years before the league's first at its first", () => {
+    const { league, qbs } = window();
+    const backup = qbs[12] as Player;
+    const share = (franchise: number) => ({ QB: { franchise, transition: 0 } });
+    // Only 2025 closed before: it stands in for 2022 to 2024 too. (4 x 0.12 + 0.132802) / 5 x 322.3M.
+    league.tagShares = { 2025: share(0.12) };
+    expect(tagSalary(league, backup, 'nonExclusive')).toBe(Math.round((((4 * 0.12 + 0.132802) / 5) * 322_300_000) / 1000) * 1000);
+    // Four closed years: (0.10 + 0.11 + 0.12 + 0.13 + 0.132802) / 5 x 322.3M = 38,212,017.
+    league.tagShares = { 2022: share(0.1), 2023: share(0.11), 2024: share(0.12), 2025: share(0.13) };
+    expect(tagSalary(league, backup, 'nonExclusive')).toBe(38_212_000);
+    // The closing year's shares are kept as the new league year opens.
+    openLeagueYear(league, at('freeAgency'), stream(9));
+    expect(league.tagShares[2026]?.QB).toEqual({ franchise: 0.132802, transition: 0.091301 });
+  }); // prettier-ignore
 
   it('tenders restricted free agents by level, and exclusive-rights players at the minimum', () => {
     const { league } = window();
