@@ -67,7 +67,18 @@ describe('the season loop (spec 4.2, 5.3)', { timeout: 120_000 }, () => {
     expect(a.league.date).toEqual({ season: 2026, phase: 'regularSeason', week: 2 });
     expect(a.games).toHaveLength(schedule.filter(g => g.week === 1).length);
     expect(a.games.every(g => g.meta.kind === 'regular' && g.meta.week === 1)).toBe(true);
-  });
+    // Snaps on offense and defense by player and by team, for the fifth-year option (spec 11.4): each
+    // team's are its most-used player's, and special teams snaps don't count.
+    const { scrimmage, teamScrimmage } = a.league.season;
+    for (const g of a.games)
+      for (const [abbr, box] of [[g.result.home, g.result.box.home], [g.result.away, g.result.box.away]] as const) {
+        const lines = Object.entries(box.players);
+        const team = teamScrimmage[abbr];
+        expect(team?.[0]).toBe(Math.max(...lines.map(([, l]) => l.snapsOffense ?? 0)));
+        expect(team?.[1]).toBe(Math.max(...lines.map(([, l]) => l.snapsDefense ?? 0)));
+        for (const [id, line] of lines) expect(scrimmage[id]).toEqual([line.snapsOffense ?? 0, line.snapsDefense ?? 0]);
+      }
+  }); // prettier-ignore
 
   it('plays week 1 through the Super Bowl: seeds, byes, re-seeding, and one champion', () => {
     const l = league();

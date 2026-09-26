@@ -174,6 +174,16 @@ function positionRank(league: League, player: Player): number {
 }
 
 /**
+ * His share of his team's offensive or defensive snaps last regular season, whichever is more (spec 11.4):
+ * the CBA's playing-time measure, from the one season the league keeps.
+ */
+export function snapShare(league: League, player: Player): number {
+  const [offense, defense] = league.season.scrimmage[player.id] ?? [0, 0];
+  const [teamOffense, teamDefense] = (player.team && league.season.teamScrimmage[player.team]) || [0, 0];
+  return Math.max(teamOffense ? offense / teamOffense : 0, teamDefense ? defense / teamDefense : 0);
+}
+
+/**
  * A fifth-year option's tier and salary (spec 11.4, default, review): the franchise tag for the best three
  * at his tag position (two Pro Bowls in the CBA), the transition tag for the next five (one Pro Bowl), the
  * average of the 3rd to 20th cap hits at the position for a starter by snaps, otherwise the 3rd to 25th.
@@ -184,7 +194,7 @@ export function optionSalary(league: League, player: Player): { tier: OptionTier
   if (rank <= 3) return { tier: 'franchise', salary: tagSalary(league, player, 'nonExclusive') };
   if (rank <= 8) return { tier: 'transition', salary: tagSalary(league, player, 'transition') };
   const hits = positionHits(league, player.position);
-  const snaps = (league.season.snaps[player.id] ?? 0) / (league.rules.season.games * 60);
+  const snaps = snapShare(league, player);
   const [from, to] = snaps >= t.optionSnapShare ? t.optionPlayingTime : t.optionBasic;
   const salary = Math.max(minimumSalary(league.rules, player.experience), average(hits.slice(from - 1, to)));
   return {

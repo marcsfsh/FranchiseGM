@@ -178,10 +178,24 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
   // Regular-season weeks develop every rostered player a little (spec 10.5), by this week's snaps.
   if (!playoff) {
     const snaps: Record<string, number> = {};
+    const { scrimmage, teamScrimmage } = league.season;
     for (const r of results)
-      for (const side of [r.box.home, r.box.away])
-        for (const [id, line] of Object.entries(side.players))
+      for (const [abbr, side] of [
+        [r.home, r.box.home],
+        [r.away, r.box.away]
+      ] as const) {
+        // A team's snaps on each side are its most-used player's: someone plays every one.
+        const team = teamScrimmage[abbr] ?? [0, 0];
+        let [offense, defense] = [0, 0];
+        for (const [id, line] of Object.entries(side.players)) {
           snaps[id] = (line.snapsOffense ?? 0) + (line.snapsDefense ?? 0) + (line.snapsSpecial ?? 0);
+          const mine = scrimmage[id] ?? [0, 0];
+          scrimmage[id] = [mine[0] + (line.snapsOffense ?? 0), mine[1] + (line.snapsDefense ?? 0)];
+          offense = Math.max(offense, line.snapsOffense ?? 0);
+          defense = Math.max(defense, line.snapsDefense ?? 0);
+        }
+        teamScrimmage[abbr] = [team[0] + offense, team[1] + defense];
+      }
     for (const [id, n] of Object.entries(snaps)) league.season.snaps[id] = (league.season.snaps[id] ?? 0) + n;
     coachTraining(league);
     ratings.push(...weeklyDevelopment(league, snaps, leagueStream(league.random, 'development', week)));

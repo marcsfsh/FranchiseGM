@@ -42,6 +42,12 @@ export interface SeasonState {
   elevations: { playerId: string; team: TeamAbbr; week: number }[];
   /** Regular-season snaps by player, for development's playing time (spec 10.5). */
   snaps: Record<string, number>;
+  /**
+   * Regular-season snaps on offense and on defense, by player and by team, for the fifth-year option's
+   * playing-time tier (spec 11.4).
+   */
+  scrimmage: Record<string, [offense: number, defense: number]>;
+  teamScrimmage: Partial<Record<TeamAbbr, [offense: number, defense: number]>>;
 }
 
 export const emptySeason = (season: number): SeasonState => ({
@@ -55,7 +61,9 @@ export const emptySeason = (season: number): SeasonState => ({
   totals: {},
   inactive: {},
   elevations: [],
-  snaps: {}
+  snaps: {},
+  scrimmage: {},
+  teamScrimmage: {}
 });
 
 /** Playoff phases in order: round 1 is the Wild Card round, the last is the Super Bowl. */

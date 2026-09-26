@@ -10,6 +10,7 @@ import {
   freeAgentKind,
   optionOpen,
   optionSalary,
+  snapShare,
   tagSalary,
   tenderLevels,
   tenderSalary
@@ -137,9 +138,13 @@ describe('fifth-year options (spec 11.4)', () => {
     p.ovr = 99;
     expect(optionSalary(league, p)).toMatchObject({ tier: 'franchise', salary: tagSalary(league, p, 'nonExclusive') });
     p.ovr = 40;
-    league.season.snaps[p.id] = 17 * 60;
+    // Playing time is his share of his team's offensive or defensive snaps; special teams don't count.
+    league.season.teamScrimmage[team] = [1_000, 1_050];
+    league.season.scrimmage[p.id] = [750, 0];
+    league.season.snaps[p.id] = 1_200;
+    expect(snapShare(league, p)).toBeCloseTo(0.75, 5);
     expect(optionSalary(league, p).tier).toBe('playingTime');
-    league.season.snaps[p.id] = 0;
+    league.season.scrimmage[p.id] = [749, 0];
     expect(optionSalary(league, p).tier).toBe('basic');
     const salary = optionSalary(league, p).salary;
     expect(makeMove(league, { kind: 'option', team, playerId: p.id, exercise: true }, stream(2)).ok).toBe(true);
