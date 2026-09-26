@@ -25,6 +25,7 @@
 - The practice squad's international pathway exemption isn't modeled (no player carries the designation), so squads hold 16. The PUP, NFI, and suspended lists have their rules, but nothing places players on them yet: players hurt at camp stay on the active roster, and suspensions arrive with M12.
 - Under the stand-in free agency (D-27) teams pay about three quarters of the cap in cash, so most fall short of the salary floor's first window and pay the shortfall (D-33) until M12's free agency spends like NFL teams. Extensions are signed at the player's asking price until M12's negotiations.
 - AI teams keep expiring players only through age 30 (D-32) until M12's value-based re-sign choice (D-38).
+- The player decision model (D-52) leaves out relationships with coaches and climate preferences until M13's staff.
 - Non-exclusive franchise and transition tags average the current year's top cap hits until M12 prices them from five years of cap percentages (D-39).
 - Waiver priority before week 4 of a league's first season follows a seeded order, since no draft has been ordered yet (D-22, D-42). Guaranteed money a released player earns from a new team doesn't offset what his old team owes.
 - Pause rules list only the event types this build raises (injuries to starters); the others appear with the milestones that create them (spec 19.6).
