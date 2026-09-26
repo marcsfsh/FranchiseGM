@@ -848,13 +848,12 @@ export const TUNING = {
     }
   },
   /**
-   * The AI in the re-sign window (spec 11.4, 11.5; D-29 stand-in until M12 and M14): players older than
-   * `maxAge` go to free agency; an option is exercised when his asking price reaches this share of it; next
-   * year's cap keeps this share free for free agency beyond the draft class; the franchise tag goes only to
-   * players of this overall or better.
+   * The AI in the re-sign window (spec 11.4, 11.5; D-29 stand-in until M14, value-based since D-38): an
+   * option is exercised when his asking price reaches this share of it; next year's cap keeps this share
+   * free for free agency beyond the draft class; the franchise tag goes only to players of this overall or
+   * better.
    */
   resign: {
-    maxAge: 30,
     optionValue: 0.9,
     freeAgencyRoom: 0.04,
     tagOvr: 80

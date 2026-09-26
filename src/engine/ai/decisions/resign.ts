@@ -3,12 +3,14 @@
  * exercises a fifth-year option when the player's value covers it, keeps the expiring players it would miss
  * (those who'd still rank within the standard roster's count at their position group), and pays for them
  * best first while next year's cap keeps room for the draft class and free agency: an extension at the
- * price its GM settles (spec 11.6), or the franchise tag when that's more than the tag costs; restricted
- * free agents get the highest tender their value reaches, and exclusive-rights players the minimum tender.
+ * price its GM settles (spec 11.6) when his projected value over it covers its cost (D-38), or the
+ * franchise tag when he asks for more than the tag costs and a year of him is worth it; restricted free
+ * agents get the highest tender their value reaches, and exclusive-rights players the minimum tender.
  */
 import type { TeamAbbr } from '../../../data/team-colors';
 import { capSheet } from '../../cap/sheet';
 import { settledSalary, termFor } from '../../contracts/negotiation';
+import { dealValue, worthIt } from '../../contracts/value';
 import {
   freeAgentKind,
   optionSalary,
@@ -32,14 +34,13 @@ const R = TUNING.resign;
 /** A move with the team left out. */
 type TeamMove = Move extends infer M ? (M extends Move ? Omit<M, 'team'> : never) : never;
 
-/** Whether the team wants him back: he'd rank within the standard count at his group, and isn't too old. */
+/** Whether the team would miss him: he'd rank within the standard count at his group. */
 function wanted(league: League, abbr: TeamAbbr, player: Player): boolean {
   const group = NEED_GROUP[player.position];
-  const age = ageOn(player.birthDate, calendarDay(league.date));
   const better = Object.values(league.players).filter(
     p => p.team === abbr && p.status !== 'practice' && p.id !== player.id && NEED_GROUP[p.position] === group && p.ovr > player.ovr
   ).length; // prettier-ignore
-  return better < (TARGET.get(group) ?? 0) && age <= R.maxAge;
+  return better < (TARGET.get(group) ?? 0);
 }
 
 export function resignDecisions(league: League, abbr: TeamAbbr, rng: Rng): void {
@@ -78,12 +79,18 @@ export function resignDecisions(league: League, abbr: TeamAbbr, rng: Rng): void 
       continue;
     }
     const tag = tagSalary(league, p, 'nonExclusive');
-    if (ask > tag && !tagUsed(league, abbr) && p.ovr >= R.tagOvr && tag <= room()) {
+    if (
+      ask > tag &&
+      !tagUsed(league, abbr) &&
+      p.ovr >= R.tagOvr &&
+      tag <= room() &&
+      dealValue(league, p, 1) >= tag
+    ) {
       move({ kind: 'tag', playerId: p.id, tag: 'nonExclusive', reason });
       continue;
     }
-    if (ask > room()) continue;
     const offer = { years, salary: ask, signingBonus: 0 };
+    if (ask > room() || !worthIt(league, p, offer)) continue;
     move({ kind: 'extend', playerId: p.id, offer, reason });
   }
 }

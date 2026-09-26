@@ -211,6 +211,42 @@ export function developPlayer(
   return change;
 }
 
+/**
+ * A player's expected overall change over a year at `age` from `ovr` (D-38): each rating his overall weighs
+ * follows its class's age curve, growth scaled by his room to potential, his development trait, and his
+ * work ethic, decline by his trait and work ethic, with the development settings; playing time, coaching,
+ * and chance aren't known ahead.
+ */
+export function expectedChange(league: League, player: Player, age: number, ovr: number): number {
+  const group = POSITION_GROUP[player.position];
+  const s = league.settings.development;
+  const room = Math.min(P.potentialBounds[1], Math.max(P.potentialBounds[0], (player.potential - ovr) / P.potentialRoom));
+  const ethic = (player.personality.workEthic - 50) / 50;
+  const grow = room * P.devGrowth[player.dev] * (1 + P.workEthic * ethic) * growthMultiplier(s, age, group);
+  const shrink = P.devDecline[player.dev] * (1 - P.workEthicDecline * ethic) * declineMultiplier(s, age, group);
+  let change = 0;
+  for (const [key, weight] of Object.entries(HAND_SET_FORMULAS[player.position].coefficients)) {
+    const curve = ageCurve(classOf(key as RatingKey), age - P.peakAge[group]);
+    change += (weight ?? 0) * (curve.growth * grow - curve.decline * shrink);
+  }
+  return change;
+} // prettier-ignore
+
+/**
+ * His projected overall in each of the next `seasons` seasons (D-38), from his age now: each season's
+ * after the year of development that comes before it.
+ */
+export function projectedOverall(league: League, player: Player, seasons: number): number[] {
+  const age = ageOn(player.birthDate, calendarDay(league.date));
+  const out: number[] = [];
+  let ovr = player.ovr;
+  for (let i = 0; i < seasons; i++) {
+    ovr = Math.max(0, Math.min(99, ovr + expectedChange(league, player, age + i, ovr)));
+    out.push(Math.round(ovr));
+  }
+  return out;
+}
+
 /** The players a team develops: its roster, practice squad, and injured reserve. */
 const DEVELOPING = new Set<Player['status']>(['active', 'practice', 'ir', 'pup', 'nfi']);
 

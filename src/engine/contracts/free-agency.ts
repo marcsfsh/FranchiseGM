@@ -25,6 +25,7 @@ import { offerAav, termsProblem, type Offer } from './build';
 import { askingFrom, chooseOffer, contextFor, demand, mattersMost, offerWorth, reachable } from './decision';
 import { marketValue } from './market';
 import { lowballed, mattersWords, termFor } from './negotiation';
+import { dealValue } from './value';
 
 const F = TUNING.freeAgency;
 const N = TUNING.contracts.negotiation;
@@ -112,8 +113,9 @@ export function withdrawOffer(league: League, team: TeamAbbr, playerId: string):
 /**
  * A team's offers as a week of free agency opens (spec 11.8): the free agents who'd fill a hole or start
  * over its weakest starter at their group, most wanted first, each at what he'd ask of this team plus a
- * premium for the ones it wants most, while its standing offers fit the cap room it keeps for its draft
- * class and the season. Returns the players offered.
+ * premium for the ones it wants most, but never more a year than his projected value over the deal (D-38),
+ * while its standing offers fit the cap room it keeps for its draft class and the season. Returns the
+ * players offered.
  */
 export function teamBids(league: League, team: TeamAbbr, order: readonly TeamAbbr[]): Player[] {
   const ctx = contextFor(league);
@@ -144,8 +146,12 @@ export function teamBids(league: League, team: TeamAbbr, order: readonly TeamAbb
     const years = termFor(ageOn(p.birthDate, today));
     const ask = askingFrom(league, ctx, p, team, years);
     const premium = Math.min(F.premium, Math.max(0, want) / F.premiumAt * F.premium);
-    const salary = Math.round((ask * (1 + premium)) / TUNING.market.quoteStep) * TUNING.market.quoteStep;
-    const offer = { years, salary: Math.max(ask, salary), signingBonus: 0 };
+    const step = TUNING.market.quoteStep;
+    const worth = Math.floor(dealValue(league, p, years) / years / step) * step;
+    const salary = Math.min(worth, Math.round((ask * (1 + premium)) / step) * step);
+    // He asks more than he's worth to the team over the deal.
+    if (salary < ask) continue;
+    const offer = { years, salary, signingBonus: 0 };
     if (firstYearCharge(league, offer) > left) continue;
     if (makeOffer(league, team, p.id, offer) === null) {
       left -= firstYearCharge(league, offer);
