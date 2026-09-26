@@ -10,6 +10,7 @@ import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { homeStadium } from '../../data/teams';
 import { rolesFor } from '../fit/role-rating';
 import { leagueFitContext } from '../league/fit';
+import type { TransactionKind } from '../league/transactions';
 import type { League } from '../league/types';
 import { calendarDay, leagueYear, type GameDate } from '../model/calendar';
 import { ageOn, type Player } from '../model/player';
@@ -127,22 +128,32 @@ function contendersOf(league: League): Map<TeamAbbr, number> {
   return new Map(TEAM_ABBRS.map(t => [t, (results.get(t) ?? 0.5) + (rosters.get(t) ?? 0.5) - 1]));
 }
 
+/** Moves that change who's on a roster, and so the depth the model reads. */
+const ROSTER_MOVES: ReadonlySet<TransactionKind> = new Set<TransactionKind>([
+  'injuredReserve', 'activated', 'reserveReturn', 'signed', 'promoted', 'released', 'claimed', 'practiceSquad', 'drafted', 'heldOut', 'reported'
+]); // prettier-ignore
+
 /**
  * The model's view for a league as it stands. Contenders and fits hold for the date; the rosters' depth is
- * read again whenever a transaction changes them.
+ * read again whenever a move changes a roster (an extension or a tag doesn't).
  */
-const cached = new WeakMap<League, { date: string; moves: number; ctx: DecisionContext }>();
+const cached = new WeakMap<League, { date: string; seen: number; moves: number; ctx: DecisionContext }>();
 export function contextFor(league: League): DecisionContext {
   const { season, phase, week } = league.date;
   const date = `${season}|${phase}|${week}`;
-  const moves = league.season.transactions.length;
+  const log = league.season.transactions;
   const known = cached.get(league);
-  if (known?.date === date && known.moves === moves) return known.ctx;
-  const ctx: DecisionContext =
-    known?.date === date ? { ...known.ctx, depth: depthOf(league) } : decisionContext(league);
-  cached.set(league, { date, moves, ctx });
+  const same = !!known && known.date === date && known.seen <= log.length;
+  let moves = same ? known.moves : 0;
+  for (let i = same ? known.seen : 0; i < log.length; i++) if (ROSTER_MOVES.has((log[i] as { kind: TransactionKind }).kind)) moves++;
+  if (same && known.moves === moves) {
+    known.seen = log.length;
+    return known.ctx;
+  }
+  const ctx: DecisionContext = same ? { ...known.ctx, depth: depthOf(league) } : decisionContext(league);
+  cached.set(league, { date, seen: log.length, moves, ctx });
   return ctx;
-}
+} // prettier-ignore
 
 /** His role on a team if he joined it: 1 a starter, 0 in the rotation, -1 a backup (spec 11.7). */
 export function projectedRole(ctx: DecisionContext, player: Player, team: TeamAbbr): number {

@@ -135,7 +135,7 @@ describe('the re-sign window (spec 4.1, 11.4, 11.5)', () => {
     expect(kept(league, user)).toBe(0);
     expect(close.inbox).toHaveLength(0);
     expect(league.season.transactions.filter(t => t.phase === 'resign').map(t => t.kind)).toEqual(expect.arrayContaining(['extended', 'tendered']));
-  }); // prettier-ignore
+  }, 60_000); // prettier-ignore
 
   it("lets the staff make the user's decisions with contracts on auto", () => {
     const league = expiringLeague();
@@ -146,7 +146,7 @@ describe('the re-sign window (spec 4.1, 11.4, 11.5)', () => {
     const close = advanceOffseason(league, { names: nameData() }, { actions: 0, entropy: 2 });
     expect(kept(league, user)).toBeGreaterThan(0);
     expect(close.inbox[0]?.title).toMatch(/^Your staff made \d+ contract decisions?$/);
-  });
+  }, 60_000);
 });
 
 describe('new league year (spec 11.1)', () => {

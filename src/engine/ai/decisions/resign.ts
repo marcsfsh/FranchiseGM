@@ -34,14 +34,17 @@ const R = TUNING.resign;
 /** A move with the team left out. */
 type TeamMove = Move extends infer M ? (M extends Move ? Omit<M, 'team'> : never) : never;
 
-/** Whether the team would miss him: he'd rank within the standard count at his group. */
-function wanted(league: League, abbr: TeamAbbr, player: Player): boolean {
-  const group = NEED_GROUP[player.position];
-  const better = Object.values(league.players).filter(
-    p => p.team === abbr && p.status !== 'practice' && p.id !== player.id && NEED_GROUP[p.position] === group && p.ovr > player.ovr
-  ).length; // prettier-ignore
-  return better < (TARGET.get(group) ?? 0);
-}
+/** Whether the team would miss a player: he'd rank within the standard count at his group. */
+function wantedOn(league: League, abbr: TeamAbbr): (player: Player) => boolean {
+  const byGroup = new Map<string, number[]>();
+  for (const p of Object.values(league.players))
+    if (p.team === abbr && p.status !== 'practice') byGroup.set(NEED_GROUP[p.position], [...(byGroup.get(NEED_GROUP[p.position]) ?? []), p.ovr]);
+  return player => {
+    const group = NEED_GROUP[player.position];
+    const better = (byGroup.get(group) ?? []).filter(ovr => ovr > player.ovr).length;
+    return better < (TARGET.get(group) ?? 0);
+  };
+} // prettier-ignore
 
 export function resignDecisions(league: League, abbr: TeamAbbr, rng: Rng): void {
   const year = leagueYear(league.date);
@@ -63,7 +66,8 @@ export function resignDecisions(league: League, abbr: TeamAbbr, rng: Rng): void 
   // Next year's room above the draft class and a cushion for free agency.
   const reserve = rookieReserve(league, abbr) + R.freeAgencyRoom * league.rules.cap.amount;
   const room = () => capSheet(league, abbr, year + 1).space - reserve;
-  for (const p of expiring.filter(p => wanted(league, abbr, p))) {
+  const wanted = wantedOn(league, abbr);
+  for (const p of expiring.filter(wanted)) {
     const kind = freeAgentKind(league, p);
     const years = termFor(ageOn(p.birthDate, today));
     const ask = settledSalary(league, p, abbr, years, true);

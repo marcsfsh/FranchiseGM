@@ -98,18 +98,18 @@ export interface TagShare {
   transition: number;
 }
 
-/** Each tag position's shares this league year, from the cap hits under contract now (D-39). */
-export function currentTagShares(league: League): Record<string, TagShare> {
+/** A tag position's shares this league year, from the cap hits under contract now (D-39). */
+function tagShareNow(league: League, tag: string): TagShare {
   const t = league.rules.tags;
   const cap = league.caps[leagueYear(league.date)] ?? league.rules.cap.amount;
-  const share = (hits: number[], top: number) => Math.round((average(hits.slice(0, top)) / cap) * 1e6) / 1e6;
-  return Object.fromEntries(
-    TAG_POSITIONS.map(tag => {
-      const hits = tagHits(league, tag);
-      return [tag, { franchise: share(hits, t.franchiseTop), transition: share(hits, t.transitionTop) }];
-    })
-  );
+  const hits = tagHits(league, tag);
+  const share = (top: number) => Math.round((average(hits.slice(0, top)) / cap) * 1e6) / 1e6;
+  return { franchise: share(t.franchiseTop), transition: share(t.transitionTop) };
 }
+
+/** Each tag position's shares this league year, from the cap hits under contract now (D-39). */
+export const currentTagShares = (league: League): Record<string, TagShare> =>
+  Object.fromEntries(TAG_POSITIONS.map(tag => [tag, tagShareNow(league, tag)]));
 
 /**
  * A tag's price by the CBA's method (D-39): for each of the last five league years, this one included, the
@@ -118,7 +118,7 @@ export function currentTagShares(league: League): Record<string, TagShare> {
  */
 function fiveYearPrice(league: League, tag: string, kind: keyof TagShare): number {
   const year = leagueYear(league.date);
-  const live = currentTagShares(league);
+  const live = { [tag]: tagShareNow(league, tag) };
   const first = Math.min(year, ...Object.keys(league.tagShares).map(Number));
   const shareIn = (y: number): number => (league.tagShares[y] ?? (y === year ? live : (league.tagShares[first] ?? live)))[tag]?.[kind] ?? 0;
   const shares = Array.from({ length: 5 }, (_, i) => shareIn(Math.max(first, year - i)));
