@@ -1,10 +1,12 @@
 /**
- * The new league year (spec 4.1, 11.1): when free agency opens, each team's unused cap space carries over,
- * the cap grows by a blend of a fixed rate and league revenue growth, and the pay scales tied to it follow.
+ * The new league year (spec 4.1, 11.1): when free agency opens, the year that ends counts toward the salary
+ * floor, each team's unused cap space carries over, the cap grows by a blend of a fixed rate and league
+ * revenue growth, and the pay scales tied to it follow.
  * Contracts that ran out end, their players free to sign anywhere, a deal whose next year was an option
  * nobody picked up ends as declined, and players on the reserve lists rejoin their teams' rosters.
  */
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
+import { closeFloorYear, type FloorShortfall } from '../cap/floor';
 import { capSheet } from '../cap/sheet';
 import { endContract } from '../contracts/moves';
 import { tenderAmount, TENDER_LABELS, type TenderLevel } from '../contracts/resign';
@@ -25,6 +27,8 @@ export interface LeagueYearChange {
   carryover: Record<TeamAbbr, number>;
   /** Players whose contracts ran out, with the team they left. */
   expired: { playerId: string; team: TeamAbbr }[];
+  /** Teams whose cash spending fell short of the salary floor over a window that just closed. */
+  shortfalls: FloorShortfall[];
 }
 
 /**
@@ -93,8 +97,11 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
     ])
   ) as Record<TeamAbbr, number>;
   const capBefore = league.rules.cap.amount;
+  // The year that closes counts toward the salary floor (spec 11.1).
+  const shortfalls = closeFloorYear(league, before);
   const [mean, spread] = Y.revenueGrowth;
   league.rules = withCap(league.rules, nextCap(league.rules, rng.normal(mean, spread)));
+  league.caps[year] = league.rules.cap.amount;
   league.date = { ...date };
   for (const abbr of TEAM_ABBRS) league.teams[abbr].carryover = carryover[abbr];
 
@@ -134,7 +141,7 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
   for (const abbr of TEAM_ABBRS) league.teams[abbr].resting = [];
   meetNewScales(league, year);
   dropSpentContracts(league, year);
-  return { year, capBefore, cap: league.rules.cap.amount, carryover, expired };
+  return { year, capBefore, cap: league.rules.cap.amount, carryover, expired, shortfalls };
 }
 
 /**

@@ -333,6 +333,13 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
       [],
       0
     );
+    // A window of the salary floor closed with the old league year (spec 11.1).
+    const share = Math.round(league.rules.cap.salaryFloorShare * 100);
+    for (const s of change.shortfalls) {
+      if (s.team === user)
+        messages.push({ kind: 'contracts', title: `You pay ${dollars(s.shortfall)} to meet the salary floor`, body: `Your cash spending from ${s.from} to ${s.to} was ${dollars(s.spent)}, short of the floor of ${dollars(s.floor)}, ${share}% of the caps in those years. The shortfall goes to your players.`, players: [] }); // prettier-ignore
+      headline('transaction', `The ${nick(s.team)} pay ${dollars(s.shortfall)} to their players to meet the salary floor`, [s.team], [], 0); // prettier-ignore
+    }
   } else if (to.phase === 'resign' && !league.settings.auto.contracts) {
     league.date = { ...to };
     const open = windowDecisions(league, user);

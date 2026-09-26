@@ -24,7 +24,7 @@ import type { SimSliders } from '../sim/sliders';
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 14;
+export const SAVE_SCHEMA_VERSION = 15;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -75,6 +75,8 @@ export interface TeamState {
   training: TrainingPlan;
   /** Cap space carried over into the current league year (spec 11.1). */
   carryover: number;
+  /** Cash paid in each closed league year of the salary floor's current window (spec 11.1). */
+  spending: { year: number; cash: number }[];
 }
 
 /**
@@ -109,6 +111,11 @@ export interface League {
   date: GameDate;
   random: LeagueRandom;
   rules: RuleSet;
+  /**
+   * Each league year's salary cap from the league's first (spec 11.1), for the salary floor and for pricing
+   * past deals against the cap they were signed under.
+   */
+  caps: Record<number, number>;
   settings: LeagueSettings;
   teams: Record<TeamAbbr, TeamState>;
   players: Record<string, Player>;

@@ -101,7 +101,8 @@ export function createLeague(input: NewLeagueInput): League {
       plan: { auto: true, plan: { ...NEUTRAL_PLAN } },
       rotation: defaultRotation(TUNING.situations.rb1Share),
       training: defaultTraining(),
-      carryover: 0
+      carryover: 0,
+      spending: []
     };
   }
 
@@ -111,6 +112,7 @@ export function createLeague(input: NewLeagueInput): League {
     date: { season: start.startSeason, phase: 'regularSeason', week: 1 },
     random: createLeagueRandom(start.seed, input.fixed ?? false),
     rules: structuredClone(rules),
+    caps: { [start.startSeason]: rules.cap.amount },
     settings: {
       version: 1,
       fitCap: TUNING.fit.cap,

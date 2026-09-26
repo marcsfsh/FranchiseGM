@@ -3,6 +3,7 @@
 ## Spec questions
 - Spec 2.3 lists the last opened league as a localStorage preference; it lives in IndexedDB instead (D-3).
 - Spec 17.3's division familiarity bonus doesn't say which team gets it; the sim gives it to the visitors (D-12).
+- Spec 11.1 calls the salary floor's window rolling; it checks the CBA's consecutive four-year periods from the league's first league year (D-33).
 ## Deferred
 - Crowd noise isn't scaled by team hype until fans arrive (M16, D-12).
 - Muffed punts, blocked field goals, roughing the kicker, and the 10-second runoff aren't simulated (D-13).

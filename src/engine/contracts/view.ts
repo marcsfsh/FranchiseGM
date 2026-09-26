@@ -10,6 +10,7 @@ import {
   afterJune1,
   capCharge,
   earnedBonuses,
+  guaranteedAt,
   leagueYearStart,
   paidBase,
   releaseImpact,
@@ -71,16 +72,25 @@ export function contractSummary(c: Contract, today: GameDate): ContractSummary {
 }
 
 /**
- * Cash paid in a league year: salary for the weeks in force, bonuses as they're earned, the signing bonus at
- * signing, an exercised option's bonus, and salary converted by a restructure, paid as a bonus when converted.
+ * Cash paid in a league year: salary for the weeks in force, bonuses and incentives as they're earned, the
+ * signing bonus at signing, an exercised option's bonus, and salary converted by a restructure, paid as a
+ * bonus when converted. After a release the salary still owed is paid on its usual schedule: the rest of
+ * that year's guarantee (all of it with termination pay) and later years' guarantees.
  */
-function cashIn(c: Contract, year: number, rules: RuleSet, facts: CapFacts): number {
+export function cashIn(c: Contract, year: number, rules: RuleSet, facts: CapFacts): number {
   const entry = c.years.find(y => y.year === year);
   if (!entry || entry.isVoid) return 0;
+  const end = c.ended;
+  const endYear = end ? leagueYear(end.date) : null;
+  const released = end?.how === 'released' ? end : null;
+  if (endYear !== null && year > endYear) return released ? guaranteedAt(c, entry, released.date, released.injured) : 0;
   const signed = leagueYear(c.signed) === year ? c.signingBonus : 0;
   const option = entry.optionExercised ? entry.optionBonus : 0;
   const converted = c.restructures.filter(r => leagueYear(r.date) === year).reduce((sum, r) => sum + r.amount, 0);
-  return paidBase(c, entry, rules) + earnedBonuses(c, year, rules, facts) + signed + option + converted;
+  const incentives = entry.incentives.filter(i => i.earned).reduce((sum, i) => sum + i.amount, 0);
+  const paid = paidBase(c, entry, rules);
+  const owed = released ? Math.max(0, (released.terminationPay ? entry.base : guaranteedAt(c, entry, released.date, released.injured)) - paid) : 0;
+  return paid + owed + earnedBonuses(c, year, rules, facts) + incentives + signed + option + converted;
 } // prettier-ignore
 
 const view = (

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TEAM_ABBRS } from '../../src/data/team-colors';
 import { cutdown } from '../../src/engine/ai/decisions/offseason';
+import { closeFloorYear, teamCash } from '../../src/engine/cap/floor';
 import { capSheet, seasonSpace } from '../../src/engine/cap/sheet';
 import { capCharge, capHit } from '../../src/engine/contracts/cap';
 import { endContract } from '../../src/engine/contracts/moves';
@@ -183,6 +184,34 @@ describe('new league year (spec 11.1)', () => {
     // The declined deal's 2027 proration (1,000,000) stays on the 2027 cap; its 2027 base doesn't.
     expect(capHit(league.contracts.x3 as Contract, 2027, league.rules)).toBe(1_000_000);
     expect(change.expired.map(e => e.playerId)).toEqual(expect.arrayContaining([expiring.id, optioned.id]));
+    // 2026 counts toward the salary floor's first window, which runs to 2029.
+    expect(change.shortfalls).toEqual([]);
+    expect(league.teams.MIN.spending).toMatchObject([{ year: 2026 }]);
+    expect(league.caps).toEqual({ 2026: R.cap.amount, 2027: change.cap });
+  }); // prettier-ignore
+
+  it("counts each team's cash toward the salary floor, and finds shortfalls when a window closes", () => {
+    const league = fresh(at(2026, 'annualMeeting'));
+    const [paid, cut] = roster(league, 'MIN') as [Player, Player];
+    // Minnesota's only deals: one for 2026 and 2027 with a 1,000,000 signing bonus, and one released
+    // before the 2026 season that still owes its guarantees, 4,000,000 in 2026 and 5,000,000 in 2027.
+    for (const c of Object.values(league.contracts)) if (c.team === 'MIN') delete league.contracts[c.id];
+    const released = { date: at(2025, 'preseason'), how: 'released', designated: false, injured: false, terminationPay: false } as const;
+    const deals = [
+      deal('f1', paid, { signingBonus: 1_000_000, years: [year(2026, { base: 2_000_000 }), year(2027, { base: 3_000_000 })] }),
+      deal('f2', cut, { years: [year(2026, { base: 4_000_000, guaranteedBase: 4_000_000 }), year(2027, { base: 5_000_000, guaranteedBase: 5_000_000 })], ended: released })
+    ];
+    for (const c of deals) league.contracts[c.id] = c;
+    expect(teamCash(league, 'MIN', 2026)).toBe(7_000_000);
+    expect(teamCash(league, 'MIN', 2027)).toBe(8_000_000);
+    league.caps = { 2026: 10_000_000, 2027: 10_000_000, 2028: 10_000_000, 2029: 10_000_000 };
+    // The league's first window is its first four league years; the years before the last only count.
+    expect(league.meta.start.startSeason).toBe(2026);
+    for (const y of [2026, 2027, 2028]) expect(closeFloorYear(league, y).some(s => s.team === 'MIN')).toBe(false);
+    expect(league.teams.MIN.spending.map(s => s.cash)).toEqual([7_000_000, 8_000_000, 0]);
+    // 15,000,000 against four 10,000,000 caps: 20,600,000 short of 89%. The next window starts afresh.
+    expect(closeFloorYear(league, 2029).find(s => s.team === 'MIN')).toEqual({ team: 'MIN', from: 2026, to: 2029, spent: 15_000_000, floor: 35_600_000, shortfall: 20_600_000 });
+    expect(league.teams.MIN.spending).toEqual([]);
   }); // prettier-ignore
 
   it('drops contracts with nothing left to charge, and keeps two league years of history', () => {
