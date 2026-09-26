@@ -6,7 +6,9 @@
 import type { ClimateTable } from '../../data/climate';
 import type { DecisionLog } from '../ai/framework';
 import { settleIncentives } from '../contracts/moves';
+import { draftMediaWeek } from '../draft/media';
 import { scoutWeek } from '../draft/scouting';
+import { draftOrder } from '../generate/rookies';
 import { processWaivers, waiverOrder } from '../roster/waivers';
 import { waiverClaims } from '../ai/decisions/roster-moves';
 import { manageWeek } from '../ai/weekly';
@@ -247,6 +249,11 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     { week, results, awards, before, after: league.season.totals, moves },
     leagueStream(league.random, 'news', week)
   );
+  // Draft news: hype on the media's board and mock drafts (spec 10.4).
+  const draftNews = draftMediaWeek(league, week, playoff ? null : week, draftOrder(league), leagueStream(league.random, 'draftMedia', week)); // prettier-ignore
+  draftNews.forEach((d, i) =>
+    news.push({ id: `${season}-${week}-d${i}`, season, week, kind: 'draft', headline: d.headline, teams: d.teams, players: [], score: d.score, template: 'draft' })
+  ); // prettier-ignore
   league.season.news.push(...news);
   const inbox = weekInbox(league, { week, results, awards, news, waivers: waived });
   league.inbox = addToInbox(league.inbox, inbox);

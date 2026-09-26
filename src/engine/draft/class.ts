@@ -14,6 +14,7 @@ import type { Rng } from '../rng';
 import { TUNING } from '../tuning';
 import { ACTIVE_ROSTER } from '../generate/league';
 import { generatePlayer, type GenContext } from '../generate/player';
+import type { MockDraft } from './media';
 import type { DraftSettings } from './settings';
 
 const D = TUNING.draft;
@@ -33,6 +34,8 @@ export interface Prospect {
   /** Where he worked out, and his results (D-44); null until then. */
   workout: 'combine' | 'proDay' | null;
   measurables: Measurables | null;
+  /** Points the headlines have moved him on the media's board (D-45). */
+  hype: number;
 }
 
 /** Workout results (spec 10.4): seconds for the runs, reps at 225 pounds, and inches for the jumps. */
@@ -62,6 +65,8 @@ export interface DraftClass {
   strength: { overall: number; groups: Record<PositionGroup, number> };
   prospects: Prospect[];
   scouting: Record<TeamAbbr, TeamScouting>;
+  /** The latest mock draft of the first round (D-45); null before the first. */
+  mock: MockDraft | null;
 }
 
 const emptyScouting = (): TeamScouting => ({ points: {}, bank: {}, visits: [] });
@@ -151,8 +156,8 @@ export function generateClass(
       { position, quality, age: rng.int(D.classAge[0], D.classAge[1]), classYear: year }
     );
     const noise = TEAM_ABBRS.map(() => Math.round(rng.normal() * 100) || 0);
-    prospects.push({ player, perception: perception(rng, s, group), region: regions.get(player.college) ?? null, noise, workout: null, measurables: null }); // prettier-ignore
+    prospects.push({ player, perception: perception(rng, s, group), region: regions.get(player.college) ?? null, noise, workout: null, measurables: null, hype: 0 }); // prettier-ignore
   }
   const scouting = Object.fromEntries(TEAM_ABBRS.map(t => [t, emptyScouting()] as const)) as Record<TeamAbbr, TeamScouting>; // prettier-ignore
-  return { year, strength: { overall, groups }, prospects, scouting };
+  return { year, strength: { overall, groups }, prospects, scouting, mock: null };
 }

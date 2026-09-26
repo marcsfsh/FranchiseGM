@@ -637,6 +637,28 @@ export const TUNING = {
       reveal: { combine: 0.3, proDay: 0.15 },
       headlines: 3
     },
+    /**
+     * The AI's need-and-value model (spec 10.4; D-45): a team needs a position as its starters' average
+     * overall falls below `goodStarter`, fully `span` points below it (a missing starter counts as
+     * `missingStarter`), plus `shortBonus` when it has fewer players there than a standard roster; a
+     * prospect's worth is its grade plus `weight` points of need.
+     */
+    needs: { goodStarter: 78, span: 20, missingStarter: 40, shortBonus: 0.2, weight: 4 },
+    /**
+     * Media (spec 10.4; D-45): from week `hypeFrom` of the season, `hypePerWeek` of the media's top
+     * `hypeAmong` prospects make a headline each week, moving the media's board by `hypeBy` points, up or,
+     * at `fallShare`, down (an off-field incident for a volatile one). Mock drafts of the first round come
+     * out weekly from week `mocksFrom` through the draft.
+     */
+    media: {
+      hypeFrom: 4,
+      hypePerWeek: 1,
+      hypeAmong: 60,
+      hypeBy: [1, 4],
+      fallShare: 0.4,
+      volatile: 75,
+      mocksFrom: 9
+    },
     scouting: {
       teamSd: 6,
       fullPoints: 60,

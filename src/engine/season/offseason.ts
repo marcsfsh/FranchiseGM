@@ -18,6 +18,7 @@ import { fillPracticeSquad, waiverClaims } from '../ai/decisions/roster-moves';
 import type { DecisionLog } from '../ai/framework';
 import { generateClass, type Prospect } from '../draft/class';
 import { closeDraftYear } from '../draft/picks';
+import { draftMediaWeek } from '../draft/media';
 import { scoutsItself, scoutWeek } from '../draft/scouting';
 import { autoVisits, workOut } from '../draft/workouts';
 import type { NameData } from '../generate/player';
@@ -490,8 +491,16 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
       messages.push({ kind: 'roster', title: `Cut your roster to ${league.rules.roster.active}`, body: 'The regular season starts after the final cutdown.', players: [] }); // prettier-ignore
   } else if (to.phase === 'regularSeason') startSeason(league, to, data.names, rng('draftClass'));
   league.date = { ...to };
-  // The scouts work the class until its draft (spec 10.4).
+  // The scouts work the class until its draft, and the media cover it (spec 10.4).
   scoutWeek(league);
+  for (const d of draftMediaWeek(
+    league,
+    timeline(to),
+    to.phase === 'regularSeason' ? 1 : null,
+    draftOrder(league),
+    rng('draftMedia')
+  ))
+    headline('draft', d.headline, d.teams, [], d.score);
 
   // Messages and news carry the step they arrive with; the next season's first ones, its week 1.
   const at =

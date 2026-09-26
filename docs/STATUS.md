@@ -1,8 +1,9 @@
 # Status
 - Milestone: M11 (M10 done 2026-09-26)
-- Current slice: M11 slice 3, scouting (plan in docs/milestones/m11.md)
+- Current slice: M11 slice 4, the Scouting screen (plan in docs/milestones/m11.md)
 - Done this milestone: slice 1, draft classes made a season ahead (D-41); slice 2, draft picks as records
-  (D-42)
+  (D-42); slice 3, scouting, workouts and visits, media hype, mock drafts, and the need-and-value model
+  (D-43 to D-45)
 - Open items for M11: in docs/KNOWN-ISSUES.md, the archetype check waits for the Madden CSV.
 - Carried into M12, before Checkpoint B: the value-based re-sign choice (D-38), tag pricing from five years
   of cap percentages (D-39), season records judged on chained seasons 3 to 20 (D-40), and free agency that
