@@ -71,9 +71,13 @@ export interface DraftClass {
 
 const emptyScouting = (): TeamScouting => ({ points: {}, bank: {}, visits: [] });
 
-/** A prospect's draft value: his ceiling and his overall now, blended. */
-export const draftValue = (p: Pick<Player, 'potential' | 'ovr'>): number =>
-  D.valuePotential * p.potential + (1 - D.valuePotential) * p.ovr;
+/** A position's worth in the draft, in points: what the position is paid, on a log scale (D-47). */
+export const positionValue = (position: Position): number =>
+  D.positionWeight * Math.log(TUNING.market.topShare[position] / D.positionReference);
+
+/** A prospect's draft value: his ceiling and his overall now, blended, and his position's worth. */
+export const draftValue = (p: Pick<Player, 'potential' | 'ovr' | 'position'>): number =>
+  D.valuePotential * p.potential + (1 - D.valuePotential) * p.ovr + positionValue(p.position);
 
 /** What the consensus sees: his draft value misjudged. */
 export const perceivedValue = (p: Prospect): number => draftValue(p.player) + p.perception;

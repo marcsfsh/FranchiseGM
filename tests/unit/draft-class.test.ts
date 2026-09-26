@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { draftValue, generateClass, generateProspect, perceivedValue } from '../../src/engine/draft/class';
+import {
+  draftValue,
+  generateClass,
+  generateProspect,
+  perceivedValue,
+  positionValue
+} from '../../src/engine/draft/class';
 import { ACTIVE_ROSTER } from '../../src/engine/generate/league';
 import { newId } from '../../src/engine/league/transactions';
 import type { League } from '../../src/engine/league/types';
 import { fullName } from '../../src/engine/model/player';
-import { POSITION_GROUP } from '../../src/engine/model/positions';
+import { POSITION_GROUP, type Position } from '../../src/engine/model/positions';
 import { stream } from '../../src/engine/rng';
 import { TUNING } from '../../src/engine/tuning';
 import { nameData } from '../helpers/base-data';
@@ -63,6 +69,22 @@ describe('draft classes (spec 10.3)', () => {
     const p = busts.prospects[0];
     if (p) expect(perceivedValue(p)).toBeCloseTo(draftValue(p.player) + p.perception, 5);
   });
+
+  it('values a prospect by what his position is paid as well (D-47)', () => {
+    const same = { potential: 80, ovr: 70 };
+    const value = (position: Position) => draftValue({ ...same, position });
+    expect(value('QB')).toBeGreaterThan(value('LE'));
+    expect(value('LE')).toBeGreaterThan(value('HB'));
+    expect(value('HB')).toBeGreaterThan(value('K'));
+    expect(value('K')).toBeGreaterThan(value('LS'));
+    // Each doubling of a position's pay is worth the same: the reference position's worth is 0.
+    expect(positionValue('RT')).toBeCloseTo(0, 5);
+    expect(positionValue('QB') - positionValue('CB')).toBeCloseTo(D.positionWeight * Math.log(2), 5);
+    // The consensus's first round takes quarterbacks and pass rushers, and no specialist or fullback.
+    const first = [...make().made.prospects].sort((a, b) => perceivedValue(b) - perceivedValue(a)).slice(0, 32);
+    expect(first.some(p => p.player.position === 'QB')).toBe(true);
+    expect(first.some(p => ['K', 'P', 'LS', 'FB'].includes(p.player.position))).toBe(false);
+  }); // prettier-ignore
 
   it('gives every prospect a new name, and can make one years before his class', () => {
     const { league, made } = make();

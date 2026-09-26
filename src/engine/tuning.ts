@@ -581,9 +581,9 @@ export const TUNING = {
    * group's league average holds over the seasons (spec 23.3, D-32). Each class draws a strength shift with
    * sd `strengthSd`, and each position group one with sd `groupStrengthSd`; a strength mean setting of 1
    * moves them `strengthMax`. Draft value blends `valuePotential` of a prospect's ceiling with his overall
-   * now; the consensus misjudges it with sd `perceptionSd` points, and a bust (`bustRate` of prospects) or a
-   * gem (`gemRate`) by a further `misjudgedBy` points. Generated names don't repeat within `nameWindow`
-   * years (spec 10.1).
+   * now, plus his position's worth; the consensus misjudges it with sd `perceptionSd` points, and a bust
+   * (`bustRate` of prospects) or a gem (`gemRate`) by a further `misjudgedBy` points. Generated names don't
+   * repeat within `nameWindow` years (spec 10.1).
    */
   draft: {
     classSize: 450,
@@ -604,6 +604,14 @@ export const TUNING = {
     strengthSd: 0.12,
     groupStrengthSd: 0.2,
     valuePotential: 0.6,
+    /**
+     * A position's worth in the draft, in points of draft value: `positionWeight` times the log of its top
+     * pay's share of the cap (market.topShare) over `positionReference`, so teams draft the positions they
+     * pay for, quarterbacks and pass rushers first and specialists last. At 10, a first round holds about 3
+     * quarterbacks and almost never a specialist, as the NFL's did from 2015 to 2024 (D-47).
+     */
+    positionWeight: 10,
+    positionReference: 0.08,
     perceptionSd: 3,
     bustRate: 0.12,
     gemRate: 0.06,
