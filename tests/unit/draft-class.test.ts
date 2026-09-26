@@ -86,8 +86,9 @@ describe('draft classes (spec 10.3)', () => {
     expect(value('HB')).toBeGreaterThan(value('K'));
     expect(value('K')).toBeGreaterThan(value('LS'));
     // Each doubling of a position's pay is worth the same: the reference position's worth is 0.
+    const top = TUNING.market.topShare;
     expect(positionValue('RT')).toBeCloseTo(0, 5);
-    expect(positionValue('QB') - positionValue('CB')).toBeCloseTo(D.positionWeight * Math.log(2), 5);
+    expect(positionValue('QB') - positionValue('CB')).toBeCloseTo(D.positionWeight * Math.log(top.QB / top.CB), 5);
     // The consensus's first round takes quarterbacks and pass rushers, and no specialist or fullback.
     const first = [...make().made.prospects].sort((a, b) => perceivedValue(b) - perceivedValue(a)).slice(0, 32);
     expect(first.some(p => p.player.position === 'QB')).toBe(true);

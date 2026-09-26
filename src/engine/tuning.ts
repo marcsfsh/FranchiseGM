@@ -176,9 +176,13 @@ export const TUNING = {
 
   /** Veteran salary market (spec 11.6, 11.7): average annual value by position, overall, and age. */
   market: {
-    /** Top of each position's market as a share of the cap (2026: QB $60M of $301.2M). */
+    /**
+     * Top of each position's market as a share of the cap. A quarterback's is the record against the cap it
+     * was signed under, since deals are priced when signed: Dak Prescott's $60M, 23.5% of the 2024 cap of
+     * $255.4M (D-65).
+     */
     topShare: {
-      QB: 0.2,
+      QB: 0.235,
       HB: 0.06,
       FB: 0.013,
       WR: 0.13,
@@ -206,8 +210,8 @@ export const TUNING = {
      * that chained leagues' teams spend near the cap, as NFL teams do, paying players about their market
      * value (D-60, D-65).
      */
-    midOverall: 79.5,
-    midOverallQb: 76.5,
+    midOverall: 79.75,
+    midOverallQb: 76.75,
     width: 4.5,
     /** Pay falls by this share for each year past the position's prime. */
     ageDiscountPerYear: 0.08,
@@ -218,10 +222,10 @@ export const TUNING = {
     /** Salaries are quoted in steps of this many dollars. */
     quoteStep: 5000,
     /**
-     * Teams with room overpay, as NFL teams with cap space do (D-60): the AI pays up to its value of a deal
-     * times 1 plus `perShare` for each share of the cap its room runs past `from`, at most `most` times it,
-     * and in free agency wants players up to `depthPoints` overall under its weakest starter for each 1 of it
-     * past 1.
+     * Teams with room pay more, as NFL teams with cap space do (D-60, D-65): the most the AI pays for a deal
+     * is its value of it times 1 plus `perShare` for each share of the cap its room runs past `from`, at most
+     * `most` times it, and in free agency it wants players up to `depthPoints` overall under its weakest
+     * starter for each 1 of it past 1.
      */
     roomPremium: { from: 0.04, perShare: 3, most: 1.6, depthPoints: 10 }
   },

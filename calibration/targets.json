@@ -558,7 +558,7 @@
     "economy.topQbShare": {
       "pass": [0.19, 0.26],
       "warn": [0.16, 0.3],
-      "source": "The richest quarterback deals by yearly value as each season opened: Joe Burrow's $55M (September 2023), 24.5% of the $224.8M cap; Dak Prescott's $60M (September 2024), 23.5% of $255.4M, still the richest in 2025 at 21.5% of $279.2M. The market curve's top for 2026 (tuning market), Dak Prescott's $60M against the $301.2M cap, is 19.9%, and the richest deal's share falls between new records as the cap grows.",
+      "source": "The richest quarterback deals by yearly value as each season opened: Joe Burrow's $55M (September 2023), 24.5% of the $224.8M cap; Dak Prescott's $60M (September 2024), 23.5% of $255.4M, still the richest in 2025 at 21.5% of $279.2M. The market curve's top for quarterbacks (tuning market) is that record against the cap it was signed under, 23.5% (D-65), and the richest deal's share falls between new records as the cap grows.",
       "note": "The largest yearly value of a quarterback's deal on week 1, as a share of the cap; the mean over seasons."
     },
     "economy.topOtherShare": {
@@ -584,6 +584,12 @@
       "warn": [0.8, 1.4],
       "source": "The market curve (tuning market) and D-60, as for new deals: free agents who change teams sign at the market's price or over it, where teams with room compete for them (D-60's room premium).",
       "note": "The median of the same ratio for the unrestricted free agents who signed with a new team."
+    },
+    "economy.faOpeningPay": {
+      "pass": [1.02, 1.4],
+      "warn": [1, 1.6],
+      "source": "Spec 11.8: top players sign early and the market softens for those who wait; the user's M12 additions ask that free agency's prices run highest in its first days and fall as the market settles (D-65). A direction check, since no public count prices free agents' deals against their value by the week they signed.",
+      "note": "Free agents who changed teams: the median first-week deal's yearly value over the market price when he signed, over the same median for the later weeks' deals."
     },
     "economy.marketPaySpread": {
       "pass": [0, 0.3],

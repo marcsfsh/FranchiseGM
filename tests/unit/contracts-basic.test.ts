@@ -130,9 +130,10 @@ describe('contract builders', () => {
   });
 
   it('prices the market by position, overall, and age', () => {
+    // A star quarterback earns near the top of his market: the record, 23.5% of the cap.
     const qbStar = marketValue(R, 'QB', 92, 28, 6);
-    expect(qbStar).toBeGreaterThan(50_000_000);
-    expect(qbStar).toBeLessThanOrEqual(61_000_000);
+    expect(qbStar).toBeGreaterThan(0.2 * R.cap.amount);
+    expect(qbStar).toBeLessThanOrEqual(0.235 * R.cap.amount);
     expect(marketValue(R, 'WR', 90, 27, 5)).toBeGreaterThan(marketValue(R, 'HB', 90, 27, 5));
     expect(marketValue(R, 'CB', 70, 26, 4)).toBeLessThan(5_000_000);
     expect(marketValue(R, 'LT', 88, 34, 12)).toBeLessThan(marketValue(R, 'LT', 88, 28, 6));
