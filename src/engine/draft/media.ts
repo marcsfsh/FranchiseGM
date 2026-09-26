@@ -25,6 +25,22 @@ export function mediaBoard(draft: DraftClass, size = draft.prospects.length): Pr
     .slice(0, size);
 }
 
+/**
+ * The round the media project for each place on their board: the prospect `rank`th (from 1) goes in the
+ * round holding the `rank`th pick of the draft of league year `year`, or undrafted (null) past its last.
+ */
+export function roundProjector(league: League, year: number): (rank: number) => number | null {
+  const perRound = new Map<number, number>();
+  for (const pick of picksIn(league, year)) perRound.set(pick.round, (perRound.get(pick.round) ?? 0) + 1);
+  const ends: [round: number, last: number][] = [];
+  let total = 0;
+  for (const round of [...perRound.keys()].sort((a, b) => a - b)) {
+    total += perRound.get(round) ?? 0;
+    ends.push([round, total]);
+  }
+  return rank => ends.find(([, last]) => rank <= last)?.[0] ?? null;
+}
+
 export interface MockPick {
   number: number;
   team: TeamAbbr;

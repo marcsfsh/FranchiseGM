@@ -342,6 +342,12 @@ fieldset.field > legend {
   width: 9ch;
   text-align: right;
 }
+/* A cell's error wraps under its input, inside the cell, where scrolling to the input shows it. */
+.curve-table .field-error {
+  min-width: 8rem;
+  white-space: normal;
+  text-align: left;
+}
 /* Training (spec 10.5): a player's focus menu keeps its longest choice readable inside the table. */
 .focus-select {
   min-width: 12rem;

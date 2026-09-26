@@ -29,6 +29,8 @@ export interface DraftSettings {
 /** The multipliers' range, as for the development settings; the strength means run from -1 to 1. */
 export const DRAFT_RANGE = { min: 0, max: 2 } as const;
 export const CLASS_SIZE_RANGE = { min: 224, max: 700 } as const;
+/** The least scouting accuracy: grades' errors grow at most tenfold. */
+export const ACCURACY_MIN = 0.1;
 
 const everyGroup = (value: number): Record<PositionGroup, number> =>
   Object.fromEntries(POSITION_GROUPS.map(g => [g, value])) as Record<PositionGroup, number>;

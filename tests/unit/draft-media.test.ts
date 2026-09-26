@@ -5,7 +5,8 @@ import {
   firstRoundOrder,
   mediaBoard,
   mediaValue,
-  mockDraft
+  mockDraft,
+  roundProjector
 } from '../../src/engine/draft/media';
 import { draftWorth, need } from '../../src/engine/draft/needs';
 import { numberDraft, picksIn } from '../../src/engine/draft/picks';
@@ -42,6 +43,16 @@ describe('the media and mock drafts (spec 10.4)', () => {
     const board = mediaBoard(draft, 50);
     expect(board).toHaveLength(50);
     for (let i = 1; i < board.length; i++) expect(mediaValue(board[i - 1] as never)).toBeGreaterThanOrEqual(mediaValue(board[i] as never)); // prettier-ignore
+  });
+
+  it("projects each place on the media's board to the round holding that pick", () => {
+    const league = fresh();
+    const project = roundProjector(league, 2027);
+    expect([1, 32, 33, 224, 225].map(project)).toEqual([1, 1, 2, 7, null]);
+    // A compensatory pick lengthens its round.
+    league.picks.push({ id: '2027-3-MIN-c1', year: 2027, round: 3, original: 'MIN', owner: 'MIN', compensatory: true, number: null, playerId: null }); // prettier-ignore
+    const withComp = roundProjector(league, 2027);
+    expect([96, 97, 98, 225, 226].map(withComp)).toEqual([3, 3, 4, 7, null]);
   });
 
   it('mocks the first round with each team taking the prospect worth most to it', () => {

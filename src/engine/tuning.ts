@@ -672,7 +672,12 @@ export const TUNING = {
       traitsAt: 30,
       abilitiesAt: 60,
       /** Top-30 visits a team may make, from the combine to the draft. */
-      visits: 30
+      visits: 30,
+      /**
+       * A strength draw that stands out, in quality units: a class's makes it strong or weak, a position
+       * group's deep or thin there (spec 10.3).
+       */
+      standsOut: 0.15
     }
   },
   /**

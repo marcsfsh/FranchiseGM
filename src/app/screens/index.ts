@@ -14,6 +14,7 @@ import { leagueScreen } from './league';
 import { newLeagueScreen } from './new-league';
 import { playerScreen } from './player';
 import { rosterScreen } from './roster';
+import { scoutingScreen } from './scouting';
 import { settingsScreen } from './settings';
 import { startScreen } from './start';
 import { teamScreen } from './team';
@@ -28,8 +29,7 @@ export const SCREENS: Record<RouteName, () => Screen> = {
   gameplan: gamePlanScreen,
   training: trainingScreen,
   staff: () => placeholderScreen('Staff', 'Your coaches, coordinators, scouts, and front office.'),
-  scouting: () =>
-    placeholderScreen('Scouting and draft', 'Prospects, scouting assignments, and the draft board.'),
+  scouting: scoutingScreen,
   freeagency: freeAgencyScreen,
   trades: () => placeholderScreen('Trades', 'Trade offers, the trade block, and proposals.'),
   finances: capScreen,

@@ -2,13 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { TEAM_ABBRS } from '../../src/data/team-colors';
 import { draftValue, type Prospect } from '../../src/engine/draft/class';
 import {
+  assignScout,
+  classOutlook,
   errorScale,
   gradeWith,
   NATIONAL,
   revealed,
+  scoutProblem,
+  scoutProspect,
   scoutWeek,
   spendOn,
-  teamGrades
+  teamGrades,
+  weeklyPoints
 } from '../../src/engine/draft/scouting';
 import { teamStaff } from '../../src/engine/league/fit';
 import type { League } from '../../src/engine/league/types';
@@ -96,5 +101,75 @@ describe('a week of scouting (spec 10.4)', () => {
     const grades = teamGrades(league, draft, 'KC');
     const best = [...grades].sort((a, b) => b[1].value - a[1].value)[0]?.[0] ?? '';
     expect(theirs.points[best] ?? 0).toBeGreaterThan(0);
+  });
+});
+
+describe('scouting by hand (spec 10.4)', () => {
+  it("spends a round from the prospect's region and then the director's, and says why when it can't", () => {
+    const league = fresh();
+    const draft = classOf(league);
+    const user = league.meta.start.userTeam;
+    const p = draft.prospects.find(x => x.region) as Prospect;
+    const id = p.player.id;
+    expect(scoutProblem(league, user, id)).toMatch(/^Your director of scouting is spending your points/);
+    league.settings.auto.scouting = false;
+    draft.scouting[user].bank = {};
+    expect(scoutProspect(league, user, id)).toBe(
+      `No points left in the ${p.region} or from your director. Your scouts earn more each week.`
+    );
+    expect(draft.scouting[user].points[id]).toBeUndefined();
+    draft.scouting[user].bank = { [p.region as string]: 10, [NATIONAL]: 100 };
+    expect(scoutProspect(league, user, id)).toBeNull();
+    expect(draft.scouting[user].points[id]).toBe(S.spendEach);
+    expect(draft.scouting[user].bank).toEqual({
+      [p.region as string]: 0,
+      [NATIONAL]: 100 - (S.spendEach - 10)
+    });
+    draft.scouting[user].points[id] = S.fullPoints;
+    expect(scoutProblem(league, user, id)).toBe('Your scouts have finished with him.');
+    expect(scoutProblem(league, user, 'nobody')).toBe("He isn't in this year's class.");
+  });
+
+  it("sends only the team's own scouts, and only to a region", () => {
+    const league = fresh();
+    const user = league.meta.start.userTeam;
+    const mine = teamStaff(league, user).find(s => s.role === 'SCOUT');
+    const theirs = teamStaff(league, user === 'KC' ? 'DAL' : 'KC').find(s => s.role === 'SCOUT');
+    if (!mine || !theirs) throw new Error('no scouts');
+    expect(assignScout(league, user, mine.id, 'West')).toBeNull();
+    expect(mine.region).toBe('West');
+    expect(assignScout(league, user, mine.id, NATIONAL)).toBe('Choose a region.');
+    expect(assignScout(league, user, theirs.id, 'West')).toBe("He isn't one of your scouts.");
+  });
+
+  it('earns points a week by role and by the points rating', () => {
+    const league = fresh();
+    const staff = teamStaff(league, 'MIN');
+    const scout = staff.find(s => s.role === 'SCOUT');
+    const director = staff.find(s => s.role === 'DOS');
+    const coach = staff.find(s => s.role === 'HC');
+    if (!scout || !director || !coach) throw new Error('no staff');
+    scout.ratings.points = 99;
+    director.ratings.points = 0;
+    expect(weeklyPoints(scout)).toBe(S.scoutPoints[1]);
+    expect(weeklyPoints(director)).toBe(S.directorPoints[0]);
+    expect(weeklyPoints(coach)).toBe(0);
+  });
+});
+
+describe('the class outlook (spec 10.3)', () => {
+  it('names a strong or weak class and its deepest and thinnest groups when they stand out', () => {
+    const draft = classOf(fresh());
+    const groups = Object.fromEntries(Object.keys(draft.strength.groups).map(g => [g, 0]));
+    draft.strength = { overall: 0, groups: groups as typeof draft.strength.groups };
+    expect(classOutlook(draft)).toEqual({ overall: null, deep: null, thin: null });
+    draft.strength.overall = S.standsOut;
+    draft.strength.groups.QB = S.standsOut + 0.1;
+    draft.strength.groups.TE = -S.standsOut;
+    // Specialists never make a class deep or thin.
+    draft.strength.groups.ST = 1;
+    expect(classOutlook(draft)).toEqual({ overall: 'strong', deep: 'QB', thin: 'TE' });
+    draft.strength.overall = -S.standsOut - 0.01;
+    expect(classOutlook(draft).overall).toBe('weak');
   });
 });

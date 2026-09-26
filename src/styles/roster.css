@@ -120,6 +120,33 @@
 .roster-table .fa-actions-col {
   width: 18rem;
 }
+/* The Scouting screen's big board and mock draft (spec 10.4). */
+.roster-table .rank-col {
+  width: 4rem;
+}
+.roster-table .college-col {
+  width: 9rem;
+}
+.roster-table .grade-col,
+.roster-table .scouted-col {
+  width: 5.5rem;
+}
+.roster-table .round-col {
+  width: 7rem;
+}
+.roster-table .forty-col {
+  width: 4.5rem;
+}
+.roster-table .scout-actions-col {
+  width: 10.5rem;
+}
+/* A prospect's name opens his details, in a button that reads like the player links beside it. */
+.prospect-name {
+  justify-content: flex-start;
+  padding-inline: 0;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
 .list-name {
   font-weight: 700;
 }
@@ -137,6 +164,15 @@
 }
 @container roster (min-width: 60em) {
   .roster-table .wide {
+    display: table-cell;
+  }
+}
+/* Columns that only fit beside a comfortable name column on the widest layouts. */
+.roster-table .widest {
+  display: none;
+}
+@container roster (min-width: 70em) {
+  .roster-table .widest {
     display: table-cell;
   }
 }

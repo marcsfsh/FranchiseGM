@@ -10,6 +10,7 @@ import { devMenuOn, tapVersion } from '../dev-menu';
 import { h, mount } from '../dom';
 import { layoutNote } from '../theme/prefs';
 import { developmentCard } from '../ui/development';
+import { draftSettingsCard } from '../ui/draft-settings';
 import { slidersCard } from '../ui/sliders';
 import type { PrefsController } from '../theme/controller';
 import { card, pageHead } from './common';
@@ -247,7 +248,7 @@ function automationSettings(app: AppState): HTMLElement | null {
   });
   return card(
     'Automation',
-    h('p', { class: 'muted' }, 'Jobs on auto are done by your staff, with the same AI as the other teams. The game plan, depth chart, and training have their switches on their own screens.'),
+    h('p', { class: 'muted' }, 'Jobs on auto are done by your staff, with the same AI as the other teams. The game plan, depth chart, training, and scouting have their switches on their own screens.'),
     ...rows,
     status
   );
@@ -288,6 +289,24 @@ function developmentSettings(app: AppState): HTMLElement | null {
     );
   draw();
   return card('Development', body, status);
+}
+
+/** Draft class settings (spec 22.4): the class size, strength, busts and gems, position mix, and scouting. */
+function draftSettings(app: AppState): HTMLElement | null {
+  if (!app.league) return null;
+  const body = h('div', { class: 'stack' });
+  const status = h('p', { class: 'sr-only', role: 'status' });
+  const draw = () =>
+    mount(
+      body,
+      ...draftSettingsCard(app, status, () => {
+        draw();
+        body.querySelector<HTMLButtonElement>('#resetDraft')?.focus();
+        status.textContent = 'Every draft class setting is back to normal.';
+      })
+    );
+  draw();
+  return card('Draft classes', body, status);
 }
 
 /** The developer tools entry (spec 23.5), shown once the menu is on. */
@@ -341,6 +360,7 @@ export function settingsScreen(): Screen {
         automationSettings(ctx.app),
         sliderSettings(ctx.app),
         developmentSettings(ctx.app),
+        draftSettings(ctx.app),
         display.node,
         devMenuOn() ? devCard() : null
       );
