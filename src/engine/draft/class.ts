@@ -67,6 +67,11 @@ export interface DraftClass {
   scouting: Record<TeamAbbr, TeamScouting>;
   /** The latest mock draft of the first round (D-45); null before the first. */
   mock: MockDraft | null;
+  /**
+   * The media's final big board, by player ID, best first: set as the draft opens (D-48), when the class
+   * moves into the draft room, for the media's grades once it's over. Null before.
+   */
+  board: string[] | null;
 }
 
 const emptyScouting = (): TeamScouting => ({ points: {}, bank: {}, visits: [] });
@@ -163,5 +168,5 @@ export function generateClass(
     prospects.push({ player, perception: perception(rng, s, group), region: regions.get(player.college) ?? null, noise, workout: null, measurables: null, hype: 0 }); // prettier-ignore
   }
   const scouting = Object.fromEntries(TEAM_ABBRS.map(t => [t, emptyScouting()] as const)) as Record<TeamAbbr, TeamScouting>; // prettier-ignore
-  return { year, strength: { overall, groups }, prospects, scouting, mock: null };
+  return { year, strength: { overall, groups }, prospects, scouting, mock: null, board: null };
 }

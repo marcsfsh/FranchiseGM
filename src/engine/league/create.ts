@@ -122,7 +122,7 @@ export function createLeague(input: NewLeagueInput): League {
       fitCap: TUNING.fit.cap,
       sim: defaultSliders(),
       pause: defaultPauses(),
-      auto: { roster: false, contracts: false, scouting: true },
+      auto: { roster: false, contracts: false, scouting: true, draft: false },
       development: defaultDevelopment(),
       draft: defaultDraftSettings(),
       commissioner: { enforceRules: true }
@@ -139,6 +139,7 @@ export function createLeague(input: NewLeagueInput): League {
     season: emptySeason(start.startSeason),
     draft: null,
     picks: [1, 2, 3].flatMap(ahead => issuePicks(rules.season.draftRounds, start.startSeason + ahead)),
+    draftGrades: null,
     inbox: [],
     waivers: [],
     nextId: idCounters([

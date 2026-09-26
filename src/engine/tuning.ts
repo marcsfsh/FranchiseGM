@@ -558,8 +558,6 @@ export const TUNING = {
       [26, 3],
       [29, 2]
     ],
-    /** The stand-in draft's scouting noise on each prospect's perceived value, until M11's scouting. */
-    draftNoise: 2,
     /** Undrafted rookies each team signs, and their signing bonus range. */
     udfaPerTeam: 8,
     udfaBonus: [5_000, 25_000],
@@ -652,6 +650,31 @@ export const TUNING = {
      * prospect's worth is its grade plus `weight` points of need.
      */
     needs: { goodStarter: 78, span: 20, missingStarter: 40, shortBonus: 0.2, weight: 4 },
+    /**
+     * The media's grades after the draft (spec 10.4; D-48). A class scores the chart value of the media's
+     * board places of the players a team took over the chart value of the picks it used; the chart halves
+     * every `halfEvery` picks. `letters` are [least score, letter], best first, set so a draft's 32 grades
+     * spread about as the media's do: 2 A's, 3 A-'s, 6 B+'s, 8 B's, 6 B-'s, 4 C+'s, 2 C's, and a D. A pick is
+     * value when the player's board place is at most `valueShare` of the pick's number and `valueBy` or more
+     * ahead of it, and a reach when it's at least `reachShare` of the number and `reachBy` or more behind.
+     */
+    grades: {
+      halfEvery: 24,
+      letters: [
+        [1.6, 'A'],
+        [1.36, 'A-'],
+        [1.12, 'B+'],
+        [0.88, 'B'],
+        [0.72, 'B-'],
+        [0.51, 'C+'],
+        [0.32, 'C'],
+        [0, 'D']
+      ] as readonly (readonly [number, string])[],
+      valueShare: 0.7,
+      valueBy: 5,
+      reachShare: 1.5,
+      reachBy: 10
+    },
     /**
      * Media (spec 10.4; D-45): from week `hypeFrom` of the season, `hypePerWeek` of the media's top
      * `hypeAmong` prospects make a headline each week, moving the media's board by `hypeBy` points, up or,

@@ -1,14 +1,11 @@
 /**
- * A stand-in draft until M11's (D-27): the class made a season ago (D-41) is drafted for the rule set's
- * rounds in reverse order of last season's finish, each team taking the prospect it values most as the
- * consensus sees him, on rookie scale deals; the rest are undrafted free agents, and after the draft each
- * AI team signs the best of them. M11 replaces this with scouting, the draft room, and the UDFA scramble.
+ * Rookies around the draft: the draft order (spec 10.4), the cap space teams keep for their draft classes,
+ * and, until the UDFA scramble, the stand-in for undrafted rookies (D-27): after the draft each AI team
+ * signs the best of them.
  */
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { capHit } from '../contracts/cap';
 import { rookieContract, udfaContract } from '../contracts/build';
-import { generateClass, perceivedValue, type Prospect } from '../draft/class';
-import { issueNextYear, numberDraft, picksIn } from '../draft/picks';
 import { activeRoster, freeAgents, newId, recordTransaction } from '../league/transactions';
 import type { League } from '../league/types';
 import { leagueYear } from '../model/calendar';
@@ -19,16 +16,8 @@ import { minimumSalary } from '../rules/ruleset';
 import { PLAYOFF_PHASES, leagueStandings } from '../season/state';
 import { winPct } from '../season/standings';
 import { TUNING } from '../tuning';
-import type { NameData } from './player';
 
 const O = TUNING.offseason;
-
-export interface DraftPick {
-  playerId: string;
-  team: TeamAbbr;
-  round: number;
-  pick: number;
-}
 
 /**
  * The draft order (spec 10.4): teams out of the playoffs by record, worst first, then playoff teams by the
@@ -75,52 +64,16 @@ function jerseyFor(league: League, player: Player, team: TeamAbbr, rng: Rng): nu
   return pickJersey(player.position, taken, t => rng.float() * t) ?? 0;
 }
 
-/**
- * This year's class, its prospects added to the league as free agents who haven't been drafted: the class
- * made a season ago (D-41), or one made now if the league has none for this year.
- */
-function prospects(league: League, names: NameData, rng: Rng): Prospect[] {
-  const year = leagueYear(league.date);
-  const made = league.draft?.year === year ? league.draft : generateClass(league, year, { names, rng, newId: () => newId(league, 'p') }, rng);
-  league.draft = null;
-  for (const p of made.prospects) league.players[p.player.id] = p.player;
-  return made.prospects;
-} // prettier-ignore
-
 /** Signs a rookie to a team on his first contract. */
-function signRookie(league: League, player: Player, team: TeamAbbr, contractId: string, rng: Rng): void {
+export function signRookie(
+  league: League,
+  player: Player,
+  team: TeamAbbr,
+  contractId: string,
+  rng: Rng
+): void {
   player.jersey = jerseyFor(league, player, team, rng);
   Object.assign(player, { team, status: 'active', contractId });
-}
-
-/**
- * Runs the draft on the year's pick records, each taken by the team holding it, on rookie scale deals; then
- * teams get their picks three drafts on. Returns the picks in order; the prospects nobody took stay in the
- * league as undrafted free agents.
- */
-export function standInDraft(league: League, names: NameData, rng: Rng): DraftPick[] {
-  const year = leagueYear(league.date);
-  if (picksIn(league, year).some(p => p.number === null)) numberDraft(league, year, draftOrder(league));
-  const board = prospects(league, names, rng)
-    .map(p => ({ p: p.player, value: perceivedValue(p) + rng.normal(0, O.draftNoise) }))
-    .sort((a, b) => b.value - a.value || (a.p.id < b.p.id ? -1 : 1))
-    .map(e => e.p); // prettier-ignore
-  const picks: DraftPick[] = [];
-  for (const record of picksIn(league, year)) {
-    const player = board.shift();
-    if (!player) break;
-    const { owner: team, round } = record;
-    const pick = record.number as number;
-    const contract = rookieContract(league.rules, { id: newId(league, 'c'), playerId: player.id, team }, year, pick);
-    league.contracts[contract.id] = contract;
-    player.draft = { year, round, pick, team };
-    record.playerId = player.id;
-    signRookie(league, player, team, contract.id, rng);
-    recordTransaction(league, team, 'drafted', player.id, `round ${round}, pick ${pick}`);
-    picks.push({ playerId: player.id, team, round, pick });
-  } // prettier-ignore
-  issueNextYear(league, year);
-  return picks;
 }
 
 /**

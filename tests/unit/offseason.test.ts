@@ -6,7 +6,8 @@ import { capSheet } from '../../src/engine/cap/sheet';
 import { capCharge, capHit, prorationYears } from '../../src/engine/contracts/cap';
 import { endContract } from '../../src/engine/contracts/moves';
 import { emptyYear, type Contract, type ContractYear } from '../../src/engine/contracts/types';
-import { draftOrder, signUndrafted, standInDraft } from '../../src/engine/generate/rookies';
+import { finishDraft, openDraft, runDraft } from '../../src/engine/draft/draft';
+import { draftOrder, signUndrafted } from '../../src/engine/generate/rookies';
 import { nextCap, openLeagueYear, withCap } from '../../src/engine/league/league-year';
 import { activeRoster } from '../../src/engine/league/transactions';
 import type { League } from '../../src/engine/league/types';
@@ -27,8 +28,9 @@ import { advanceBlock } from '../../src/engine/roster/legality';
 import { nameData } from '../helpers/base-data';
 import { situationLeague } from '../helpers/situations';
 
-// The offseason (spec 4.1): the calendar, the new league year (spec 11.1), retirements (spec 10.7), and the
-// stand-ins for the draft and free agency until M11 and M12 (D-27). Cap numbers are worked by hand.
+// The offseason (spec 4.1): the calendar, the new league year (spec 11.1), retirements (spec 10.7), the
+// draft's place in it (D-48), and the stand-in for free agency until M12 (D-27). Cap numbers are worked by
+// hand.
 const at = (season: number, phase: Phase, week = 1): GameDate => ({ season, phase, week });
 const fresh = (date: GameDate): League => {
   const league = structuredClone(situationLeague);
@@ -277,18 +279,21 @@ describe('retirement (spec 10.7)', () => {
   });
 });
 
-describe('stand-in draft and rosters (D-27)', () => {
+describe('the draft and rosters (D-27, D-48)', () => {
   it('drafts in reverse order of finish, seven rounds on rookie deals, then signs undrafted rookies', () => {
     const league = fresh(at(2026, 'draft'));
     league.season.champion = 'ARI';
+    league.settings.auto.draft = true;
     const order = draftOrder(league);
     expect(order.at(-1)).toBe('ARI');
     const before = Object.keys(league.players).length;
-    const picks = standInDraft(league, nameData(), stream(2, 'draft'));
+    openDraft(league, nameData(), stream(2, 'class'));
+    const picks = runDraft(league, stream(2, 'draft'));
+    expect(finishDraft(league)).not.toBeNull();
     expect(Object.keys(league.players)).toHaveLength(before + 450);
     expect(picks).toHaveLength(32 * 7);
-    expect(picks[0]).toMatchObject({ team: order[0], round: 1, pick: 1 });
-    expect(picks.at(-1)).toMatchObject({ team: 'ARI', round: 7, pick: 224 });
+    expect(picks[0]).toMatchObject({ owner: order[0], round: 1, number: 1 });
+    expect(picks.at(-1)).toMatchObject({ owner: 'ARI', round: 7, number: 224 });
     const first = league.players[picks[0]?.playerId ?? ''] as Player;
     const contract = league.contracts[first.contractId ?? ''] as Contract;
     expect(first).toMatchObject({ experience: 0, status: 'active', draft: { year: 2027, round: 1, pick: 1 } });
@@ -337,6 +342,7 @@ describe('stand-in draft and rosters (D-27)', () => {
   it('plays a whole offseason into the next season with legal rosters and a new schedule', () => {
     const league = fresh(at(2026, 'staff'));
     league.settings.auto.roster = true;
+    league.settings.auto.draft = true;
     // The 2027 class, made with the league, is drafted; the 2028 class arrives with the new season (D-41).
     const drafted = new Set(league.draft?.prospects.map(p => p.player.id));
     expect(league.draft?.year).toBe(2027);

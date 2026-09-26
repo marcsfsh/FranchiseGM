@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { TEAM_ABBRS } from '../../src/data/team-colors';
 import { latestDraftOrder, numberDraft, picksIn } from '../../src/engine/draft/picks';
-import { draftOrder, rookieReserve, standInDraft } from '../../src/engine/generate/rookies';
+import { finishDraft, openDraft, runDraft } from '../../src/engine/draft/draft';
+import { draftOrder, rookieReserve } from '../../src/engine/generate/rookies';
 import type { League } from '../../src/engine/league/types';
 import type { GameDate, Phase } from '../../src/engine/model/calendar';
 import { stream } from '../../src/engine/rng';
@@ -66,12 +67,15 @@ describe('draft picks (spec 10.4)', () => {
     const before = rookieReserve(league, 'KC');
     traded.owner = 'KC';
     expect(rookieReserve(league, 'KC')).toBeGreaterThan(before);
-    const picks = standInDraft(league, nameData(), stream(2, 'draft'));
+    league.settings.auto.draft = true;
+    openDraft(league, nameData(), stream(2, 'class'));
+    const picks = runDraft(league, stream(2, 'draft'));
     expect(picks).toHaveLength(7 * 32);
-    const made = picks.find(p => p.pick === traded.number);
-    expect(made?.team).toBe('KC');
+    const made = picks.find(p => p.number === traded.number);
+    expect(made?.owner).toBe('KC');
     expect(league.players[made?.playerId ?? '']).toMatchObject({ team: 'KC', draft: { year: 2027, round: 1, pick: traded.number, team: 'KC' } }); // prettier-ignore
     expect(traded.playerId).toBe(made?.playerId);
+    expect(finishDraft(league)?.year).toBe(2027);
     expect(league.picks.filter(p => p.year === 2030)).toHaveLength(7 * 32);
   });
 });

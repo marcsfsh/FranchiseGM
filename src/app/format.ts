@@ -30,15 +30,7 @@ export function savedAgo(savedAt: number, now = Date.now()): string {
   return `on ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(savedAt)}`;
 }
 
-/** An ordinal number: "1st", "2nd", "11th", "23rd". */
-export function ordinal(n: number): string {
-  const tens = n % 100;
-  const suffix =
-    tens >= 11 && tens <= 13
-      ? 'th'
-      : (({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th');
-  return `${n}${suffix}`;
-}
+export { ordinal } from '../engine/text';
 
 /** Wins and losses, with ties only when there are some (style guide 9). */
 export function record(wins: number, losses: number, ties = 0): string {

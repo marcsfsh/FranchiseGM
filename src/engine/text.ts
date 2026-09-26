@@ -23,3 +23,13 @@ export function joinList(parts: readonly string[]): string {
 /** Whole dollars in full, such as $42,500,000 (style guide 9: exact contract detail). */
 export const dollars = (n: number): string =>
   `${n < 0 ? '−' : ''}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`;
+
+/** An ordinal number: "1st", "2nd", "11th", "23rd". */
+export function ordinal(n: number): string {
+  const tens = n % 100;
+  const suffix =
+    tens >= 11 && tens <= 13
+      ? 'th'
+      : (({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th');
+  return `${n}${suffix}`;
+}

@@ -184,11 +184,12 @@ function spendAuto(league: League, draft: DraftClass, team: TeamAbbr): void {
 
 /**
  * A week of scouting (spec 10.4): every team's scouts add points in their regions and its director in the
- * national bank, and the teams that scout themselves place their scouts and spend what they have.
+ * national bank, and the teams that scout themselves place their scouts and spend what they have. Scouting
+ * ends as the draft opens.
  */
 export function scoutWeek(league: League): void {
   const draft = league.draft;
-  if (!draft) return;
+  if (!draft || draft.board) return;
   for (const team of TEAM_ABBRS) {
     const scouting = draft.scouting[team];
     const itself = scoutsItself(league, team);

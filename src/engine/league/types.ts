@@ -20,6 +20,7 @@ import type { SeasonState } from '../season/state';
 import type { GamePlan, Rotation } from '../sim/plan';
 import type { SimSliders } from '../sim/sliders';
 import type { DraftClass } from '../draft/class';
+import type { DraftGrades } from '../draft/draft';
 import type { DraftPickRecord } from '../draft/picks';
 import type { DraftSettings } from '../draft/settings';
 
@@ -27,7 +28,7 @@ import type { DraftSettings } from '../draft/settings';
  * Save format version (spec 2.4). Bump it whenever the shape of League changes; older saves then open
  * with a clear message instead of being migrated.
  */
-export const SAVE_SCHEMA_VERSION = 20;
+export const SAVE_SCHEMA_VERSION = 21;
 
 export type Permission = 'none' | 'user' | 'any';
 
@@ -93,6 +94,8 @@ export interface AutoJobs {
   contracts: boolean;
   /** Placing scouts and spending their points (spec 10.4); on by default, as the director of scouting's job. */
   scouting: boolean;
+  /** The user's picks in the draft (spec 10.4); off by default, so the draft waits for the user's picks. */
+  draft: boolean;
 }
 
 /** League settings that can change mid-save (spec 22). Sections are added as their features arrive. */
@@ -153,6 +156,8 @@ export interface League {
   draft: DraftClass | null;
   /** Every team's picks in this draft and the next two, and the last draft's until its season ends (D-42). */
   picks: DraftPickRecord[];
+  /** The media's grades of the last draft (spec 10.4), until the next draft finishes; null before the first. */
+  draftGrades: DraftGrades | null;
   /** Messages for the user (spec 19.6), oldest first. */
   inbox: InboxItem[];
   /** Players on waivers until the league next advances (spec 12.1). */

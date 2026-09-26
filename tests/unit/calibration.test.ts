@@ -80,6 +80,7 @@ describe('calibration replays (spec 23.1)', { timeout: 30_000 }, () => {
   it('plays weeks through the weekly advance with every club on auto, collecting the same facts', () => {
     const loop = loopLeague(data, 23);
     expect(loop.settings.auto.roster).toBe(true);
+    expect(loop.settings.auto.draft).toBe(true);
     const season = new LoopSeason(loop, data.climate);
     expect(season.done).toBe(false);
     season.playWeek();

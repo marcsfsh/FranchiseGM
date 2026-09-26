@@ -2,13 +2,13 @@
  * The offseason (spec 4.1), from the Super Bowl through the final cutdown, a step at a time: each phase once,
  * free agency's four weeks, and the preseason's three. A step clears the waiver wire, finishes the step the
  * league is in, heals the weeks that pass, and opens the next one: the new league year when free agency
- * opens (spec 11.1), retirements after the awards (spec 10.7), the stand-in rookie class at the draft and
- * the undrafted rookies after it (D-27), the next season's schedule with the OTAs (spec 5.2), the AI's
- * cutdown at the deadline, and the next season after it. The re-sign window (spec 11.4, 11.5) opens with a
- * message about the user's decisions and closes with the AI's (D-29). The OTAs set depth charts for the new
- * rosters; training camp brings its development, position battles, and injuries, and the preseason's games
- * (D-30); after the cutdown, waiver claims and practice squads fill out the rosters. Phases later
- * milestones fill (staff moves, awards and the Hall of Fame, the combine, the rules meeting) pass through.
+ * opens (spec 11.1), retirements after the awards (spec 10.7), the draft (spec 10.4; D-48), which waits for
+ * the user's picks, and the undrafted rookies after it (D-27), the next season's schedule with the OTAs (spec
+ * 5.2), the AI's cutdown at the deadline, and the next season after it. The re-sign window (spec 11.4, 11.5)
+ * opens with a message about the user's decisions and closes with the AI's (D-29). The OTAs set depth charts
+ * for the new rosters; training camp brings its development, position battles, and injuries, and the
+ * preseason's games (D-30); after the cutdown, waiver claims and practice squads fill out the rosters. Phases
+ * later milestones fill (staff moves, awards and the Hall of Fame, the rules meeting) pass through.
  */
 import type { ClimateTable } from '../../data/climate';
 import { TEAM_ABBRS, TEAM_COLORS, type TeamAbbr } from '../../data/team-colors';
@@ -18,12 +18,23 @@ import { resignDecisions } from '../ai/decisions/resign';
 import { fillPracticeSquad, waiverClaims } from '../ai/decisions/roster-moves';
 import type { DecisionLog } from '../ai/framework';
 import { generateClass, type Prospect } from '../draft/class';
-import { closeDraftYear } from '../draft/picks';
+import {
+  draftUnderWay,
+  finishDraft,
+  makePick,
+  onTheClock,
+  openDraft,
+  runDraft,
+  staffChoice,
+  type DraftGrades
+} from '../draft/draft';
+import { closeDraftYear, picksIn, type DraftPickRecord } from '../draft/picks';
 import { draftMediaWeek } from '../draft/media';
 import { scoutsItself, scoutWeek } from '../draft/scouting';
 import { autoVisits, workOut } from '../draft/workouts';
 import type { NameData } from '../generate/player';
-import { draftOrder, rookieReserve, signUndrafted, standInDraft } from '../generate/rookies';
+import { draftOrder, rookieReserve, signUndrafted } from '../generate/rookies';
+import type { Outcome } from '../contracts/moves';
 import { windowDecisions } from '../contracts/resign';
 import { depthChanges, startersByTeam, type DepthChange } from '../league/depth-changes';
 import type { ContractRecord } from '../contracts/history';
@@ -42,7 +53,7 @@ import { activeLimit } from '../roster/rules';
 import { processWaivers, waiverOrder, type WaiverResult } from '../roster/waivers';
 import type { GameResult } from '../sim/types';
 import type { GameMeta } from '../stats/record';
-import { dollars, plural } from '../text';
+import { dollars, ordinal, plural } from '../text';
 import { TUNING } from '../tuning';
 import { campInjuries, playPreseasonWeek, positionBattles, preseasonSchedule, setDepthCharts } from './camp';
 import { generateSchedule } from './generate-schedule';
@@ -154,6 +165,95 @@ function preseasonWords(result: GameResult, user: TeamAbbr): string {
   return us < them ? `You lost to the ${opponent} ${them}-${us}` : `You tied the ${opponent} ${us}-${them}`;
 }
 
+/** A message for the user's inbox, before it takes its step's place. */
+type Message = Omit<InboxItem, 'id' | 'season' | 'week' | 'read' | 'event'> & { event?: PauseEvent };
+/** A headline, before it takes its step's place. */
+type Story = Pick<NewsItem, 'kind' | 'headline' | 'teams' | 'players' | 'score'>;
+
+/** A step's week on the league's timeline, after the regular season and the playoffs. */
+const timelineWeek = (league: League, date: GameDate): number =>
+  league.rules.season.weeks + PLAYOFF_PHASES.length + offseasonStep(date);
+
+/**
+ * The draft's news from the picks just made (spec 10.4): the first overall pick, and once the draft is over
+ * the media's grades and the user's class. With `clock`, a message when the user is on the clock.
+ */
+function draftStories(
+  league: League,
+  made: readonly DraftPickRecord[],
+  grades: DraftGrades | null,
+  clock: boolean
+): { news: Story[]; messages: Message[] } {
+  const user = league.meta.start.userTeam;
+  const news: Story[] = [];
+  const messages: Message[] = [];
+  const first = made.find(p => p.number === 1);
+  const top = first?.playerId ? league.players[first.playerId] : undefined;
+  if (first && top) news.push({ kind: 'transaction', headline: `The ${nick(first.owner)} take ${named(top)} first overall`, teams: [first.owner], players: [top.id], score: 90 }); // prettier-ignore
+  if (grades) {
+    const best = grades.teams[0];
+    if (best) news.push({ kind: 'draft', headline: `Draft grades: the ${nick(best.team)} earn the top grade, ${best.letter}`, teams: [best.team], players: [], score: 50 }); // prettier-ignore
+    const mine = picksIn(league, grades.year).filter(p => p.owner === user && p.playerId);
+    const grade = grades.teams.find(g => g.team === user);
+    const lines = mine.map(p => {
+      const player = league.players[p.playerId as string];
+      return `Round ${p.round}, pick ${p.number}: ${player ? named(player) : 'a prospect'}`;
+    });
+    messages.push({
+      kind: 'draft',
+      title: grade ? `Your ${grades.year} draft class: ${grade.letter} from the media` : `Your ${grades.year} draft class`,
+      body: `${lines.length ? `${lines.join('. ')}.` : 'You had no picks in this draft.'}${grade ? ` The media: ${grade.blurb}` : ''}`,
+      players: mine.map(p => p.playerId as string)
+    }); // prettier-ignore
+    return { news, messages };
+  }
+  const next = onTheClock(league);
+  if (clock && next?.owner === user)
+    messages.push({ kind: 'draft', title: `The draft is on: you're on the clock with the ${ordinal(next.number ?? 0)} pick`, body: 'Make your pick in the Draft room, or let your staff make it. The draft waits for you; Automation in Settings can have your staff make every pick.', players: [] }); // prettier-ignore
+  return { news, messages };
+}
+
+/** Why the league can't leave the draft yet: the user on the clock with the picks off auto. Null otherwise. */
+export function draftBlock(league: League): string | null {
+  const clock = onTheClock(league);
+  if (!clock || clock.owner !== league.meta.start.userTeam || league.settings.auto.draft) return null;
+  return `You're on the clock with the ${ordinal(clock.number ?? 0)} pick. Make your pick in the Draft room, or let your staff make it.`; // prettier-ignore
+}
+
+/** A choice in the draft room: a prospect to take, or the staff's choice for this pick or every pick left. */
+export type DraftRoomChoice = { prospectId: string } | { staff: 'pick' | 'rest' };
+
+/**
+ * The user's turn in the draft room (spec 10.4): the pick on the clock, by the user's choice or the staff's,
+ * or every pick the user has left by the staff's; then the AI's picks until the user is on the clock again
+ * or the draft is over, when the media grade it. The draft's news and messages join the league. Returns the
+ * picks made, or why none could be.
+ */
+export function draftRoomPick(league: League, choice: DraftRoomChoice): Outcome<DraftPickRecord[]> {
+  const user = league.meta.start.userTeam;
+  const clock = onTheClock(league);
+  if (!clock) return { ok: false, reason: "The draft isn't under way." };
+  if (clock.owner !== user)
+    return { ok: false, reason: `The ${nick(clock.owner)} are on the clock, not you.` };
+  const step = offseasonStep(league.date);
+  const rng = leagueStream(league.random, 'offseason', step, 'draftRoom', clock.number ?? 0);
+  const made: DraftPickRecord[] = [];
+  if ('prospectId' in choice || choice.staff === 'pick') {
+    const id = 'prospectId' in choice ? choice.prospectId : staffChoice(league, user);
+    if (!id) return { ok: false, reason: 'Nobody is left to draft.' };
+    const result = makePick(league, id, rng);
+    if (!result.ok) return result;
+    made.push(result.value);
+  }
+  made.push(...runDraft(league, rng, 'staff' in choice && choice.staff === 'rest'));
+  const stories = draftStories(league, made, finishDraft(league), false);
+  const at = { season: league.date.season, week: timelineWeek(league, league.date) };
+  const id = (i: number) => `${at.season}-o${step}-p${clock.number ?? 0}-${i}`;
+  league.season.news.push(...stories.news.map((n, i) => ({ ...n, ...at, id: id(i), template: n.kind })));
+  league.inbox = addToInbox(league.inbox, stories.messages.map((m, i) => ({ ...m, ...at, id: id(i), event: m.event ?? null, read: false }))); // prettier-ignore
+  return { ok: true, value: made };
+}
+
 /**
  * The end of the season (spec 4.1, 12.1), when the Super Bowl week ends: undrafted rookies nobody ever
  * signed leave the game (one signed and cut stays, with his history), players earn their seasons by
@@ -215,20 +315,18 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
   // Every team the AI runs gets legal first (the user's with roster management on auto), and the user's
   // team must be legal to move on (D-46).
   for (const abbr of aiTeams(league)) makeLegal(league, abbr, rng(`legal-${abbr}`));
-  const blocked = advanceBlock(league);
+  // The draft waits for the user's pick (spec 10.4; D-48).
+  const blocked = advanceBlock(league) ?? draftBlock(league);
   if (blocked) return { league, decisions: [], news: [], inbox: [], pauses: [], ratings: [], games: [], depth: [], contracts: [], blocked }; // prettier-ignore
   const to = nextStep(from);
   const news: NewsItem[] = [];
-  const messages: (Omit<InboxItem, 'id' | 'season' | 'week' | 'read' | 'event'> & { event?: PauseEvent })[] =
-    [];
+  const messages: Message[] = [];
   const decisions: DecisionLog[] = [];
   const ratings: RatingChange[] = [];
   const games: StepOutcome['games'] = [];
   const depth: DepthChange[] = [];
   const contracts: ContractRecord[] = [];
-  /** A step's week on the league's timeline, after the regular season and the playoffs. */
-  const timeline = (date: GameDate) =>
-    league.rules.season.weeks + PLAYOFF_PHASES.length + offseasonStep(date);
+  const timeline = (date: GameDate) => timelineWeek(league, date);
   const headline = (
     kind: NewsItem['kind'],
     text: string,
@@ -270,7 +368,14 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
       fillPracticeSquad(league, abbr, rng(`squad-${abbr}`));
     }
 
-  // The step the league is in finishes.
+  // The step the league is in finishes: a draft still under way runs to its end, the user's picks made by
+  // the staff (the gate above stops it otherwise).
+  if (draftUnderWay(league)) {
+    const made = runDraft(league, rng('draftRest'));
+    const stories = draftStories(league, made, finishDraft(league), false);
+    for (const n of stories.news) headline(n.kind, n.headline, n.teams, n.players, n.score);
+    messages.push(...stories.messages);
+  }
   if (from.phase === 'awards') {
     const retired = retirePlayers(league, rng('retirement'));
     for (const { player, team } of retired) {
@@ -388,26 +493,13 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     if (where === 'proDay')
       for (const team of TEAM_ABBRS) if (scoutsItself(league, team)) autoVisits(league, league.draft, team);
   } else if (to.phase === 'draft') {
+    // The draft opens (spec 10.4; D-48): the AI picks until the user is on the clock, or to the end.
     league.date = { ...to };
-    const picks = standInDraft(league, data.names, rng('draft'));
-    const mine = picks
-      .filter(p => p.team === user)
-      .map(p => ({ pick: p, player: league.players[p.playerId] }));
-    messages.push({
-      kind: 'draft',
-      title: `Your ${to.season + 1} draft class`,
-      body: mine.map(({ pick, player }) => (player ? `Round ${pick.round}, pick ${pick.pick}: ${named(player)}` : '')).filter(Boolean).join('. '),
-      players: mine.map(m => m.pick.playerId)
-    }); // prettier-ignore
-    const first = picks[0] ? league.players[picks[0].playerId] : undefined;
-    if (first && picks[0])
-      headline(
-        'transaction',
-        `The ${nick(picks[0].team)} take ${named(first)} first overall`,
-        [picks[0].team],
-        [first.id],
-        90
-      );
+    openDraft(league, data.names, rng('draftClass'));
+    const made = runDraft(league, rng('draft'));
+    const stories = draftStories(league, made, finishDraft(league), true);
+    for (const n of stories.news) headline(n.kind, n.headline, n.teams, n.players, n.score);
+    messages.push(...stories.messages);
   } else if (to.phase === 'udfa') {
     league.date = { ...to };
     const signed = signUndrafted(league, rng('udfa'));

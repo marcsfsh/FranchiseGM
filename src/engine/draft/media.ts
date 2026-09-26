@@ -9,9 +9,8 @@ import type { League } from '../league/types';
 import type { Rng } from '../rng';
 import { TUNING } from '../tuning';
 import { perceivedValue, type DraftClass, type Prospect } from './class';
-import { draftWorth, needs } from './needs';
+import { aiChoice } from './needs';
 import { picksIn } from './picks';
-import { teamGrades } from './scouting';
 
 const M = TUNING.draft.media;
 
@@ -62,15 +61,7 @@ export function mockDraft(league: League, draft: DraftClass, order: readonly Tea
   const taken = new Set<string>();
   const picks: MockPick[] = [];
   order.forEach((team, i) => {
-    const grades = teamGrades(league, draft, team);
-    const needAt = needs(league, team);
-    let best: Prospect | null = null;
-    let bestWorth = -Infinity;
-    for (const p of draft.prospects) {
-      if (taken.has(p.player.id)) continue;
-      const worth = draftWorth(grades.get(p.player.id)?.value ?? 0, needAt.get(p.player.position) ?? 0);
-      if (worth > bestWorth) [best, bestWorth] = [p, worth];
-    }
+    const best = aiChoice(league, draft, team, taken);
     if (!best) return;
     taken.add(best.player.id);
     picks.push({ number: i + 1, team, prospectId: best.player.id });
@@ -98,7 +89,8 @@ export interface DraftHeadline {
 /**
  * A week of draft news: from `hypeFrom`, a prospect or two near the top of the media's board makes a
  * headline and moves on it (spec 10.4); from `mocksFrom`, a new mock draft, with a headline when its first
- * pick changes. `week` is the step's timeline week, `seasonWeek` the regular season's week, or null after it.
+ * pick changes. The coverage ends as the draft opens. `week` is the step's timeline week, `seasonWeek` the
+ * regular season's week, or null after it.
  */
 export function draftMediaWeek(
   league: League,
@@ -108,7 +100,7 @@ export function draftMediaWeek(
   rng: Rng
 ): DraftHeadline[] {
   const draft = league.draft;
-  if (!draft) return [];
+  if (!draft || draft.board) return [];
   const out: DraftHeadline[] = [];
   if (seasonWeek === null || seasonWeek >= M.hypeFrom) {
     const board = mediaBoard(draft, M.hypeAmong);
