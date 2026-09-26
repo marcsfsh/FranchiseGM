@@ -23,7 +23,7 @@
 - The news feed v1 covers results, upsets, big games, season milestones, injuries, signings, and weekly awards; rumors, power rankings, the injury report roundup, records and streaks in headlines, and the news effects setting arrive with M18 (spec 18.1).
 - Weekly awards are the players of the week and the rookie of the week; players of the month and the season awards with their voting arrive with M17 (spec 18.4).
 - The practice squad's international pathway exemption isn't modeled (no player carries the designation), so squads hold 16. The PUP, NFI, and suspended lists have their rules, but nothing places players on them yet: players hurt at camp stay on the active roster, and suspensions arrive with M12.
-- Free agency's bidding (D-53) leaves teams a median of about 17% of the cap after its four weeks in a league's first offseason; M12's close judges spending against the salary floor (D-33) and the economy's targets. Extensions are signed at the player's asking price until M12's negotiations.
+- Free agency's bidding (D-53) leaves teams a median of about 17% of the cap after its four weeks in a league's first offseason; M12's close judges spending against the salary floor (D-33) and the economy's targets. Extensions and free agents' deals are negotiated in talks or settled by a GM (D-54).
 - AI teams keep expiring players only through age 30 (D-32) until M12's value-based re-sign choice (D-38).
 - The player decision model (D-52) leaves out relationships with coaches and climate preferences until M13's staff.
 - Non-exclusive franchise and transition tags average the current year's top cap hits until M12 prices them from five years of cap percentages (D-39).
