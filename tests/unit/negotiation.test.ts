@@ -177,13 +177,18 @@ describe('talks (spec 11.6)', () => {
       expect(e.high).toBeGreaterThanOrEqual(least);
     }
     expect(width(sharp)).toBeLessThan(width(rough));
-    // A hard bargainer's talk puts the least he'd take near the bottom of the range; a soft one's near the top.
-    p.dealStyle.agent = 100;
-    const hard = floorEstimate(league, 'MIN', p, terms);
+    // Where the least he'd take sits in the range is how front offices misread him: near the bottom at one
+    // end, near the top at the other. The width moves with the misread, so it doesn't give him away either.
+    p.dealStyle.read = 0;
+    const under = floorEstimate(league, 'MIN', p, terms);
+    p.dealStyle.read = 100;
+    const over = floorEstimate(league, 'MIN', p, terms);
+    expect((least - under.low) / width(under)).toBeLessThan(0.35);
+    expect((least - over.low) / width(over)).toBeGreaterThan(0.65);
+    expect(width(under)).toBeGreaterThan(width(over));
+    // His agent's bargaining doesn't move it.
     p.dealStyle.agent = 0;
-    const soft = floorEstimate(league, 'MIN', p, terms);
-    expect((least - hard.low) / width(hard)).toBeLessThan(0.35);
-    expect((least - soft.low) / width(soft)).toBeGreaterThan(0.65);
+    expect(floorEstimate(league, 'MIN', p, terms)).toEqual(over);
   });
 
   it('answers with a counter that comes down, and takes his counter', () => {

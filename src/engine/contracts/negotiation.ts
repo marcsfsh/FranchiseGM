@@ -24,6 +24,7 @@ import {
   contextFor,
   demand,
   mattersMost,
+  needNow,
   offerWorth,
   reachable,
   salaryFor,
@@ -87,22 +88,22 @@ export const openingOf = (player: Player): number =>
   N.opening[0] + ((N.opening[1] - N.opening[0]) * player.dealStyle.agent) / 100;
 
 /**
- * What an offer must be worth to him in talks with a team now: his agent's opening above his demand, less
- * an even share of it for each offer he's turned down in the step. Through free agency's bidding weeks the
- * agent holds at his opening, as the offers compete.
+ * What an offer must be worth to him in talks with a team now: his agent's opening above the least he'd take
+ * now, less an even share of it for each offer he's turned down in the step. Through free agency's bidding
+ * weeks the agent holds at his opening, as the offers compete, over what the player still holds out for.
  */
 export function askedWorth(league: League, player: Player, team: TeamAbbr, extension = false): number {
   const bidding = !extension && league.date.phase === 'freeAgency';
   const rounds = bidding ? 0 : talks(league, team, player.id).rounds;
   return (
-    demand(league, player, extension) * (1 + openingOf(player) * Math.max(0, 1 - rounds / patience(player)))
+    needNow(league, player, extension) * (1 + openingOf(player) * Math.max(0, 1 - rounds / patience(player)))
   );
 }
 
 /** What a deal a team's GM settles must be worth to him: as far under the opening as the GM's rating reaches. */
 export function settledWorth(league: League, player: Player, team: TeamAbbr, extension = false): number {
   const skill = competence(staffIn(league, team, 'GM'), 'negotiation') / 100;
-  return demand(league, player, extension) * (1 + openingOf(player) * (1 - skill));
+  return needNow(league, player, extension) * (1 + openingOf(player) * (1 - skill));
 }
 
 /**
@@ -165,23 +166,26 @@ export interface FloorEstimate {
 }
 
 /**
- * What a team's front office expects him to sign for a year on an offer's other terms (spec 11.6): a range
- * around the least he'd take, never shown itself, narrower with a better negotiator for a GM. Where the least
- * he'd take falls in it depends on his agent: a hard bargainer's talk puts it near the bottom.
+ * What a team's front office expects him to sign for a year now on an offer's other terms (spec 11.6): a
+ * range around the least he'd take, never shown itself, narrower with a better negotiator for a GM. Its
+ * middle is the front office's read of him, which misses the least he'd take by his hidden read (D-63), so
+ * that sits anywhere from `within` low to high in the range, and neither its width nor its place gives the
+ * least he'd take away.
  */
 export function floorEstimate(league: League, team: TeamAbbr, player: Player, terms: Omit<Offer, 'salary'>, extension = false): FloorEstimate {
   const ctx = contextFor(league);
   const minimum = talksMinimum(league, player, extension);
-  const need = reachable(league, ctx, player, team, terms.years, demand(league, player, extension));
+  const need = reachable(league, ctx, player, team, terms.years, needNow(league, player, extension));
   const floor = salaryFor(league, ctx, player, team, { ...terms, final: false }, need, minimum);
   const skill = competence(staffIn(league, team, 'GM'), 'negotiation') / 100;
   const width = N.estimate[0] + (N.estimate[1] - N.estimate[0]) * skill;
-  const within = N.within[1] - ((N.within[1] - N.within[0]) * player.dealStyle.agent) / 100;
+  const within = N.within[0] + ((N.within[1] - N.within[0]) * player.dealStyle.read) / 100;
+  const read = floor * (1 + width * (0.5 - within));
   const step = TUNING.market.quoteStep;
   const ceiling = marketCeiling(league.rules, player.position);
   return {
-    low: Math.max(minimum, Math.floor((floor * (1 - width * within)) / step) * step),
-    high: Math.min(Math.max(ceiling, floor), Math.ceil((floor * (1 + width * (1 - within))) / step) * step)
+    low: Math.max(minimum, Math.floor((read * (1 - width / 2)) / step) * step),
+    high: Math.min(Math.max(ceiling, floor), Math.ceil((read * (1 + width / 2)) / step) * step)
   };
 } // prettier-ignore
 

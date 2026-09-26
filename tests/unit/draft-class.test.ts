@@ -43,6 +43,14 @@ describe('draft classes (spec 10.3)', () => {
     expect(noKickers.prospects.some(p => p.player.position === 'K')).toBe(false);
   });
 
+  it('draws each prospect a hidden deal style of his own (D-63)', () => {
+    const styles = make().made.prospects.map(p => p.player.dealStyle);
+    expect(new Set(styles.map(d => `${d.agent}|${d.upFront}|${d.read}`)).size).toBeGreaterThan(
+      styles.length * 0.9
+    );
+    expect(mean(styles.map(d => d.agent))).toBeCloseTo(TUNING.dealStyle.agent[0], -1);
+  });
+
   it('draws a strength for the class and for each position group', () => {
     const base = make().made;
     const strong = make(l => (l.settings.draft.strengthMean = 1)).made;

@@ -27,6 +27,7 @@ import { marketCeiling, marketValue } from './market';
 const A = TUNING.contracts.acceptance;
 const D = TUNING.contracts.decision;
 const N = TUNING.contracts.negotiation;
+const F = TUNING.freeAgency;
 
 /** What an offer's worth is made of, each in shares of his market value. */
 export interface Worth {
@@ -255,6 +256,26 @@ export function demand(league: League, player: Player, extension = false): numbe
   const softened = phase === 'freeAgency' ? 1 - D.softening * (week - 1) : 1;
   return base * demandShare(league.date, league.rules) * softened;
 }
+
+/** Free agency's weeks of bidding (spec 11.8). */
+export const FREE_AGENCY_WEEKS = 4;
+
+/**
+ * How far over his demand a free agent holds out as a week of free agency ends (spec 11.8; D-65): up to
+ * `hope` of it by his greed as the market opens, falling to none by its last week.
+ */
+export function hopeOf(league: League, player: Player): number {
+  if (league.date.phase !== 'freeAgency') return 0;
+  const left = Math.max(0, FREE_AGENCY_WEEKS - league.date.week) / (FREE_AGENCY_WEEKS - 1);
+  return F.hope * (0.5 + player.personality.greed / 100) * left;
+}
+
+/**
+ * What an offer must be worth to him to sign now (spec 11.7, 11.8): his demand, and through free agency's
+ * bidding weeks what he still holds out for over it (D-65). An extension's talks aren't part of the bidding.
+ */
+export const needNow = (league: League, player: Player, extension = false): number =>
+  demand(league, player, extension) * (1 + (extension ? 0 : hopeOf(league, player)));
 
 /**
  * The worth an offer from `team` for `years` years must reach to meet `need`: a record deal at his

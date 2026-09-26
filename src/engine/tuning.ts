@@ -85,7 +85,8 @@ export const TUNING = {
 
   /**
    * How players go about a deal (spec 11.6, 11.7), hidden, drawn at generation as [mean, sd] on 0 to 100: how
-   * hard his agent bargains, and how much he values money paid up front.
+   * hard his agent bargains, and how much he values money paid up front. How front offices misread him is
+   * drawn evenly from 0 to 100 (D-63).
    */
   dealStyle: {
     agent: [50, 22] as readonly [number, number],
@@ -335,9 +336,9 @@ export const TUNING = {
      * 100] of it, by how hard he bargains, and in talks comes down evenly with each offer he turns down,
      * until his patience runs out after `patience` [volatility 100, volatility 0] of them and he breaks off
      * talks until the calendar advances. A team's front office expects him to sign for a range of salaries
-     * `estimate` [GM negotiation 0, 100] of the least he'd take wide, the least he'd take sitting `within`
-     * [agent 100, agent 0] of the way up it. A team's GM settles at once, as far under the opening as his
-     * negotiation rating reaches. An offer worth less than `lowball` of
+     * `estimate` [GM negotiation 0, 100] of its read of him wide, the least he'd take sitting `within` [read
+     * 0, read 100] of the way up it by how front offices misread him. A team's GM settles at once, as far
+     * under the opening as his negotiation rating reaches. An offer worth less than `lowball` of
      * his demand costs his interest in the team `lowballInterest` of his market value for the league year,
      * and `lowballMorale` morale. A take-it-or-leave-it offer is taken when it's worth his demand plus his
      * greed's share of the rest of his ask. A counter names guaranteed money or a longer deal as what matters

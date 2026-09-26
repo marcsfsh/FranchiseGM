@@ -97,6 +97,17 @@ describe('fictional league (build order no-CSV path)', () => {
     }
   });
 
+  it("draws each player's hidden deal style, spread around its means (D-63)", () => {
+    const styles = league.players.map(p => p.dealStyle);
+    const mean = (key: 'agent' | 'upFront' | 'read') => styles.reduce((sum, d) => sum + d[key], 0) / styles.length;
+    expect(styles.every(d => d.agent >= 1 && d.agent <= 99 && d.upFront >= 1 && d.upFront <= 99)).toBe(true);
+    expect(styles.every(d => d.read >= 0 && d.read <= 100)).toBe(true);
+    expect(mean('agent')).toBeCloseTo(TUNING.dealStyle.agent[0], -1);
+    expect(mean('upFront')).toBeCloseTo(TUNING.dealStyle.upFront[0], -1);
+    expect(mean('read')).toBeCloseTo(50, -1);
+    expect(new Set(styles.map(d => d.read)).size).toBeGreaterThan(50);
+  }); // prettier-ignore
+
   it('never repeats a name and is deterministic for a seed', () => {
     const names = [...league.players, ...league.staff, ...league.owners].map(
       x => `${x.firstName} ${x.lastName}`

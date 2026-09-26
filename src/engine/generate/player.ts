@@ -268,7 +268,8 @@ export function drawDealStyle(rng: Rng): DealStyle {
   const S = TUNING.dealStyle;
   const draw = ([mean, sd]: readonly [number, number]) =>
     Math.max(1, Math.min(99, Math.round(rng.normal(mean, sd))));
-  return { agent: draw(S.agent), upFront: draw(S.upFront) };
+  // Front offices misread him anywhere across their range, as likely one way as another.
+  return { agent: draw(S.agent), upFront: draw(S.upFront), read: Math.round(rng.float() * 100) };
 }
 
 function drawDevTrait(rng: Rng, potential: number, age: number): DevTrait {

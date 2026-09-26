@@ -23,7 +23,7 @@ import { dollars, plural } from '../text';
 import { TUNING } from '../tuning';
 import { offerAav, termsProblem, typicalOffer, type Offer } from './build';
 import { likelyToEarn } from './incentives';
-import { chooseOffer, contextFor, demand, offerWorth, reachable, salaryFor } from './decision';
+import { chooseOffer, contextFor, demand, needNow, offerWorth, reachable, salaryFor } from './decision';
 import { marketValue } from './market';
 import { askedWorth, floorEstimate, lowballed, termFor, typicalFor } from './negotiation';
 import { dealValue, roomPremium } from './value';
@@ -45,8 +45,7 @@ export interface FreeAgentSigning {
   offer: Offer;
 }
 
-/** Free agency's weeks of bidding (spec 11.8). */
-export const FREE_AGENCY_WEEKS = 4;
+export { FREE_AGENCY_WEEKS, hopeOf } from './decision';
 
 /** Whether teams bid on free agents now: through free agency's four weeks. */
 export const biddingOpen = (league: League): boolean => league.date.phase === 'freeAgency';
@@ -210,15 +209,6 @@ export function aiBids(league: League, teams: readonly TeamAbbr[], order: readon
 }
 
 /**
- * How far over his demand a free agent holds out as a week of free agency ends (spec 11.8; D-65): up to
- * `hope` of it by his greed as the market opens, falling to none by its last week.
- */
-export function hopeOf(league: League, player: Player): number {
-  const left = Math.max(0, FREE_AGENCY_WEEKS - league.date.week) / (FREE_AGENCY_WEEKS - 1);
-  return F.hope * (0.5 + player.personality.greed / 100) * left;
-}
-
-/**
  * The week's decisions as it ends (spec 11.8): each free agent with offers, the most valuable first, takes
  * the one worth most to him once one is worth his demand and what he still hopes for over it, if the team can
  * still sign him; the rest wait for better offers or for any. One who waits lets a take-it-or-leave-it offer
@@ -234,7 +224,7 @@ export function decideWeek(league: League, rng: Rng): FreeAgentSigning[] {
   const signings: FreeAgentSigning[] = [];
   for (const player of players) {
     let offers = [...offersFor(league, player.id)];
-    const need = demand(league, player) * (1 + hopeOf(league, player));
+    const need = needNow(league, player);
     while (offers.length) {
       const ctx = contextFor(league);
       const choice = chooseOffer(league, ctx, player, offers, need);

@@ -32,16 +32,18 @@ export interface Personality {
 
 /**
  * How a player goes about a deal (spec 11.6, 11.7), hidden from every screen, 0 to 100 each: how hard his
- * agent bargains, which sets how far over his real floor the agent opens, and how much he values money paid
- * up front, as a signing bonus, over the same money paid later.
+ * agent bargains, which sets how far over his real floor the agent opens; how much he values money paid up
+ * front, as a signing bonus, over the same money paid later; and how front offices misread him, which sets
+ * where his real floor sits in the range they expect him to sign for (D-63).
  */
 export interface DealStyle {
   agent: number;
   upFront: number;
+  read: number;
 }
 
 /** A deal style that leans neither way, for a player whose style the league hasn't drawn. */
-export const PLAIN_DEAL_STYLE: DealStyle = { agent: 50, upFront: 50 };
+export const PLAIN_DEAL_STYLE: DealStyle = { agent: 50, upFront: 50, read: 50 };
 
 export type DraftInfo =
   { year: number; round: number; pick: number; team: TeamAbbr } | { year: number; undrafted: true };

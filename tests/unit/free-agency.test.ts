@@ -26,7 +26,7 @@ import {
   weighingWords,
   withdrawOffer
 } from '../../src/engine/contracts/free-agency';
-import { floorEstimate } from '../../src/engine/contracts/negotiation';
+import { askOf, floorEstimate } from '../../src/engine/contracts/negotiation';
 import { draftOrder } from '../../src/engine/generate/rookies';
 import { freeAgents } from '../../src/engine/league/transactions';
 import type { League } from '../../src/engine/league/types';
@@ -156,6 +156,21 @@ describe("a week's decisions (spec 11.8)", () => {
     expect(hopeOf(league, p)).toBe(0);
     decideWeek(league, stream(2));
     expect(p.team).toBe('GB');
+  });
+
+  it("signs at his agent's ask with no rival offers, since the agent asks over what he holds out for (D-65)", () => {
+    const league = inFreeAgency();
+    room(league, 'MIN', 4);
+    league.teams.MIN.carryover = 200_000_000;
+    const [p] = best(league);
+    if (!p) throw new Error('no free agent');
+    // The greediest player holds out for the most in the first week, and the softest agent opens the least over it.
+    p.personality.greed = 100;
+    p.dealStyle.agent = 0;
+    const ask = askOf(league, p, 'MIN', 1);
+    expect(makeOffer(league, 'MIN', p.id, { years: 1, salary: ask, signingBonus: 0 })).toBeNull();
+    decideWeek(league, stream(1));
+    expect(p).toMatchObject({ team: 'MIN', status: 'active' });
   });
 
   it("raises a team's offer he passed on while he's worth it, and tells a team who else is bidding without their terms", () => {
