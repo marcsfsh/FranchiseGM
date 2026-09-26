@@ -33,14 +33,15 @@ test('makes a standing offer in free agency, and hears the answer as the week en
   await expectRegionsMatchOverflow(page);
   await expectTouchTargets(page, 'main', phone ? 48 : 44);
 
-  // An offer: the dialog says what he asks of the user's team and how he'd weigh the offer as things stand.
+  // An offer: the dialog says what his agent asks of the user's team and how the front office reads the
+  // offer, never the least he'd take or the other teams' terms.
   const first = agents(page).first();
   const name = (await first.locator('a').first().textContent()) ?? '';
   await first.getByRole('button', { name: `Make an offer to ${name}` }).click();
   const dialog = page.getByRole('dialog', { name: `Offer ${name} a contract` });
-  await expect(dialog).toContainText(/He asks you for \$[\d,]+ a year\. Offers stand until the week ends/);
+  await expect(dialog).toContainText(/His agent asks you for \$[\d,]+ a year, more than the least he'd take\. Offers stand until the week ends/);
   await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
-  await expect(dialog.locator('[role="status"]')).toHaveText(/^As (the offers stand, he would take (yours|another team's)|things stand, it isn't enough: he would wait for more)/);
+  await expect(dialog.locator('[role="status"]')).toHaveText(/^Your front office (expects this to be enough for him|expects him to want more|can't tell whether this is enough for him): it expects him to sign for \$[\d,]+ to \$[\d,]+ a year on these terms\. (He's weighing offers from \d+ other teams? too; you can't see their terms\.|No other team has made him an offer yet\.)$/);
   await expectTouchTargets(page, '#bidDialog', phone ? 48 : 44);
   await dialog.getByRole('button', { name: 'Send offer' }).click();
   await expect(dialog).toBeHidden();

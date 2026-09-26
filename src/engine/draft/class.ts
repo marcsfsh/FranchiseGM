@@ -13,7 +13,7 @@ import { POSITION_GROUPS } from '../progression/settings';
 import type { Rng } from '../rng';
 import { TUNING } from '../tuning';
 import { ACTIVE_ROSTER } from '../generate/league';
-import { generatePlayer, type GenContext } from '../generate/player';
+import { drawDealStyle, generatePlayer, type GenContext } from '../generate/player';
 import type { MockDraft } from './media';
 import type { DraftSettings } from './settings';
 
@@ -167,6 +167,9 @@ export function generateClass(
     const noise = TEAM_ABBRS.map(() => Math.round(rng.normal() * 100) || 0);
     prospects.push({ player, perception: perception(rng, s, group), region: regions.get(player.college) ?? null, noise, workout: null, measurables: null, hype: 0 }); // prettier-ignore
   }
+  // How each prospect goes about a deal (spec 11.6), from a stream of its own after the class is drawn.
+  const styles = rng.fork('dealStyle');
+  for (const p of prospects) p.player.dealStyle = drawDealStyle(styles);
   const scouting = Object.fromEntries(TEAM_ABBRS.map(t => [t, emptyScouting()] as const)) as Record<TeamAbbr, TeamScouting>; // prettier-ignore
   return { year, strength: { overall, groups }, prospects, scouting, mock: null, board: null };
 }

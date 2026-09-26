@@ -11,14 +11,17 @@ import {
   offerProblem,
   offersFor,
   pendingFor,
+  standing,
   teamBids,
   withdrawOffer
 } from '../../src/engine/contracts/free-agency';
+import { floorEstimate } from '../../src/engine/contracts/negotiation';
 import { draftOrder } from '../../src/engine/generate/rookies';
 import { freeAgents } from '../../src/engine/league/transactions';
 import type { League } from '../../src/engine/league/types';
 import type { Player } from '../../src/engine/model/player';
 import { stream } from '../../src/engine/rng';
+import { dollars } from '../../src/engine/text';
 import { TUNING } from '../../src/engine/tuning';
 import { advanceOffseason } from '../../src/engine/season/offseason';
 import { nameData } from '../helpers/base-data';
@@ -57,6 +60,22 @@ describe('offers (spec 11.8)', () => {
     expect(offerProblem(league, 'MIN', star.id, { years: 1, salary: space + 1_000_000, signingBonus: 0 })).toMatch(/would add \$[\d,]+ to your cap if all were taken/);
     withdrawOffer(league, 'MIN', star.id);
     expect(offersFor(league, star.id)).toEqual([]);
+  }); // prettier-ignore
+
+  it("reads an offer by the front office's range, never the least he'd take or other teams' terms (spec 11.6)", () => {
+    const league = inFreeAgency();
+    const [star] = best(league);
+    if (!star) throw new Error('no free agent');
+    const least = askingFrom(league, contextFor(league), star, 'MIN', 2);
+    const { low, high } = floorEstimate(league, 'MIN', star, { years: 2, signingBonus: 0 });
+    const read = (salary: number) => standing(league, 'MIN', star, { years: 2, salary, signingBonus: 0 });
+    expect(read(high)).toMatch(/^Your front office expects this to be enough for him: it expects him to sign for \$[\d,]+ to \$[\d,]+ a year on these terms\. No other team has made him an offer yet\.$/);
+    if (low > league.rules.pay.minimumSalary[star.experience]!) expect(read(low - 5_000)).toMatch(/^Your front office expects him to want more/);
+    expect(read(Math.round((low + high) / 2 / 5_000) * 5_000)).toMatch(/^Your front office can't tell whether this is enough for him/);
+    // Neither the least he'd take nor a rival's terms show; that a rival is bidding does.
+    expect(makeOffer(league, 'GB', star.id, { years: 3, salary: high * 2, signingBonus: 0 })).toBeNull();
+    expect(read(high)).toMatch(/He's weighing offers from 1 other team too; you can't see their terms\.$/);
+    for (const salary of [low, high]) expect(read(salary)).not.toContain(dollars(least));
   }); // prettier-ignore
 });
 

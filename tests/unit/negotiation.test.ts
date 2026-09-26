@@ -7,10 +7,13 @@ import { decideWeek, makeOffer, offersFor } from '../../src/engine/contracts/fre
 import {
   askedWorth,
   askOf,
+  floorEstimate,
   hear,
+  openingOf,
   patience,
   settledSalary,
-  talks
+  talks,
+  type FloorEstimate
 } from '../../src/engine/contracts/negotiation';
 import { freeAgents } from '../../src/engine/league/transactions';
 import type { League } from '../../src/engine/league/types';
@@ -71,24 +74,57 @@ describe('the terms of an offer (spec 11.6)', () => {
 });
 
 describe('talks (spec 11.6)', () => {
-  it("opens above his demand, and a team's GM settles as far under it as his rating reaches", () => {
+  it("opens above his demand, further for a hard bargainer, and a team's GM settles as far under it as his rating reaches", () => {
     const league = inTalks();
     const p = star(league);
     const market = askingFrom(league, contextFor(league), p, 'MIN');
     const ask = askOf(league, p, 'MIN');
     expect(ask).toBeGreaterThan(market);
-    expect(askedWorth(league, p, 'MIN')).toBeCloseTo(demand(league, p) * (1 + N.opening), 6);
+    expect(askedWorth(league, p, 'MIN')).toBeCloseTo(demand(league, p) * (1 + openingOf(p)), 6);
+    p.dealStyle.agent = 0;
+    expect(openingOf(p)).toBeCloseTo(N.opening[0], 6);
+    const soft = askOf(league, p, 'MIN');
+    p.dealStyle.agent = 100;
+    expect(openingOf(p)).toBeCloseTo(N.opening[1], 6);
+    expect(askOf(league, p, 'MIN')).toBeGreaterThan(soft);
+    p.dealStyle.agent = 50;
     const gm = staffIn(league, 'MIN', 'GM');
     if (!gm) throw new Error('no GM');
     gm.ratings.negotiation = 99;
     const sharp = settledSalary(league, p, 'MIN');
     gm.ratings.negotiation = 0;
-    expect(settledSalary(league, p, 'MIN')).toBe(ask);
-    expect(sharp).toBeLessThan(ask);
+    expect(settledSalary(league, p, 'MIN')).toBe(askOf(league, p, 'MIN'));
+    expect(sharp).toBeLessThan(askOf(league, p, 'MIN'));
     expect(sharp).toBeGreaterThanOrEqual(market);
-    // Through the bidding weeks he asks his demand, as the offers compete.
+    // Through the bidding weeks his agent holds at his opening, over the least he'd take.
     league.date = { season: 2026, phase: 'freeAgency', week: 1 };
-    expect(askOf(league, p, 'MIN')).toBe(askingFrom(league, contextFor(league), p, 'MIN'));
+    expect(askOf(league, p, 'MIN')).toBeGreaterThan(askingFrom(league, contextFor(league), p, 'MIN'));
+  }); // prettier-ignore
+
+  it("gives the front office a range around the least he'd take, narrower with a better GM", () => {
+    const league = inTalks();
+    const p = star(league);
+    const gm = staffIn(league, 'MIN', 'GM');
+    if (!gm) throw new Error('no GM');
+    const terms = { years: 3, signingBonus: 0 };
+    const least = askingFrom(league, contextFor(league), p, 'MIN', 3);
+    const width = (e: FloorEstimate) => e.high - e.low;
+    gm.ratings.negotiation = 0;
+    const rough = floorEstimate(league, 'MIN', p, terms);
+    gm.ratings.negotiation = 99;
+    const sharp = floorEstimate(league, 'MIN', p, terms);
+    for (const e of [rough, sharp]) {
+      expect(e.low).toBeLessThanOrEqual(least);
+      expect(e.high).toBeGreaterThanOrEqual(least);
+    }
+    expect(width(sharp)).toBeLessThan(width(rough));
+    // A hard bargainer's talk puts the least he'd take near the bottom of the range; a soft one's near the top.
+    p.dealStyle.agent = 100;
+    const hard = floorEstimate(league, 'MIN', p, terms);
+    p.dealStyle.agent = 0;
+    const soft = floorEstimate(league, 'MIN', p, terms);
+    expect((least - hard.low) / width(hard)).toBeLessThan(0.35);
+    expect((least - soft.low) / width(soft)).toBeGreaterThan(0.65);
   });
 
   it('answers with a counter that comes down, and takes his counter', () => {

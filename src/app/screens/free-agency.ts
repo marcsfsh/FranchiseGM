@@ -30,7 +30,7 @@ import { openMoveDialog, placeOf, refocus, WAIT_FOR_GAMES } from '../ui/moves';
 import { GROUP_LABELS, playerLink, tierPlate } from '../ui/players';
 import { sortableTable, type TableColumn } from '../ui/sortable';
 import { offerWords, openBid } from '../ui/bidding';
-import { offerTerms } from '../ui/offer-terms';
+import { estimateAdvice, offerTerms } from '../ui/offer-terms';
 import { udfaCard } from '../ui/udfa';
 import { card, pageHead } from './common';
 import type { Screen } from './types';
@@ -60,7 +60,8 @@ function openOffer(app: AppState, league: League, player: Player, trigger: HTMLE
     salaryHint: `His minimum is ${money(minimum, true)}. Each year pays at least the minimum for his experience then.`,
     prorationMax: league.rules.pay.prorationYearsMax,
     finalHint: 'He answers yes or no, with no counter, and a no ends your talks until you advance.',
-    start: talks(league, user, player.id).counter ?? { years: 1, salary: ask, signingBonus: 0 }
+    start: talks(league, user, player.id).counter ?? { years: 1, salary: ask, signingBonus: 0 },
+    advice: estimateAdvice(league, user, player)
   });
   const state = h('p', null);
   const showTalks = () => {

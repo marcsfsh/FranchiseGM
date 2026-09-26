@@ -4,7 +4,11 @@
  * spread the bonus on the cap), and the take-it-or-leave-it mark. The Free agency and Contracts screens use
  * it for free agents' offers, standing bids, and extensions.
  */
+import type { TeamAbbr } from '../../data/team-colors';
 import type { Offer } from '../../engine/contracts/build';
+import { floorEstimate } from '../../engine/contracts/negotiation';
+import type { League } from '../../engine/league/types';
+import type { Player } from '../../engine/model/player';
 import { plural } from '../../engine/text';
 import { TUNING } from '../../engine/tuning';
 import { h } from '../dom';
@@ -25,6 +29,8 @@ export interface OfferTermsOptions {
   finalHint: string;
   /** The terms to start from. */
   start: Offer;
+  /** What the front office expects on the terms as entered (spec 11.6), shown under them as they change. */
+  advice?: (offer: Offer) => string;
 }
 
 export interface OfferTerms {
@@ -37,6 +43,17 @@ export interface OfferTerms {
 }
 
 const yearsWords = (n: number) => `${n} ${n === 1 ? 'year' : 'years'}`;
+
+/**
+ * The front office's read of an offer's terms (spec 11.6): the salaries a year it expects him to sign for on
+ * them. The least he'd take is never shown.
+ */
+export const estimateAdvice =
+  (league: League, team: TeamAbbr, player: Player, extension = false) =>
+  (offer: Offer): string => {
+    const { low, high } = floorEstimate(league, team, player, offer, extension);
+    return `On these terms, your front office expects him to sign for ${money(low, true)} to ${money(high, true)} a year.`;
+  };
 
 /** A select with its label, hint, and error, like a dollar field. */
 function selectField(id: string, label: string, hint: string) {
@@ -99,6 +116,7 @@ export function offerTerms(options: OfferTermsOptions): OfferTerms {
     'aria-describedby': `${id}-final-hint`
   });
   const totals = h('p', { class: 'hint' });
+  const advice = options.advice ? h('p', { class: 'hint' }) : null;
   const fitYears = (g: number, v: number) => {
     const n = Number(years.value);
     yearOptions(guaranteed.select, n, 'None', g);
@@ -127,7 +145,8 @@ export function offerTerms(options: OfferTermsOptions): OfferTerms {
       h('label', { class: 'check-target check-left', for: final.id }, final, 'Take it or leave it'),
       h('p', { class: 'hint', id: `${id}-final-hint` }, options.finalHint)
     ),
-    totals
+    totals,
+    advice
   );
   const read = (): Offer | null => {
     const s = salary.input.valueAsNumber;
@@ -140,6 +159,7 @@ export function offerTerms(options: OfferTermsOptions): OfferTerms {
     voids.setError(v > 0 && Number.isFinite(b) && Math.round(b) === 0 ? 'Void years only spread a signing bonus: add one, or choose none.' : null);
     if (!Number.isFinite(s) || s < minimum || !Number.isFinite(b) || b < 0 || !Number.isFinite(pg) || pg < 0 || (v > 0 && Math.round(b) === 0)) {
       totals.textContent = '';
+      if (advice) advice.textContent = '';
       return null;
     }
     const gy = Number(guaranteed.select.value);
@@ -148,6 +168,7 @@ export function offerTerms(options: OfferTermsOptions): OfferTerms {
     const n = offer.years;
     const total = (offer.salary + pgv) * n + offer.signingBonus;
     totals.textContent = `Total: ${money(total, true)} over ${plural(n, 'year')}. AAV: ${money(Math.round(total / n), true)}. Guaranteed: ${money(offer.signingBonus + offer.salary * gy, true)}.`;
+    if (advice && options.advice) advice.textContent = options.advice(offer);
     return offer;
   }; // prettier-ignore
   const set = (offer: Offer) => {

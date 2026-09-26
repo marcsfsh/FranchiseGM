@@ -9,10 +9,9 @@ import type { League } from '../league/types';
 import { calendarDay } from '../model/calendar';
 import { ageOn, type Player } from '../model/player';
 import { minimumSalary } from '../rules/ruleset';
-import { dollars } from '../text';
 import { TUNING } from '../tuning';
 import { termsProblem, type Offer } from './build';
-import { askingFrom, contextFor, demand, demandShare, offerWorth, reachable } from './decision';
+import { contextFor, demand, demandShare, offerWorth, reachable } from './decision';
 import { marketValue } from './market';
 import { settledSalary } from './negotiation';
 
@@ -30,12 +29,15 @@ export function askingSalary(league: League, player: Player, team?: TeamAbbr): n
   return Math.max(minimumSalary(rules, player.experience), ask);
 }
 
-/** Why a free agent turns down an offer from `team` at the market, or null if he takes it (spec 11.7). */
+/**
+ * Why a free agent turns down an offer from `team` at the market, or null if he takes it (spec 11.7). The
+ * least he'd take stays his own (spec 11.6): a no doesn't name it.
+ */
 export function offerProblem(league: League, player: Player, offer: Offer, team: TeamAbbr): string | null {
   const terms = termsProblem(league.rules, offer, minimumSalary(league.rules, player.experience));
   if (terms) return terms;
   const ctx = contextFor(league);
   const need = reachable(league, ctx, player, team, offer.years, demand(league, player));
   if (offerWorth(league, ctx, player, team, offer).total >= need) return null;
-  return `He wants at least ${dollars(askingFrom(league, ctx, player, team, offer.years))} a year from you.`;
+  return "He turns it down: it isn't enough for him.";
 }

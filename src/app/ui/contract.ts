@@ -45,7 +45,7 @@ export function contractCard(app: AppState, league: League, player: Player, done
     const body =
       player.status === 'freeAgent'
         ? [
-            h('p', null, `Free agent. He asks you for ${money(askOf(league, player, league.meta.start.userTeam), true)} a year.`),
+            h('p', null, `Free agent. His agent asks you for ${money(askOf(league, player, league.meta.start.userTeam), true)} a year.`),
             h('div', { class: 'btn-row' }, h('a', { class: 'btn btn-outline', href: href('freeagency') }, 'Free agency'))
           ]
         : player.status === 'waivers'

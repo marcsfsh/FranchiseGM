@@ -35,7 +35,6 @@ export function openBid(app: AppState, league: League, player: Player, trigger: 
   const user = league.meta.start.userTeam;
   const name = fullName(player);
   const mine = offersFor(league, player.id).find(o => o.team === user);
-  const others = offersFor(league, player.id).filter(o => o.team !== user).length;
   const minimum = minimumSalary(league.rules, player.experience);
   const ask = askOf(league, player, user);
   const terms = offerTerms({
@@ -74,7 +73,7 @@ export function openBid(app: AppState, league: League, player: Player, trigger: 
     `Offer ${name} a contract`,
     [
       h('p', null, `${player.position} · Age ${ageOn(player.birthDate, calendarDay(league.date))} · OVR ${player.ovr}`),
-      h('p', null, `He asks you for ${money(ask, true)} a year. Offers stand until the week ends, when free agents decide, the best players first; one who waits asks for less the next week. ${others ? `${plural(others, 'other team')} ${others === 1 ? 'has' : 'have'} made him an offer.` : 'No other team has made him an offer yet.'}`),
+      h('p', null, `His agent asks you for ${money(ask, true)} a year, more than the least he'd take. Offers stand until the week ends, when free agents decide, the best players first; one who waits may ask for less the next week, or sign elsewhere.`),
       terms.element,
       outlook
     ],

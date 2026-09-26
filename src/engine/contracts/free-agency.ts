@@ -22,9 +22,9 @@ import { cannotPlay, designation } from '../season/injuries';
 import { dollars, plural } from '../text';
 import { TUNING } from '../tuning';
 import { offerAav, termsProblem, typicalOffer, type Offer } from './build';
-import { askingFrom, chooseOffer, contextFor, demand, mattersMost, offerWorth, reachable } from './decision';
+import { askingFrom, chooseOffer, contextFor, demand, offerWorth, reachable } from './decision';
 import { marketValue } from './market';
-import { lowballed, mattersWords, termFor } from './negotiation';
+import { floorEstimate, lowballed, termFor } from './negotiation';
 import { dealValue, roomPremium } from './value';
 
 const F = TUNING.freeAgency;
@@ -224,18 +224,25 @@ export function closeBidding(league: League): void {
   league.faOffers = {};
 }
 
-/** How a free agent weighs a team's offer now, in words, for the user's offer dialog. */
+/**
+ * How a team's front office reads its offer to a free agent, in words, for the user's offer dialog (spec
+ * 11.6, 11.8): against the range it expects him to sign for on the offer's terms, and the other teams
+ * bidding, whose terms it can't see.
+ */
 export function standing(league: League, team: TeamAbbr, player: Player, offer: Offer): string {
-  const ctx = contextFor(league);
-  const mine = offerWorth(league, ctx, player, team, offer).total;
-  if (mine < reachable(league, ctx, player, team, offer.years, demand(league, player)))
-    return `As things stand, it isn't enough: he would wait for more. ${mattersWords(mattersMost(league, player, offer))}`;
-  const others = offersFor(league, player.id).filter(o => o.team !== team);
-  const choice = chooseOffer(league, ctx, player, [...others, { team, offer }]);
-  return choice?.team === team
-    ? `As the offers stand, he would take yours${others.length ? ` over ${plural(others.length, 'other')}` : ''}.`
-    : `As the offers stand, he would take another team's.`;
-} // prettier-ignore
+  const { low, high } = floorEstimate(league, team, player, offer);
+  const read =
+    offer.salary >= high
+      ? 'Your front office expects this to be enough for him'
+      : offer.salary < low
+        ? 'Your front office expects him to want more'
+        : "Your front office can't tell whether this is enough for him";
+  const others = offersFor(league, player.id).filter(o => o.team !== team).length;
+  const rivals = others
+    ? `He's weighing offers from ${plural(others, 'other team')} too; you can't see their terms.`
+    : 'No other team has made him an offer yet.';
+  return `${read}: it expects him to sign for ${dollars(low)} to ${dollars(high)} a year on these terms. ${rivals}`;
+}
 
 /** A signing's words for news and the inbox: "Name (POS), 3 years, $12,000,000 a year". */
 export const signingWords = (s: FreeAgentSigning): string =>

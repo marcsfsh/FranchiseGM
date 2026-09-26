@@ -35,7 +35,7 @@ import { money } from '../format';
 import { href } from '../router';
 import type { AppState } from '../state';
 import { openMoveDialog, placeOf, refocus, type MoveChoice } from '../ui/moves';
-import { offerTerms } from '../ui/offer-terms';
+import { estimateAdvice, offerTerms } from '../ui/offer-terms';
 import { demandTag, playerLink, tierPlate } from '../ui/players';
 import { sortableTable, type TableColumn } from '../ui/sortable';
 import { card, pageHead } from './common';
@@ -112,7 +112,8 @@ function extensionChoices(app: AppState, league: League, player: Player): MoveCh
     salaryHint: `His minimum then is ${money(minimum, true)}.`,
     prorationMax: league.rules.pay.prorationYearsMax,
     finalHint: 'He answers yes or no, with no counter, and a no ends your talks until you advance.',
-    start: talks(league, team, player.id).counter ?? { years: start, salary: ask, signingBonus: 0 }
+    start: talks(league, team, player.id).counter ?? { years: start, salary: ask, signingBonus: 0 },
+    advice: estimateAdvice(league, team, player, true)
   });
   const state = h('p', null);
   const showTalks = () => {

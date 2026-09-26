@@ -18,6 +18,7 @@ import { minimumSalary } from '../rules/ruleset';
 import { dollars, plural } from '../text';
 import { TUNING } from '../tuning';
 import type { Offer } from './build';
+import { marketCeiling } from './market';
 import {
   askingFrom,
   contextFor,
@@ -80,39 +81,71 @@ export const patience = (player: Player): number =>
 export const talksMinimum = (league: League, player: Player, extension = false): number =>
   minimumSalary(league.rules, extension ? creditedNextYear(league, player) : player.experience);
 
+/** How far over his demand his agent opens, as a share of it: further for a harder bargainer (spec 11.6). */
+export const openingOf = (player: Player): number =>
+  N.opening[0] + ((N.opening[1] - N.opening[0]) * player.dealStyle.agent) / 100;
+
 /**
  * What an offer must be worth to him in talks with a team now: his agent's opening above his demand, less
- * an even share of it for each offer he's turned down in the step.
+ * an even share of it for each offer he's turned down in the step. Through free agency's bidding weeks the
+ * agent holds at his opening, as the offers compete.
  */
 export function askedWorth(league: League, player: Player, team: TeamAbbr, extension = false): number {
-  const rounds = talks(league, team, player.id).rounds;
-  return demand(league, player, extension) * (1 + N.opening * Math.max(0, 1 - rounds / patience(player)));
+  const bidding = !extension && league.date.phase === 'freeAgency';
+  const rounds = bidding ? 0 : talks(league, team, player.id).rounds;
+  return (
+    demand(league, player, extension) * (1 + openingOf(player) * Math.max(0, 1 - rounds / patience(player)))
+  );
 }
 
 /** What a deal a team's GM settles must be worth to him: as far under the opening as the GM's rating reaches. */
 export function settledWorth(league: League, player: Player, team: TeamAbbr, extension = false): number {
   const skill = competence(staffIn(league, team, 'GM'), 'negotiation') / 100;
-  return demand(league, player, extension) * (1 + N.opening * (1 - skill));
+  return demand(league, player, extension) * (1 + openingOf(player) * (1 - skill));
 }
 
 /**
- * What he asks a year of a team now for `years` years with no bonus (spec 11.6, 11.8): through free
- * agency's bidding weeks a free agent asks his demand, as the offers compete; otherwise his agent's ask in
- * talks.
+ * What his agent asks a year of a team now for `years` years with no bonus (spec 11.6, 11.8): over the
+ * least he'd take, by how hard the agent bargains, and in talks lower with each offer he turns down.
  */
 export function askOf(league: League, player: Player, team: TeamAbbr, years = 1, extension = false): number {
-  const bidding = !extension && league.date.phase === 'freeAgency';
-  const need = bidding ? demand(league, player) : askedWorth(league, player, team, extension);
   return askingFrom(
     league,
     contextFor(league),
     player,
     team,
     years,
-    need,
+    askedWorth(league, player, team, extension),
     talksMinimum(league, player, extension)
   );
 }
+
+/** What a team's front office expects a player to sign for a year: a range of salaries, in quote steps. */
+export interface FloorEstimate {
+  low: number;
+  high: number;
+}
+
+/**
+ * What a team's front office expects him to sign for a year on an offer's other terms (spec 11.6): a range
+ * around the least he'd take, never shown itself, narrower with a better negotiator for a GM. Where the least
+ * he'd take falls in it depends on his agent: a hard bargainer's talk puts it near the bottom.
+ */
+export function floorEstimate(league: League, team: TeamAbbr, player: Player, terms: Omit<Offer, 'salary'>, extension = false): FloorEstimate {
+  const ctx = contextFor(league);
+  const minimum = talksMinimum(league, player, extension);
+  const need = reachable(league, ctx, player, team, terms.years, demand(league, player, extension));
+  const floor = salaryFor(league, ctx, player, team, { ...terms, final: false }, need, minimum);
+  const skill = competence(staffIn(league, team, 'GM'), 'negotiation') / 100;
+  const width = N.estimate[0] + (N.estimate[1] - N.estimate[0]) * skill;
+  const within = N.within[1] - ((N.within[1] - N.within[0]) * player.dealStyle.agent) / 100;
+  const step = TUNING.market.quoteStep;
+  const ceiling = marketCeiling(league.rules, player.position);
+  return {
+    low: Math.max(minimum, Math.floor((floor * (1 - width * within)) / step) * step),
+    high: Math.min(Math.max(ceiling, floor), Math.ceil((floor * (1 + width * (1 - within))) / step) * step)
+  };
+} // prettier-ignore
 
 /** Contract years a team's GM offers by age: longer for younger players (the AI's contract logic). */
 export const termFor = (age: number): number =>

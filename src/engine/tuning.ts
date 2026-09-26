@@ -83,6 +83,15 @@ export const TUNING = {
     coversBall: [85, 75, 60]
   },
 
+  /**
+   * How players go about a deal (spec 11.6, 11.7), hidden, drawn at generation as [mean, sd] on 0 to 100: how
+   * hard his agent bargains, and how much he values money paid up front.
+   */
+  dealStyle: {
+    agent: [50, 22] as readonly [number, number],
+    upFront: [45, 25] as readonly [number, number]
+  },
+
   /** Player personality at generation (spec 10.9): [mean, sd] plus how ratings and age shift the mean. */
   personality: {
     /** Overall and age that the shifts below are measured from. */
@@ -298,10 +307,13 @@ export const TUNING = {
       >
     },
     /**
-     * Negotiation (spec 11.6; D-54). In talks a player's agent opens `opening` above his demand and comes
-     * down evenly with each offer he turns down, until his patience runs out after `patience` [volatility
-     * 100, volatility 0] of them and he breaks off talks until the calendar advances. A team's GM settles at
-     * once, as far under the opening as his negotiation rating reaches. An offer worth less than `lowball` of
+     * Negotiation (spec 11.6; D-54). A player's agent opens over his demand by `opening` [agent 0, agent
+     * 100] of it, by how hard he bargains, and in talks comes down evenly with each offer he turns down,
+     * until his patience runs out after `patience` [volatility 100, volatility 0] of them and he breaks off
+     * talks until the calendar advances. A team's front office expects him to sign for a range of salaries
+     * `estimate` [GM negotiation 0, 100] of the least he'd take wide, the least he'd take sitting `within`
+     * [agent 100, agent 0] of the way up it. A team's GM settles at once, as far under the opening as his
+     * negotiation rating reaches. An offer worth less than `lowball` of
      * his demand costs his interest in the team `lowballInterest` of his market value for the league year,
      * and `lowballMorale` morale. A take-it-or-leave-it offer is taken when it's worth his demand plus his
      * greed's share of the rest of his ask. A counter names guaranteed money or a longer deal as what matters
@@ -309,7 +321,9 @@ export const TUNING = {
      * otherwise.
      */
     negotiation: {
-      opening: 0.08,
+      opening: [0.03, 0.15] as readonly [number, number],
+      estimate: [0.3, 0.08] as readonly [number, number],
+      within: [0.2, 0.8] as readonly [number, number],
       patience: [2, 5] as readonly [number, number],
       lowball: 0.85,
       lowballInterest: 0.03,

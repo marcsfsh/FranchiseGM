@@ -10,9 +10,8 @@ import type { Player } from '../model/player';
 import type { Position } from '../model/positions';
 import { expectedNextCap } from '../cap/growth';
 import { minimumSalary, type RuleSet } from '../rules/ruleset';
-import { dollars } from '../text';
 import { termsProblem, type Offer } from './build';
-import { askingFrom, contextFor, demand, offerWorth, reachable } from './decision';
+import { contextFor, demand, offerWorth, reachable } from './decision';
 import { capHit } from './cap';
 import { endContract } from './moves';
 import type { Contract, ContractEnd } from './types';
@@ -275,7 +274,7 @@ export function extensionProblem(league: League, player: Player, offer: Offer): 
   const ctx = contextFor(league);
   const need = reachable(league, ctx, player, team, offer.years, demand(league, player, true));
   if (offerWorth(league, ctx, player, team, offer).total >= need) return null;
-  return `He wants at least ${dollars(askingFrom(league, ctx, player, team, offer.years, demand(league, player, true), minimum))} a year to stay.`;
+  return "He turns it down: it isn't enough for him to stay.";
 } // prettier-ignore
 
 /**

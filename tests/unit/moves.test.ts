@@ -70,7 +70,7 @@ describe('signing free agents (spec 19.4, simple acceptance)', () => {
     expect(ask).toBeGreaterThanOrEqual(floor);
     const low = { ...offer, salary: floor - 50_000 };
     if (low.salary >= (league.rules.pay.minimumSalary[player.experience] ?? Infinity))
-      expect(offerProblem(league, player, low, 'MIN')).toMatch(/^He wants at least \$[\d,]+ a year from you\.$/);
+      expect(offerProblem(league, player, low, 'MIN')).toBe("He turns it down: it isn't enough for him.");
     const before = capSheet(league, 'MIN').space;
     const done = makeMove(league, { kind: 'sign', team: 'MIN', playerId: player.id, offer }, rng);
     if (!done.ok) throw new Error(done.reason);

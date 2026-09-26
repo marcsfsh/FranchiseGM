@@ -25,7 +25,7 @@ import {
 } from '../contracts/build';
 import { TUNING } from '../tuning';
 import { pickAbilities, pickCoachAbilities } from '../abilities/assign';
-import { generatePlayer, type GenContext, type NameData } from './player';
+import { drawDealStyle, generatePlayer, type GenContext, type NameData } from './player';
 import { generateOwner, generateTeamStaff } from './staff';
 
 const L = TUNING.league;
@@ -416,6 +416,9 @@ export function generateFictionalLeague(input: LeagueInput): FictionalLeague {
   for (const player of players) player.abilities = pickAbilities(abilityRng, player);
   const coachRng = stream(seed, 'fictional', 'coachAbilities');
   for (const member of staff) member.abilities = pickCoachAbilities(coachRng, member);
+  // How each player goes about a deal (spec 11.6), from its own stream too.
+  const styleRng = stream(seed, 'fictional', 'dealStyle');
+  for (const player of players) player.dealStyle = drawDealStyle(styleRng);
 
   return { season, players, contracts, staff, owners };
 }

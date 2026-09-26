@@ -12,6 +12,8 @@ import { RATING_KEYS, clampRating, emptyRatings, type RatingKey, type Ratings } 
 import {
   DEV_TRAITS,
   INTERNATIONAL_PATHWAY,
+  PLAIN_DEAL_STYLE,
+  type DealStyle,
   type DevTrait,
   type Personality,
   type Player,
@@ -261,6 +263,14 @@ function drawPersonality(rng: Rng, ovr: number, age: number, awr: number): Perso
   };
 }
 
+/** How a player goes about a deal (spec 11.6, 11.7), hidden: drawn from its own stream after generation. */
+export function drawDealStyle(rng: Rng): DealStyle {
+  const S = TUNING.dealStyle;
+  const draw = ([mean, sd]: readonly [number, number]) =>
+    Math.max(1, Math.min(99, Math.round(rng.normal(mean, sd))));
+  return { agent: draw(S.agent), upFront: draw(S.upFront) };
+}
+
 function drawDevTrait(rng: Rng, potential: number, age: number): DevTrait {
   // Development describes the future, so young players with high ceilings carry the better traits.
   const D = TUNING.development;
@@ -373,6 +383,8 @@ export function generatePlayer(ctx: GenContext, req: PlayerRequest): Player {
     abilities: [],
     dev: drawDevTrait(rng, potential, age),
     personality: drawPersonality(rng, ovr, age, ratings.awr),
+    // Drawn from its own stream once the league or class is made, so the rest of generation is unchanged.
+    dealStyle: { ...PLAIN_DEAL_STYLE },
     team: req.team,
     // A veteran joined his team in his draft year if it drafted him, else halfway through his career so far.
     joined: 'team' in draft && draft.team === req.team ? draft.year : ctx.season - Math.floor(experience / 2),

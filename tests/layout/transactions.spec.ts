@@ -125,6 +125,8 @@ test('signs, releases, and reads the cap without ever reaching an illegal roster
   await expect(offer.getByRole('button', { name: 'Send offer' })).toBeEnabled();
   await page.selectOption('#offer-years', '2');
   await expect(offer.locator('.hint', { hasText: 'Total:' })).toContainText('over 2 years');
+  // The front office's range on these terms stands in for the least he'd take, which is never shown.
+  await expect(offer.locator('.hint', { hasText: 'your front office' })).toHaveText(/^On these terms, your front office expects him to sign for \$[\d,]+ to \$[\d,]+ a year\.$/);
   await expect(offer.locator('output')).toContainText(
     'He answers when you send the offer. If he takes it, he signs for 2 years.'
   );
