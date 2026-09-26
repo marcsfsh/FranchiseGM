@@ -863,21 +863,24 @@ export const TUNING = {
     newsFrom: 75
   },
   /**
-   * Compensatory picks (spec 11.8; D-58). A free agent qualifies when his new deal's yearly value ranks in
-   * the top share of the league's veteran deals that `rounds` lists last; `rounds` gives his round by the
-   * smallest top share he ranks in, a round better with `starter` or more of his new team's snaps last
-   * season and a round worse under `partTime`.
+   * Compensatory picks (spec 11.8; D-58), after Over the Cap's account of the NFL's formula. A free agent
+   * qualifies when his new deal's yearly value ranks in the top share of the league's deals that `rounds`
+   * lists last; `rounds` gives his round by the smallest top share he ranks in, a round better with `starter`
+   * or more of his new team's snaps last season and a round worse under `partTime`. A team that lost as many
+   * as it signed gets a net value pick when its losses are worth `netValueRounds` or more rounds more than
+   * its signings (a third-round loss is worth 5, a seventh-round one 1).
    */
   compPicks: {
     rounds: [
-      [0.03, 3],
-      [0.08, 4],
+      [0.05, 3],
+      [0.1, 4],
       [0.15, 5],
       [0.25, 6],
       [0.35, 7]
     ] as readonly (readonly [number, number])[],
     starter: 0.75,
-    partTime: 0.25
+    partTime: 0.25,
+    netValueRounds: 2
   },
   /**
    * Holdouts and trade demands (spec 10.9, 11.9; D-57). As training camp opens, a player in the last year

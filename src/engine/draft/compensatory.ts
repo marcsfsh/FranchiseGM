@@ -1,12 +1,15 @@
 /**
  * Compensatory picks (spec 11.8; D-58). A league year's qualifying free agents are the unrestricted ones
  * whose deals ran out as it opened and who signed with another team from free agency's first week through
- * the draft, for a deal whose yearly value ranks in the top of the league's veteran deals, and who are
- * still on that team. Each is worth a round by that rank, a round better for a starter's snaps with his new
- * team and a round worse for a part-timer's (postseason honors join with M17). A team's qualifying
- * signings cancel its losses, each the loss of its round, else the best loss of a later round, else the
- * worst one left; a team that lost more than it signed gets a pick for each loss left, its best few, and
- * the league's best are awarded at the annual meeting, after each round's regular picks.
+ * the draft, for a deal whose yearly value ranks in the top 35% of the league's deals, and who are still on
+ * that team. Each is worth a round by that rank, a round better for a starter's snaps with his new team and
+ * a round worse for a part-timer's (postseason honors join with M17). A team's qualifying signings cancel
+ * its losses, each the best loss of its round, else the best loss of a later round, else the worst one left;
+ * a team that lost more than it signed gets a pick for each loss left, its best few, and the league's best
+ * are awarded. A team that lost as many as it signed, but lost clearly more value, gets a seventh-round
+ * pick while the league's limit isn't reached, and supplemental seventh-round picks in draft order fill the
+ * rest, as the NFL awards exactly 32. They're awarded at the annual meeting, after each round's regular
+ * picks.
  */
 import { TEAM_ABBRS, type TeamAbbr } from '../../data/team-colors';
 import { snapShare } from '../contracts/resign';
@@ -21,8 +24,8 @@ const C = TUNING.compPicks;
 /** The signings that count: from free agency's first week through the draft (spec 11.8). */
 const PERIOD: ReadonlySet<Phase> = new Set<Phase>(['freeAgency', 'proDays', 'draft']);
 
-/** Deals a player signs before he's earned a market, left out of the ranking. */
-const ROOKIE_DEALS = new Set(['rookie', 'udfa', 'practiceSquad']);
+/** Deals the ranking leaves out: a practice squad player isn't among the league's players. */
+const UNRANKED = new Set(['practiceSquad']);
 
 /** A free agent who left one team for another, and the round he's worth. */
 export interface QualifyingFreeAgent {
@@ -34,11 +37,15 @@ export interface QualifyingFreeAgent {
   apy: number;
 }
 
-/** A compensatory pick a team earns, for the free agent it lost. */
+/**
+ * A compensatory pick: for a net loss of qualifying free agents, the one it's for; for a net loss of their
+ * value, the team's best loss; or supplemental, filling the league's limit.
+ */
 export interface CompensatoryPick {
   team: TeamAbbr;
   round: number;
-  lost: QualifyingFreeAgent;
+  kind: 'netLoss' | 'netValue' | 'supplemental';
+  lost: QualifyingFreeAgent | null;
 }
 
 /** Best first: the earlier round, then the bigger deal. */
@@ -52,7 +59,7 @@ export function qualifyingFreeAgents(league: League): QualifyingFreeAgent[] {
   const apys = Object.values(league.players)
     .flatMap(p => {
       const c = p.team && p.contractId ? league.contracts[p.contractId] : undefined;
-      return c && !ROOKIE_DEALS.has(c.type) ? [contractSummary(c, league.date).apy] : [];
+      return c && !UNRANKED.has(c.type) ? [contractSummary(c, league.date).apy] : [];
     })
     .sort((a, b) => a - b);
   /** The share of the league's veteran deals paying at least this much a year. */
@@ -84,27 +91,52 @@ export function qualifyingFreeAgents(league: League): QualifyingFreeAgent[] {
   return out.sort(best);
 }
 
+/** Free agents' worth in rounds: a third-round loss is worth 5, a seventh-round one 1. */
+const worth = (list: readonly QualifyingFreeAgent[], last: number): number =>
+  list.reduce((total, q) => total + last + 1 - q.round, 0);
+
 /**
  * The compensatory picks this league year's free agency earns (spec 11.8), best first: each team's losses
- * left after its signings cancel theirs, its best few, and the league's best.
+ * left after its signings cancel theirs, its best few, and the league's best; then net value picks, and
+ * supplemental picks to teams in the draft's `order`, to the league's limit.
  */
-export function compensatoryPicks(league: League): CompensatoryPick[] {
+export function compensatoryPicks(league: League, order: readonly TeamAbbr[] = []): CompensatoryPick[] {
   const cfas = qualifyingFreeAgents(league);
   const rules = league.rules.season;
-  const picks: CompensatoryPick[] = [];
+  const last = rules.compensatoryRounds[1];
+  const earned: CompensatoryPick[] = [];
+  const netValue: { team: TeamAbbr; margin: number; best: QualifyingFreeAgent }[] = [];
   for (const team of TEAM_ABBRS) {
     const left = cfas.filter(q => q.from === team);
     const gained = cfas.filter(q => q.to === team);
-    if (left.length <= gained.length) continue;
+    const [best] = left;
+    if (!best || left.length < gained.length) continue;
+    if (left.length === gained.length) {
+      const margin = worth(left, last) - worth(gained, last);
+      if (margin >= C.netValueRounds) netValue.push({ team, margin, best });
+      continue;
+    }
     for (const g of gained) {
       const same = left.findIndex(l => l.round === g.round);
       const later = left.findIndex(l => l.round > g.round);
       left.splice(same >= 0 ? same : later >= 0 ? later : left.length - 1, 1);
     }
     for (const lost of left.slice(0, rules.compensatoryPerTeam))
-      picks.push({ team, round: lost.round, lost });
+      earned.push({ team, round: lost.round, kind: 'netLoss', lost });
   }
-  return picks.sort((a, b) => best(a.lost, b.lost)).slice(0, rules.compensatoryPicks);
+  const picks = earned
+    .sort((a, b) => best(a.lost as QualifyingFreeAgent, b.lost as QualifyingFreeAgent))
+    .slice(0, rules.compensatoryPicks);
+  netValue.sort((a, b) => b.margin - a.margin || best(a.best, b.best));
+  for (const { team, best: lost } of netValue.slice(0, rules.compensatoryPicks - picks.length))
+    picks.push({ team, round: last, kind: 'netValue', lost });
+  const held = (team: TeamAbbr) => picks.filter(p => p.team === team).length;
+  for (const team of order) {
+    if (picks.length >= rules.compensatoryPicks) break;
+    if (held(team) < rules.compensatoryPerTeam)
+      picks.push({ team, round: last, kind: 'supplemental', lost: null });
+  }
+  return picks;
 }
 
 /**
@@ -113,14 +145,14 @@ export function compensatoryPicks(league: League): CompensatoryPick[] {
  */
 export function awardCompensatoryPicks(league: League, year: number): CompensatoryPick[] {
   if (league.picks.some(p => p.year === year && p.compensatory)) return [];
-  const picks = compensatoryPicks(league);
+  const order = latestDraftOrder(league);
+  const picks = compensatoryPicks(league, order ?? []);
   const count = new Map<TeamAbbr, number>();
   for (const pick of picks) {
     const n = (count.get(pick.team) ?? 0) + 1;
     count.set(pick.team, n);
     league.picks.push({ id: `${year}-${pick.round}-${pick.team}-c${n}`, year, round: pick.round, original: pick.team, owner: pick.team, compensatory: true, number: null, playerId: null }); // prettier-ignore
   }
-  const order = latestDraftOrder(league);
   if (order) numberDraft(league, year, order);
   return picks;
 }

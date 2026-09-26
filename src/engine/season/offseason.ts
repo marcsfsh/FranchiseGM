@@ -30,7 +30,7 @@ import {
 } from '../draft/draft';
 import { closeDraftYear, picksIn, type DraftPickRecord } from '../draft/picks';
 import { draftMediaWeek } from '../draft/media';
-import { awardCompensatoryPicks } from '../draft/compensatory';
+import { awardCompensatoryPicks, type CompensatoryPick } from '../draft/compensatory';
 import { scoutsItself, scoutWeek } from '../draft/scouting';
 import { aiOffers, signUdfas } from '../draft/udfa';
 import { autoVisits, workOut } from '../draft/workouts';
@@ -587,8 +587,12 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
     const awarded = awardCompensatoryPicks(league, year);
     const mine = awarded.filter(p => p.team === user);
     const who = (id: string) => (league.players[id] ? named(league.players[id]) : 'a free agent');
+    const why = (p: CompensatoryPick): string =>
+      p.kind === 'supplemental' ? `Round ${p.round}, a supplemental pick`
+        : p.kind === 'netValue' ? `Round ${p.round}, for the value of the free agents you lost`
+          : `Round ${p.round}, for losing ${who(p.lost?.playerId ?? '')} to the ${nick(p.lost?.to ?? user)}`; // prettier-ignore
     if (mine.length)
-      messages.push({ kind: 'draft', title: `You get ${plural(mine.length, 'compensatory pick')} in the ${year} draft`, body: `${mine.map(p => `Round ${p.round}, for losing ${who(p.lost.playerId)} to the ${nick(p.lost.to)}`).join('. ')}. Each comes after its round's regular picks.`, players: mine.map(p => p.lost.playerId) }); // prettier-ignore
+      messages.push({ kind: 'draft', title: `You get ${plural(mine.length, 'compensatory pick')} in the ${year} draft`, body: `${mine.map(why).join('. ')}. Each comes after its round's regular picks.`, players: mine.flatMap(p => (p.kind === 'netLoss' && p.lost ? [p.lost.playerId] : [])) }); // prettier-ignore
     if (awarded.length)
       headline(
         'draft',
@@ -598,8 +602,8 @@ export function advanceOffseason(league: League, data: OffseasonData, input: Adv
         0
       );
     const [first] = league.rules.season.compensatoryRounds;
-    for (const p of awarded.filter(a => a.round === first))
-      headline('draft', `The ${nick(p.team)} get a round ${p.round} compensatory pick for losing ${who(p.lost.playerId)}`, [p.team], [p.lost.playerId], league.players[p.lost.playerId]?.ovr ?? 0); // prettier-ignore
+    for (const { team, round, lost } of awarded.filter(a => a.round === first))
+      if (lost) headline('draft', `The ${nick(team)} get a round ${round} compensatory pick for losing ${who(lost.playerId)}`, [team], [lost.playerId], league.players[lost.playerId]?.ovr ?? 0); // prettier-ignore
   } else if (to.phase === 'draft') {
     // The draft opens (spec 10.4; D-48): the AI picks until the user is on the clock, or to the end.
     league.date = { ...to };

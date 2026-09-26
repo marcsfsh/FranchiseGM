@@ -24,14 +24,12 @@ function atCombine(): League {
   return league;
 }
 
-/** The league's veteran deals' yearly values, highest first. */
+/** The yearly values of the league's deals, practice squads apart, highest first. */
 const values = (league: League): number[] =>
   Object.values(league.players)
     .flatMap(p => {
       const c = p.team && p.contractId ? league.contracts[p.contractId] : undefined;
-      return c && !['rookie', 'udfa', 'practiceSquad'].includes(c.type)
-        ? [contractSummary(c, league.date).apy]
-        : [];
+      return c && c.type !== 'practiceSquad' ? [contractSummary(c, league.date).apy] : [];
     })
     .sort((a, b) => b - a);
 
@@ -89,18 +87,37 @@ describe('compensatory picks (spec 11.8)', () => {
     expect(byTeam('GB')).toEqual([]);
     expect(byTeam('MIN')).toHaveLength(4);
     // The signing cancelled the best loss of its round; the best four of the other five remain.
-    expect(byTeam('MIN').map(p => p.lost.apy)).toEqual([top - 1000, top - 2000, top - 3000, top - 4000]);
+    expect(byTeam('MIN').map(p => p.lost?.apy)).toEqual([top - 1000, top - 2000, top - 3000, top - 4000]);
     // The league awards at most its limit, the best first.
     league.rules.season.compensatoryPicks = 2;
-    expect(compensatoryPicks(league).map(p => p.lost.apy)).toEqual([top - 1000, top - 2000]);
+    expect(compensatoryPicks(league).map(p => p.lost?.apy)).toEqual([top - 1000, top - 2000]);
   });
+
+  it('add net value picks, then supplemental picks in draft order, to award exactly the limit', () => {
+    const league = atCombine();
+    const all = values(league);
+    const top = (all[0] ?? 0) + 1_000_000;
+    // Minnesota loses a third-round free agent and signs a sixth-round one from Chicago: as many signed as
+    // lost, but three rounds less value.
+    const star = moved(league, 'MIN', 'GB', top);
+    moved(league, 'CHI', 'MIN', all[Math.floor(all.length * 0.2)] ?? 0);
+    const picks = compensatoryPicks(league, TEAM_ABBRS);
+    expect(picks).toHaveLength(32);
+    expect(picks.slice(0, 2).map(p => [p.team, p.round, p.kind])).toEqual([['CHI', 6, 'netLoss'], ['MIN', 7, 'netValue']]);
+    expect(picks[1]?.lost?.playerId).toBe(star.id);
+    // The rest are supplemental, one a team in draft order, at the end of the seventh round.
+    const rest = picks.slice(2);
+    expect(rest.every(p => p.kind === 'supplemental' && p.round === 7 && p.lost === null)).toBe(true);
+    expect(rest.map(p => p.team)).toEqual(TEAM_ABBRS.slice(0, 30));
+  }); // prettier-ignore
 
   it('are awarded once at the annual meeting and numbered after the regular picks of their rounds', () => {
     const league = atCombine();
     const top = (values(league)[0] ?? 0) + 1_000_000;
     moved(league, 'MIN', 'GB', top);
     const awarded = awardCompensatoryPicks(league, 2027);
-    expect(awarded.map(p => [p.team, p.round])).toEqual([['MIN', 3]]);
+    expect(awarded.map(p => [p.team, p.round])[0]).toEqual(['MIN', 3]);
+    expect(awarded).toHaveLength(32);
     const third = picksIn(league, 2027).filter(p => p.round === 3);
     expect(third.at(-1)).toMatchObject({
       id: '2027-3-MIN-c1',
@@ -109,7 +126,11 @@ describe('compensatory picks (spec 11.8)', () => {
       number: 3 * 32 + 1
     });
     expect(awardCompensatoryPicks(league, 2027)).toEqual([]);
-    expect(league.picks.filter(p => p.compensatory)).toHaveLength(1);
+    expect(league.picks.filter(p => p.compensatory)).toHaveLength(32);
+    // The supplemental picks close the seventh round, after its regular picks: the last is the draft's 256th.
+    const seventh = picksIn(league, 2027).filter(p => p.round === 7);
+    expect(seventh.slice(32).every(p => p.compensatory)).toBe(true);
+    expect(seventh.at(-1)?.number).toBe(7 * 32 + 32);
   });
 
   it('count the unrestricted free agents whose deals run out as the league year opens', () => {
