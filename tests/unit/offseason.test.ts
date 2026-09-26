@@ -219,6 +219,12 @@ describe('new league year (spec 11.1)', () => {
     for (const c of deals) putContract(league, c);
     expect(teamCash(league, 'MIN', 2026)).toBe(7_000_000);
     expect(teamCash(league, 'MIN', 2027)).toBe(8_000_000);
+    // An extension signed in the 2026 re-sign window pays its bonus then, though its first year is 2027.
+    const extension = deal('f3', paid, { type: 'extension', signed: at(2026, 'resign'), signingBonus: 600_000, years: [year(2028, { base: 1_000_000 })] });
+    putContract(league, extension);
+    expect(teamCash(league, 'MIN', 2026)).toBe(7_600_000);
+    expect(teamCash(league, 'MIN', 2028)).toBe(1_000_000);
+    dropContract(league, 'f3');
     league.caps = { 2026: 10_000_000, 2027: 10_000_000, 2028: 10_000_000, 2029: 10_000_000 };
     // The league's first window is its first four league years; the years before the last only count.
     expect(league.meta.start.startSeason).toBe(2026);

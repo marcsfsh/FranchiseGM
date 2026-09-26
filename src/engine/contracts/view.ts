@@ -79,13 +79,15 @@ export function contractSummary(c: Contract, today: GameDate): ContractSummary {
  * that year's guarantee (all of it with termination pay) and later years' guarantees.
  */
 export function cashIn(c: Contract, year: number, rules: RuleSet, facts: CapFacts): number {
+  // The signing bonus is paid when he signs, even in a league year before the deal's first, as an extension
+  // signed in the re-sign window is.
+  const signed = leagueYear(c.signed) === year ? c.signingBonus : 0;
   const entry = c.years.find(y => y.year === year);
-  if (!entry || entry.isVoid) return 0;
+  if (!entry || entry.isVoid) return signed;
   const end = c.ended;
   const endYear = end ? leagueYear(end.date) : null;
   const released = end?.how === 'released' ? end : null;
   if (endYear !== null && year > endYear) return released ? guaranteedAt(c, entry, released.date, released.injured) : 0;
-  const signed = leagueYear(c.signed) === year ? c.signingBonus : 0;
   const option = entry.optionExercised ? entry.optionBonus : 0;
   const converted = c.restructures.filter(r => leagueYear(r.date) === year).reduce((sum, r) => sum + r.amount, 0);
   const incentives = entry.incentives.filter(i => i.earned).reduce((sum, i) => sum + i.amount, 0);
