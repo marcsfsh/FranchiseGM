@@ -8,9 +8,10 @@
   grades (D-48); slice 6, the UDFA scramble (D-49); the close: draft hit rates over 20-season chains (D-50,
   C-24), development variance by position group, national scouts, and rule set values for pick years,
   visits, and the UDFA pool (save format 23)
-- CI: the offseason walk-through's WebKit failures (runs 67, 68, 70, 71, 73) came from a click on a link
-  half past the view's edge: WebKit scrolls the link it focuses into view, so the release lands beside it.
-  The test now centers the link first (74135c7).
+- CI: the offseason walk-through's WebKit failures (runs 67, 68, 70, 71, 73, 74) came from its click on
+  the inbox's preseason box score link: WebKit pressed the link and released on its list item, even with
+  the link centered, so nothing opened. The test now opens the link from the keyboard; the games test
+  still clicks inbox links with the pointer.
 - Carried into M12, before Checkpoint B: the value-based re-sign choice (D-38), tag pricing from five years
   of cap percentages (D-39), season records judged on chained seasons 3 to 20 (D-40), free agency that
   spends near the cap, so teams meet the salary floor (D-33), compensatory pick awards, and average
