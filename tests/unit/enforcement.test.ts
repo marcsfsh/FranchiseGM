@@ -48,7 +48,7 @@ function overTheCap(league: League, abbr: TeamAbbr): Player {
 function minimumSigning(league: League, abbr: TeamAbbr): Move {
   const [player] = Object.values(league.players)
     .filter(p => p.status === 'freeAgent' && !p.team)
-    .map(p => ({ p, ask: askingSalary(league, p) }))
+    .map(p => ({ p, ask: askingSalary(league, p, abbr) }))
     .sort((a, b) => a.ask - b.ask || a.p.ovr - b.p.ovr || (a.p.id < b.p.id ? -1 : 1));
   if (!player) throw new Error('no free agent');
   return { kind: 'sign', team: abbr, playerId: player.p.id, offer: { years: 1, salary: player.ask, signingBonus: 0 } }; // prettier-ignore

@@ -11,7 +11,7 @@ import type { Position } from '../model/positions';
 import { minimumSalary, type RuleSet } from '../rules/ruleset';
 import { dollars } from '../text';
 import { TUNING } from '../tuning';
-import { offerValue } from './acceptance';
+import { offerValue } from './decision';
 import type { Offer } from './build';
 import { capHit } from './cap';
 import { marketValue } from './market';

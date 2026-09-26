@@ -36,13 +36,13 @@ export function shortfall(players: readonly Player[]): Map<string, number> {
   return new Map([...TARGET].map(([group, n]) => [group, Math.max(0, n - (count.get(group) ?? 0))]));
 }
 
-/** Asking salaries by pool: the date and the players' ratings don't change during a step. */
+/** Asking salaries by pool and team: the date and the players' ratings don't change during a step. */
 const asks = new WeakMap<Player[], Map<string, number>>();
-function ask(league: League, pool: Player[], p: Player): number {
+function ask(league: League, pool: Player[], p: Player, team: TeamAbbr): number {
   let known = asks.get(pool);
   if (!known) asks.set(pool, (known = new Map()));
-  let value = known.get(p.id);
-  if (value === undefined) known.set(p.id, (value = askingSalary(league, p)));
+  let value = known.get(`${team}|${p.id}`);
+  if (value === undefined) known.set(`${team}|${p.id}`, (value = askingSalary(league, p, team)));
   return value;
 }
 
@@ -77,7 +77,7 @@ export function freeAgencySignings(
     const byGroup = new Map<string, Player[]>();
     for (const p of pool) {
       const group = NEED_GROUP[p.position];
-      if (skip.has(p.id) || !short.get(group) || ask(league, pool, p) > Math.max(minimum, ceiling)) continue;
+      if (skip.has(p.id) || !short.get(group) || ask(league, pool, p, abbr) > Math.max(minimum, ceiling)) continue;
       byGroup.set(group, [...(byGroup.get(group) ?? []), p]);
     }
     const options: SigningOption[] = [...byGroup.values()].flatMap(players =>
@@ -106,7 +106,7 @@ export function freeAgencySignings(
     const player = decision ? league.players[decision.chosen.id] : undefined;
     if (!decision || !player) break;
     skip.add(player.id);
-    const offer = { years: termFor(ageOn(player.birthDate, today)), salary: ask(league, pool, player), signingBonus: 0 };
+    const offer = { years: termFor(ageOn(player.birthDate, today)), salary: ask(league, pool, player, abbr), signingBonus: 0 };
     const move = { kind: 'sign', team: abbr, playerId: player.id, offer, reason: `to fill a need at ${groupWords(player)}` } as const;
     // The move checks the cap itself; the reserve for the draft class is this team's own rule.
     if (space - offer.salary < reserve) continue;

@@ -123,7 +123,7 @@ test('signs, releases, and reads the cap without ever reaching an illegal roster
   if (await salaryError.isVisible()) {
     await expect(salaryError).toContainText('His minimum salary is');
     await expect(page.locator('#offer-salary')).toHaveAttribute('aria-invalid', 'true');
-  } else await expect(offer.locator('output')).toContainText(/He wants at least \$[\d,]+ a year\./);
+  } else await expect(offer.locator('output')).toContainText(/He wants at least \$[\d,]+ a year from you\./);
   await page.fill('#offer-salary', String(ask));
   await page.selectOption('#offer-years', '2');
   await expect(offer.locator('.hint', { hasText: 'Total:' })).toContainText('over 2 years');

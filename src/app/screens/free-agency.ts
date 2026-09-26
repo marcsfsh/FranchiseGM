@@ -41,7 +41,7 @@ let shown = PAGE;
 /** Opens the contract offer dialog for a free agent (style guide 7.7: an explicit Send offer). */
 function openOffer(app: AppState, league: League, player: Player, trigger: HTMLElement, done: () => void): void {
   const name = fullName(player);
-  const ask = askingSalary(league, player);
+  const ask = askingSalary(league, player, league.meta.start.userTeam);
   const minimum = minimumSalary(league.rules, player.experience);
   const years = h('select', { class: 'select', id: 'offer-years' }, ...Array.from({ length: TUNING.contracts.acceptance.maxYears }, (_, i) => h('option', { value: i + 1 }, `${i + 1} ${i === 0 ? 'year' : 'years'}`)));
   const salary = dollarField('offer-salary', 'Salary each year, dollars', `His minimum is ${money(minimum, true)}. Each year pays at least the minimum for his experience then.`, ask);
@@ -67,7 +67,7 @@ function openOffer(app: AppState, league: League, player: Player, trigger: HTMLE
     {
       id: 'offerDialog',
       title: `Offer ${name} a contract`,
-      intro: `${name}, ${player.position}, OVR ${player.ovr}. He asks for ${money(ask, true)} a year; free agents ask for less as the season goes on.`,
+      intro: `${name}, ${player.position}, OVR ${player.ovr}. He asks you for ${money(ask, true)} a year; free agents ask for less as the season goes on.`,
       choices: [
         {
           label: 'Offer',
@@ -328,7 +328,9 @@ export function freeAgencyScreen(): Screen {
           status.textContent = view.querySelector('.fa-count')?.textContent ?? '';
         });
         const squadOpen = SQUAD_PHASES.has(league.date.phase);
-        const asking = new Map(filtered.map(p => [p.id, askingSalary(league, p)]));
+        const asking = new Map(
+          filtered.map(p => [p.id, askingSalary(league, p, league.meta.start.userTeam)])
+        );
         // Each call makes fresh controls: the table and the phone list both show them.
         const actions = (p: Player): HTMLElement => {
           const name = fullName(p);

@@ -105,7 +105,7 @@ export function fillFixes(
   const asks = new Map(
     freeAgents(league)
       .filter(p => healthy(p) && fits(p.position))
-      .map(p => [p, askingSalary(league, p)])
+      .map(p => [p, askingSalary(league, p, abbr)])
   );
   const cheap = [...asks].filter(([p, ask]) => asksMinimum(league, p, ask)).map(([p]) => p);
   const rest = [...asks].filter(([p, ask]) => !asksMinimum(league, p, ask)).sort((a, b) => a[1] - b[1] || (a[0].id < b[0].id ? -1 : 1)).map(([p]) => p); // prettier-ignore
@@ -123,7 +123,7 @@ export function fillFixes(
     const move: Move =
       p.status === 'practice'
         ? { kind: 'promote', team: abbr, playerId: p.id, reason }
-        : { kind: 'sign', team: abbr, playerId: p.id, offer: { years: 1, salary: asks.get(p) ?? askingSalary(league, p), signingBonus: 0 }, reason }; // prettier-ignore
+        : { kind: 'sign', team: abbr, playerId: p.id, offer: { years: 1, salary: asks.get(p) ?? askingSalary(league, p, abbr), signingBonus: 0 }, reason }; // prettier-ignore
     const fix = fixOf(league, move);
     if (fix) fixes.push(fix);
   }

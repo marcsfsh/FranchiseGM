@@ -217,7 +217,7 @@ function plan(league: League, move: Move, enforce: boolean): Outcome<Plan> {
       if (player.status !== 'freeAgent' || player.team) return refuse(`${name} isn't a free agent.`);
       if (scrambleOpen(league) && undraftedRookies(league).includes(player))
         return refuse(`${name} is weighing offers from teams until the undrafted free agents step ends. Offer him a signing bonus in Undrafted rookies instead.`); // prettier-ignore
-      const declined = offerProblem(league, player, move.offer);
+      const declined = offerProblem(league, player, move.offer, team);
       if (declined) return refuse(declined);
       const full = roomOnRoster();
       if (full) return refuse(full);
@@ -319,7 +319,7 @@ function plan(league: League, move: Move, enforce: boolean): Outcome<Plan> {
           log(league, team, 'released', player, move.reason);
           releaseMorale(league, team, player);
           if (waived) placeOnWaivers(league, player, team, contract.id);
-          else Object.assign(player, { team: null, status: 'freeAgent', contractId: null });
+          else Object.assign(player, { team: null, lastTeam: team, status: 'freeAgent', contractId: null });
         }
       });
     } // prettier-ignore

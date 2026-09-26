@@ -59,14 +59,14 @@ describe('signing free agents (spec 19.4, simple acceptance)', () => {
     const league = fresh();
     const player = players(league, null, 'freeAgent')[0];
     if (!player) throw new Error('no free agent');
-    const ask = askingSalary(league, player);
+    const ask = askingSalary(league, player, 'MIN');
     const offer = { years: 2, salary: ask, signingBonus: 0 };
     // Every team starts with a full active roster.
     expect(reason(league, { kind: 'sign', team: 'MIN', playerId: player.id, offer })).toMatch(/active roster is full/);
     makeRoom(league);
     const low = { ...offer, salary: ask - 50_000 };
     if (low.salary >= (league.rules.pay.minimumSalary[player.experience] ?? Infinity))
-      expect(offerProblem(league, player, low)).toMatch(/^He wants at least \$[\d,]+ a year\.$/);
+      expect(offerProblem(league, player, low, 'MIN')).toMatch(/^He wants at least \$[\d,]+ a year from you\.$/);
     const before = capSheet(league, 'MIN').space;
     const done = makeMove(league, { kind: 'sign', team: 'MIN', playerId: player.id, offer }, rng);
     if (!done.ok) throw new Error(done.reason);

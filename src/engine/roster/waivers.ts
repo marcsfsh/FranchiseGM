@@ -79,6 +79,7 @@ export function waiverOrder(league: League, seeded: Rng): TeamAbbr[] {
 export function placeOnWaivers(league: League, player: Player, from: TeamAbbr, contractId: string): void {
   league.waivers.push({ playerId: player.id, from, contractId, placed: { ...league.date }, claims: [] });
   player.team = null;
+  player.lastTeam = from;
   player.status = 'waivers';
   player.contractId = null;
 }

@@ -72,6 +72,8 @@ export interface Player {
    * without a team the year he last had one or entered the league.
    */
   joined: number;
+  /** The team he last played for, while he's without one: loyalty draws him back (spec 11.7). */
+  lastTeam: TeamAbbr | null;
   status: RosterStatus;
   /** Morale, 0 to 100. */
   morale: number;

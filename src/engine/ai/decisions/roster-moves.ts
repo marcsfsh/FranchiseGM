@@ -254,7 +254,7 @@ export function rosterMoves(league: League, abbr: TeamAbbr, rng: Rng): DecisionL
           : move({
               kind: 'sign',
               playerId: player.id,
-              offer: { years: 1, salary: askingSalary(league, player), signingBonus: 0 },
+              offer: { years: 1, salary: askingSalary(league, player, abbr), signingBonus: 0 },
               reason
             });
       skip.add(player.id);

@@ -143,7 +143,7 @@ export function openLeagueYear(league: League, date: GameDate, rng: Rng): League
       continue;
     }
     expired.push({ playerId: player.id, team: player.team });
-    Object.assign(player, { team: null, status: 'freeAgent', contractId: null });
+    Object.assign(player, { team: null, lastTeam: player.team, status: 'freeAgent', contractId: null });
   }
   for (const abbr of TEAM_ABBRS) league.teams[abbr].resting = [];
   meetNewScales(league, year);

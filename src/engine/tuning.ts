@@ -236,7 +236,38 @@ export const TUNING = {
      * playoffs, as the unsigned lower their price; never less than his minimum salary. He signs for up to
      * `maxYears` when the offer's yearly value (salary plus the bonus spread over the years) reaches it.
      */
-    acceptance: { offseasonDemand: 1, inSeasonDemand: 0.6, lateSeasonDemand: 0.3, maxYears: 5 }
+    acceptance: { offseasonDemand: 1, inSeasonDemand: 0.6, lateSeasonDemand: 0.3, maxYears: 5 },
+    /**
+     * The player decision model (spec 11.7; D-52). An offer's worth to a player is counted in his market
+     * value: its yearly value over his market value, plus `perYear` for each year past the first, weighted
+     * by his need for security (none at `securityFrom` years old, all by `securityFull`), plus `guarantee`
+     * times the share of the deal guaranteed at signing. On top, as shares of his market value, up to:
+     * `contender` for the strongest team over the middle one (weighted by competitiveness, and by age past
+     * `ringFrom`), `role` for a starting job over a rotation spot (weighted by ego; a backup's loses as
+     * much), `home` for a team in his home state, `loyalty` for his own team at loyalty 100, and `fit` for
+     * his best role at the fit cap. He takes the offer worth most once it's worth his demand: `demand`
+     * [greed 0, greed 100] of his market value, times the date's share, falling `softening` a week of free
+     * agency.
+     */
+    decision: {
+      perYear: 0.03,
+      securityFrom: 26,
+      securityFull: 32,
+      guarantee: 0.1,
+      contender: 0.12,
+      ringFrom: 28,
+      role: 0.1,
+      home: 0.05,
+      loyalty: 0.1,
+      fit: 0.05,
+      demand: [0.9, 1.1] as readonly [number, number],
+      softening: 0.05,
+      /** Starters by position group, for his projected role; specialists count within their position. */
+      starters: { QB: 1, RB: 1, WR: 3, TE: 1, OL: 5, DL: 4, LB: 3, DB: 4, ST: 1 } as Record<
+        PositionGroup,
+        number
+      >
+    }
   },
 
   /**
