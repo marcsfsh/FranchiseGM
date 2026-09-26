@@ -86,12 +86,16 @@ describe('offseason calendar (spec 4.1)', () => {
 
   it('removes undrafted rookies nobody signed and credits a season to everyone on a roster', () => {
     const league = fresh(at(2026, 'superBowl'));
-    const [onRoster, free] = [roster(league, 'MIN')[0], Object.values(league.players).find(p => p.status === 'freeAgent')];
-    if (!onRoster || !free) throw new Error('no players');
-    Object.assign(free, { experience: 0, draft: { year: 2026, undrafted: true } });
+    const [free, cut] = Object.values(league.players).filter(p => p.status === 'freeAgent');
+    const onRoster = roster(league, 'MIN')[0];
+    if (!onRoster || !free || !cut) throw new Error('no players');
+    for (const p of [free, cut]) Object.assign(p, { experience: 0, draft: { year: 2026, undrafted: true } });
+    // One signed in camp and cut in week 5 has games on record, so he stays.
+    league.contracts.u1 = deal('u1', cut, { team: 'MIN', signed: at(2025, 'udfa'), years: [year(2026, { base: 885_000 })], ended: { date: at(2026, 'regularSeason', 5), how: 'released', designated: false, injured: false, terminationPay: false } });
     const before = onRoster.experience;
     closeSeason(league);
     expect(league.players[free.id]).toBeUndefined();
+    expect(league.players[cut.id]).toBeDefined();
     expect(onRoster.experience).toBe(before + 1);
   }); // prettier-ignore
 });

@@ -138,12 +138,15 @@ function preseasonWords(result: GameResult, user: TeamAbbr): string {
 }
 
 /**
- * The end of the season (spec 4.1, 12.1), when the Super Bowl week ends: undrafted rookies nobody signed
- * leave the game, and every player on a roster earns a credited season.
+ * The end of the season (spec 4.1, 12.1), when the Super Bowl week ends: undrafted rookies nobody ever
+ * signed leave the game (one signed and cut stays, with his history), and every player on a roster earns a
+ * credited season.
  */
 export function closeSeason(league: League): void {
+  const signed = new Set(Object.values(league.contracts).map(c => c.playerId));
   for (const p of Object.values(league.players))
-    if (p.status === 'freeAgent' && p.experience === 0 && 'undrafted' in p.draft) delete league.players[p.id];
+    if (p.status === 'freeAgent' && p.experience === 0 && 'undrafted' in p.draft && !signed.has(p.id))
+      delete league.players[p.id];
   const credited = new Set<Player['status']>(['active', 'ir', 'pup', 'nfi', 'suspended']);
   for (const p of Object.values(league.players)) if (p.team && credited.has(p.status)) p.experience++;
 }
