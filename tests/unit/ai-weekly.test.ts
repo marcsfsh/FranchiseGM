@@ -142,6 +142,32 @@ describe('auto depth charts by coach personality (spec 12.2)', () => {
     expect(Math.max(...gaps)).toBeLessThan(8);
   });
 
+  it('moves a starter over to fill a slot nobody left can play', () => {
+    const league = fresh();
+    const all = dressable(league, TEAM);
+    const LINE = ['LT', 'LG', 'C', 'RG', 'RT'] as const;
+    const line = all.filter(p => (LINE as readonly string[]).includes(p.position)).slice(0, 5);
+    // A strong tackle and two strong guards, and two weak centers, alike but for their ratings: the guards
+    // start at LG and C, and no tackle is left for RT.
+    line.forEach((p, i) => {
+      const { traits, abilities } = line[0] as Player;
+      Object.assign(p, {
+        position: ['LT', 'LG', 'RG', 'C', 'C'][i],
+        ovr: i < 3 ? 90 : 45,
+        traits: { ...traits },
+        abilities: [...abilities]
+      });
+      for (const key of Object.keys(p.ratings) as (keyof Player['ratings'])[])
+        p.ratings[key] = i < 3 ? 95 : 40;
+    });
+    league.teams[TEAM].depth.order = orderOf({});
+    const roster = all.filter(p => line.includes(p) || !(LINE as readonly string[]).includes(p.position));
+    const { starters } = decideDepthChart(league, TEAM, roster, stream(3, 'depth'));
+    const ids = LINE.map(slot => starters[slot]);
+    expect(ids).not.toContain(undefined);
+    expect(new Set(ids).size).toBe(5);
+  });
+
   it('replays the same lineup from the same season stream', () => {
     const league = fresh();
     const roster = dressable(league, TEAM);

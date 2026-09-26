@@ -105,5 +105,27 @@ export function decideDepthChart(
     used.add(decision.chosen.id);
     logs.push(decision.log);
   }
+  // A slot the choices left empty, when nobody left can play it, takes a starter who can move over, his
+  // own slot filled by the best player left who can play that one.
+  for (const slot of order) {
+    if (starters[slot]) continue;
+    const eligible = recipeFor(ctx, slot).eligible;
+    for (const [other, id] of Object.entries(starters) as [Slot, string][]) {
+      const mover = roster.find(p => p.id === id);
+      if (!mover || !eligible.includes(mover.position)) continue;
+      const fits = recipeFor(ctx, other).eligible;
+      const [bench] = roster
+        .filter(p => !used.has(p.id) && fits.includes(p.position))
+        .sort(
+          (a, b) =>
+            roleRating(b, other, ctx).rating - roleRating(a, other, ctx).rating || (a.id < b.id ? -1 : 1)
+        );
+      if (!bench) continue;
+      starters[slot] = mover.id;
+      starters[other] = bench.id;
+      used.add(bench.id);
+      break;
+    }
+  }
   return { starters, logs };
 }
