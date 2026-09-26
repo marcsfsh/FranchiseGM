@@ -6,6 +6,7 @@ import type { League } from '../../engine/league/types';
 import { characterKnown, isDisruptive, isLeader } from '../../engine/locker/room';
 import type { Personality, Player } from '../../engine/model/player';
 import { stepLabel } from '../../engine/season/offseason';
+import { plural } from '../../engine/text';
 import { TUNING } from '../../engine/tuning';
 import { h } from '../dom';
 import { money } from '../format';
@@ -54,10 +55,19 @@ export function characterBody(league: League, player: Player): HTMLElement[] {
   const voice = !known ? null : isLeader(player) ? 'A leader: he lifts his teammates each week.' : isDisruptive(player) ? 'Disruptive: his unhappiness drags his teammates down each week.' : null; // prettier-ignore
   const weeks = TUNING.lockerRoom.revealWeek;
   const demand = demandWords(league, player);
+  const s = player.suspension;
+  const suspended = s
+    ? `Suspended under the ${s.reason === 'ped' ? 'drug' : 'conduct'} policy, with ${plural(s.games, 'game')} left to serve.`
+    : null;
+  const charity = player.community
+    ? `Honored for his charity work ${player.community === 1 ? 'once' : `${player.community} times`}.`
+    : null;
   return [
     h('div', { class: 'stat-grid' }, stat('Morale', `${moraleWord(player.morale)}, ${player.morale}`)),
     h('p', { class: 'hint' }, 'Morale moves each week with results, his role, his pay against his market value, and the locker room.'),
     ...(demand ? [h('p', null, demand)] : []),
+    ...(suspended ? [h('p', null, suspended)] : []),
+    ...(charity ? [h('p', null, charity)] : []),
     ...(voice ? [h('p', null, voice)] : []),
     h('h3', null, 'Character'),
     known

@@ -82,8 +82,15 @@ describe('the season loop (spec 4.2, 5.3)', { timeout: 120_000 }, () => {
     // played, toward credited and accrued seasons (D-37); none for the practice squad unless elevated.
     const teams = new Set(a.games.flatMap(g => [g.result.home, g.result.away]));
     const elevated = new Set(a.league.season.elevations.map(e => e.playerId));
+    // A player suspended after this week's game played it on the active roster (spec 10.9), and one signed
+    // in his place after the game didn't.
+    const log = a.league.season.transactions;
+    const after = log.findIndex(t => t.kind === 'suspended');
+    const suspended = new Set(log.filter(t => t.kind === 'suspended').map(t => t.playerId));
+    const late = new Set(after < 0 ? [] : log.slice(after).filter(t => t.kind === 'signed' || t.kind === 'promoted').map(t => t.playerId));
     for (const p of Object.values(a.league.players)) {
-      const onFullPay = !!p.team && teams.has(p.team) && ['active', 'ir', 'pup'].includes(p.status);
+      if (late.has(p.id)) continue;
+      const onFullPay = !!p.team && teams.has(p.team) && (['active', 'ir', 'pup'].includes(p.status) || suspended.has(p.id));
       if (onFullPay) expect(a.league.season.fullPay[p.id]).toBe(1);
       else if (!elevated.has(p.id)) expect(a.league.season.fullPay[p.id]).toBeUndefined();
     }
@@ -216,6 +223,8 @@ describe('a season with the user managing (spec 12.2, 8.7, 19.4)', { timeout: 18
   it("keeps the user's starters and plan every week while the AI manages everyone else", () => {
     const l = league();
     const user = l.meta.start.userTeam;
+    // The user's lineup and plan are what's under test: no suspension or holdout reshapes the roster.
+    Object.assign(l.settings.drama, { holdouts: 0, offField: false });
     let moves = 0;
     // Three weeks on auto, then the user takes over: the backup quarterback starts and the plan passes.
     for (let w = 0; w < 3; w++) {

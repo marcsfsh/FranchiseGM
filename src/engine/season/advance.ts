@@ -22,6 +22,7 @@ import type { RatingChange } from '../progression/change';
 import { coachTraining, weeklyDevelopment } from '../progression/develop';
 import type { Conference, TeamAbbr } from '../../data/teams';
 import { TEAM_ABBRS } from '../../data/team-colors';
+import { offFieldHeadline, offFieldWeek } from '../locker/off-field';
 import { weeklyMorale } from '../locker/room';
 import type { League } from '../league/types';
 import type { Phase } from '../model/calendar';
@@ -265,6 +266,14 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     ...stepDemands(league, 'game', leagueStream(league.random, 'demands', week)),
     ...answerDemands(league, deciders, extend)
   ];
+  // Suspensions are served game by game, and off-field events come in the regular season (spec 10.9).
+  const teamsPlayed = new Set(results.flatMap(r => [r.home, r.away]));
+  const offField = offFieldWeek(league, teamsPlayed, !playoff, leagueStream(league.random, 'offField', week));
+  // A team that loses a player to a suspension or a holdout, or gets one back, sets its roster right now,
+  // the user's too with roster moves on auto (D-46).
+  for (const abbr of new Set([...demands, ...offField].map(e => e.team)))
+    if (abbr !== user || league.settings.auto.roster)
+      makeLegal(league, abbr, leagueStream(league.random, `legal-${abbr}`, week));
   // The Super Bowl comes two weeks after the conference championships: the off week heals too.
   if (week === league.rules.season.weeks + PLAYOFF_PHASES.length - 1) healWeek(league);
   // The scouts work the next draft's class every week (spec 10.4).
@@ -298,8 +307,12 @@ export function advanceWeek(league: League, climate: ClimateTable | null, input:
     const text = demandHeadline(e);
     if (text) news.push({ id: `${season}-${week}-h${i}`, season, week, kind: 'transaction', headline: text, teams: [e.team], players: [e.player.id], score: e.player.ovr, template: 'transaction' });
   }); // prettier-ignore
+  offField.forEach((e, i) => {
+    const text = offFieldHeadline(e);
+    if (text) news.push({ id: `${season}-${week}-f${i}`, season, week, kind: 'transaction', headline: text, teams: [e.team], players: [e.player.id], score: e.player.ovr, template: 'transaction' });
+  }); // prettier-ignore
   league.season.news.push(...news);
-  const inbox = weekInbox(league, { week, results, awards, news, waivers: waived, demands });
+  const inbox = weekInbox(league, { week, results, awards, news, waivers: waived, demands, offField });
   league.inbox = addToInbox(league.inbox, inbox);
   league.random = advanceLeagueRandom(league.random, input);
   return {

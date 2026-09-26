@@ -89,6 +89,10 @@ export interface Player {
   injury: PlayerInjury | null;
   /** What he's demanding of his team, if anything (spec 11.9). */
   demand?: PlayerDemand;
+  /** A suspension still to serve (spec 10.9): games left, and why. */
+  suspension?: { games: number; reason: 'ped' | 'conduct' };
+  /** Seasons of charity work to his name, for the Man of the Year (spec 10.9, 18.4). */
+  community?: number;
   /** The season he retired after (spec 10.7); Hall of Fame candidates wait five seasons from it. */
   retiredIn?: number;
   /** Columns from an import that the model doesn't use, kept for lossless round trips. */

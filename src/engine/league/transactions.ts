@@ -30,7 +30,10 @@ export type TransactionKind =
   | 'optionDeclined'
   /** A holdout's leaving the active roster for the list of players who didn't report, and his return (spec 11.9). */
   | 'heldOut'
-  | 'reported';
+  | 'reported'
+  /** A suspension's start and end (spec 10.9). */
+  | 'suspended'
+  | 'reinstated';
 
 export interface Transaction {
   season: number;

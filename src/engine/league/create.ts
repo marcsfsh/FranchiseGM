@@ -127,7 +127,7 @@ export function createLeague(input: NewLeagueInput): League {
       development: defaultDevelopment(),
       draft: defaultDraftSettings(),
       commissioner: { enforceRules: true },
-      drama: { holdouts: 1, fines: true }
+      drama: { holdouts: 1, fines: true, offField: true }
     },
     teams,
     players: byId(generated.players),

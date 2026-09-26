@@ -848,6 +848,21 @@ export const TUNING = {
     }
   },
   /**
+   * Off-field events (spec 10.9; D-59), while the setting is on. Each regular-season week, each player on an
+   * active roster draws a suspension under the drug policy at `ped` and one under the conduct policy, of
+   * `conductGames` [fewest, most] games, at `conduct` x his volatility weight. Each player on a roster or a
+   * practice squad draws a legal matter in the news at `legal` x his volatility weight, and charity work at
+   * `charity` x his leadership and social activity weights. The news covers players rated `newsFrom` or more.
+   */
+  offField: {
+    ped: 0.00025,
+    conduct: 0.00013,
+    conductGames: [2, 6] as readonly [number, number],
+    legal: 0.0002,
+    charity: 0.001,
+    newsFrom: 75
+  },
+  /**
    * Compensatory picks (spec 11.8; D-58). A free agent qualifies when his new deal's yearly value ranks in
    * the top share of the league's veteran deals that `rounds` lists last; `rounds` gives his round by the
    * smallest top share he ranks in, a round better with `starter` or more of his new team's snaps last

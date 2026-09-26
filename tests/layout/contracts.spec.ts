@@ -203,7 +203,7 @@ test('shows a holdout, and sets how often players hold out or ask for trades', a
   await expect(page.locator('main')).toContainText('He has held out for a new deal since training camp opened, losing $1,050,000 in fines and pay so far. Extend him on the Contracts screen, or wait for him to report.');
 
   await goTo(page, '#/settings', 'Settings');
-  const card = section(page, 'Holdouts and trade requests');
+  const card = section(page, 'Player drama');
   const status = card.locator('[role="status"]');
   await expect(card.getByLabel('How often players hold out or ask for trades')).toHaveValue('1');
   await card.getByLabel('How often players hold out or ask for trades').selectOption({ label: 'Never' });
@@ -212,6 +212,10 @@ test('shows a holdout, and sets how often players hold out or ask for trades', a
   await expect(fines).toHaveAttribute('aria-checked', 'true');
   await fines.click();
   await expect(status).toHaveText("Holdouts aren't fined.");
+  const offField = card.getByRole('switch', { name: 'Off-field events and suspensions' });
+  await expect(offField).toHaveAttribute('aria-checked', 'true');
+  await offField.press('Space');
+  await expect(status).toHaveText('Off-field events and suspensions are off.');
   await expectTouchTargets(page, 'main section.card:has(#drama-fines)', phone ? 48 : 44);
   await expectNoHorizontalOverflow(page);
 }); // prettier-ignore

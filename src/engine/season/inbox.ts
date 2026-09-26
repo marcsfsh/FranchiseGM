@@ -7,6 +7,7 @@
 import { TEAM_COLORS, type TeamAbbr } from '../../data/team-colors';
 import { team } from '../../data/teams';
 import { demandMessage, type DemandEvent } from '../contracts/holdouts';
+import { offFieldMessage, type OffFieldEvent } from '../locker/off-field';
 import type { League } from '../league/types';
 import { fullName } from '../model/player';
 import type { GameResult } from '../sim/types';
@@ -89,6 +90,8 @@ export interface WeekInboxInput {
   waivers?: readonly WaiverResult[];
   /** Holdouts and trade requests made or ended this week (spec 11.9). */
   demands?: readonly DemandEvent[];
+  /** Off-field events this week (spec 10.9). */
+  offField?: readonly OffFieldEvent[];
 }
 
 /** The user's messages from a finished week, in the league as it stands after the week. */
@@ -176,6 +179,10 @@ export function weekInbox(league: League, input: WeekInboxInput): InboxItem[] {
   for (const e of input.demands ?? []) {
     const m = demandMessage(league, e);
     if (m) add({ kind: 'contracts', event: m.event, title: m.title, body: m.body, players: [e.player.id] });
+  }
+  for (const e of input.offField ?? []) {
+    const m = offFieldMessage(league, e);
+    if (m) add({ kind: 'roster', event: null, title: m.title, body: m.body, players: [e.player.id] });
   }
 
   for (const n of input.news)

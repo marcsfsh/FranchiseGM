@@ -302,7 +302,10 @@ const DRAMA_LEVELS: readonly [number, string][] = [
   [2, 'Very often']
 ];
 
-/** Holdouts and trade requests (spec 11.9, 22.5): how often, and whether holdouts are fined. */
+/**
+ * Player drama (spec 10.9, 11.9, 22.5, 22.6): how often players hold out or ask for trades, whether holdouts
+ * are fined, and whether off-field events and suspensions happen.
+ */
 function dramaSettings(app: AppState): HTMLElement | null {
   const league = app.league;
   if (!league) return null;
@@ -327,10 +330,21 @@ function dramaSettings(app: AppState): HTMLElement | null {
     fines.setAttribute('aria-checked', String(on));
     status.textContent = on ? 'Holdouts are fined per the CBA.' : "Holdouts aren't fined.";
   });
+  const offId = 'drama-off-field';
+  const offField = h('button', { class: 'switch', type: 'button', role: 'switch', id: offId, 'aria-checked': String(drama.offField), 'aria-labelledby': `${offId}-label`, 'aria-describedby': `${offId}-hint` });
+  offField.addEventListener('click', () => {
+    const on = !(app.league ?? league).settings.drama.offField;
+    app.edit(l => {
+      l.settings.drama.offField = on;
+    }, ['drama', 'offField', on]);
+    offField.setAttribute('aria-checked', String(on));
+    status.textContent = on ? 'Off-field events and suspensions are on.' : 'Off-field events and suspensions are off.';
+  });
   return card(
-    'Holdouts and trade requests',
+    'Player drama',
     h('div', { class: 'field' }, h('label', { for: often.id }, 'How often players hold out or ask for trades'), often, h('p', { class: 'hint', id: 'drama-holdouts-hint' }, 'Underpaid players in the last year of their deals may hold out of training camp for a new one, and unhappy players may ask to be traded.')),
     h('div', null, h('div', { class: 'switch-row' }, h('span', { class: 'field-label', id: `${id}-label` }, 'Holdout fines'), fines), h('p', { class: 'muted', id: `${id}-hint` }, `Per the CBA, a holdout is fined ${money(pay.holdoutFineDaily, true)} for each day of training camp he misses (${money(pay.holdoutFineDailyRookie, true)} on a rookie deal) and a week's pay for each preseason game. Missed regular-season games cost him their pay either way.`)),
+    h('div', null, h('div', { class: 'switch-row' }, h('span', { class: 'field-label', id: `${offId}-label` }, 'Off-field events and suspensions'), offField), h('p', { class: 'muted', id: `${offId}-hint` }, `Suspensions under the drug policy (${league.rules.roster.pedSuspensionGames} games for a first violation) and the conduct policy, legal matters in the news, and charity work that counts toward the Man of the Year.`)),
     status
   );
 } // prettier-ignore

@@ -62,6 +62,8 @@ export interface RosterRules {
   accruedSeasonGames: number;
   /** Games a player on the reserve PUP or NFI list must miss. */
   pupMinGames: number;
+  /** Games a first violation of the policy on performance-enhancing drugs suspends a player (spec 10.9). */
+  pedSuspensionGames: number;
   /** Through this regular-season week the waiver order follows the draft order, then the standings. */
   waiverDraftOrderWeeks: number;
 }
@@ -374,6 +376,8 @@ export const DEFAULT_RULES: RuleSet = {
     creditedSeasonGames: 3,
     accruedSeasonGames: 6,
     pupMinGames: 4,
+    // 2020 CBA performance-enhancing substances policy: 6 games for a first violation.
+    pedSuspensionGames: 6,
     waiverDraftOrderWeeks: 3
   },
   pay: {
